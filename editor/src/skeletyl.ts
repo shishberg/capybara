@@ -53,15 +53,14 @@
 // (bridges).
 // Nothing is cut out: chassis.ts adds the glue posts and the base, and the
 // checks report anything that runs into the tiles or the keycaps.
-// PROTOTYPE: chassis.walls (?walls=) adds walls under the outer sides, built
-// by skeletyl-walls.prototype.ts from a WallSide per side; "none" adds none.
-// PROTOTYPE: chassis.ends (?ends=) supports the hanging ends from the frame's
-// own parts (skeletyl-ends.prototype.ts lists the variants): "tie" adds a floor
-// tie to the rail, across under them, and drops the ends that can onto it
-// (landing square on it, clear of its bends and of where it meets the rail);
-// "flow" first carries a thumb row's end on into a column's front as one rib,
-// then carries each column front still hanging on in a web to a thumb key's
-// plate where it can, and ties the rest as "tie"; "none" leaves them hanging.
+// Walls stand under the outer sides, built by skeletyl-walls.ts from a
+// WallSide per side.
+// The hanging ends are supported from the frame's own parts: first a thumb
+// row's end is carried on into a column's front as one rib, then each column
+// front still hanging is carried on in a web to a thumb key's plate where it
+// can, and a floor tie is added to the rail, across under the rest, which
+// drops the ends that can onto it (landing square on it, clear of its bends
+// and of where it meets the rail).
 //
 // Terms, as in chassis.ts, and:
 //  rib      a run of keys along one key axis, swept as one solid;
@@ -76,11 +75,11 @@
 //           on their facing sides, where they stand within fuseGap;
 //  bridge   PROTOTYPE: a straight slab across the gap between two ribs, from
 //           one key's plate edge to a facing key's, flush with both tops;
-//  tie      PROTOTYPE ?ends=: a bar of the rail's section across the floor,
+//  tie      a bar of the rail's section across the floor,
 //           rail to rail, that hanging ends drop onto;
 //  pose     where a rib passes and how it lies there: its top's middle, its
 //           heading and across, its width and thickness (Pose);
-//  join     PROTOTYPE ?ends=flow: a finger front carried on in a web to a
+//  join     a finger front carried on in a web to a
 //           thumb key's plate edge instead of a round; a thumb row's end
 //           carried on into a column's front is one too.
 import type { CrossSection, Manifold, ManifoldToplevel } from 'manifold-3d';
@@ -116,8 +115,7 @@ import {
   type RibKit,
   type WallPoint,
   type WallSide,
-} from './skeletyl-walls.prototype';
-import { END_SUPPORTS } from './skeletyl-ends.prototype';
+} from './skeletyl-walls';
 import type { Wire } from './wiring';
 
 /** Construction sizes in mm. */
@@ -161,7 +159,7 @@ export const SIZES = {
   cornerSegments: 72,
   /** An end drops to the floor if the outline is at most this far out along the end (plan) from where its drop's outer face would meet the floor straight down, at that face's nearer corner; its drop bends out that far, in the end's own plane, so that corner meets the outline (kind in skeletyl). */
   reach: 12,
-  /** PROTOTYPE ?walls=: a wall side has points this many steps across each plate. */
+  /** A wall side has points this many steps across each plate. */
   plateSteps: 5,
   /** The rail round the outline: its height. */
   railHeight: 6,
@@ -171,7 +169,7 @@ export const SIZES = {
   dropBend: 1,
   /** A drop's foot is keyed this far into the rail (or the tie) under it, and as far up into the drop, inside both (footKey), so the two overlap rather than only meet face to face. A low end's round stops this far over the rail's top (lowFace), and its section goes on at least this far under it before it is cut (lowFoot). */
   footInto: 0.5,
-  /** PROTOTYPE ?ends=: a column's front joins a thumb key's plate edge at most this far off (plan, middle to middle), its web reaching joinInto into the plate; the tie's bends and its fillets into the rail are rounded to tieRound (plan), and a drop on the tie stands at least tieRound and tieGap (along it) from where it bends or from the rail's inner edge, clear of where the bend's or the fillet's round starts rather than on it. */
+  /** A column's front joins a thumb key's plate edge at most this far off (plan, middle to middle), its web reaching joinInto into the plate; the tie's bends and its fillets into the rail are rounded to tieRound (plan), and a drop on the tie stands at least tieRound and tieGap (along it) from where it bends or from the rail's inner edge, clear of where the bend's or the fillet's round starts rather than on it. */
   joinReach: 20,
   joinInto: 0.5,
   tieRound: 5,
@@ -236,7 +234,7 @@ interface Rib {
   keys: RibKey[];
   parted: [boolean, boolean];
 }
-/** How a rib's end finishes: flush with the plate's edge, a round alone, a round and a drop to the floor (on the rail or the tie), landing as the pose `land` (PROTOTYPE: and widened where it is fused to a neighbour's, `widen`), or (PROTOTYPE ?ends=) a web joining it to another key's plate. */
+/** How a rib's end finishes: flush with the plate's edge, a round alone, a round and a drop to the floor (on the rail or the tie), landing as the pose `land` (PROTOTYPE: and widened where it is fused to a neighbour's, `widen`), or a web joining it to another key's plate. */
 type End = 'flush' | 'hang' | Drop | { join: Join };
 /** A drop's end (End): where it lands, (PROTOTYPE) where it is widened, and a low end's footprint (lowFootprint), the outline taking that in rather than a foot square to its face. */
 type Drop = { land: Pose; widen?: Widen[]; foot?: V3[] };
@@ -245,7 +243,7 @@ interface Widen {
   side: number;
   at: (z: number) => number;
 }
-/** PROTOTYPE ?ends=: where a joined end's rib lands: on a plate edge of `key`, as a pose heading into that plate (its sides those of the end's own, heading out), carried on `into` mm past it. */
+/** Where a joined end's rib lands: on a plate edge of `key`, as a pose heading into that plate (its sides those of the end's own, heading out), carried on `into` mm past it. */
 interface Join {
   key: string;
   land: Pose;
@@ -588,7 +586,7 @@ function endRound(d: Dims, k: RibKey, u: number) {
 /**
  * One side (s, -1 or 1 across) of the end of key k that faces u (-1 or 1
  * along), from the plate's corner out. A flush end stops there. A joined end
- * (PROTOTYPE ?ends=flow) runs on as a cubic web to its landing on a thumb
+ * runs on as a cubic web to its landing on a thumb
  * plate's edge, then a little into that plate. Otherwise its lip and round
  * (endRound) turn it over and down until it is vertical. A dropping end runs
  * on from there down to its landing, swept as between keys: straight down,
@@ -602,7 +600,7 @@ function endSide(d: Dims, k: RibKey, u: number, s: number, end: End): Pair[] {
   const path: Pair[] = [[corner(d, k, u, s, 0), corner(d, k, u, s, -d.plate)]];
   if (end === 'flush') return path;
   if (isJoin(end)) {
-    // PROTOTYPE ?ends=: the rib on to the other plate's edge, as between
+    // The rib on to the other plate's edge, as between
     // keys, then on into that plate. Heading out, the end's side s is its
     // pose's side u·s.
     const { land, into } = end.join;
@@ -1199,7 +1197,7 @@ const feet = (d: Dims, rib: Rib, end: number) => {
  * round an area (straightened), the feet's convex hull dug in at most
  * digDeepest, the outer sides' plates' and tile pockets' hulls, and each of
  * `keep` (plan points) and the rail's width round it, so the rail stays out
- * of them; and (PROTOTYPE ?walls=) each of `walls` (plan polygons): a wall's
+ * of them; and each of `walls` (plan polygons): a wall's
  * foot, which the hull takes in, so that a straight run passes along it.
  * With what it must still take in where it is trimmed (firm): the outer
  * sides, `keep`, `walls` and each of the feet (a speck), but not the floor
@@ -1637,7 +1635,7 @@ function columnsBelow(cfg: Config, frames: Record<string, Matrix4>, z: number): 
 }
 
 /**
- * PROTOTYPE ?walls=, ?ends= and bridges: what every key holds (keyBoxes) and its
+ * For the walls, the ends and (PROTOTYPE) bridges: what every key holds (keyBoxes) and its
  * switch hole's column (holeColumn), each box in its key's frame and grown by
  * endGap; with whether a point is clear of them all, and how far out along a
  * plan direction from a point everything is. For the keys `pressed` (PROTOTYPE
@@ -1695,11 +1693,11 @@ function keySpace(cfg: Config, frames: Record<string, Matrix4>, pressed: string[
 }
 
 /**
- * PROTOTYPE ?walls=: rib's outer side (s) as a WallSide for the wall
- * variants (skeletyl-walls.prototype.ts documents each field). Its points are
- * the rib's side as built (ribSide), outward is across the rib at each, and the
- * rail is found straight out along it. A joined end (PROTOTYPE ?ends=flow) is
- * flush to the walls, its web's side handed over apart (carried).
+ * Rib's outer side (s) as a WallSide for the walls (skeletyl-walls.ts
+ * documents each field). Its points are the rib's side as built (ribSide),
+ * outward is across the rib at each, and the rail is found straight out
+ * along it. A joined end is flush to the walls, its web's side handed over
+ * apart (carried).
  */
 function wallSide(
   cfg: Config,
@@ -1810,7 +1808,7 @@ function wallSide(
   };
 }
 
-/** PROTOTYPE ?ends=: whether points are clear of what every key but those `except` holds and of their switch holes' columns (keySpace). */
+/** Whether points are clear of what every key but those `except` holds and of their switch holes' columns (keySpace). */
 const clearOf = (
   cfg: Config,
   frames: Record<string, Matrix4>,
@@ -1823,7 +1821,7 @@ const clearOf = (
   ).clear(points);
 
 /**
- * PROTOTYPE ?ends=: whether a rib's end can drop as `kind` onto the tie: its
+ * Whether a rib's end can drop as `kind` onto the tie: its
  * drop (below the round, which it has anyway) is clear of the other keys,
  * tested every mm or so down it.
  */
@@ -1843,7 +1841,7 @@ function dropClear(
 }
 
 /**
- * PROTOTYPE ?ends=flow: a column's front (rib's first end) joined to a thumb
+ * A column's front (rib's first end) joined to a thumb
  * key's plate: a web from the front's plate edge to the nearest thumb plate
  * edge it can reach without folding back (each edge past the other, as
  * between keys) or running into the other keys, landing the rib's width
@@ -1905,7 +1903,7 @@ function joinTo(
 }
 
 /**
- * PROTOTYPE ?ends=flow: a thumb row's end (rib `row`, end e) carried on into a
+ * A thumb row's end (rib `row`, end e) carried on into a
  * column's front (`column`'s first end) as one rib: from the row end's plate
  * edge, a sweep to the front's plate edge, arriving along the column, the
  * front then flush. With how long it is (plan, edge to edge) and the other
@@ -1936,7 +1934,7 @@ function flowTo(
 }
 
 /**
- * PROTOTYPE ?ends=tie: the floor tie, as the plan of a strip the rail's width
+ * The floor tie, as the plan of a strip the rail's width
  * (the rail extrudes it with its own section), and the hanging ends that drop
  * onto it (changed in `ends`). It runs through where each hanging end that
  * could drop straight down clear of the keys would stand, in order across the
@@ -2404,10 +2402,10 @@ function fusions(d: Dims, all: Rib[], ends: End[][]): Fusion[] {
 /**
  * The frame: the ribs, the rail round the outline that the ends standing on
  * it drop to, and (PROTOTYPE) the bridges between neighbouring ribs, which
- * keep clear of `wires`. It stands on z = 0. PROTOTYPE ?walls=: the outline
- * also takes in `reach`, what the walls ask of it, and is cut back to the
- * faces they stand on it with (a design that asks is built twice: first to
- * ask, on the outline without).
+ * keep clear of `wires`. It stands on z = 0. The outline also takes in
+ * `reach`, what the walls ask of it, and is cut back to the faces they stand
+ * on it with (the frame is built twice: first to ask, on the outline
+ * without).
  */
 export function skeletyl(
   wasm: ManifoldToplevel,
@@ -2539,14 +2537,11 @@ export function skeletyl(
     faces,
     joins,
   );
-  // PROTOTYPE ?ends= (skeletyl-ends.prototype.ts): the columns' hanging fronts
-  // joined to the thumbs, and the floor tie that the hanging ends drop onto.
-  const support = (cfg.chassis as { ends?: string }).ends ?? 'none';
-  if (!END_SUPPORTS.some((x) => x.key === support))
-    throw Error(`Unknown ends "${support}": one of ${END_SUPPORTS.map((x) => x.key)}`);
-  if (support === 'flow') {
-    // Each thumb row's hanging end carried on into a hanging column front,
-    // clear of the other keys, nearest first, each used once.
+  // The hanging ends supported: each thumb row's hanging end carried on into
+  // a hanging column front, clear of the other keys, nearest first, each used
+  // once; then each column front still hanging joined to a thumb plate; then
+  // the floor tie that the rest drop onto.
+  {
     const fronts = all.flatMap((rib, i) =>
       rib.run < columns && all.findIndex((r) => r.run === rib.run) === i && ends[i][0] === 'hang'
         ? [i]
@@ -2572,22 +2567,15 @@ export function skeletyl(
         ends[x.j][0] = 'flush';
       }
   }
-  if (support === 'flow') {
-    // Then each column front still hanging joined to a thumb plate.
-    const thumbs = all.filter((rib) => rib.run >= columns).flatMap((rib) => rib.keys);
-    all.forEach((rib, i) => {
-      const front = rib.run < columns && all.findIndex((r) => r.run === rib.run) === i;
-      if (front && ends[i][0] === 'hang')
-        ends[i][0] = joinTo(cfg, d, frames, rib, thumbs) ?? 'hang';
-    });
-  }
-  const tie =
-    support === 'tie' || support === 'flow'
-      ? floorTie(wasm, cfg, d, frames, all, ends, ring)
-      : undefined;
+  const thumbs = all.filter((rib) => rib.run >= columns).flatMap((rib) => rib.keys);
+  all.forEach((rib, i) => {
+    const front = rib.run < columns && all.findIndex((r) => r.run === rib.run) === i;
+    if (front && ends[i][0] === 'hang') ends[i][0] = joinTo(cfg, d, frames, rib, thumbs) ?? 'hang';
+  });
+  const tie = floorTie(wasm, cfg, d, frames, all, ends, ring);
   const area = new wasm.CrossSection([ring], 'NonZero');
   const inside = area.offset(-d.wall, 'Round');
-  // The ribs' names (as the wall variants have them), and the rail's inner edge.
+  // The ribs' names (as the walls have them), and the rail's inner edge.
   const named = all.map((rib) => {
     const n =
       rib.run < columns
@@ -2603,9 +2591,8 @@ export function skeletyl(
       .toPolygons()
       .map((p) => p.map((q) => [q[0], q[1]] as [number, number]))
       .reduce((x, y) => (area2(y) > area2(x) ? y : x));
-  // PROTOTYPE ?walls= (skeletyl-walls.prototype.ts): the outer sides, and
-  // the frame again taking in what the walls ask of the outline, if they do.
-  const wallsKey = (cfg.chassis as { walls?: string }).walls ?? 'none';
+  // The outer sides (skeletyl-walls.ts), and the frame again taking in what
+  // the walls ask of the outline, if they do.
   const wallSides = () =>
     all.flatMap((rib, i) =>
       outer(rib)
@@ -2630,7 +2617,7 @@ export function skeletyl(
       : [],
   };
   if (!reach.feet.length) {
-    const more = skeletylReach(wasm, cfg, wallsKey, wallSides, ribKit);
+    const more = skeletylReach(wasm, cfg, wallSides, ribKit);
     if (more.feet.length) return skeletyl(wasm, cfg, frames, wires, more);
   }
   const solids = all.map((rib, i) => ribSolid(wasm, d, rib, ends[i]));
@@ -2641,10 +2628,9 @@ export function skeletyl(
   // PROTOTYPE: the bridges between neighbouring ribs' keys.
   const bridged = bridges(wasm, cfg, d, frames, all, wires);
   const loop = area.subtract(inside);
-  // PROTOTYPE ?ends=tie: the tie is part of the rail, filleted into it where
-  // they meet (and round its bends), inside the outline (where the tie meets
-  // the rail by one of the outline's corners, rounding would fill that
-  // corner in outside it too).
+  // The tie is part of the rail, filleted into it where they meet (and round
+  // its bends), inside the outline (where the tie meets the rail by one of the
+  // outline's corners, rounding would fill that corner in outside it too).
   const R = SIZES.tieRound;
   const railPlan = tie
     ? loop.add(tie).add(
@@ -2673,8 +2659,8 @@ export function skeletyl(
       'NonZero',
     ).extrude(SIZES.railHeight);
   const rail = stood(railPlan);
-  // PROTOTYPE ?walls= (skeletyl-walls.prototype.ts): walls under the outer sides.
-  const walls = skeletylWalls(wasm, cfg, wallsKey, wallSides, ribKit);
+  // The walls under the outer sides (skeletyl-walls.ts).
+  const walls = skeletylWalls(wasm, cfg, wallSides, ribKit);
   return {
     frame: wasm.Manifold.union([
       ...solids,

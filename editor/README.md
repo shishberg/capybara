@@ -168,18 +168,6 @@ each probe against the case near its key, not the whole case.
 the project (`src/prototype-overrides.ts`): `?plates=narrow|facets` (narrow also takes
 `&slope=<deg>`) and `?recess=<mm>`, which sets the finger and thumb decks' height above
 the fitted key surface (the well's wall reaching down as much further).
-On the Skeletyl, `?walls=` tries a wall design and `?ends=none|tie|flow` a way of
-holding up the rib ends (`src/skeletyl-walls.prototype.ts`, `src/skeletyl-ends.prototype.ts`).
-`?walls=pillars|wishbone` carry the rib on down from the web between two keys on
-an outer side to the rail (a pillar, or a trunk forking into two legs at 45°),
-turning down at once in a round as tight as the rib's section allows, so each
-stands as near under its column as clears. With `?ends=flow` a web a thumb
-row's end carries on in to a column's front gets one too, as near the plate it
-leaves as clears (on Swung in a pillar under the thumb extra row's, past
-the tie). Webs too narrow or too low for one get none, and so does a web
-facing in over another rib (the outline more than 10 mm out across its feet). A limb in the main ribbon's way forks over
-it, 2 mm clear. The outline runs straight along the limbs' feet
-(see [chassis](../docs/editor-chassis.md)).
 
 The dev server (`make editor`) has two things the built site (`dist/`) does not:
 
@@ -219,15 +207,14 @@ check fails.
 
 The default project is Swung in, extra thumb keys included, laid out by the hand
 model on the defaults before it; `npm run default-config` regenerates
-`src/default-config.json` (`tests/default-config.ts`). On the Skeletyl it fails one
-check, the pinky bottom key's keycap room (the frame in it); the tests pin that, so
-a change shows up. Every test builds Swung in, or a deliberate change of it. The C64 case (`?chassis=c64`) was built for
+`src/default-config.json` (`tests/default-config.ts`). On the Skeletyl it passes
+every check, and the tests pin that. Every test builds Swung in, or a deliberate change of it. The C64 case (`?chassis=c64`) was built for
 the earlier layout and fails more of them on Swung in; its tests pin those too.
 The seam check (`tests/seams.ts`) finds where the Skeletyl's parts meet badly
 on the mesh as the editor draws it (slivers, ledges, unintended creases, gaps,
 thin skins, swayed shading), with the parts that meet there; `tests/seams.test.ts`
 pins its count per junction class (none for the bridges between ribs: they must
-meet the ribs cleanly) on every walls by ends, checks that fused drops leave no
+meet the ribs cleanly), checks that fused drops leave no
 gap or slit between them, and checks that every drop stands flush on the rail.
 The glue posts under each plate are meant geometry (as the plates and seats
 are), so their own faces are not counted, nor what the frame's faces are

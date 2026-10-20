@@ -348,9 +348,7 @@ test('a thicker skin builds the case in one piece, the adapter mount reaching th
     /skin_mm/,
   );
 });
-test("the default (Swung in) Skeletyl builds one piece, failing only Swung in's known checks", () => {
-  // The pinky bottom key's keycap room has the frame in it. Its failures are
-  // pinned, so a change shows up; everything else passes.
+test('the default (Swung in) Skeletyl builds one piece and passes every check', () => {
   const r = buildSolid(wasm, clone(defaults)).report,
     failing = (xs: { name: string; passed: boolean }[]) =>
       xs.filter((x) => !x.passed).map((x) => x.name);
@@ -358,11 +356,8 @@ test("the default (Swung in) Skeletyl builds one piece, failing only Swung in's 
   assert.equal(r.footprint.length, 1);
   assert.equal(r.seats.length, 20);
   assert.deepEqual(failing(r.seats), []);
-  assert.deepEqual(failing(r.keycaps), ['matrix_pinky_bottom']);
-  assert.deepEqual(
-    r.roomCuts.map((c) => c.name),
-    ['matrix_pinky_bottom'],
-  );
+  assert.deepEqual(failing(r.keycaps), []);
+  assert.deepEqual(r.roomCuts, []);
   assert(r.openings.length > 0);
   assert.deepEqual(failing(r.openings), []);
   assert.deepEqual(r.hardware, []);
@@ -372,7 +367,7 @@ test("the default (Swung in) Skeletyl builds one piece, failing only Swung in's 
     r.capGaps.filter((g) => !(g.gap > 0)).map((g) => g.between),
     [],
   );
-  assert.equal(r.passed, false);
+  assert.equal(r.passed, true);
 });
 test('the default bottom section is one piece, the adapter mount on its floor', () => {
   assert.equal(basePieces(defaults.config), 1);

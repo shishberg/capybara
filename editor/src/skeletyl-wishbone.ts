@@ -1,7 +1,4 @@
-// PROTOTYPE. Question: Which wall design should the Skeletyl have? Variants
-// switchable via ?walls= on the editor.
-//
-// ?walls=pillars (rib pillars) and ?walls=wishbone (forked rib legs): limbs
+// The Skeletyl's walls (skeletyl-walls.ts), forked rib legs: limbs
 // built as the ribs are, out of the outer side of a rib's webs (between
 // neighbouring keys, and those its ends carry on in) and down to the rail. A limb is the rib carried on
 // sideways: it leaves the web's outer edge at its middle, in the rib's plane
@@ -48,16 +45,15 @@
 // most all three take with a little to spare, each centred on its web. The
 // pinky front web has room too, and a pillar clears there.
 //
-// A web an end carries on in (?ends=flow: a thumb row's end carried on to a
-// column's front, WallSide.carriedWebs) is a span of rib with nothing under
+// A web an end carries on in (a thumb row's end carried on to a column's
+// front, WallSide.carriedWebs) is a span of rib with nothing under
 // it but where it lands, so it gets a limb too: as near the plate it leaves
 // as clears (its middle HALF and S.edge on from the plate's corner, then
 // each SLIDE, 1 mm, further on), as a finger key's side has one near each
 // web. On Swung in that is the thumb extra row's, 41 mm from thumb_x1 to the
-// middle column's front, over open floor. The tie (?ends=flow has one)
-// meets the rail under the web's first few mm, so its nearer places don't
-// clear; a pillar stands about 11 mm on from thumb_x1's corner (on wishbone
-// too: no fork clears there), 3.0 mm
+// middle column's front, over open floor. The floor tie meets the rail
+// under the web's first few mm, so its nearer places don't clear; a pillar
+// stands about 11 mm on from thumb_x1's corner (no fork clears there), 3.0 mm
 // out from the web's edge, near where the user marked.
 // The thumb row's carried web faces in, over the thumb extra row, and no
 // limb is placed where the outline across its feet is more than S.far
@@ -77,8 +73,7 @@
 // up the wall thick: the fork is a crisp crotch and a crisp kink each side.
 //
 // A limb in the main ribbon's way (WallKit.ribbon: it crosses the side
-// within S.widest of the web's middle, or within half a pillar's width for
-// pillars) forks over it, on pillars too: its opening centred on the ribbon,
+// within S.widest of the web's middle) forks over it: its opening centred on the ribbon,
 // its legs' inner faces RIBBON_GAP clear of it each side, and each leg
 // standing upright to RIBBON_GAP over its top before it slants. Those are
 // placed first, since where their feet go is the ribbon's to say. On Swung
@@ -93,8 +88,8 @@
 // the sides' ends (lips, rounds, drops and webs carried on), of the faces
 // standing on the outline (drops), of the tie, and of the ribbon. They stand on the straightened outline: placed
 // first on the outline without them, each at least as far out as it runs
-// across its feet, they ask for their feet (REACHES in
-// skeletyl-walls.prototype.ts), which its hull takes in before it is
+// across its feet, they ask for their feet (skeletylReach in
+// skeletyl-walls.ts), which its hull takes in before it is
 // straightened, so a straight run passes along them. Placed again on that,
 // each comes down where the run meets its feet, its foot turned along the run
 // (up to TURN): a pillar twisting to it all the way down, a wishbone's trunk
@@ -108,9 +103,9 @@
 // 3.1 mm out, but the outline there (the pinky's tiles and ends) is 4.1 to
 // 4.2, so they run on out to it.
 import type { Manifold } from 'manifold-3d';
-import { add, cross, dot, scale, sub, type V3 } from '../geometry';
-import type { Pose, Span } from '../skeletyl';
-import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from '../skeletyl-walls.prototype';
+import { add, cross, dot, scale, sub, type V3 } from './geometry';
+import type { Pose, Span } from './skeletyl';
+import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from './skeletyl-walls';
 
 /**
  * Sizes in mm: the width (along the side) of every limb and every part of
@@ -244,7 +239,7 @@ interface Web {
   own?: WallPoint[];
 }
 
-/** A side's points with the webs its ends carry on in (?ends=flow), first to last, and its webs along them. */
+/** A side's points with the webs its ends carry on in, first to last, and its webs along them. */
 interface Line {
   points: WallPoint[];
   webs: Web[];
@@ -322,30 +317,20 @@ interface Avoid {
   clear: (limb: Limb) => boolean;
 }
 
-/** ?walls=wishbone: a forked limb at each web (a pillar where it can't fork). */
-export const wishbone = (kit: WallKit, side: WallSide) =>
-  solids(kit, limbs(kit, side, true, false));
-/** ?walls=pillars: a limb at each web. */
-export const pillars = (kit: WallKit, side: WallSide) =>
-  solids(kit, limbs(kit, side, false, false));
-/** Side's limbs as built (wishbone if forked, else pillars): where each forks, and how. */
-export const limbForks = (kit: WallKit, side: WallSide, forked: boolean) =>
-  limbs(kit, side, forked, false).map(({ fork, foot, X, feet }) => ({ fork, foot, X, feet }));
+/** Side's walls: a forked limb at each web (a pillar where it can't fork). */
+export const wishbone = (kit: WallKit, side: WallSide): Manifold[] =>
+  limbs(kit, side, false).map(({ make }) => make(kit));
 /**
- * What the limbs ask of the outline (WallReach): their feet, for its hull to
+ * What the limbs ask of the outline (Reach): their feet, for its hull to
  * take in, so that its straight runs pass along them and each foot stands
  * flush on the rail, with no floor stepping out under it.
  */
-export const ribLimbsReach = (kit: WallKit, side: WallSide, forked: boolean): Reach => ({
-  feet: limbs(kit, side, forked, true).map((l) => l.feet),
+export const wishboneReach = (kit: WallKit, side: WallSide): Reach => ({
+  feet: limbs(kit, side, true).map((l) => l.feet),
 });
 
-function solids(kit: WallKit, limbs: Limb[]): Manifold[] {
-  return limbs.map(({ make }) => make(kit));
-}
-
-/** Every side's limbs, worked out once per build (kit), forked or not, on the first pass or not. */
-const made = new WeakMap<WallKit, Map<string, Map<WallSide, Limb[]>>>();
+/** Every side's limbs, worked out once per build (kit), on the first pass or not. */
+const made = new WeakMap<WallKit, Map<boolean, Map<WallSide, Limb[]>>>();
 
 /**
  * Side's limbs. They are placed for every side at once, so a limb keeps
@@ -355,16 +340,15 @@ const made = new WeakMap<WallKit, Map<string, Map<WallSide, Limb[]>>>();
  * taken in their feet, so it runs along them, and each comes down where it
  * meets it (the nearest across its feet): where it asked.
  */
-function limbs(kit: WallKit, side: WallSide, forked: boolean, reach: boolean) {
-  const key = `${forked} ${reach}`;
+function limbs(kit: WallKit, side: WallSide, reach: boolean) {
   const byKit = made.get(kit) ?? made.set(kit, new Map()).get(kit)!;
-  if (!byKit.has(key))
-    byKit.set(key, place(kit, forked, [kit.sides[0]?.outline ?? []], reach ? 'reach' : 'stand'));
-  return byKit.get(key)!.get(side) ?? [];
+  if (!byKit.has(reach))
+    byKit.set(reach, place(kit, [kit.sides[0]?.outline ?? []], reach ? 'reach' : 'stand'));
+  return byKit.get(reach)!.get(side) ?? [];
 }
 
 /** Each side's limbs on the outline `rings`, one at each web in order, each kept clear of those before it. */
-function place(kit: WallKit, forked: boolean, rings: [number, number][][], span: Span_) {
+function place(kit: WallKit, rings: [number, number][][], span: Span_) {
   const all: Limb[] = [];
   // The sides' ends (lips, rounds, drops, and webs carried on): a limb keeps
   // clear of them too, but for the carried web it leaves from (`own`).
@@ -394,17 +378,16 @@ function place(kit: WallKit, forked: boolean, rings: [number, number][][], span:
     return { free, clear };
   };
   // A limb in the ribbon's way (within a wishbone's widest spread of its
-  // web's middle, or half a pillar's width) forks over it. Those are placed first,
-  // since where their feet go is the ribbon's to say; then the rest, each web
-  // in order, clear of them: a wishbone forks where it can, and is a pillar
-  // where it can't.
-  const within = forked ? S.widest : HALF;
+  // web's middle) forks over it. Those are placed first, since where their
+  // feet go is the ribbon's to say; then the rest, each web in order, clear
+  // of them: a wishbone forks where it can, and is a pillar where it can't.
+  const within = S.widest;
   const webs = kit.sides.flatMap((side) => {
     const line = lineOf(side);
     return line.webs.map((web) => ({ side, line, web }));
   });
   const at = new Map<(typeof webs)[number], Limb>();
-  const passes: Kind[][] = [['over'], forked ? ['fork', 'pillar'] : ['pillar']];
+  const passes: Kind[][] = [['over'], ['fork', 'pillar']];
   for (const kinds of passes)
     for (const x of webs)
       for (const m of at.has(x) ? [] : x.web.at) {
