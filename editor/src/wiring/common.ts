@@ -35,6 +35,8 @@ export interface Wire {
 export interface NetSummary {
   name: string;
   pin: number;
+  /** Where its feeds land, for the wiring panel: the ribbon pin, or the Pro Micro pin and its GPIO. */
+  label: string;
   group: string;
   wires: number;
   joints: number;
@@ -216,6 +218,10 @@ export const WIRING = {
   landingLead: 0.5,
   /** The ribbon lies this far above the landing. */
   ribbonLift: 0.05,
+  /** A Pro Micro's link wires to its TRRS jack run this far above the higher of its parts and the jack, */
+  linkOver: 1,
+  /** each this far above the one before. */
+  linkStep: 1.2,
   /** Before a build places the port panel, it is this far past the landing. */
   panelGap: 2,
   /** A pad's drawn box is this thick. */

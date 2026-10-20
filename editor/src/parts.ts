@@ -1,6 +1,6 @@
 import { Matrix4 } from 'three';
 import { gluePosts, postAxes } from './chassis';
-import { adapterParts, padParts } from './wiring';
+import { controllerParts, padParts } from './wiring';
 import {
   capSize,
   capTop,
@@ -80,6 +80,6 @@ export function hardware(
       // between its edges and their legs.
       for (const b of glue[axes[name]]) add(name + ': glue', 'glue', b.size, b.center, m);
     }
-  parts.push(...adapterParts(cfg, nodes, panel), ...padParts(cfg, nodes));
+  parts.push(...controllerParts(cfg, nodes, panel), ...padParts(cfg, nodes));
   return parts;
 }

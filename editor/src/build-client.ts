@@ -5,8 +5,9 @@ import type { Project } from './geometry';
 import { prototypeOverrides } from './prototype-overrides';
 import { $, S } from './state';
 import { shell, trim } from './viewer';
-import { setShell, updateWiring, visibility } from './scene-parts';
+import { setShell, updateHardware, updateWiring, visibility } from './scene-parts';
 import { setBadge, updateFailures, showReport } from './report-view';
+import { prototypeSwitcher } from './prototype-switcher';
 
 let busy = false,
   pending = false,
@@ -14,6 +15,23 @@ let busy = false,
 let inFlight: { id: number; project: Project } | undefined;
 let worker: Worker,
   workerBuilds = 0;
+// PROTOTYPE ?controller=: the dev editor's bar cycling what the hand's wires
+// run to (← →). Its parts change at once; the chassis rebuilds.
+const CONTROLLERS = [
+  { key: 'ffc', name: 'FFC adapter, ribbon to the pod' },
+  { key: 'pro_micro', name: 'Pro Micro and TRRS jack' },
+] as const;
+const controller = import.meta.env.DEV
+  ? prototypeSwitcher({
+      param: 'controller',
+      options: CONTROLLERS,
+      onChange: () => {
+        updateHardware();
+        requestBuild();
+      },
+    })
+  : undefined;
+controller?.show(true);
 // A safety net: a fresh worker takes over every 8 builds, in case a build leaves
 // geometry-engine memory behind that its own cleanup missed.
 export function startWorker() {

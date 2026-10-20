@@ -331,6 +331,96 @@
     "notch_clearance_mm": 1,
     "outside_mm": 20
   },
+  "controller": {
+    "description": "What the hand's wires run to. ffc: the FFC adapter (adapter), whose ribbon (ribbon) runs to the pod. pro_micro: an nRF52840 board in Pro Micro form factor (pro_micro) in each hand, wired straight to its pins, with a TRRS jack (trrs) beside it for the link between the hands; both stand on the bottom section, their USB-C and TRRS ports facing out of the hand's inner end.",
+    "style": "ffc"
+  },
+  "pro_micro": {
+    "provisional": true,
+    "description": "nice!nano v2 or a board with its pinout (nRF52840, Pro Micro form factor), components up, on a cradle on the bottom section. Its position is in world coordinates, like the adapter's: the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires.",
+    "position_mm": [-29.5, 9],
+    "rotation_deg": 0,
+    "board_mm": [33.3, 18, 1.6],
+    "standoff_mm": 2,
+    "pin_pitch_mm": 2.54,
+    "row_spacing_mm": 15.24,
+    "first_pin_mm": 2.6,
+    "usb_mm": [7.35, 8.94, 3.26],
+    "usb_overhang_mm": 1,
+    "parts_mm": [22, 12, 1.2],
+    "plug_mm": [12.5, 7, 25],
+    "clearance_mm": 0.4,
+    "cradle": {
+      "wall_mm": 1.2,
+      "above_mm": 0.5,
+      "guide_in_mm": 6,
+      "pedestal_in_mm": [3, 4],
+      "pedestal_width_mm": 9,
+      "jack_walls": 0.6
+    },
+    "pinout": [
+      "P0.06",
+      "P0.08",
+      "GND",
+      "GND",
+      "P0.17",
+      "P0.20",
+      "P0.22",
+      "P0.24",
+      "P1.00",
+      "P0.11",
+      "P1.04",
+      "P1.06",
+      "P0.09",
+      "P0.10",
+      "P1.11",
+      "P1.13",
+      "P1.15",
+      "P0.02",
+      "P0.29",
+      "P0.31",
+      "VCC",
+      "RST",
+      "GND",
+      "B+"
+    ],
+    "pins": {
+      "RT": 11,
+      "RH": 12,
+      "RB": 17,
+      "RX": 18,
+      "C0": 6,
+      "C1": 7,
+      "C2": 8,
+      "C3": 9,
+      "C4": 10,
+      "DATA": 5,
+      "+5V": 21,
+      "GND": 4
+    }
+  },
+  "trrs": {
+    "provisional": true,
+    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, in a cradle on the bottom section beside the Pro Micro, its barrel facing out of the hand's inner end. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame; wires joins each to a Pro Micro pin.",
+    "position_mm": [-39.2, -6],
+    "rotation_deg": 0,
+    "standoff_mm": 0,
+    "body_mm": [12, 6, 5],
+    "barrel_mm": [2, 5],
+    "plug_mm": [7, 25],
+    "clearance_mm": 0.4,
+    "lugs_mm": {
+      "S": [-4.5, -2.2],
+      "R2": [-1, 2.2],
+      "R1": [2, 2.2],
+      "T": [4.5, 2.2]
+    },
+    "wires": [
+      { "name": "TX", "lug": "S", "pin": 1 },
+      { "name": "RX", "lug": "R2", "pin": 2 },
+      { "name": "GND", "lug": "R1", "pin": 3 }
+    ]
+  },
   "wiring": {
     "provisional": true,
     "description": "Hand wiring from the tile holes and pads to the adapter, as a 4 x 5 matrix: rows RT, RH, RB and RX (the thumbs), columns C0 (pinky) to C4 (inner). Each thumb shares a finger column but has its own wire to that column hole. One wire per tile hole or pad: each row and column wire arrives at one of the tile's two R (or C) holes and the next leaves from the other; +5 V and GND use the V (or G) hole and the LED-edge pad. LED data follows led_order, in to out. pin is the ribbon pin, which is the adapter hole.",
