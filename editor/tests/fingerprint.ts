@@ -129,39 +129,45 @@ wasm.setup();
 for (const [name, change] of Object.entries(variants)) {
   const cfg = clone(defaults.config);
   change(cfg);
-  freeAfter(wasm, () => {
-    // buildSolid doesn't return the chassis body, so it is built here for its volumes.
-    const chassis = buildChassis(wasm, cfg, componentFrames(cfg));
-    const project = { version: 2 as const, config: cfg };
-    const solid = buildSolid(wasm, project);
-    const w = solid.wiring.wires;
-    console.log(
-      name.padEnd(9),
-      'body',
-      describe(chassis.body),
-      '| base',
-      describe(chassis.base),
-      '| solid',
-      solid.report.volume.toFixed(4),
-      hash(solid.mesh.positions),
-      solid.report.passed,
-    );
-    console.log(
-      ' '.repeat(9),
-      'wires',
-      w.length,
-      r2(w.reduce((a, x) => a + x.length, 0)),
-      digest(
-        rounded(
-          w.map((x) => [x.net, x.from, x.to, x.points]),
-          3,
+  // A variant that doesn't build is reported (its error is its fingerprint)
+  // and the rest still run.
+  try {
+    freeAfter(wasm, () => {
+      // buildSolid doesn't return the chassis body, so it is built here for its volumes.
+      const chassis = buildChassis(wasm, cfg, componentFrames(cfg));
+      const project = { version: 2 as const, config: cfg };
+      const solid = buildSolid(wasm, project);
+      const w = solid.wiring.wires;
+      console.log(
+        name.padEnd(9),
+        'body',
+        describe(chassis.body),
+        '| base',
+        describe(chassis.base),
+        '| solid',
+        solid.report.volume.toFixed(4),
+        hash(solid.mesh.positions),
+        solid.report.passed,
+      );
+      console.log(
+        ' '.repeat(9),
+        'wires',
+        w.length,
+        r2(w.reduce((a, x) => a + x.length, 0)),
+        digest(
+          rounded(
+            w.map((x) => [x.net, x.from, x.to, x.points]),
+            3,
+          ),
         ),
-      ),
-      '| hardware',
-      digest(rounded(hardware(project, undefined, solid.panel), 3)),
-    );
-    console.log(' '.repeat(9), failures(solid.report));
-  });
+        '| hardware',
+        digest(rounded(hardware(project, undefined, solid.panel), 3)),
+      );
+      console.log(' '.repeat(9), failures(solid.report));
+    });
+  } catch (e) {
+    console.log(name.padEnd(9), 'FAILED', (e as Error).message);
+  }
 }
 
 // Swung in's ?hand settings and three variants that run other code paths

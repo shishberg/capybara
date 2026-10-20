@@ -250,6 +250,16 @@ test('a thicker skin builds the frame in one piece, the adapter mount reaching t
     /skin_mm/,
   );
 });
+test("a plate margin past the glue posts' legs still builds", () => {
+  // The plate's edge then lies past a leg's outer face, or on it: the grid
+  // its top is shaped over must still run in order, with no cell of no width.
+  const p = clone(defaults);
+  p.config.chassis.plate_margin_mm = 2.5;
+  const body = freeAfter(wasm, () =>
+    buildChassis(wasm, p.config, componentFrames(p.config)).body.volume(),
+  );
+  assert(body > 0);
+});
 test('the default (Swung in) Capybara builds one piece and passes every check', () => {
   const r = buildSolid(wasm, clone(defaults)).report,
     failing = (xs: { name: string; passed: boolean }[]) =>

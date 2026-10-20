@@ -634,7 +634,12 @@ function posts(
         // grid over them first meets it (at the shelf where it is in it there).
         const overs = [-1, 1].map((s, k): Over => {
           const spread = (a: number, b: number, at: number[]) => {
-            const marks = [a, ...at.filter((x) => x > a && x < b), b];
+            // In order and apart (a wide plate's edge can be past the leg's
+            // outer face, or on it): a grid that folds back or has a cell of
+            // no width makes underOver()'s solid no solid.
+            const gap = 1e-4;
+            const inside = at.filter((x) => x > a + gap && x < b - gap).sort((x, y) => x - y);
+            const marks = [a, ...inside.filter((x, i) => i === 0 || x - inside[i - 1] > gap), b];
             return marks
               .slice(1)
               .flatMap((x, i) => {
