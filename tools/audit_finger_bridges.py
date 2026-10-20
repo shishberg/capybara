@@ -3,7 +3,7 @@ import json
 import math
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def audit(chassis, geometry):
@@ -34,8 +34,8 @@ def audit(chassis, geometry):
 
 
 if __name__ == '__main__':
-    result = audit(json.loads((ROOT/'v4/mechanical/chassis.json').read_text()),
-                   json.loads((ROOT/'output_v4/geometry.json').read_text()))
-    path = ROOT/'output_v4/finger-bridge-audit.json'
+    result = audit(json.loads((ROOT/'mechanical/chassis.json').read_text()),
+                   json.loads((ROOT/'output/geometry.json').read_text()))
+    path = ROOT/'output/finger-bridge-audit.json'
     path.write_text(json.dumps(result, indent=2)+'\n')
     print(path)

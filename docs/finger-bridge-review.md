@@ -29,4 +29,4 @@ The current assembly preview places rigid islands in key frames; it does not sol
 
 Recommendation: do not manufacture the current finger bridges as a validated design. First design the connection against both end frames and the available chassis volume, using the intended laminate and copper construction. Compare a bend-axis-aligned flexible connection with a short handwired column connection; qualify the chosen design with a representative assembly coupon before a whole keyboard. Merely lengthening the present loops is not a demonstrated fix. No finger architecture change is made by this review.
 
-Reproduce the geometry measurements with `python3 v4/tools/audit_finger_bridges.py`; results are written to `output_v4/finger-bridge-audit.json`. This requires a current geometry build and performs no KiCad or router work.
+Reproduce the geometry measurements with `python3 tools/audit_finger_bridges.py`; results are written to `output/finger-bridge-audit.json`. This requires a current geometry build and performs no KiCad or router work.

@@ -8,7 +8,7 @@ The FFC adapter here is a placeholder, and the trackball is left from an earlier
 ## Active design
 
 **Inner trackball / FFC underneath** is primary. The other arrangements remain
-paused in `output_v4/chassis/`.
+paused in `output/chassis/`.
 
 The current model has **38 authored shape controls**, reduced from 225. These
 are named points around the finger well, thumb row, ball shelf and their joins.
@@ -54,12 +54,12 @@ preview is provisional and omits the ball opening; it is not independently fitte
 ## Review and regenerate
 
 ```sh
-make v4-chassis
-make v4-chassis-test
-node v4/tests/check_foundation_viewer.js output_v4/chassis-foundation/preview.html
+make chassis
+make chassis-test
+node tests/check_foundation_viewer.js output/chassis-foundation/preview.html
 ```
 
-Open `output_v4/chassis-foundation/preview.html`.
+Open `output/chassis-foundation/preview.html`.
 
 - **Shape controls (x-ray)** shows the 38 authored points and their roof edges.
   Generated wall rows are absent from this editing overlay by design.
@@ -81,11 +81,11 @@ visual check.
 
 ## Files and editing contract
 
-- `v4/chassis.json`: component dimensions and mounting geometry.
-- `v4/rosebear/chassis_variants.py`: primary trackball and FFC poses.
-- `v4/chassis-foundation.json`: sparse topology, roof clearance, shoulder/wall
+- `chassis.json`: component dimensions and mounting geometry.
+- `rosebear/chassis_variants.py`: primary trackball and FFC poses.
+- `chassis-foundation.json`: sparse topology, roof clearance, shoulder/wall
   settings, fairness, subdivision and warning thresholds.
-- `v4/rosebear/chassis_cage.py`: feature layout and generated-wall rules.
+- `rosebear/chassis_cage.py`: feature layout and generated-wall rules.
 
 Each arrangement exports `control-mesh.json`, `report.json`, `config.json`,
 `cut-shell-review.obj`, `uncut-exterior.obj`, viewer data and review images.
@@ -108,7 +108,7 @@ Or edit an exported control JSON and replay it:
 
 ```sh
 "${KICAD_PYTHON:-/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3}" \
-  v4/tools/build_chassis.py --foundation --control-mesh /path/to/control-mesh.json
+  tools/build_chassis.py --foundation --control-mesh /path/to/control-mesh.json
 ```
 
 Replay preserves authored positions, derives the walls and recomputes all reports.

@@ -6,25 +6,25 @@ from pathlib import Path
 import pcbnew as pcb
 from rosebear import trackball, route_cache, seed, validate, routing, assembly, pod_pins
 from rosebear.pcb import load_board, pad_of, net, vec
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 class PipelineTests(unittest.TestCase):
     def setUp(self):
-        self.config=json.loads((ROOT/'v4/config.json').read_text())
+        self.config=json.loads((ROOT/'config.json').read_text())
 
     def test_route_cache_matches_and_rejects_moved_sensor(self):
         board=trackball.make(ROOT,self.config)
-        route_cache.apply(board,self.config,ROOT/'v4/routes/trackball.json')
+        route_cache.apply(board,self.config,ROOT/'routes/trackball.json')
         self.assertEqual(sum(isinstance(t,pcb.PCB_VIA) for t in board.GetTracks()),3)
         sensor=next(f for f in board.GetFootprints() if f.GetReference()=='U1')
         sensor.Move(vec(.1,0))
         with self.assertRaisesRegex(ValueError,'placement/rules changed'):
-            route_cache.apply(board,self.config,ROOT/'v4/routes/trackball.json')
+            route_cache.apply(board,self.config,ROOT/'routes/trackball.json')
 
     def test_route_cache_rejects_rule_change(self):
         changed=copy.deepcopy(self.config); changed['rules']['clearance_mm']=.2
         with self.assertRaises(ValueError):
-            route_cache.apply(trackball.make(ROOT,changed),changed,ROOT/'v4/routes/trackball.json')
+            route_cache.apply(trackball.make(ROOT,changed),changed,ROOT/'routes/trackball.json')
 
     def test_staging_override_fails_on_missing_or_duplicate_function(self):
         for text in ['','foo foo']:
@@ -32,7 +32,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_wrong_sensor_pinout_is_rejected(self):
         b=trackball.make(ROOT,self.config)
-        pod=load_board(str(ROOT/'output_v4/seeded/pod.kicad_pcb'))
+        pod=load_board(str(ROOT/'output/seeded/pod.kicad_pcb'))
         self.assertEqual(validate.validate({'trackball':b,'pod':pod}),[])
         sensor=next(f for f in b.GetFootprints() if f.GetReference()=='U1')
         pad_of(sensor,2).SetNet(net(b,'GND'))
@@ -46,7 +46,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_pod_check_rejects_moved_fixed_pin_and_used_reserved_pin(self):
         spec=pod_pins.load()
-        pod=load_board(str(ROOT/'output_v4/seeded/pod.kicad_pcb'))
+        pod=load_board(str(ROOT/'output/seeded/pod.kicad_pcb'))
         self.assertEqual(pod_pins.check(spec,pod,['trackball']),[])
         moved=copy.deepcopy(spec); moved['fixed']['trackball']['TB_UP']='IO39'
         self.assertTrue(any('TB_UP' in e for e in pod_pins.check(moved,pod,['trackball'])))
@@ -74,7 +74,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_trackball_carrier_clears_keycaps_and_old_placement_does_not(self):
         from rosebear.mount import carrier_cap_hits
-        chassis=json.loads((ROOT/'v4/mechanical/chassis.json').read_text())
+        chassis=json.loads((ROOT/'mechanical/chassis.json').read_text())
         home=next(k for k in chassis['keys'] if k['id']=='thumb_home')
         anchor=assembly.board_frame(home,'r',chassis['config']['plate_thickness']-self.config['plate_top_to_pcb_mm'])
         def frame(offset): return {'origin':assembly.world(anchor,offset),'axes':anchor['axes']}
@@ -83,8 +83,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(carrier_cap_hits(chassis,frame(self.config['trackball']['offset_mm']),bounds),[])
 
     def test_geometry_cache_invalidates_config_change(self):
-        chassis=json.loads((ROOT/'v4/mechanical/chassis.json').read_text())
-        seed.verify_cache(ROOT,ROOT/'output_v4',chassis,self.config)
+        chassis=json.loads((ROOT/'mechanical/chassis.json').read_text())
+        seed.verify_cache(ROOT,ROOT/'output',chassis,self.config)
         changed=copy.deepcopy(self.config); changed['plate_top_to_pcb_mm']+=.1
         with self.assertRaisesRegex(ValueError,'Stale geometry'):
-            seed.verify_cache(ROOT,ROOT/'output_v4',chassis,changed)
+            seed.verify_cache(ROOT,ROOT/'output',chassis,changed)

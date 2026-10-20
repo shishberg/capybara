@@ -1,4 +1,4 @@
-# v4/editor cleanup plan
+# editor cleanup plan
 
 A cleanup of the chassis editor and the `?hand` prototype: duplicated logic,
 layered patches, dead code, and long or stale comments and docs. It is built
@@ -112,7 +112,7 @@ These are small, high-value and independent of the big refactors.
 6. **`marks.ts` leaks GPU memory.** `redraw()` clears without disposing, and
    rebuilds every stroke on every pointermove. Dispose the meshes, and rebuild
    only the stroke being drawn.
-7. **Saved marks would be committed.** Add `v4/editor/marks/` to `.gitignore`.
+7. **Saved marks would be committed.** Add `editor/marks/` to `.gitignore`.
 8. **The marks POST handler doesn't guard against bad JSON.** Wrap its
    `JSON.parse` in try and answer 400.
 9. **In `?hand`, column and cluster handles and number fields record undo steps
@@ -543,7 +543,7 @@ Move the HTML string from main.ts into `index.html`. Browser tests must pass.
 
 ### T19. Docs and formatting
 
-- **v4/editor/README.md, fix:**
+- **editor/README.md, fix:**
   - the mangled opening ("TypeScript + Three.js + Manifold");
   - the stale thumb keycap (28 × 18.5 × 11, tapering to 14 × 14; 3.5 mm
     travel; 2.5 mm at full press);
@@ -561,10 +561,10 @@ Move the HTML string from main.ts into `index.html`. Browser tests must pass.
   - the prototype URL flags;
   - `CLEANUP-PLAN.md` status.
 - **Move the Construction and Wiring sections** (about 110 lines, chassis
-  design rather than editor use) to `v4/docs/editor-chassis.md`, linked from
+  design rather than editor use) to `docs/editor-chassis.md`, linked from
   the README. Keep the README to Run, Use, Checks and Validation.
 - **Root README.md:** fix the stale "38 shape controls" line.
-- **A short `?hand` design note** in `v4/hand/README.md`, or an editor doc, so
+- **A short `?hand` design note** in `hand/README.md`, or an editor doc, so
   the commit messages aren't its only documentation.
 - **Formatting:** bring `style.css`, `index.html` and the Playwright configs
   under `npm run format` and format them.
@@ -611,7 +611,7 @@ are listed but not done.
       case by 0.13 mm. So the fix was not kept.
     - To apply it, either accept that failure or give the wire room.
 11. **`?hand` documentation** lives mostly in very long commit messages.
-    - Addressed in T19: [v4/docs/hand-prototype.md](../docs/hand-prototype.md).
+    - Addressed in T19: [docs/hand-prototype.md](../docs/hand-prototype.md).
 12. **A seat 19 mm or wider fails to build ("Invalid chassis:
     InvalidConstruction").**
     - `gluePads` in chassis.ts runs each glue leg from

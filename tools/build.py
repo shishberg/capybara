@@ -7,22 +7,22 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-sys.path[:0]=[str(Path(__file__).resolve().parents[1]),str(Path(__file__).resolve().parents[2]/'output_v4/tools/python39')]
+sys.path[:0]=[str(Path(__file__).resolve().parents[1]),str(Path(__file__).resolve().parents[1]/'output/tools/python39')]
 from rosebear.job_guard import guard_entry
-guard_entry(Path(__file__).resolve().parents[2],__file__)
+guard_entry(Path(__file__).resolve().parents[1],__file__)
 import pcbnew as pcb
 import wx
 from rosebear import mechanical, pod_pins, seed, routing, assembly, trackball, route_cache, validate, overview, thumb_geometry, thumb_pcb, thumb_router, thumb_finish, thumb_checks, thumb_artifacts, thumb_mechanical, finger_artifacts, rigid_thumb, flat_thumb
 from rosebear.pcb import load_board, finger, thumb, save, drc, metrics
 
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 
 def main():
     wx.Log.SetLogLevel(wx.LOG_Error)
     app = wx.App(False)
     parser=argparse.ArgumentParser()
-    parser.add_argument('--out',type=Path,default=ROOT/'output_v4')
+    parser.add_argument('--out',type=Path,default=ROOT/'output')
     parser.add_argument('--reuse-geometry',action='store_true')
     parser.add_argument('--place-only',action='store_true')
     parser.add_argument('--no-router',action='store_true')
@@ -31,10 +31,10 @@ def main():
     parser.add_argument('--mode',choices=['seeded','fresh'],default='seeded')
     args=parser.parse_args(); out=args.out.resolve(); out.mkdir(parents=True,exist_ok=True)
     if args.board=='all':mechanical.write_json(out/'build-status.json',{'status':'build in progress or interrupted','manufacturing_release':False})
-    config=json.loads((ROOT/'v4/config.json').read_text())
+    config=json.loads((ROOT/'config.json').read_text())
     if config['wire_pad_drill_mm']!=1 or config['wire_pad_diameter_mm']!=2:
         raise ValueError('The selected wire-pad footprint requires 1 mm drill / 2 mm diameter')
-    chassis=json.loads((ROOT/'v4'/config['chassis']).read_text())
+    chassis=json.loads((ROOT/config['chassis']).read_text())
     if args.reuse_geometry:
         seed.verify_cache(ROOT,out,chassis,config)
         data=json.loads((out/'geometry.json').read_text()); seedpath=out/'geometry/seed'
@@ -90,7 +90,7 @@ def main():
             if args.router=='freerouting' and not args.no_router:
                 b=routing.route(path,ROOT,out,config)
             else:
-                route_cache.apply(b,config,ROOT/'v4/routes/trackball.json')
+                route_cache.apply(b,config,ROOT/'routes/trackball.json')
                 save(b,path,config,ROOT)
             checks=drc(path); report['trackball']={**metrics(b),'drc':checks,'bend_errors':[]}
             print('trackball: '+str(metrics(b))+' violations='+str(len(checks['violations']))+' unconnected='+str(len(checks['unconnected'])),flush=True)
@@ -107,7 +107,7 @@ def main():
         if any(c['failures'] for c in model['checks']):
             print('Mechanical model has collisions; see assembly.json',flush=True)
             return 1
-        subprocess.run([sys.executable,str(ROOT/'v4/tools/overview.py'),str(candidates)]+list(report),check=True)
+        subprocess.run([sys.executable,str(ROOT/'tools/overview.py'),str(candidates)]+list(report),check=True)
         print('Overview: '+str(candidates/'all.kicad_pcb'),flush=True)
         archive=out/'superseded-thumb-tiles-flat-revision'
         for hand in ['l','r']:

@@ -24,12 +24,12 @@ The tile is measured. The wiring, the FFC adapter and the ribbon dimensions are
 From the repository root:
 
 ```sh
-npm --prefix v4/editor ci  # first install only
-make v4-editor
+npm --prefix editor ci  # first install only
+make editor
 ```
 
 Open **http://127.0.0.1:5177**. Keep that origin/port to retain the same browser
-storage. Stop the server with Ctrl-C. `npm --prefix v4/editor run build` creates a
+storage. Stop the server with Ctrl-C. `npm --prefix editor run build` creates a
 static `dist/` site; serve it over HTTP, not `file://`, so workers/WASM can load.
 All runtime assets are local; there are no CDN or account dependencies.
 
@@ -181,7 +181,7 @@ facing in over another rib (the outline more than 10 mm out across its feet). A 
 it, 2 mm clear. The outline runs straight along the limbs' feet
 (see [chassis](../docs/editor-chassis.md)).
 
-The dev server (`make v4-editor`) has two things the built site (`dist/`) does not:
+The dev server (`make editor`) has two things the built site (`dist/`) does not:
 
 - **`?hand`**: a measured hand laid out over the keys. Swung in was laid out from
   it; here its settings can be tuned, and the hand's reach, the board's height
@@ -196,12 +196,12 @@ The dev server (`make v4-editor`) has two things the built site (`dist/`) does n
 ## Validation
 
 ```sh
-npm --prefix v4/editor test               # layout, chassis and checker tests
-npm --prefix v4/editor run test:browser   # real Chrome workflow
-npm --prefix v4/editor run test:fit       # mechanical acceptance of the default or a saved project
-npm --prefix v4/editor run fingerprint    # geometry fingerprints, for refactors
-npm --prefix v4/editor run default-config # regenerate the default project from Swung in
-npm --prefix v4/editor run format         # Prettier
+npm --prefix editor test               # layout, chassis and checker tests
+npm --prefix editor run test:browser   # real Chrome workflow
+npm --prefix editor run test:fit       # mechanical acceptance of the default or a saved project
+npm --prefix editor run fingerprint    # geometry fingerprints, for refactors
+npm --prefix editor run default-config # regenerate the default project from Swung in
+npm --prefix editor run format         # Prettier
 ```
 
 A change meant to leave the geometry alone must leave `fingerprint`'s output

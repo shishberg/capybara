@@ -1,8 +1,8 @@
 """Reproducible rigid-key quote boards, separate from the v4 production build."""
 import sys, json, math, csv, subprocess, zipfile
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
-sys.path[:0]=[str(ROOT/'v4'),str(ROOT/'output_v4/tools/python39')]
+ROOT=Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/'output/tools/python39')]
 from rosebear.job_guard import guard_entry
 guard_entry(ROOT,__file__)
 import wx
@@ -10,9 +10,9 @@ wx.Log.SetLogLevel(wx.LOG_Error)
 app=wx.App(False)
 import pcbnew as pcb
 from rosebear import pcb as p, pod_pins
-OUT=ROOT/'output_v4/key-quotes'
+OUT=ROOT/'output/key-quotes'
 OUT.mkdir(parents=True,exist_ok=True)
-CFG=json.loads((ROOT/'v4/config.json').read_text())
+CFG=json.loads((ROOT/'config.json').read_text())
 PINS=pod_pins.load()
 CFG['pcb_thickness_mm']=1.6
 CFG['rules'].update(clearance_mm=.2,track_width_mm=.2,edge_clearance_mm=.2)
@@ -47,7 +47,7 @@ def make_key():
     for g in s.GraphicalItems():
         if g.GetLayer()==pcb.F_SilkS:g.SetLayer(pcb.F_Fab)
     s.SetFPIDAsString('rosebear_v4:Key_Socket_MX')
-    pcb.FootprintSave(str(ROOT/'v4/footprints/rosebear_v4.pretty'),s)
+    pcb.FootprintSave(str(ROOT/'footprints/rosebear_v4.pretty'),s)
     # Footprint contains B.Cu socket lands and the switch locating holes.
     d=part(b,'Diode_SMD:D_SOD-123','D1',(-6,5.3),{'1':'ROW','2':'SW_DIODE'},'1N4148W',90)
     led=part(b,'LED_SMD:LED_SK6812MINI-E_3.2x2.8mm_P1.5mm_ReverseMount','LED1',(0,4.8),{'1':'+5V','2':'DOUT','3':'GND','4':'DIN'},'SK6812MINI-E')
@@ -81,7 +81,7 @@ def route(b,name):
     from rosebear.routing import route as run
     path=save(b,name)
     config=json.loads(json.dumps(CFG));config['router'].update(passes=8,timeout_seconds=120,track_width_mm=.25)
-    b=run(path,ROOT,ROOT/'output_v4',config)
+    b=run(path,ROOT,ROOT/'output',config)
     if name in ['hand_breakout','pod_rgb']:
         bounds=(-17.5,-5.5,17.5,26.5) if name=='hand_breakout' else (59.5,48.5,140.5,144.5)
         for layer in [pcb.F_Cu,pcb.B_Cu]:
@@ -142,7 +142,7 @@ def make_breakout():
 def make_pod():
     # Reuse verified module-header pin numbers and button connections, rebuilding
     # the carrier around larger ribbons rather than mislabelling the LED-free pod.
-    seed=p.load_board(ROOT/'output_v4/seeded/pod.kicad_pcb')
+    seed=p.load_board(ROOT/'output/seeded/pod.kicad_pcb')
     b=pcb.BOARD()
     for old in seed.GetFootprints():
         if old.GetReference() not in ['J_L','J_R','SW1','SW2','H1','H2','H3','H4']:continue

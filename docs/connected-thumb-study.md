@@ -12,7 +12,7 @@ The separate tile files in the current build are **superseded prototypes**, reta
 
 ## What the geometry establishes
 
-Calculated from `v4/mechanical/chassis.json`, including the PCB seating datum:
+Calculated from `mechanical/chassis.json`, including the PCB seating datum:
 
 | Adjacent keys | Change in plane normal | Full frame rotation, including sideways skew |
 |---|---:|---:|
@@ -61,10 +61,10 @@ The configuration now uses `[28, 0, 7]`, moving the carrier to the side. A new r
 ## Reproduce and inspect
 
 ```sh
-python3 v4/tools/assess_thumbs.py
+python3 tools/assess_thumbs.py
 ```
 
-- `output_v4/thumb-study/geometry.json`: key polygons, hinge axes, candidate bend locations and unfold/refold checks.
-- `output_v4/thumb-study/unfolded.svg`: dimensionally scaled flat study.
+- `output/thumb-study/geometry.json`: key polygons, hinge axes, candidate bend locations and unfold/refold checks.
+- `output/thumb-study/unfolded.svg`: dimensionally scaled flat study.
 
 The diagram deliberately shows bend locations without pretending the missing connecting arms form a verified PCB. Before replacing `thumb_*` production outputs, complete the outboard arm geometry, resolve the flex stackup/stiffeners with a fabricator, restore LED routing and check the complete assembly. The assessment supports this direction; it does not yet establish a fabrication-ready connected thumb cluster.

@@ -23,7 +23,7 @@ def fetch(url,path,sha):
     return path
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(); p.add_argument('--out',type=Path,default=Path(__file__).resolve().parents[2]/'output_v4/tools')
+    p=argparse.ArgumentParser(); p.add_argument('--out',type=Path,default=Path(__file__).resolve().parents[1]/'output/tools')
     args=p.parse_args(); args.out.mkdir(parents=True,exist_ok=True)
     fetch(JAR,args.out/'freerouting-2.4.1.jar','251101c3eeac22d7e7dfcf6796603279e5d1000283eb82d8f093780f7afc6aa9')
     archive=fetch(JAVA,args.out/'java25.tar.gz','5b02bcc908da092e7e00b9772d4f9bbb87f44a60b7c90f7cf5a91a1d98f37e1b')

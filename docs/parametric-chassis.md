@@ -2,7 +2,7 @@
 
 **Frozen legacy implementation.** Active work has moved to the [shared-surface foundation](chassis-foundation.md), with inner trackball / FFC underneath as primary. The patched-shell revisions below are historical.
 
-Its key layout (`v4/chassis.json`, `config.json`) is the one before Swung in, the keyboard's layout; see the [editor guide](../editor/README.md).
+Its key layout (`chassis.json`, `config.json`) is the one before Swung in, the keyboard's layout; see the [editor guide](../editor/README.md).
 
 This is the current chassis **starting point** for 18 individual RGB hotswap key boards per hand, an external MCU pod, an FFC adapter per half, and a small trackball module beside the right thumbs (originally an ICSH044A, which is no longer planned; the pointing device is open, see [design status](design-status.md)). It generates actual solid geometry directly from parameters; there is no manually edited CAD master or dependency on the neighbouring Dactyl project.
 
@@ -50,7 +50,7 @@ These are comparison prototypes; the lower platform and reduced outline are desc
 
 The selector defaults to Front trackball / inner FFC, preserves camera/layers, and changes report/config/STL links to match the selection. It is self-contained and works offline. Only the selected arrangement has GPU buffers; switching frees the previous buffers. Individual exports are in `variants/ffc_back/` and `variants/ffc_below/`. The top-level archive contains all three arrangements and the selector.
 
-`make v4-chassis` now rebuilds the comparison. The CLI's `--compare` does the same; `--compare-only` assembles the UI from matching existing exports. A normal CLI build still generates one configuration. Variant definitions are in `v4/rosebear/chassis_variants.py`; `v4/chassis-variants/*.json` are editable snapshots, and each output also includes its exact config.
+`make chassis` now rebuilds the comparison. The CLI's `--compare` does the same; `--compare-only` assembles the UI from matching existing exports. A normal CLI build still generates one configuration. Variant definitions are in `rosebear/chassis_variants.py`; `chassis-variants/*.json` are editable snapshots, and each output also includes its exact config.
 
 ## Revision 11: clipped key supports and tighter rear edge
 
@@ -161,18 +161,18 @@ The trackball opening is a rounded **11.5 × 10.1 mm** aperture around an EVQWJN
 From the Rosebear repository:
 
 ```sh
-make v4-chassis
-make v4-chassis-test
+make chassis
+make chassis-test
 ```
 
-Edit **`v4/chassis.json`** and rebuild. Generated files are in **`output_v4/chassis/`**. `config.json` in that output is a snapshot, not the default input. A custom input/output is also supported:
+Edit **`chassis.json`** and rebuild. Generated files are in **`output/chassis/`**. `config.json` in that output is a snapshot, not the default input. A custom input/output is also supported:
 
 ```sh
 "/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3" \
-  v4/tools/build_chassis.py --config /path/to/variant.json --output /path/to/output
+  tools/build_chassis.py --config /path/to/variant.json --output /path/to/output
 ```
 
-The local geometry packages in `output_v4/tools/python39` supply NumPy, Manifold and trimesh. The generator uses the existing bounded, low-priority, single-worker process guard. **It does not import pcbnew, launch KiCad, or run any router.** Each generation is built in a temporary directory and published only after the mesh checks finish. Collision findings are reported, not silently fixed by changing your chosen key positions.
+The local geometry packages in `output/tools/python39` supply NumPy, Manifold and trimesh. The generator uses the existing bounded, low-priority, single-worker process guard. **It does not import pcbnew, launch KiCad, or run any router.** Each generation is built in a temporary directory and published only after the mesh checks finish. Collision findings are reported, not silently fixed by changing your chosen key positions.
 
 | File | Use |
 |---|---|
@@ -236,4 +236,4 @@ Generation checks positive-volume, single-body, watertight shells and bases. It 
 
 Still to refine after dimensional/ergonomic review: real hardware measurements; fastener/retention print fits; wall and bridge strength; blend-region ergonomics and surface sampling resolution; slicer orientation/supports; soldering-tool access; actual wire bundles and ribbon bends. No flex PCB is required. This shell is a starting model, not a physically tested or production-ready print.
 
-This standalone branch of the pipeline does **not** overwrite the old `output_v4/chassis-right.scad` or imported `layout-chassis.json`. Those describe earlier board architectures. The new `r/l-frames.json` are the authoritative placement outputs for this study; the older physical handwiring drawing has not yet been reprojected onto them.
+This standalone branch of the pipeline does **not** overwrite the old `output/chassis-right.scad` or imported `layout-chassis.json`. Those describe earlier board architectures. The new `r/l-frames.json` are the authoritative placement outputs for this study; the older physical handwiring drawing has not yet been reprojected onto them.

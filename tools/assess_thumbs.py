@@ -5,7 +5,7 @@ import itertools
 import json
 import math
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 def dot(a,b): return sum(x*y for x,y in zip(a,b))
 def add(a,b): return [x+y for x,y in zip(a,b)]
@@ -110,8 +110,8 @@ def svg(data,path):
 def scale_vector(a,s):return [x*s for x in a]
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--out',type=Path,default=ROOT/'output_v4/thumb-study');args=p.parse_args();args.out.mkdir(parents=True,exist_ok=True)
-    config=json.loads((ROOT/'v4/config.json').read_text());chassis=json.loads((ROOT/'v4'/config['chassis']).read_text())
+    p=argparse.ArgumentParser();p.add_argument('--out',type=Path,default=ROOT/'output/thumb-study');args=p.parse_args();args.out.mkdir(parents=True,exist_ok=True)
+    config=json.loads((ROOT/'config.json').read_text());chassis=json.loads((ROOT/config['chassis']).read_text())
     data=assess(chassis,config);(args.out/'geometry.json').write_text(json.dumps(data,indent=2)+'\n');svg(data,args.out/'unfolded.svg')
     if not all(c['passed'] for c in data['checks']):raise RuntimeError('Unfold/refold verification failed')
     for h in data['hinges']:print(h['keys'],round(h['bend_deg'],2),'degrees; outboard candidates:',[c['center'] for c in h['outboard_candidates']])

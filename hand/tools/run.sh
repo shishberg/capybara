@@ -1,15 +1,15 @@
 #!/bin/sh
-# Rebuild the hand model from the photos into v4/hand/left-hand.json.
+# Rebuild the hand model from the photos into hand/left-hand.json.
 # Needs Python 3 with numpy, pillow and scipy (set PYTHON to use a venv).
 # PHOTOS is the directory holding the kb-*.jpg photos (default: the repo root).
-# Overlays and intermediate files go to output_v4/hand/.
+# Overlays and intermediate files go to output/hand/.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/../../.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 : "${PHOTOS:=$repo}"
 : "${PYTHON:=python3}"
 export PHOTOS PYTHONPATH="$here"
-out="$repo/output_v4/hand"
+out="$repo/output/hand"
 mkdir -p "$out"
 cd "$out"
 
@@ -24,6 +24,6 @@ SATMAX=70 "$PYTHON" "$here/grid_rot.py" "$PHOTOS/kb-uncropped-b.jpg" 3090 1472 3
 
 "$PYTHON" "$here/measure.py"
 "$PYTHON" "$here/cam2.py"
-"$PYTHON" "$here/export.py" > "$repo/v4/hand/left-hand.json"
-"$PYTHON" "$here/thumb_cmc.py" "$repo/v4/hand/left-hand.json"
-echo "wrote v4/hand/left-hand.json; overlays in output_v4/hand/"
+"$PYTHON" "$here/export.py" > "$repo/hand/left-hand.json"
+"$PYTHON" "$here/thumb_cmc.py" "$repo/hand/left-hand.json"
+echo "wrote hand/left-hand.json; overlays in output/hand/"

@@ -2,16 +2,16 @@
 """Remove provably avoidable layer hops; accept changes only after native DRC."""
 import sys,json
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2];sys.path[:0]=[str(ROOT/'v4'),str(ROOT/'output_v4/tools/python39')]
+ROOT=Path(__file__).resolve().parents[1];sys.path[:0]=[str(ROOT),str(ROOT/'output/tools/python39')]
 import wx,pcbnew as pcb
 from shapely.geometry import LineString,Point
 from shapely.ops import unary_union
 from rosebear import thumb_finish,thumb_geometry,thumb_pcb,thumb_checks,route_cache
 from rosebear.pcb import load_board, save,drc,metrics,xy
 wx.Log.SetLogLevel(wx.LOG_Error);app=wx.App(False)
-c=json.loads((ROOT/'v4/config.json').read_text());s=json.loads((ROOT/'v4/thumb_cluster.json').read_text());nc={**c,'rules':s['rules'],'pcb_thickness_mm':s['flex_thickness_mm']};ch=json.loads((ROOT/'v4'/c['chassis']).read_text())
+c=json.loads((ROOT/'config.json').read_text());s=json.loads((ROOT/'thumb_cluster.json').read_text());nc={**c,'rules':s['rules'],'pcb_thickness_mm':s['flex_thickness_mm']};ch=json.loads((ROOT/c['chassis']).read_text())
 for hand in sys.argv[1:] or ['l','r']:
-    path=ROOT/'output_v4/connected-thumbs'/('thumb_'+hand+'.kicad_pcb');b=load_board(str(path));before=metrics(b);copper,_=thumb_finish.shapes(b);kept=[]
+    path=ROOT/'output/connected-thumbs'/('thumb_'+hand+'.kicad_pcb');b=load_board(str(path));before=metrics(b);copper,_=thumb_finish.shapes(b);kept=[]
     for name in sorted({n for n,ls,p in copper if n}):
         geom=unary_union([p for n,ls,p in copper if n==name and 0 in ls]);parts=[geom] if geom.geom_type=='Polygon' else list(geom.geoms)
         obstacles=unary_union([p for n,ls,p in copper if n!=name and 1 in ls])
@@ -45,4 +45,4 @@ for hand in sys.argv[1:] or ['l','r']:
     if result['violations'] or result['unconnected']:raise RuntimeError(result)
     g=thumb_geometry.build(ch,c,s,hand);seed=thumb_pcb.make(ROOT,g);b=load_board(str(path));errors=thumb_checks.validate(b,g)
     if errors:raise RuntimeError(errors)
-    route_cache.capture(b,nc,ROOT/'v4/routes'/('thumb_'+hand+'.json'));print(hand,before,'->',metrics(b),flush=True)
+    route_cache.capture(b,nc,ROOT/'routes'/('thumb_'+hand+'.json'));print(hand,before,'->',metrics(b),flush=True)

@@ -6,7 +6,7 @@ checks. The tile, its parts, holes and pads are measured from the bought tiles
 (see [design status](design-status.md)). The wiring, the FFC adapter and the
 ribbon dimensions here are **provisional**: the adapter is a generic 24-way FFC
 breakout on perfboard. Each is marked `provisional` in the configuration. File
-paths are relative to `v4/editor/`.
+paths are relative to `editor/`.
 
 ## Construction
 

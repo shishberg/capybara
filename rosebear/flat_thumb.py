@@ -9,7 +9,7 @@ from .mechanical import rotate
 
 
 def spec(root):
-    s=json.loads((root/'v4/flat_thumb.json').read_text())
+    s=json.loads((root/'flat_thumb.json').read_text())
     if [k['name'] for k in s['keys']]!=['near','home','far']:raise ValueError('Expected near/home/far order')
     return s
 

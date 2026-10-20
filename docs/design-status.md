@@ -2,13 +2,13 @@
 
 The current state of the v4 design. When another doc disagrees with this one, this one is correct, and the other doc needs fixing. Update this file whenever a decision is made or a new question comes up.
 
-The first prototype needs no custom PCB order. The generated breakout and pod boards in `output_v4/key-quotes/` match the decisions below and are kept for a later, tidier build.
+The first prototype needs no custom PCB order. The generated breakout and pod boards in `output/key-quotes/` match the decisions below and are kept for a later, tidier build.
 
 ## Construction
 
 The first prototype uses **individual 1U key tiles for all 36 keys**, bought as the 50-board AliExpress RGB pack (per-key RGB LED, hotswap socket, diode). Each half is hand-wired to a generic 24-way 0.5 mm **FFC adapter** board, and FFC ribbons connect the hands to the central **pod**: a perfboard carrying the WT9932P4-TINY (ESP32-P4), the level shifter, and two more of the same adapters. The chassis is edited in the [browser editor](../editor/README.md).
 
-Paused, kept as reference: the flex finger boards, flat thumb PCBs, LED-free pod and custom trackball board built by `make v4` into `output_v4/seeded/`. See the [v4 README](../README.md) for that pipeline. [Key PCB quote options](key-pcb-quote-options.md) describes the tiles, the ribbon pinout, the wiring and the custom breakout and pod boards for the later build.
+Paused, kept as reference: the flex finger boards, flat thumb PCBs, LED-free pod and custom trackball board built by `make build` into `output/seeded/`. See the [v4 README](../README.md) for that pipeline. [Key PCB quote options](key-pcb-quote-options.md) describes the tiles, the ribbon pinout, the wiring and the custom breakout and pod boards for the later build.
 
 ## Decided
 
@@ -28,7 +28,7 @@ Paused, kept as reference: the flex finger boards, flat thumb PCBs, LED-free pod
 | 0.5 mm pitch ribbon for the prototype | A 24-way 0.5 mm cable is about 13 mm wide instead of 25 mm, leaving more room to adjust the angle between the hands and the pod. Current is fine: each hand draws at most about 150 mA of LED current over three 5V conductors, about 50 mA each against a typical 0.5 A rating, with about 50 mV drop over 30 cm. The custom boards still use 1.0 mm; revisit that when they are built. |
 | No capacitors on the hand side | No bulk capacitor: the 470 µF per breakout came from the separate-supply design and would put about 940 µF on USB 5V at plug-in (the USB spec allows 10 µF). No hand-wired ceramic per column either: at about 150 mA per half the tiles run without them. The pod's 100 nF across the level shifter stays. |
 | Keep the SN74AHCT125 level shifter | Shifts the two 3.3V RGB data lines to 5V for the LEDs. The perfboard pod uses the DIP SN74AHCT125N; the custom pod uses the SOIC SN74AHCT125D. Keep the 330 Ω series resistors, 100k pulldowns and 100 nF decoupling. |
-| Pod pin map lives in `v4/pod.json` | The only hand-edited pin map. See the README's pod pin map section. |
+| Pod pin map lives in `pod.json` | The only hand-edited pin map. See the README's pod pin map section. |
 | FFC connector on the custom boards: JUSHUO AFA07-S24FCA-00 | Replaces the Molex 200528-0240 (minimum order 9,000). 24-way, 1.0 mm pitch, bottom contact, stock KiCad footprint, stocked at LCSC. Body about 31 mm wide and 2.5 mm tall. Pin 1 is on the same side as the Molex, so the ribbon pinout is unchanged. The breakout grew to 36 × 33 mm to fit its longer pads. |
 | Key layout: Swung in | The layout of the printed frame, and the editor's default (`editor/src/default-config.json`), laid out with the [hand prototype](hand-prototype.md), its two extra thumb keys (x1, x2) included, beside the thumb row toward the thumb's base and 1 mm above the row's face. The hand model puts x2 18 mm past the thumb's reach; see the [hand prototype](hand-prototype.md). It is the only layout kept; the earlier ones were removed on 19 Oct 2026 and are in git history (509dbd1 is the last commit with them). |
 | Chassis: C64-styled case | Chosen from the shape prototypes (variant `c64-joined-badge`; the prototype is at commit 4554010, and the other 22 variants at 5246f41). A Commodore 64 style breadbin: the finger keys in one well, the thumb row's deck carried on in front as part of the same solid, a grill and badge across the back, and a parting line all round. Below the parting line is the bottom section, a separate print carrying the adapter. In each well the plates make one sheet, reaching out to the well's wall. The [editor](../editor/README.md) generates it from the key layout. It replaces the swept Skeletyl construction. |

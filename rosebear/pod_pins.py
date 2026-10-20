@@ -1,4 +1,4 @@
-"""Pod pin map: v4/pod.json is the only hand-edited source.
+"""Pod pin map: pod.json is the only hand-edited source.
 
 The module header, the cost of each concession and the hand-chosen (fixed)
 assignments come from pod.json. The seed picks matrix and button pins from what
@@ -112,7 +112,7 @@ def pin_map(spec,board,active):
 
 
 def render_text(spec,rows):
-    lines=[spec['module']+' pod pin map. Source: v4/pod.json; generated from the built pod board.','']
+    lines=[spec['module']+' pod pin map. Source: pod.json; generated from the built pod board.','']
     for h in headers(spec):
         mine=[r for r in rows if r['header']==h]
         used=[r for r in mine if r['net'] and (r['gpio'] is not None or r['source'].startswith('fixed'))]

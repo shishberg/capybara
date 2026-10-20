@@ -24,7 +24,7 @@ def harness(spec):
 
 
 def sensor_positions(root):
-    tree=ET.parse(root/'v4/reference/trackball.brd')
+    tree=ET.parse(root/'reference/trackball.brd')
     elements={e.get('name'):e for e in tree.findall('.//elements/element')}
     origin=elements['U$3']; ox,oy=float(origin.get('x')),float(origin.get('y'))
     result=[]

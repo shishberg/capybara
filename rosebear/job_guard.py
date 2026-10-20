@@ -90,12 +90,12 @@ def guard_entry(root, entry):
         os.environ.pop(marker,None)
         os.nice(10)
         return
-    config=json.loads((root/'v4/config.json').read_text())
+    config=json.loads((root/'config.json').read_text())
     timeout=config['router'].get('job_timeout_seconds',900)
     env=dict(os.environ);env[marker]=entry
     try:
-        code=supervise([sys.executable,entry]+sys.argv[1:],root/'output_v4/tools/native-job.lock',
-                       root/'output_v4/native-job-status.json',timeout,env)
+        code=supervise([sys.executable,entry]+sys.argv[1:],root/'output/tools/native-job.lock',
+                       root/'output/native-job-status.json',timeout,env)
     except JobBusy as error:
         print(str(error),file=sys.stderr);code=75
     sys.exit(code)

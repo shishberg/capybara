@@ -2,12 +2,12 @@ import json,unittest
 from pathlib import Path
 import numpy as np
 from rosebear import thumb_geometry
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 class ConnectedThumbGeometry(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.c=json.loads((ROOT/'v4/config.json').read_text());cls.s=json.loads((ROOT/'v4/thumb_cluster.json').read_text());cls.ch=json.loads((ROOT/'v4'/cls.c['chassis']).read_text())
+        cls.c=json.loads((ROOT/'config.json').read_text());cls.s=json.loads((ROOT/'thumb_cluster.json').read_text());cls.ch=json.loads((ROOT/cls.c['chassis']).read_text())
     def test_finite_radius_returns_actual_key_frames(self):
         for hand in ['l','r']:
             g=thumb_geometry.build(self.ch,self.c,self.s,hand)
@@ -59,7 +59,7 @@ class ConnectedThumbGeometry(unittest.TestCase):
             from rosebear.pcb import load_board,save
             with tempfile.TemporaryDirectory() as directory:
                 path=Path(directory)/'thumb.kicad_pcb';save(board,path,cfg,ROOT);board=load_board(str(path))
-            route_cache.replace(board,cfg,ROOT/'v4/routes'/('thumb_'+hand+'.json'))
+            route_cache.replace(board,cfg,ROOT/'routes'/('thumb_'+hand+'.json'))
             self.assertEqual(thumb_checks.validate(board,g),[])
             # A wrong diode assignment must fail independently of routing.
             diode=next(f for f in board.GetFootprints() if f.GetReference()=='D1')

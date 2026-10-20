@@ -1,15 +1,15 @@
 """Package only reviewed quote artifacts, excluding router scratch files."""
 import csv,hashlib,json,shutil,zipfile
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'output_v4/key-quotes'
+ROOT=Path(__file__).resolve().parents[1]
+OUT=ROOT/'output/key-quotes'
 manifest=json.loads((OUT/'manifest.json').read_text())
 assert len(manifest)==6
 assert (OUT/'electrical-audit.json').exists()
-shutil.copyfile(ROOT/'v4/docs/key-pcb-quote-options.md',OUT/'README.md')
+shutil.copyfile(ROOT/'docs/key-pcb-quote-options.md',OUT/'README.md')
 lib=OUT/'footprints/rosebear_v4.pretty';lib.mkdir(parents=True,exist_ok=True)
 for name in ['Wire_D2_Drill1','Key_Socket_MX']:
-    shutil.copyfile(ROOT/'v4/footprints/rosebear_v4.pretty'/(name+'.kicad_mod'),lib/(name+'.kicad_mod'))
+    shutil.copyfile(ROOT/'footprints/rosebear_v4.pretty'/(name+'.kicad_mod'),lib/(name+'.kicad_mod'))
 counts={'key_single':(50,1,36),'key_panel_8':(5,8,36),'key_panel_9':(5,9,36),'key_panel_10':(5,10,36),
         'hand_breakout':(5,1,2),'pod_rgb':(5,1,1)}
 included=[OUT/'README.md',OUT/'handwiring.svg',OUT/'handwiring-layout.html',OUT/'handwiring-layout-plan.svg',OUT/'handwiring-layout-tilted.svg',OUT/'manifest.json',OUT/'electrical-audit.json']+list(lib.glob('*'))

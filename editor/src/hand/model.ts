@@ -238,7 +238,7 @@ export const twistAt = (yaw: number, pitch: number) => {
   const ele = rad(7.5) + rad(36.6) * Math.cos(Math.atan2(flex, -abd) - rad(130));
   return thumbRest[2] - th * Math.sin(ele);
 };
-/** q = yaw, pitch, roll (the CMC), mcp, ip: as in v4/hand/tools/thumb_cmc.py. */
+/** q = yaw, pitch, roll (the CMC), mcp, ip: as in hand/tools/thumb_cmc.py. */
 const rotQ = (q: number[]) =>
   new T.Matrix4()
     .makeRotationZ(rad(q[0]))

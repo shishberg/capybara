@@ -4,9 +4,9 @@ Key frames are authoritative; bought-tile pads and harness mounts are proposals.
 import json, math
 from pathlib import Path
 from html import escape
-ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'output_v4/key-quotes'
-source=json.loads((ROOT/'output_v4/layout-chassis.json').read_text())
+ROOT=Path(__file__).resolve().parents[1]
+OUT=ROOT/'output/key-quotes'
+source=json.loads((ROOT/'output/layout-chassis.json').read_text())
 keys={k['id']:k for k in source['keys']}
 COLS=['pinky','ring','middle','index','inner']
 ROWS=['top','home','bottom']

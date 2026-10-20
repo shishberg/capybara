@@ -77,10 +77,10 @@ The scripts:
 5. Fit a joint chain per finger: lengths from pose A, and the pose from the pose-B dots and prints.
 
 ```sh
-PHOTOS=/path/to/photos PYTHON=/path/to/venv/bin/python v4/hand/tools/run.sh
+PHOTOS=/path/to/photos PYTHON=/path/to/venv/bin/python hand/tools/run.sh
 ```
 
-`run.sh` needs Python 3 with numpy, pillow and scipy. It writes `left-hand.json`, and puts the grid-check overlays in `output_v4/hand/`.
+`run.sh` needs Python 3 with numpy, pillow and scipy. It writes `left-hand.json`, and puts the grid-check overlays in `output/hand/`.
 
 The photos (`kb-sheet-a.jpg`, `kb-sheet-b.jpg`, `kb-hand-a.jpg`, `kb-hand-b.jpg`, `kb-uncropped-a.jpg`, `kb-uncropped-b.jpg`) aren't in the repo. `PHOTOS` defaults to the repo root.
 

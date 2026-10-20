@@ -7,7 +7,7 @@ from grid import dlt, apply
 
 PITCH = 4.975
 NI, NJ = 37, 54
-R = os.environ.get('PHOTOS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..')) + '/'
+R = os.environ.get('PHOTOS', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')) + '/'
 LABELS = {
  'hand-a': {'middle DIP':(811,625),'ring DIP':(587,646),'index DIP':(996,770),'pinky DIP':(283,789),
             'middle PIP':(737,830),'ring PIP':(541,848),'pinky PIP':(295,944),'index PIP':(919,949),

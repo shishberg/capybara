@@ -3,12 +3,12 @@ from pathlib import Path
 import pcbnew as pcb
 from rosebear.pcb import finger,net,pad_of,bend_regions,vec
 from rosebear import validate,routing
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 class MatrixOnlyTests(unittest.TestCase):
     def test_fingers_have_only_switches_diodes_and_matrix_connections(self):
-        for seed in json.loads((ROOT/'output_v4/geometry.json').read_text())['fingers']:
-            board,_=finger(ROOT,ROOT/'output_v4/geometry/seed',seed,'seeded')
+        for seed in json.loads((ROOT/'output/geometry.json').read_text())['fingers']:
+            board,_=finger(ROOT,ROOT/'output/geometry/seed',seed,'seeded')
             self.assertEqual(validate.validate({seed['id']:board}),[])
             extra=pcb.FOOTPRINT(board);extra.SetReference('CL1');board.Add(extra)
             self.assertTrue(validate.validate({seed['id']:board}))

@@ -1,8 +1,8 @@
 """Transverse serpentine construction coupon; not a released finger-board outline."""
 import sys,json,math
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
-sys.path[:0]=[str(ROOT/'v4'),str(ROOT/'output_v4/tools/python39')]
+ROOT=Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/'output/tools/python39')]
 from rosebear.job_guard import guard_entry
 guard_entry(ROOT,__file__)
 import wx
@@ -12,7 +12,7 @@ import numpy as np
 from shapely.geometry import LineString,box
 from shapely.ops import unary_union
 from rosebear import pcb as p,finger_artifacts
-out=ROOT/'output_v4/finger-bend-coupon';out.mkdir(parents=True,exist_ok=True)
+out=ROOT/'output/finger-bend-coupon';out.mkdir(parents=True,exist_ok=True)
 # Four tangent quarter-circle turns, with long transverse legs. Units mm.
 points=[(0.,0.),(19.,0.)]
 def arc(cx,cy,r,a,b):
@@ -38,7 +38,7 @@ for i in range(8):
   pad.SetSize(p.vec(2,.8));pad.SetPosition(p.vec(x,-y));layers=pcb.LSET();layers.AddLayer(pcb.F_Cu);layers.AddLayer(pcb.F_Mask);pad.SetLayerSet(layers);pad.SetNet(p.net(b,n));fp.Add(pad)
   p.track(b,[(x,-y),(0 if ref=='A' else 26,-(offset if ref=='A' else -12+offset))],'F.Cu',n,.135)
 p.outline(b,[(x,-y) for x,y in list(shape.exterior.coords)[:-1]])
-c=json.loads((ROOT/'v4/config.json').read_text());c['pcb_thickness_mm']=.6
+c=json.loads((ROOT/'config.json').read_text());c['pcb_thickness_mm']=.6
 path=out/'transverse-coupon.kicad_pcb';p.save(b,path,c,ROOT);check=p.drc(path)
 (out/'report.json').write_text(json.dumps({'status':'construction experiment, not mechanical qualification','width_mm':width,'centerline_length_mm':line.length,'tab_offset_mm':[26,-12],'centerline':points,'drc':check},indent=2)+'\n')
 print('DRC violations='+str(len(check['violations']))+' unconnected='+str(len(check['unconnected'])),flush=True)

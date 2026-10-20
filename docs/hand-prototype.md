@@ -5,12 +5,12 @@ thumb keys from how a hand reaches them, instead of by eye. The keyboard's layou
 Swung in, was laid out with it; it opens on Swung in's settings, shows the hand on
 the keys, and checks the reach, the board's height and the printed test frame as
 they are tuned. It is in dev builds only
-(`make v4-editor`, then open `http://127.0.0.1:5177/?hand`). The code is in
-`v4/editor/src/hand/`; file paths below are relative to `v4/editor/`.
+(`make editor`, then open `http://127.0.0.1:5177/?hand`). The code is in
+`editor/src/hand/`; file paths below are relative to `editor/`.
 
 ## What it does
 
-The measured left hand ([`v4/hand/left-hand.json`](../hand/left-hand.json), mirrored
+The measured left hand ([`hand/left-hand.json`](../hand/left-hand.json), mirrored
 into the right half's layout axes; see [the hand model](../hand/README.md)) is drawn
 over the board. Every slider rewrites the finger columns, the thumb row and the extra
 thumb keys in the project (`applyHand` writes the keys, `tent_deg` and `thumb_extra`), so Undo restores them and the normal editor then shows, checks and builds the
@@ -113,11 +113,11 @@ the project, so Undo, the autosave and Save project carry it.
 ## Running it
 
 ```sh
-make v4-editor                  # then open http://127.0.0.1:5177/?hand
-npm --prefix v4/editor run test:hand   # the ?hand browser tests, on port 5179
-npm --prefix v4/editor test            # includes the hand model, solver and frame tests
+make editor                  # then open http://127.0.0.1:5177/?hand
+npm --prefix editor run test:hand   # the ?hand browser tests, on port 5179
+npm --prefix editor test            # includes the hand model, solver and frame tests
 ```
 
 The history of each decision is in the commit messages for `src/hand/` (earlier,
 `src/hand-prototype.ts` and `src/hand-frame.ts`):
-`git log --format='%h %s%n%b' -- v4/editor/src/hand`.
+`git log --format='%h %s%n%b' -- editor/src/hand`.

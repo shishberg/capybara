@@ -1,8 +1,8 @@
 # Individual key PCB quote options
 
 Quote/prototype revision A (2026-09-16), updated 2026-09-26. Files are in
-`output_v4/key-quotes/`. This is the current construction for the first
-prototype and replaces the paused LED-free `output_v4/seeded/` finger/thumb
+`output/key-quotes/`. This is the current construction for the first
+prototype and replaces the paused LED-free `output/seeded/` finger/thumb
 boards. Do not mix the old 11-way ribbons with this 24-way design.
 
 **The first prototype uses no custom PCBs:** a perfboard pod and generic
@@ -40,7 +40,7 @@ lighting-only buttons make it easier to trace individual paths. Static copies:
 **handwiring-layout-plan.svg** and **handwiring-layout-tilted.svg**.
 The earlier **handwiring.svg** remains the logical connectivity reference.
 
-Key positions and orientations come from `output_v4/layout-chassis.json`, including
+Key positions and orientations come from `output/layout-chassis.json`, including
 the flat thumb revision. Tile envelopes are nominal 19 mm; socket/LED bodies and
 terminal zones are approximate representations of the purchased tiles, not a
 confirmed pinout. This is a harness planning study, not a cut-length list or
@@ -79,7 +79,7 @@ the left uses mirrored key positions without trackball wiring. Purchased PCBs
 are identical rather than mirrored, so check their physical terminal orientation
 when placing the left set.
 
-Regenerate with `python3 v4/tools/draw_key_wiring_layout.py`; no KiCad process or
+Regenerate with `python3 tools/draw_key_wiring_layout.py`; no KiCad process or
 autorouter is involved.
 
 ## Uploads to compare
@@ -243,7 +243,7 @@ ground to convenient labelled pads. Mounting tabs of the connector are grounded.
 ## Pod and power
 
 The pod keeps the main build's WT9932P4-TINY header assignments for matrix,
-buttons and trackball (see `output_v4/pinout.txt`). The RGB data lines use the
+buttons and trackball (see `output/pinout.txt`). The RGB data lines use the
 `rgb` group in [`pod.json`](../pod.json), driven via an SN74AHCT125D powered
 from the LED 5 V rail, with 330-ohm output resistors, input pulldowns and local
 decoupling. Unused buffer inputs are grounded and unused outputs disabled.
@@ -274,6 +274,6 @@ the farthest key.
 - [SK6812MINI-E Rev.02 drawing and pinout](https://cdn-shop.adafruit.com/product-files/4960/4960_SK6812MINI-E_REV02_EN.pdf)
 - [TI SN74AHCT125](https://www.ti.com/product/SN74AHCT125)
 
-Regenerate with KiCad's Python: `v4/tools/build_key_quotes.py` (supervised,
-bounded router), then `python3 v4/tools/draw_key_wiring.py`. Optional build
+Regenerate with KiCad's Python: `tools/build_key_quotes.py` (supervised,
+bounded router), then `python3 tools/draw_key_wiring.py`. Optional build
 arguments: `keys`, `hand_breakout`, `pod_rgb`.

@@ -23,9 +23,9 @@ def route(path, root, out, config, prepare_dsn=None):
     protected={signature(t) for t in board.GetTracks() if t.IsLocked() and not isinstance(t,pcb.PCB_VIA)}
     jar=Path(os.environ.get('FREEROUTING_JAR',str(out/'tools/freerouting-2.4.1.jar')))
     if not jar.exists() or hashlib.sha256(jar.read_bytes()).hexdigest()!=JAR_SHA256:
-        raise RuntimeError('Pinned Freerouting JAR missing or checksum mismatch; run v4/tools/setup_router.py')
+        raise RuntimeError('Pinned Freerouting JAR missing or checksum mismatch; run tools/setup_router.py')
     java=Path(os.environ.get('FREEROUTING_JAVA',str(out/'tools/jdk-25.0.4.1+1-jre/Contents/Home/bin/java')))
-    if not java.exists(): raise RuntimeError('Portable Java missing; run v4/tools/setup_router.py')
+    if not java.exists(): raise RuntimeError('Portable Java missing; run tools/setup_router.py')
     dsn=path.with_suffix('.dsn'); ses=path.with_suffix('.ses')
     if not pcb.ExportSpecctraDSN(board,str(dsn)): raise RuntimeError('DSN export failed')
     if prepare_dsn: prepare_dsn(dsn)

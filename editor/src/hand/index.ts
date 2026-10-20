@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE ?hand: the measured left hand (v4/hand/left-hand.json, mirrored
+ * PROTOTYPE ?hand: the measured left hand (hand/left-hand.json, mirrored
  * into the right half's layout axes) drawn in the editor, laying out the
  * keys. Every slider move rewrites the finger columns and the thumb row
  * (Undo restores).

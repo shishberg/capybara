@@ -1,12 +1,12 @@
 """Bounded beam-mode screen of real legacy end frames and a transverse coupon."""
 import sys,json,math
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[2]
-sys.path[:0]=[str(ROOT/'v4'),str(ROOT/'output_v4/tools/python39')]
+ROOT=Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/'output/tools/python39')]
 import numpy as np
 from rosebear.beam_review import solve
 
-g=json.loads((ROOT/'output_v4/geometry.json').read_text());c=json.loads((ROOT/'v4/mechanical/chassis.json').read_text());config=json.loads((ROOT/'v4/config.json').read_text())
+g=json.loads((ROOT/'output/geometry.json').read_text());c=json.loads((ROOT/'mechanical/chassis.json').read_text());config=json.loads((ROOT/'config.json').read_text())
 keys={k['id']:k for k in c['keys']};results=[]
 for a,b in zip(g['fingers'][0]['strips'],g['fingers'][0]['strips'][1:]):
  span=b['cx']-b['half_w']-a['cx']-a['half_w'];r=span/4;climb=b['neck_y']-a['neck_y']
@@ -30,12 +30,12 @@ for a,b in zip(g['fingers'][0]['strips'],g['fingers'][0]['strips'][1:]):
  motion=np.r_[A.T@(wb-wa)-np.array(pts[-1]),rotation]
  result=solve(pts,motion,1.69,.6)
  results.append({'name':a['column']+' to '+b['column'],'kind':'existing finger bridge','end_motion_mm_radians':motion.tolist(),**result})
-p=ROOT/'output_v4/finger-bend-coupon/report.json'
+p=ROOT/'output/finger-bend-coupon/report.json'
 if p.exists():
  coupon=json.loads(p.read_text());pts=[[*p,0] for p in coupon['centerline']]
  for label,motion in [('Y rotation only',[0,0,0,0,math.radians(5),0]),('5 mm step and Y rotation',[0,0,5,0,math.radians(5),0])]:
   results.append({'name':'transverse coupon: '+label,'kind':'benchmark, different attachment locations from existing finger board','end_motion_mm_radians':motion,**solve(pts,motion,3.6,.6)})
 out={'status':'mechanism screen only; no manufacturing acceptance threshold',
  'assumptions':{'E_MPa':20000,'G_MPa':8000,'material':'unqualified isotropic surrogate, not measured laminate properties','model':'small-displacement Euler-Bernoulli beam with Saint-Venant rectangular torsion approximation','excluded':['root notch stresses','copper/FR4 anisotropy and damage','large rotations','contact and chassis clearance','fatigue']},'results':results}
-(ROOT/'output_v4/finger-bend-screen.json').write_text(json.dumps(out,indent=2)+'\n')
+(ROOT/'output/finger-bend-screen.json').write_text(json.dumps(out,indent=2)+'\n')
 for r in results:print(r['name'],{k:round(r[k],3) for k in ['max_normal_strain_percent','torsion_shear_indicator_percent','max_node_rotation_deg']})

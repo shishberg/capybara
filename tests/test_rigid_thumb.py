@@ -5,7 +5,7 @@ import pcbnew as pcb
 from rosebear.pcb import thumb,xy,pad_of
 from rosebear import rigid_thumb
 from rosebear.thumb_geometry import folded,frame
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 
 class RigidThumbTests(unittest.TestCase):
     def test_all_positions_use_the_same_two_pad_zero_via_layout(self):
@@ -21,7 +21,7 @@ class RigidThumbTests(unittest.TestCase):
                 self.assertEqual(shape(b),shape(universal))
 
     def test_tiles_follow_full_key_frames_without_any_bridges(self):
-        config=json.loads((ROOT/'v4/config.json').read_text());chassis=json.loads((ROOT/'v4/mechanical/chassis.json').read_text())
+        config=json.loads((ROOT/'config.json').read_text());chassis=json.loads((ROOT/'mechanical/chassis.json').read_text())
         for hand in ['l','r']:
             boards={'thumb_'+hand+'_'+k:thumb(ROOT,hand,k) for k in ['near','home','far']}
             g=rigid_thumb.geometry(chassis,config,hand,boards)

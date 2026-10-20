@@ -15,7 +15,7 @@ Reviewed 2026-09-16. This records the next design direction; the generated rigid
 
 ## Sources inspected
 
-Local reference clones are under `output_v4/references/`. Inspected source PCB footprint placements, repository photographs and READMEs; no native KiCad process or routing job was needed.
+Local reference clones are under `output/references/`. Inspected source PCB footprint placements, repository photographs and READMEs; no native KiCad process or routing job was needed.
 
 | Reference | Inspected revision | Findings |
 |---|---|---|

@@ -2,10 +2,10 @@ import json,unittest
 from pathlib import Path
 import numpy as np
 from rosebear import flat_thumb,beam_review
-ROOT=Path(__file__).resolve().parents[2]
+ROOT=Path(__file__).resolve().parents[1]
 class FlatThumbTests(unittest.TestCase):
  def test_shared_plane_and_spacing(self):
-  s=flat_thumb.spec(ROOT);c=json.loads((ROOT/'v4/mechanical/chassis.json').read_text());out=flat_thumb.chassis_layout(c,s)
+  s=flat_thumb.spec(ROOT);c=json.loads((ROOT/'mechanical/chassis.json').read_text());out=flat_thumb.chassis_layout(c,s)
   keys=[k for k in out['keys'] if k['column']=='thumb'];o=np.array(out['flat_thumb']['origin']);normal=np.array(out['flat_thumb']['axes'][2])
   for k in keys:
    self.assertAlmostEqual(np.dot(np.array(k['origin'])-o,normal),0,places=9)
@@ -13,7 +13,7 @@ class FlatThumbTests(unittest.TestCase):
   self.assertNotEqual(c['keys'],out['keys'])
  def test_in_plane_yaw_preserves_normal(self):
   s=flat_thumb.spec(ROOT);s['keys'][0]['yaw_deg']=12
-  c=json.loads((ROOT/'v4/mechanical/chassis.json').read_text());out=flat_thumb.chassis_layout(c,s)
+  c=json.loads((ROOT/'mechanical/chassis.json').read_text());out=flat_thumb.chassis_layout(c,s)
   k=next(k for k in out['keys'] if k['id']=='thumb_near')
   np.testing.assert_allclose(k['axes'][2],out['flat_thumb']['axes'][2],atol=1e-9)
 class BeamScreenTests(unittest.TestCase):

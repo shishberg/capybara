@@ -1,8 +1,8 @@
 """Standalone wiring sketch: logical connectivity, not a chassis fit drawing."""
 from pathlib import Path
 from html import escape
-ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'output_v4/key-quotes';OUT.mkdir(parents=True,exist_ok=True)
+ROOT=Path(__file__).resolve().parents[1]
+OUT=ROOT/'output/key-quotes';OUT.mkdir(parents=True,exist_ok=True)
 svg=['<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1420" viewBox="0 0 1440 1420">',
      '<rect width="1440" height="1420" fill="#f5f7fb"/>',
      '<style>text{font-family:Arial,sans-serif;fill:#17243b} .title{font-size:27px;font-weight:bold}.sub{font-size:17px}.small{font-size:14px}.label{font-size:16px;font-weight:bold}</style>',

@@ -19,7 +19,7 @@ def baml_literal(value):
 
 
 def cache_key(root,chassis,config):
-    paths=sorted((root/'v3/baml_src').rglob('*.baml'))+sorted((root/'v3/footprints').rglob('*.kicad_mod'))+[root/'v4/tools/seed.baml',root/'v3/baml.toml',root/'v4/rosebear/mechanical.py',root/'v4/rosebear/pod_pins.py',pod_pins.PATH,Path(__file__)]
+    paths=sorted((root/'v3/baml_src').rglob('*.baml'))+sorted((root/'v3/footprints').rglob('*.kicad_mod'))+[root/'tools/seed.baml',root/'v3/baml.toml',root/'rosebear/mechanical.py',root/'rosebear/pod_pins.py',pod_pins.PATH,Path(__file__)]
     digest=hashlib.sha256(json.dumps({'chassis':chassis,'config':config},sort_keys=True).encode())
     for p in [p for p in paths if p.is_file()]: digest.update(str(p.relative_to(root)).encode()); digest.update(p.read_bytes())
     return digest.hexdigest()
@@ -44,7 +44,7 @@ def generate(root, out, chassis, config):
     shutil.copytree(root / "v3/baml_src", stage / "baml_src")
     shutil.copy2(root / "v3/baml.toml", stage / "baml.toml")
     shutil.copytree(root / "v3/footprints", stage / "footprints", dirs_exist_ok=True)
-    shutil.copy2(root / "v4/tools/seed.baml", stage / "baml_src/seed.baml")
+    shutil.copy2(root / "tools/seed.baml", stage / "baml_src/seed.baml")
     # Only the staging project changes: legacy outputs and golden tests remain intact.
     p = stage / "baml_src/config_dactyl.baml"
     text = replace_once(r"    well_toto\(\)", "    " + baml_literal(well(chassis, config)), p.read_text())
