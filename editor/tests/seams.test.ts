@@ -102,10 +102,16 @@ function classOf(s: Seam) {
  *    don't read the bridges, but the frame's one union re-meshes with them,
  *    and the walls' and rail's spots of no area or a few hundredths come and
  *    go with it. None of these spots touches a bridge.
+ *  - the base plate under the frame: the frame is cut off level with the
+ *    plate's top (skin_mm), and a base screw's boss stands on the plate
+ *    against the rail at each of six spots (screwSpots), mostly the outline's
+ *    corners, where drops stand; what is within bossMeet of a boss is meant.
+ *    rail+rib by 3 down (the corners' joins, now the bosses'); rail by 1 up
+ *    (a shading on the cut's underside 3.2 mm from the pinky's back boss).
  */
 const PINS: Record<string, number> = {
-  rail: 12,
-  'rail+rib': 12,
+  rail: 13,
+  'rail+rib': 9,
   'rail+wall': 1,
   rib: 9,
   'rib+wall': 6,

@@ -19,8 +19,15 @@
 // a rib's, the rail's), or square, a part standing on another's flat face.
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { componentFrames, isKey, type Config } from '../src/geometry';
-import { skeletyl } from '../src/skeletyl';
-import { buildChassis, gluePosts, postAxes, type PostFit } from '../src/chassis';
+import { skeletyl, SIZES as RIB } from '../src/skeletyl';
+import {
+  buildChassis,
+  gluePosts,
+  postAxes,
+  screwSpots,
+  SIZES as CHASSIS,
+  type PostFit,
+} from '../src/chassis';
 import { openingSpan, seatSettings, seatSwitches } from '../src/seats';
 import { plateHalfWidths } from '../src/plates';
 import { wiring } from '../src/wiring';
@@ -57,6 +64,8 @@ export const SEAMS = {
    * the join's, meant as the leg is.
    */
   postMeet: 0.5,
+  /** Likewise a base screw's boss stands on the plate against the rail and whatever stands on it there: what is within this of the boss is its join. */
+  bossMeet: 0.5,
 };
 
 export type SeamKind = 'sliver' | 'ledge' | 'crease' | 'gap' | 'thin' | 'shading';
@@ -515,7 +524,12 @@ export function skeletylSeams(
     };
     return { to, zones: [...zones, ...postZones(axes[n], chassis.postFits[n])] };
   });
+  // And the base screws' bosses, from the plate to the rail's top.
+  const bosses = screwSpots(built.outline);
+  const bossReach = CHASSIS.screwBoss / 2 + SEAMS.bossMeet;
   const meant = (p: V3) =>
+    (p[2] <= RIB.railHeight + SEAMS.bossMeet &&
+      bosses.some((b) => Math.hypot(p[0] - b[0], p[1] - b[1]) <= bossReach)) ||
     local.some(({ to, zones }) => {
       const q = to(p);
       return zones.some(([lo, hi]) => q.every((x, i) => x >= lo[i] && x <= hi[i]));

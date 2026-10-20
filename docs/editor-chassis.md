@@ -45,7 +45,8 @@ heading, until the nearer corner of its outer face meets the outline (on Swung
 in only the ring column's back, 0.5 mm); an end whose outline is more than
 12 mm out hangs. Its outer face is flush with the rail's
 over the rail's whole height, and it bends or rounds only above it. The rail
-is level everywhere, 6 mm high, and never dips: a low end, whose round,
+is level everywhere, its top 6 mm over the floor (4 mm over the base plate it
+stands on), and never dips: a low end, whose round,
 drawn as tight as it clears, still ends less than 1 mm above the rail's top,
 has no drop of its own. Standing on the outline, its round stops 0.5 mm over
 the rail's top, and below that its section carries straight on down onto the
@@ -112,9 +113,20 @@ Where two keys are too steep or too far round to
 web, the rib is parted there, and each end is rounded if the round clears the
 other keys' tiles, switches and keycaps, else stops flush at its plate. Drops
 are left out where they would hit another key. Nothing is cut out
-of the frame. The base plate inside
-the outline is the bottom section; it carries the adapter mount and the
-ribbon's landing. On Swung in the ribbon leaves on the inner side, along
+of the frame. The **base plate** is the bottom section, a separate print: the
+outline, `skin_mm` (2 mm) thick, with the frame standing on it. The frame is
+cut off level with the plate's top, so the two meet in one flat seam, the
+plate's edge flush with the rail's outer face; the glue posts stop 2 mm over
+it, so none hangs just over it. Six M2 countersunk self-tapping screws come
+up through the plate (2.3 mm holes, countersunk to 4 mm) into bosses on the
+rail's inside, 5 mm across, from the plate to the rail's top, with 1.7 mm
+pilots (`screwSpots` in `src/chassis.ts`): one at each corner of the outline
+that turns out 45° or more, sharpest first, none within 40 mm of another
+along the outline, and the runs between split evenly so none is over 80 mm,
+each boss 2.6 mm in from the outline. On Swung in they are at the pinky's
+front and back corners, the middle's back, the inner back corner, the middle
+of the inner side and the thumb row's tip, about 55 to 80 mm apart. The
+plate carries the adapter mount and the ribbon's landing. On Swung in the ribbon leaves on the inner side, along
 −x at y ≈ 16 under the web between the inner home and top keys. It lies on the
 landing at z ≈ 10, about 4 mm over the rail's top (z 6), so it passes over the
 rail, not through it. The chassis cuts a notch for it 40 mm back from the

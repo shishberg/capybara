@@ -39,8 +39,8 @@ import {
 } from './geometry';
 import { clipBox, seatSettings } from './seats';
 import { plateHalfWidths } from './plates';
-import { freeAllBut, keycapSolid, place } from './manifold-util';
-import { ribAxes, skeletyl } from './skeletyl';
+import { freeAllBut, keycapSolid, place, slab } from './manifold-util';
+import { ribAxes, skeletyl, SIZES as RIB } from './skeletyl';
 import { landingBox, wiring, type Wiring } from './wiring';
 import { cradles, mouths, plugWays } from './wiring/pro-micro';
 
@@ -140,6 +140,31 @@ export const SIZES = {
   tieBridge: 1,
   /** The ribbon's notch (and the plugs' ways) reach this far out from the landing. */
   notchLength: 40,
+  /**
+   * The Skeletyl's base screws (screwSpots): one at each corner of the outline
+   * turning out by at least screwCorner degrees, sharpest first, skipping any
+   * within screwApart (along the outline) of one already taken; then any run
+   * between two longer than screwGap is split evenly so none is.
+   */
+  screwCorner: 45,
+  screwApart: 40,
+  screwGap: 80,
+  /**
+   * Each screw is an M2 countersunk self-tapper up through the base plate into
+   * a boss on the rail's inside, screwBoss across and as high as the rail, its
+   * centre screwInset in from the outline at least (so its pilot keeps that
+   * less half the pilot to the rail's outer face, and the boss stays just
+   * inside the outline rather than being trimmed flush with it, which leaves
+   * slivers). The pilot is screwPilot across; the plate's hole screwClear
+   * across, countersunk at 90° to screwHead across at its underside.
+   */
+  screwBoss: 5,
+  screwInset: 2.6,
+  screwPilot: 1.7,
+  screwClear: 2.3,
+  screwHead: 4,
+  /** The Skeletyl's glue posts stop this far over its base plate, so none hangs just over it, apart from the frame standing on it. */
+  postClear: 2,
 } as const;
 
 /** A box in key coordinates: its centre and size. */
@@ -786,9 +811,11 @@ function keycapRooms(
 }
 
 /**
- * The chassis: the frame with the glue posts, on a base plate inside its
- * outline (skin_mm thick, the frame's rail standing on the floor in it). The
- * plate carries the adapter's mount and the ribbon's landing, which ends where
+ * The chassis: the frame with the glue posts, standing on a base plate the
+ * shape of its outline, skin_mm thick: the frame is cut off level with the
+ * plate's top, so the two meet along one flat seam, the plate's edge flush
+ * with the rail's outer face. Screws come up through the plate into bosses on
+ * the rail's inside (screwSpots). The plate carries the adapter's mount and the ribbon's landing, which ends where
  * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
  * jack's cradles, their plugs coming in through openings in the frame. The
  * frame's bridges keep clear of the wires.
@@ -809,9 +836,24 @@ export function buildChassis(
     () => posts(wasm, cfg, frames, built.frame),
     (h) => [h.solid],
   );
-  const framed = built.frame.add(held.solid);
-  // The base plate: inside the outline the frame stands on.
+  // The base plate: the outline the frame stands on.
   const footprint = new CS([built.outline], 'NonZero');
+  const floor = cfg.chassis.skin_mm;
+  const spots = screwSpots(built.outline);
+  const column = (d: number, z0: number, z1: number, top = d) =>
+    M.union(spots.map((c) => M.cylinder(z1 - z0, d / 2, top / 2, 32).translate([c[0], c[1], z0])));
+  // Cut off level with the plate's top, with the screws' bosses and their pilots.
+  const bb = built.frame.boundingBox();
+  const below = (z: number) => slab(M, bb, 1, bb.min[2] - 1, z - bb.min[2] + 1);
+  const framed = built.frame
+    .add(held.solid.subtract(below(floor + SIZES.postClear)))
+    .subtract(below(floor))
+    .add(column(SIZES.screwBoss, floor, RIB.railHeight))
+    .subtract(column(SIZES.screwPilot, floor - 1, RIB.railHeight));
+  const sink = (SIZES.screwHead - SIZES.screwClear) / 2;
+  const holes = column(SIZES.screwClear, -1, floor + 1).add(
+    column(SIZES.screwHead + 0.02, -0.01, sink, SIZES.screwClear),
+  );
   if (controllerStyle(cfg) === 'pro_micro') {
     // The plugs come in through the frame and over notches in the plate's edge.
     const ways = plugWays(wasm, cfg, frames, SIZES.notchLength);
@@ -823,7 +865,8 @@ export function buildChassis(
       base: footprint
         .extrude(cfg.chassis.skin_mm)
         .add(cradles(wasm, cfg, frames))
-        .subtract(ways),
+        .subtract(ways)
+        .subtract(holes),
       panel: e[12] + e[0] * mouths(cfg).usb.x,
       roomCuts,
       postFits: held.fits,
@@ -860,7 +903,8 @@ export function buildChassis(
     .extrude(cfg.chassis.skin_mm)
     .add(adapterMount(wasm, cfg, frames))
     .add(landing)
-    .subtract(tunnels);
+    .subtract(tunnels)
+    .subtract(holes);
   // The ribbon's notch, from the landing out, low over the base plate.
   const width = r.width_mm + 2 * r.notch_clearance_mm;
   const top = land.top + r.thickness_mm + r.notch_clearance_mm;
@@ -885,6 +929,75 @@ export function buildChassis(
     roomCuts,
     postFits: held.fits,
   };
+}
+
+/**
+ * Where the Skeletyl's base screws go, in plan, round its outline
+ * (counter-clockwise): at its sharpest corners out, no two closer than
+ * screwApart along it, with the long runs between split so none is longer
+ * than screwGap. Each is moved in from the outline (along the corner's
+ * bisector, or square to the edge) until it is screwInset from every edge.
+ */
+export function screwSpots(outline: [number, number][]): [number, number][] {
+  const n = outline.length;
+  const at = (i: number) => outline[((i % n) + n) % n];
+  const along: number[] = [0];
+  for (let i = 0; i < n; i++)
+    along.push(along[i] + Math.hypot(at(i + 1)[0] - at(i)[0], at(i + 1)[1] - at(i)[1]));
+  const round = along[n];
+  const apart = (a: number, b: number) => {
+    const d = Math.abs(a - b) % round;
+    return Math.min(d, round - d);
+  };
+  // Each corner's turn out, in degrees.
+  const turn = (i: number) => {
+    const [a, p, c] = [at(i - 1), at(i), at(i + 1)];
+    const t = Math.atan2(c[1] - p[1], c[0] - p[0]) - Math.atan2(p[1] - a[1], p[0] - a[0]);
+    return (Math.atan2(Math.sin(t), Math.cos(t)) * 180) / Math.PI;
+  };
+  const kept: number[] = [];
+  for (const i of [...outline.keys()]
+    .filter((i) => turn(i) >= SIZES.screwCorner)
+    .sort((i, j) => turn(j) - turn(i)))
+    if (kept.every((s) => apart(s, along[i]) >= SIZES.screwApart)) kept.push(along[i]);
+  if (!kept.length) kept.push(0);
+  kept.sort((a, b) => a - b);
+  const all = kept.flatMap((s, k) => {
+    const run = (kept[(k + 1) % kept.length] - s + round) % round || round;
+    const parts = Math.ceil(run / SIZES.screwGap);
+    return [...Array(parts).keys()].map((j) => (s + (run * j) / parts) % round);
+  });
+  // The point on the outline `s` along it, and the way in there.
+  const inward = (i: number) => {
+    const [p, q] = [at(i), at(i + 1)];
+    const l = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    return [-(q[1] - p[1]) / l, (q[0] - p[0]) / l];
+  };
+  const edgeGap = (x: number[]) =>
+    Math.min(
+      ...outline.map((p, i) => {
+        const q = at(i + 1);
+        const [dx, dy] = [q[0] - p[0], q[1] - p[1]];
+        const t = Math.max(
+          0,
+          Math.min(1, ((x[0] - p[0]) * dx + (x[1] - p[1]) * dy) / (dx * dx + dy * dy)),
+        );
+        return Math.hypot(x[0] - p[0] - t * dx, x[1] - p[1] - t * dy);
+      }),
+    );
+  return all.map((s) => {
+    const i = Math.max(0, along.findIndex((a) => a > s + 1e-9) - 1);
+    const corner = s - along[i] < 1e-9;
+    const p = corner
+      ? at(i)
+      : at(i).map((x, k) => x + ((at(i + 1)[k] - x) * (s - along[i])) / (along[i + 1] - along[i]));
+    const [u, w] = [inward(i), corner ? inward(i - 1) : inward(i)];
+    const l = Math.hypot(u[0] + w[0], u[1] + w[1]);
+    const d = [(u[0] + w[0]) / l, (u[1] + w[1]) / l];
+    let k = 0;
+    while (k < 20 && edgeGap([p[0] + d[0] * k, p[1] + d[1] * k]) < SIZES.screwInset) k += 0.05;
+    return [p[0] + d[0] * k, p[1] + d[1] * k] as [number, number];
+  });
 }
 
 /**

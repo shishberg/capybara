@@ -268,11 +268,12 @@ function checkPieces(cut: Manifold) {
 
 /**
  * Without the bottom section the frame must also hold together along its
- * foot: a section just above the floor must be one connected area.
+ * foot: a section just above the base plate it stands on (`floor`) must be
+ * one connected area.
  */
-function checkFootprint(cut: Manifold) {
+function checkFootprint(cut: Manifold, floor: number) {
   const footprint = cut
-    .slice(CHECKS.footprintHeight)
+    .slice(floor + CHECKS.footprintHeight)
     .decompose()
     .map((c) => ({ a: c.area(), c }))
     .filter((x) => x.a > CHECKS.minFootprint)
@@ -483,7 +484,7 @@ function build(
   if (cut.status() !== 'NoError' || cut.volume() <= 0)
     throw Error('Cutouts produced an invalid solid: ' + cut.status());
   const loose = checkPieces(cut);
-  const footprint = checkFootprint(cut);
+  const footprint = checkFootprint(cut, cfg.chassis.skin_mm);
   const rooms = checkRooms(chassis.roomCuts);
   // Checked as one solid; the frame and its bottom section are still returned
   // (and printed) separately.
