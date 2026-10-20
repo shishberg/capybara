@@ -108,12 +108,18 @@ function classOf(s: Seam) {
  *    corners, where drops stand; what is within bossMeet of a boss is meant.
  *    rail+rib by 3 down (the corners' joins, now the bosses'); rail by 1 up
  *    (a shading on the cut's underside 3.2 mm from the pinky's back boss).
+ *  - leaning fronts (PROTOTYPE): each finger column's front end turns over
+ *    its plate's own across too, as its back does, so it doesn't twist, and
+ *    its drop curves back from the lean to land where it did upright. rib
+ *    by 2 down (the shadings where the inner's and pinky's front rounds
+ *    twisted); rail+rib by 1 down (a ledge where the pinky's front foot met
+ *    the rail).
  */
 const PINS: Record<string, number> = {
   rail: 13,
-  'rail+rib': 9,
+  'rail+rib': 8,
   'rail+wall': 1,
-  rib: 9,
+  rib: 7,
   'rib+wall': 6,
   wall: 2,
 };

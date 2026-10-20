@@ -16,7 +16,7 @@ round the outline on the floor. A rib is one swept solid: the key plates as
 slabs, curved webs between them tangent to the plates, and a lip and round at
 each end, clear of the tile pocket and the switch. Each side of a round
 turns over in its own upright plane, so the end comes out heading straight
-down, except PROTOTYPE on each finger column's back: there the round turns
+down, except PROTOTYPE on each finger column's ends: there the round turns
 over the plate's own across, so the end keeps the plate's section without
 twisting and comes out heading down leaning across as the plate does (about
 15° on Swung in). PROTOTYPE: the outline
@@ -40,7 +40,10 @@ keeping the across and the width it has at the bottom of the round all the
 way down to a square foot, so it never twists or splays. It stands straight
 down (PROTOTYPE: a finger column's back drop leaves its round leaning and
 straightens by its foot, about as an arc would, its foot out along the lean
-by its height times the tangent of half the lean: 4.5 to 8 mm on Swung in),
+by its height times the tangent of half the lean: 4.5 to 8 mm on Swung in; a
+front drop runs on straight along its lean for half its height, then curves
+back to stand upright where it would if its round turned upright, so the
+outline and the tie are as they would be without the lean),
 or bends out in the end's own plane, along its
 heading, until the nearer corner of its outer face meets the outline (on Swung
 in only the ring column's back, 0.5 mm); an end whose outline is more than

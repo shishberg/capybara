@@ -134,6 +134,9 @@ export const SIZES = {
   webSteps: 8,
   roundSteps: 8,
   dropSteps: 8,
+  /** PROTOTYPE: a leaning front drop's handles, as fractions of its height: straight on along its lean, and upright onto its foot (dropReach). */
+  dropLead: 0.5,
+  dropLand: 0.5,
   /** The area the outline is drawn round digs in this far at most (plan) between the feet. */
   digDeepest: 12,
   /**
@@ -519,15 +522,16 @@ const fromLine = (line: number[][], [x, z]: number[]) =>
  * `at` is side s at f along the round (0 at its top, where the lip ends, 1 at
  * its bottom), and `turn` how far it turns.
  */
-function endRound(d: Dims, k: RibKey, u: number) {
+function endRound(d: Dims, k: RibKey, u: number, upright = false) {
   const edge = u > 0 ? edgePose(d, k, u) : flip(edgePose(d, k, u));
   const t = edge.t;
   // The round turns in the plane of h (out along the end, level) and up,
   // square to the end's axis: level across, or PROTOTYPE on a finger
-  // column's back the plate's own across, so it turns over the plate's
+  // column's ends the plate's own across, so it turns over the plate's
   // tilt across rather than twisting out of it, and heads down leaning as
-  // the plate does across (up is then square to the plate's across).
-  const leans = u > 0 && !isThumb(k.name);
+  // the plate does across (up is then square to the plate's across). As
+  // `upright`, it turns level across, as a thumb's does.
+  const leans = !upright && !isThumb(k.name);
   const up = unit(leans ? sub([0, 0, 1], scale(edge.c, edge.c[2])) : [0, 0, 1]);
   const h = unit(sub(t, scale(up, dot(t, up))));
   const [cos, sin] = [dot(t, h), dot(t, up)];
@@ -620,7 +624,8 @@ function endSide(d: Dims, k: RibKey, u: number, s: number, end: End): Pair[] {
       path.push(bottom.map((p) => [p[0], p[1], z] as V3) as Pair);
     } else {
       const [top, foot] = dropPoses(d, k, u, end.land);
-      path.push(...[...sweep(top, foot, SIZES.dropSteps), end.land].map((q) => poseSide(q, u * s)));
+      const poses = sweep(top, foot, SIZES.dropSteps, dropReach(top, foot, u));
+      path.push(...[...poses, end.land].map((q) => poseSide(q, u * s)));
     }
     if (end.widen?.some((x) => x.side === u * s)) {
       const other = endSide(d, k, u, -s, { land: end.land });
@@ -650,8 +655,8 @@ const widenPair = (p: Pair, o: Pair, w: number): Pair => {
  * side lower), and its underside (inner face) is a wall in from its top
  * (outer face), straight back along the end.
  */
-function dropTop(d: Dims, k: RibKey, u: number): Pose {
-  const round = endRound(d, k, u);
+function dropTop(d: Dims, k: RibKey, u: number, upright = false): Pose {
+  const round = endRound(d, k, u, upright);
   const [l, r] = [-1, 1].map((s) => round(s).at(-1)![0]);
   return {
     p: lerp(l, r, 0.5),
@@ -662,17 +667,37 @@ function dropTop(d: Dims, k: RibKey, u: number): Pose {
     n: round.h,
   };
 }
+/** PROTOTYPE: how far a drop from `top` leans across from upright (dropTop). */
+const leanAt = (top: Pose) => Math.acos(Math.max(-1, Math.min(1, -top.t[2])));
 /**
- * PROTOTYPE: how far in plan the foot of a drop from `top` lands from under
- * it: where it leans across (dropTop), it straightens by its foot, about as
- * an arc would that turns from the lean to upright over its height, so its
- * foot is out along the lean by that height times the tangent of half the lean.
+ * PROTOTYPE: where in plan the foot of the drop under the end of key k that
+ * faces u (-1 or 1 along) lands: under its top, or where it leans across
+ * (dropTop), on a back, out along the lean, as it straightens by its foot
+ * about as an arc would that turns from the lean to upright over its height
+ * (by that height times the tangent of half the lean); on a front, where it
+ * would land if its round turned upright (as before it leaned, so the
+ * outline and the tie are as they were): its drop curves back to it
+ * (dropReach).
  */
-function leanOf(top: Pose): V3 {
-  const lean = Math.acos(Math.max(-1, Math.min(1, -top.t[2])));
-  if (lean < 1e-6) return [0, 0, 0];
+function footAt(d: Dims, k: RibKey, u: number): V3 {
+  const top = dropTop(d, k, u);
+  const lean = leanAt(top);
+  if (lean < 1e-6) return top.p;
+  if (u < 0) return dropTop(d, k, u, true).p;
   const height = top.p[2] - SIZES.railHeight;
-  return scale([...unitPlan(top.t), 0] as V3, height * Math.tan(lean / 2));
+  return add(top.p, scale([...unitPlan(top.t), 0] as V3, height * Math.tan(lean / 2)));
+}
+/**
+ * PROTOTYPE: the handles of the drop from `top` (dropTop) to `foot`, under
+ * the end that faces u (sweepAt's reach), where it leans: a front's runs on
+ * straight along its lean, as the round left it, then curves back to arrive
+ * upright on its foot (footAt), each handle a fraction of its height
+ * (dropLead, dropLand). Else the arc's (undefined).
+ */
+function dropReach(top: Pose, foot: Pose, u: number): [number, number] | undefined {
+  if (u > 0 || leanAt(top) < 1e-6) return undefined;
+  const height = top.p[2] - foot.p[2];
+  return [SIZES.dropLead * height, SIZES.dropLand * height];
 }
 
 /** Where a drop from `top` lands: its outer face's middle at q on the floor, heading straight down, across along plan direction `along` (the rail or the tie it stands on), as wide in plan as its top. */
@@ -686,8 +711,9 @@ function landing(top: Pose, q: V3, along: number[]): Pose {
     thick: top.thick,
   };
 }
-/** Where a drop from `top` would land straight down. */
-const straightDown = (top: Pose) => landing(top, add(top.p, leanOf(top)), top.c);
+/** Where the drop under the end of key k that faces u would land straight down (footAt). */
+const straightDown = (d: Dims, k: RibKey, u: number) =>
+  landing(dropTop(d, k, u), footAt(d, k, u), dropTop(d, k, u).c);
 /** How high the lower side of the round at the end of key k that faces u ends. */
 function roundLow(d: Dims, k: RibKey, u: number) {
   const round = endRound(d, k, u);
@@ -871,7 +897,8 @@ function footKey(wasm: ManifoldToplevel, d: Dims, k: RibKey, u: number, land: Po
   // A low end is cut off level with the rail's top (lowCut).
   if (isLow(d, k, u)) return [];
   // Up in the drop: where it is `into` above its foot, as it bends there.
-  const at = sweepAt(dropTop(d, k, u), foot);
+  const top = dropTop(d, k, u);
+  const at = sweepAt(top, foot, dropReach(top, foot, u));
   let [lo, hi] = [0, 1];
   for (let j = 0; j < 30; j++) {
     const m = (lo + hi) / 2;
@@ -929,12 +956,11 @@ const stepsOf = (turn: number) => Math.ceil(turn / (Math.PI / 36));
 /** Both sides of pose q, the rib's side s its side o·s. */
 const sidesOf = (q: Pose, o: number): [Pair, Pair] => [poseSide(q, -o), poseSide(q, o)];
 /** The rib swept from pose a to pose b (sweepAt), the rib's side s its poses' side o·s. */
-const poseSpan = (a: Pose, b: Pose, o: number): Span => {
-  const at = sweepAt(a, b);
-  return {
-    at: (f) => sidesOf(at(f), o),
-    steps: stepsOf(Math.max(turnOf(a.t, b.t), turnOf(normalOf(a), normalOf(b)))),
-  };
+const poseSpan = (a: Pose, b: Pose, o: number, reach?: [number, number]): Span => {
+  const at = sweepAt(a, b, reach);
+  const steps = stepsOf(Math.max(turnOf(a.t, b.t), turnOf(normalOf(a), normalOf(b))));
+  // (Handles of their own may bend it more than its ends turn.)
+  return { at: (f) => sidesOf(at(f), o), steps: reach ? Math.max(steps, SIZES.dropSteps) : steps };
 };
 /** Straight from sides p to sides q. */
 const lineSpan = (p: [Pair, Pair], q: [Pair, Pair]): Span => ({
@@ -976,7 +1002,10 @@ function endSpans(d: Dims, k: RibKey, u: number, end: End): Span[] {
   ];
   if (isDrop(end)) {
     if (isLow(d, k, u)) spans.push(lowDrop(d, k, u));
-    else spans.push(poseSpan(...dropPoses(d, k, u, end.land), u));
+    else {
+      const [top, foot] = dropPoses(d, k, u, end.land);
+      spans.push(poseSpan(top, foot, u, dropReach(top, foot, u)));
+    }
     // PROTOTYPE: fused, its side (and its round's and lip's) widened.
     if (end.widen?.length) {
       const widen = (sides: [Pair, Pair]) =>
@@ -1185,7 +1214,8 @@ const endKey = (rib: Rib, end: number): [RibKey, number] =>
 
 /** The feet of a rib's end, if it dropped straight down: its outer face's foot at each side. */
 const feet = (d: Dims, rib: Rib, end: number) => {
-  const down = straightDown(dropTop(d, ...endKey(rib, end)));
+  const [k, u] = endKey(rib, end);
+  const down = straightDown(d, k, u);
   return [-1, 1].map((s): V3 => {
     const p = poseSide(down, s)[0];
     return [p[0], p[1], 0];
@@ -1965,8 +1995,9 @@ function floorTie(
   const found = all.flatMap((rib, i) =>
     [0, 1].flatMap((e) => {
       if (ends[i][e] !== 'hang') return [];
-      const top = dropTop(d, ...endKey(rib, e));
-      const down = straightDown(top);
+      const [k, u] = endKey(rib, e);
+      const top = dropTop(d, k, u);
+      const down = straightDown(d, k, u);
       if (!dropClear(cfg, d, frames, rib, e, { land: down })) return [];
       // Where it would stand: its drop's middle, half a wall in from its outer face.
       const h = top.n!;
@@ -2477,7 +2508,7 @@ export function capybara(
     // already ends in the rail's height): it stands straight down, the
     // outline turning in to all of it, along its sides.
     const top = dropTop(d, ...endKey(rib, e));
-    const down = straightDown(top);
+    const down = straightDown(d, ...endKey(rib, e));
     const out = Math.max(
       0,
       Math.min(...[-1, 1].map((s) => toRing(rough, poseSide(down, s)[0], top.n!))),
