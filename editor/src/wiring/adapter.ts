@@ -1,11 +1,25 @@
 // The adapter board, its holes, the ribbon and the tile pads, as parts.
 import { Matrix4, Vector3 } from 'three';
-import { componentFrames, isKey, point, tileUnderside, type Config, type V3 } from '../geometry';
+import {
+  componentFrames,
+  controllerStyle,
+  isKey,
+  point,
+  tileUnderside,
+  type Config,
+  type V3,
+} from '../geometry';
 import type { Part } from '../parts';
 import { WIRING, mid } from './common';
+import { proMicroHoles, proMicroParts } from './pro-micro';
 
-/** The adapter's holes, in world coordinates on the board's top: hole n carries ribbon pin n. */
+/**
+ * Where each net's feeds land, in world coordinates on the board's top, keyed
+ * by the net's `pin`: on the adapter, hole n carries ribbon pin n; on a Pro
+ * Micro, a net's hole is the pin pro_micro.pins gives it.
+ */
 export function holes(cfg: Config, frames = componentFrames(cfg)) {
+  if (controllerStyle(cfg) === 'pro_micro') return proMicroHoles(cfg, frames);
   const a = cfg.adapter;
   const [bx, , bz] = a.board_mm;
   const out: Record<number, V3> = {};
@@ -102,8 +116,33 @@ export function landingBox(cfg: Config) {
   };
 }
 
+/**
+ * Two feeds on one hole sit side by side along this world direction: on the
+ * adapter its y, along its hole rows; on a Pro Micro its x, along its pin rows.
+ */
+export function holeAlong(cfg: Config, frames: Record<string, Matrix4>): V3 {
+  const e = (controllerStyle(cfg) === 'pro_micro' ? frames.pro_micro : frames.adapter).elements;
+  return controllerStyle(cfg) === 'pro_micro' ? [e[0], e[1], e[2]] : [e[4], e[5], e[6]];
+}
+
+/**
+ * The hand's board and what leaves it, as parts for display and the checks:
+ * the adapter, its connector and the ribbon, or the Pro Micro, its TRRS jack
+ * and their plugs.
+ */
+export function controllerParts(
+  cfg: Config,
+  frames = componentFrames(cfg),
+  /** The port panel's end face in world x, once a build has placed it. */
+  panelX?: number,
+): Part[] {
+  return controllerStyle(cfg) === 'pro_micro'
+    ? proMicroParts(cfg, frames)
+    : adapterParts(cfg, frames, panelX);
+}
+
 /** The adapter, its connector and the ribbon, as parts for display and the checks. */
-export function adapterParts(
+function adapterParts(
   cfg: Config,
   frames = componentFrames(cfg),
   /** The port panel's end face in world x, once a build has placed it. */

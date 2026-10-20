@@ -10,8 +10,9 @@ import { clone, type Project } from './geometry';
  * switcher bar; absent is none, the open frame), and
  * `?ends=none|tie|flow`, how the Skeletyl supports its hanging rib
  * ends (chassis.ends; skeletyl-ends.prototype.ts, cycled by the second bar;
- * absent is none, the ends left hanging). Returns the project to build, which
- * is the one the report records.
+ * absent is none, the ends left hanging), and `?controller=ffc|pro_micro`, what
+ * the hand's wires run to (controller.style; wiring/pro-micro.ts). Returns the
+ * project to build, which is the one the report records.
  */
 export function prototypeOverrides(p: Project, search: string): Project {
   const q = new URLSearchParams(search),
@@ -30,5 +31,6 @@ export function prototypeOverrides(p: Project, search: string): Project {
   if (q.get('chassis')) chassis.style = q.get('chassis')!;
   if (q.get('walls')) chassis.walls = q.get('walls')!;
   if (q.get('ends')) chassis.ends = q.get('ends')!;
+  if (q.get('controller')) out.config.controller.style = q.get('controller')!;
   return out;
 }

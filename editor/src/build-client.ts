@@ -5,7 +5,7 @@ import type { Project } from './geometry';
 import { prototypeOverrides } from './prototype-overrides';
 import { $, S } from './state';
 import { shell, trim } from './viewer';
-import { setShell, updateWiring, visibility } from './scene-parts';
+import { setShell, updateHardware, updateWiring, visibility } from './scene-parts';
 import { setBadge, updateFailures, showReport } from './report-view';
 import { prototypeSwitcher } from './prototype-switcher';
 import { WALL_DESIGNS } from './skeletyl-walls.prototype';
@@ -31,6 +31,24 @@ const ends = import.meta.env.DEV
       keys: { prev: ['ArrowUp', '↑'], next: ['ArrowDown', '↓'] },
     })
   : undefined;
+// PROTOTYPE ?controller=: the bar above those, what the hand's wires run to
+// ([ ]), on either chassis. Its parts change at once; the chassis rebuilds.
+const CONTROLLERS = [
+  { key: 'ffc', name: 'FFC adapter, ribbon to the pod' },
+  { key: 'pro_micro', name: 'Pro Micro and TRRS jack' },
+] as const;
+const controller = import.meta.env.DEV
+  ? prototypeSwitcher({
+      param: 'controller',
+      options: CONTROLLERS,
+      onChange: () => {
+        updateHardware();
+        requestBuild();
+      },
+      keys: { prev: ['[', '['], next: [']', ']'] },
+    })
+  : undefined;
+controller?.show(true);
 // A safety net: a fresh worker takes over every 8 builds, in case a build leaves
 // geometry-engine memory behind that its own cleanup missed.
 export function startWorker() {

@@ -11,6 +11,8 @@ import {
   keycapEnvelope,
   keyGroups,
   tileUnderside,
+  controllerStyle,
+  point,
 } from '../src/geometry';
 import { hardware } from '../src/parts';
 import { tilePocketDepth } from '../src/plates';
@@ -19,6 +21,7 @@ import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { shell } from '../src/shell';
 import { crossings, holes, nets, wiring } from '../src/wiring';
+import { lugAt, pinAt, pinOf } from '../src/wiring/pro-micro';
 import { solidOf } from './helpers';
 
 const wasm = await Module();
@@ -376,6 +379,76 @@ test("the default (Swung in) Skeletyl builds one piece, failing only Swung in's 
 });
 test('the default bottom section is one piece, the adapter mount on its floor', () => {
   assert.equal(basePieces(defaults.config), 1);
+});
+// The Pro Micro variant: an nRF52840 board and a TRRS jack in each hand, in
+// place of the FFC adapter and its ribbon to the pod.
+const proMicro = () => {
+  const p = clone(defaults);
+  p.config.controller.style = 'pro_micro';
+  return p;
+};
+test("the Skeletyl on a Pro Micro builds one piece, failing only Swung in's known checks", () => {
+  // As the default's: the board, the jack and both plugs clear the chassis,
+  // and no wire runs into another or into the chassis.
+  const r = buildSolid(wasm, proMicro()).report,
+    failing = (xs: { name: string; passed: boolean }[]) =>
+      xs.filter((x) => !x.passed).map((x) => x.name);
+  assert.equal(r.pieces.length, 1);
+  assert.equal(r.footprint.length, 1);
+  assert.deepEqual(failing(r.seats), []);
+  assert.deepEqual(failing(r.keycaps), ['matrix_pinky_bottom']);
+  assert.deepEqual(
+    r.roomCuts.map((c) => c.name),
+    ['matrix_pinky_bottom'],
+  );
+  assert.deepEqual(failing(r.openings), []);
+  assert.deepEqual(r.hardware, []);
+  assert.deepEqual(r.wires, []);
+  assert.deepEqual(r.crossings, []);
+  assert.equal(r.passed, false);
+});
+test('the Pro Micro bottom section is one piece, the cradles on its floor', () => {
+  assert.equal(basePieces(proMicro().config), 1);
+});
+test("on a Pro Micro the wiring lands each net on its pin, and the jack's links on theirs", () => {
+  const cfg = proMicro().config;
+  const frames = componentFrames(cfg);
+  const w = wiring(cfg, frames);
+  const hole = holes(cfg, frames);
+  const near = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i])) < 0.51;
+  // Every net's feeds end on the Pro Micro pin pro_micro.pins gives it.
+  for (const net of nets(cfg)) {
+    const at = point(frames.pro_micro, pinAt(cfg, pinOf(cfg, net.name)));
+    assert.deepEqual(hole[net.pin], at, net.name);
+    const feeds = w.wires.filter((x) => x.net === net.name && x.feed);
+    assert(feeds.length > 0, net.name);
+    for (const f of feeds) assert(near(f.points.at(-1)!, at) || near(f.points[0], at), net.name);
+  }
+  // Each of the jack's wires runs from its pin to its lug, under the loom.
+  const links = w.wires.filter((x) => x.group === 'link');
+  assert.equal(links.length, cfg.trrs.wires.length);
+  for (const t of cfg.trrs.wires) {
+    const l = links.find((x) => x.net === `TRRS ${t.name}`)!;
+    assert(near(l.points[0], point(frames.pro_micro, pinAt(cfg, t.pin))), t.name);
+    assert(near(l.points.at(-1)!, lugAt(cfg, frames, t.lug)), t.name);
+    assert(
+      Math.max(...l.points.map((p) => p[2])) < cfg.chassis.skin_mm + cfg.wiring.loom_height_mm,
+      t.name,
+    );
+  }
+  assert.deepEqual(crossings(w.wires), []);
+  // The wiring panel names each net's pin by its number and its GPIO.
+  assert.equal(w.nets.find((n) => n.name === 'DATA')!.label, '5, P0.17');
+});
+test('a project saved before the Pro Micro variant loads on the FFC adapter', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  delete c.controller;
+  delete c.pro_micro;
+  delete c.trrs;
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
+  assert.equal(controllerStyle(p.config), 'ffc');
 });
 test('the checker reports keycap collisions', () => {
   // Keycaps that press 2 mm into the plate must fail, with matching highlight geometry.

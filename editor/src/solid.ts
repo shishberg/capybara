@@ -355,7 +355,8 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
 
 /**
  * Hardware against the chassis and its bottom section, and the adapter and
- * ribbon against the port insert, which carries the landing.
+ * ribbon (or the Pro Micro, its jack and their plugs) against the port insert
+ * too, which carries the landing.
  */
 function checkHardware(
   p: Probe,
@@ -370,6 +371,8 @@ function checkHardware(
     components: result,
     adapter: withTrim,
     ribbon: withTrim,
+    controller: withTrim,
+    cable: withTrim,
   };
   const highlights: Highlight[] = [];
   const overlaps: Report['hardware'] = [];

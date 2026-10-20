@@ -3,6 +3,7 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hardware } from './parts';
+import { prototypeOverrides } from './prototype-overrides';
 import type { BuildResult } from './solid';
 import type { Wiring } from './wiring';
 import { disposeChildren } from './three-util';
@@ -94,6 +95,8 @@ const colors: Record<string, number> = {
   keycaps: 0xd7d8bd,
   adapter: 0x2f6f4f,
   ribbon: 0xd9b45a,
+  controller: 0x2b4c8c,
+  cable: 0x3a3a3a,
   pads: 0xd8c27a,
   glue: 0xf2e6a0,
 };
@@ -104,8 +107,9 @@ const wireColors: Record<string, number> = {
   data: 0xf7f7f7,
   power: 0xff4d4d,
   ground: 0x222222,
+  link: 0xff9f40,
 };
-const ADAPTER_GROUPS = ['adapter', 'ribbon'];
+const ADAPTER_GROUPS = ['adapter', 'ribbon', 'controller', 'cable'];
 // The port panel's end face as last built: the ribbon is drawn out through it.
 let panel: number | undefined;
 // A box tapering from size (x, y at its bottom, z its height, centred) to a
@@ -142,7 +146,7 @@ const notchedBox = (size: number[], r: number) => {
 };
 export function updateHardware() {
   disposeChildren(parts);
-  for (const p of hardware(S.project, undefined, panel)) {
+  for (const p of hardware(prototypeOverrides(S.project, location.search), undefined, panel)) {
     const g = p.cylinder
         ? new T.CylinderGeometry(p.cylinder, p.cylinder, p.size[2], 48).rotateX(Math.PI / 2)
         : p.top
@@ -202,7 +206,7 @@ function showWiring(w: Wiring) {
   $('wiring-summary').innerHTML =
     `<small>${w.wires.length} wires, ${w.nets.reduce((t, n) => t + n.joints, 0)} solder joints, ${(total / 1000).toFixed(2)} m cut length per hand, including ${S.project.config.wiring.service_loop_mm} mm service loop on each feed and ${S.project.config.wiring.end_allowance_mm} mm at each end.</small>`;
   const nice = (k: string) => prettyKey(k.replace(/^(matrix|thumb)_/, ''));
-  const pin = (net: string) => w.nets.find((n) => n.name === net)?.pin ?? '';
+  const pin = (net: string) => w.nets.find((n) => n.name === net)?.label ?? '';
   $('matrix-table').innerHTML =
     '<tr><th>Key</th><th>Row</th><th>Column</th></tr>' +
     w.matrix
@@ -216,7 +220,7 @@ function showWiring(w: Wiring) {
     w.nets
       .map(
         (n) =>
-          `<tr><td>${n.name}</td><td>${n.pin}</td><td>${n.wires}</td><td>${n.joints}</td><td>${(n.length / 1000).toFixed(2)}</td></tr>`,
+          `<tr><td>${n.name}</td><td>${n.label}</td><td>${n.wires}</td><td>${n.joints}</td><td>${(n.length / 1000).toFixed(2)}</td></tr>`,
       )
       .join('');
 }

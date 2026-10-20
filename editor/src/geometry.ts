@@ -194,14 +194,27 @@ export function componentFrames(cfg: Config) {
     if (c) clusterFrames(c).forEach((m, i) => (n['thumb_' + c.keys[i].name] = m));
   const tent = tentFrame(cfg);
   for (const key in n) n[key].premultiply(tent);
-  // The adapter stands on the bottom section, so it is placed in world coordinates.
-  const a = cfg.adapter;
-  n.adapter = frame(
-    [a.position_mm[0], a.position_mm[1], cfg.chassis.skin_mm + a.standoff_mm],
-    [0, 0, a.rotation_deg],
-  );
+  // The adapter, or the Pro Micro and its TRRS jack, stand on the bottom
+  // section, so they are placed in world coordinates.
+  const onFloor = (p: { position_mm: number[]; rotation_deg: number; standoff_mm: number }) =>
+    frame(
+      [p.position_mm[0], p.position_mm[1], cfg.chassis.skin_mm + p.standoff_mm],
+      [0, 0, p.rotation_deg],
+    );
+  if (controllerStyle(cfg) === 'pro_micro') {
+    n.pro_micro = onFloor(cfg.pro_micro);
+    n.trrs = onFloor(cfg.trrs);
+  } else n.adapter = onFloor(cfg.adapter);
   return n;
 }
+/**
+ * What the hand's wires run to: `ffc`, the FFC adapter, whose ribbon runs to
+ * the pod, or `pro_micro`, a Pro Micro in the hand with a TRRS jack.
+ */
+export const controllerStyle = (c: Config) =>
+  (c as { controller?: { style?: string } }).controller?.style === 'pro_micro'
+    ? 'pro_micro'
+    : 'ffc';
 /**
  * Bring a project saved by an earlier editor up to date: sections added since
  * are filled in from the defaults, and the adapter, which changed meaning in
@@ -281,7 +294,16 @@ function migrate(c: Record<string, any>) {
       )
         fill(to[k], v);
   };
-  for (const k of ['tile', 'adapter', 'ribbon', 'wiring', 'chassis'])
+  for (const k of [
+    'tile',
+    'adapter',
+    'ribbon',
+    'controller',
+    'pro_micro',
+    'trrs',
+    'wiring',
+    'chassis',
+  ])
     if (!c[k]) c[k] = clone(d[k]);
     else fill(c[k], d[k]);
 }

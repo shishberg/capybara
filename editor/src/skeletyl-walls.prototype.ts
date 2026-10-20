@@ -12,12 +12,13 @@
 // in its walls' feet (REACHES): the frame is then built again with the
 // outline's hull taking them in, and the variant called on that.
 // The kit also says where the main ribbon runs out of the frame (WallKit.ribbon),
-// for a variant to keep its walls clear of.
+// for a variant to keep its walls clear of (on a Pro Micro, the USB-C and
+// TRRS plugs, whose cables run out the same way).
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import type { Config, V3 } from './geometry';
 import type { Pose, Span } from './skeletyl';
-import { add, componentFrames, cross, dot, scale, sub } from './geometry';
-import { adapterParts, landingBox } from './wiring/adapter';
+import { add, componentFrames, controllerStyle, cross, dot, scale, sub } from './geometry';
+import { controllerParts, landingBox } from './wiring/adapter';
 import { mesh } from './shell/loft';
 import { flare } from './skeletyl-walls/flare.prototype';
 import { arches } from './skeletyl-walls/arches.prototype';
@@ -189,19 +190,22 @@ const wallKit = (wasm: ManifoldToplevel, cfg: Config, rib: RibKit, sides: WallSi
 export const RIBBON_GAP = 2;
 
 /**
- * WallKit.ribbon and ribbonTop: the ribbon's segments (adapterParts, the port
- * panel where the Skeletyl's chassis puts it: at the landing's outer end),
- * each a box grown by RIBBON_GAP; a point is in the ribbon's way if the box is
+ * WallKit.ribbon and ribbonTop: the ribbon's segments (controllerParts, the
+ * port panel where the Skeletyl's chassis puts it: at the landing's outer
+ * end), or on a Pro Micro the plugs, each a box grown by RIBBON_GAP; a point is in the ribbon's way if the box is
  * round it or anywhere straight over it, and the ribbon's top over it is the
  * highest such box's top there.
  */
 function ribbonClear(cfg: Config) {
   const frames = componentFrames(cfg);
-  const land = landingBox(cfg);
-  const e = frames.adapter.elements;
-  const panel = e[12] + e[0] * (land.end - land.length);
-  const boxes = adapterParts(cfg, frames, panel)
-    .filter((p) => p.group === 'ribbon')
+  let panel: number | undefined;
+  if (controllerStyle(cfg) === 'ffc') {
+    const land = landingBox(cfg);
+    const e = frames.adapter.elements;
+    panel = e[12] + e[0] * (land.end - land.length);
+  }
+  const boxes = controllerParts(cfg, frames, panel)
+    .filter((p) => p.group === 'ribbon' || p.group === 'cable')
     .map((p) => {
       const m = p.matrix;
       return {

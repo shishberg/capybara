@@ -8,7 +8,8 @@
 // neighbours' edge to edge, and reaching out on its other edges to the wall
 // round the well. Under every plate a tile pocket is kept clear, open below
 // to the hollow, so the tiles can be soldered from below with the base off.
-// The ribbon leaves through the port panel on the finger bin's inner end.
+// The ribbon leaves through the port panel on the finger bin's inner end (or
+// the USB-C and TRRS plugs come in through it: controller.style "pro_micro").
 // Both: each tile is held by glue posts under its plate (gluePosts): at each
 // corner a round post stands in the tile's corner notch, filling it (but for
 // the fit) from the tile's underside up into the plate, and along the two
@@ -42,6 +43,7 @@
 import type { Manifold, ManifoldToplevel, Mat4, Vec3 } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import {
+  controllerStyle,
   keycapEnvelope,
   isKey,
   isThumb,
@@ -64,6 +66,7 @@ import { capsule, down, freeAllBut, keycapSolid, place, slab } from './manifold-
 import { shell } from './shell';
 import { ribAxes, skeletyl } from './skeletyl';
 import { landingBox, wiring, type Wiring } from './wiring';
+import { cradles, mouths, plugWays } from './wiring/pro-micro';
 
 /** Which chassis to build: "skeletyl" (the default) or "c64". */
 export const chassisStyle = (cfg: Config) =>
@@ -72,11 +75,11 @@ export const chassisStyle = (cfg: Config) =>
 export interface ChassisResult {
   /** The case above the parting line, with the plates. */
   body: Manifold;
-  /** The bottom section, below the parting line, with the adapter's mount. */
+  /** The bottom section, below the parting line, with the adapter's mount (or the Pro Micro's and the jack's cradles). */
   base: Manifold;
   /** The port panel's dark insert, a separate part, with the ribbon's landing. */
   trim: Manifold;
-  /** The port panel's end face, in world x. */
+  /** The port panel's end face, in world x (the Skeletyl's: the landing's outer end, or the USB-C port's mouth). */
   panel: number;
   /** Where the case and the bottom section part. */
   split: number;
@@ -989,11 +992,12 @@ export function buildChassis(
   // All at once: one boolean against the whole case, not two per key.
   const whole = uncarved.subtract(M.union(cutters));
   // The case above the parting groove's bottom, and the bottom section below
-  // it with the adapter's mount, less the ribbon's slot.
+  // it with the adapter's mount (or the Pro Micro's and the jack's cradles),
+  // less the ribbon's slot (or the plugs' ways).
   const below = slab(M, whole.boundingBox(), 20, -1, built.split + 1);
   const base = whole
     .intersect(below)
-    .add(adapterMount(wasm, cfg, frames))
+    .add(controllerMount(wasm, cfg, frames))
     .subtract(built.slot);
   return {
     body: whole.subtract(below),
@@ -1010,8 +1014,9 @@ export function buildChassis(
  * The Skeletyl: its frame with the glue posts, on a base plate inside its
  * outline (skin_mm thick, the frame's rail standing on the floor in it). The
  * plate carries the adapter's mount and the ribbon's landing, which ends where
- * the ribbon leaves through a notch in the frame. The frame's bridges keep
- * clear of the wires.
+ * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
+ * jack's cradles, their plugs coming in through openings in the frame. The
+ * frame's bridges keep clear of the wires.
  */
 function skeletylChassis(
   wasm: ManifoldToplevel,
@@ -1031,6 +1036,25 @@ function skeletylChassis(
   const framed = built.frame.add(held.solid);
   // The base plate: inside the outline the frame stands on.
   const footprint = new CS([built.outline], 'NonZero');
+  if (controllerStyle(cfg) === 'pro_micro') {
+    // The plugs come in through the frame and over notches in the plate's edge.
+    const ways = plugWays(wasm, cfg, frames, SIZES.notchLength);
+    const uncarved = framed.subtract(ways);
+    const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
+    const e = frames.pro_micro.elements;
+    return {
+      body: uncarved,
+      base: footprint
+        .extrude(cfg.chassis.skin_mm)
+        .add(cradles(wasm, cfg, frames))
+        .subtract(ways),
+      trim: M.union([]),
+      panel: e[12] + e[0] * mouths(cfg).usb.x,
+      split: 0,
+      roomCuts,
+      postFits: held.fits,
+    };
+  }
   // The landing, in the adapter's frame, from `out` (where the ribbon leaves) in to its end.
   const r = cfg.ribbon;
   const land = landingBox(cfg);
@@ -1060,7 +1084,7 @@ function skeletylChassis(
   );
   const base = footprint
     .extrude(cfg.chassis.skin_mm)
-    .add(adapterMount(wasm, cfg, frames))
+    .add(controllerMount(wasm, cfg, frames))
     .add(landing)
     .subtract(tunnels);
   // The ribbon's notch, from the landing out, low over the base plate.
@@ -1092,6 +1116,12 @@ function skeletylChassis(
     postFits: held.fits,
   };
 }
+
+/** What holds the hand's board on the bottom section: the adapter's mount, or the Pro Micro's and the jack's cradles. */
+const controllerMount = (wasm: ManifoldToplevel, cfg: Config, frames: Record<string, Matrix4>) =>
+  controllerStyle(cfg) === 'pro_micro'
+    ? cradles(wasm, cfg, frames)
+    : adapterMount(wasm, cfg, frames);
 
 /**
  * The adapter's mount on the bottom section: a boss with a peg through each of

@@ -1,0 +1,259 @@
+// The Pro Micro variant's hardware (controller.style "pro_micro"): an
+// nRF52840 board in Pro Micro form factor and a TRRS jack, side by side on
+// the bottom section at the hand's inner end, their ports facing out through
+// it. Their pins, the parts, the plugs, the openings for the plugs and the
+// cradles that hold them.
+import type { Manifold, ManifoldToplevel } from 'manifold-3d';
+import { Matrix4 } from 'three';
+import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
+import { box, place } from '../manifold-util';
+import type { Part } from '../parts';
+import { WIRING, length, nets, type Wire } from './common';
+import { touches, tubeOf } from './tubes';
+
+/**
+ * Pro Micro pin n's centre on the board's top, in its frame. The port faces
+ * -x; seen from above with the port away from you, pins 1 to 12 run down the
+ * left edge (-y) from the port end and 13 to 24 back up the right, as on a DIP.
+ */
+export function pinAt(cfg: Config, n: number): V3 {
+  const b = cfg.pro_micro;
+  const [bx, , bz] = b.board_mm;
+  if (!(Number.isInteger(n) && n >= 1 && n <= 24)) throw Error(`No Pro Micro pin ${n}`);
+  const left = n <= 12;
+  const i = left ? n - 1 : 24 - n;
+  return [
+    -bx / 2 + b.first_pin_mm + i * b.pin_pitch_mm,
+    ((left ? -1 : 1) * b.row_spacing_mm) / 2,
+    bz,
+  ];
+}
+
+/** The Pro Micro pin each net's feeds land on (pro_micro.pins). */
+export function pinOf(cfg: Config, net: string) {
+  const n = (cfg.pro_micro.pins as Record<string, number>)[net];
+  if (n === undefined) throw Error(`pro_micro.pins has no pin for ${net}`);
+  return n;
+}
+
+/** A net's pin for the wiring panel: its ribbon pin, or its Pro Micro pin and that pin's name (pro_micro.pinout). */
+export function pinLabel(cfg: Config, net: string, ribbonPin: number) {
+  return controllerStyle(cfg) === 'pro_micro' ? pinName(cfg, pinOf(cfg, net)) : `${ribbonPin}`;
+}
+/** Pro Micro pin n and its name, for the wiring panel. */
+export const pinName = (cfg: Config, n: number) => `${n}, ${cfg.pro_micro.pinout[n - 1]}`;
+
+/** Each net's hole on the Pro Micro, in world coordinates, keyed by the net's `pin` as the adapter's holes are. */
+export function proMicroHoles(cfg: Config, frames = componentFrames(cfg)) {
+  const out: Record<number, V3> = {};
+  for (const net of nets(cfg))
+    out[net.pin] = point(frames.pro_micro, pinAt(cfg, pinOf(cfg, net.name)));
+  return out;
+}
+
+/** The jack's lug `name` (trrs.lugs_mm), in world coordinates on the jack's top. */
+export const lugAt = (cfg: Config, frames: Record<string, Matrix4>, name: string) => {
+  const j = cfg.trrs;
+  const at = (j.lugs_mm as Record<string, number[]>)[name];
+  if (!at) throw Error(`trrs.lugs_mm has no lug ${name}`);
+  return point(frames.trrs, [at[0], at[1], j.body_mm[2]]);
+};
+
+/**
+ * Where each port's plug goes in, in its part's frame: the mouth's x (the
+ * plug comes in along +x from there), and its centre's y and z. The USB-C
+ * receptacle stands on the board's top, its mouth usb_overhang_mm past the
+ * board's port end; the jack's barrel is on its body's port end, centred.
+ */
+export function mouths(cfg: Config) {
+  const b = cfg.pro_micro;
+  const j = cfg.trrs;
+  return {
+    usb: { x: -b.board_mm[0] / 2 - b.usb_overhang_mm, y: 0, z: b.board_mm[2] + b.usb_mm[2] / 2 },
+    trrs: { x: -j.body_mm[0] / 2 - j.barrel_mm[0], y: 0, z: j.body_mm[2] / 2 },
+  };
+}
+
+/** A part `size` about `center` in frame f, turned so its z axis (a cylinder's) runs along f's x. */
+const alongX = (f: Matrix4) => f.clone().multiply(new Matrix4().makeRotationY(Math.PI / 2));
+
+/** The Pro Micro, the jack and both plugs, as parts for display and the checks. */
+export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[] {
+  const b = cfg.pro_micro;
+  const j = cfg.trrs;
+  const fb = frames.pro_micro;
+  const fj = frames.trrs;
+  const m = mouths(cfg);
+  const [bx, by, bz] = b.board_mm;
+  const [ux, uy, uz] = b.usb_mm;
+  const parts: Part[] = [];
+  const add = (name: string, group: string, size: V3, center: V3, f: Matrix4, cylinder?: number) =>
+    parts.push({ name, group, size, center, matrix: f.elements.slice(), cylinder });
+  add('Pro Micro board', 'controller', [bx, by, bz], [0, 0, bz / 2], fb);
+  add('Pro Micro USB-C port', 'controller', [ux, uy, uz], [m.usb.x + ux / 2, 0, bz + uz / 2], fb);
+  // Its parts on top, between the pin rows, behind the port.
+  const [px, py, pz] = b.parts_mm;
+  add('Pro Micro parts', 'controller', [px, py, pz], [m.usb.x + ux + px / 2, 0, bz + pz / 2], fb);
+  const [jx, jy, jz] = j.body_mm;
+  add('TRRS jack', 'controller', [jx, jy, jz], [0, 0, jz / 2], fj);
+  const [bl, bd] = j.barrel_mm;
+  // A cylinder's axis is its frame's z: turned onto x, its centre's (x, y, z) is (-z, y, x).
+  add(
+    'TRRS jack barrel',
+    'controller',
+    [bd, bd, bl],
+    [-m.trrs.z, 0, -jx / 2 - bl / 2],
+    alongX(fj),
+    bd / 2,
+  );
+  // The plugs, from their mouths out.
+  const [pw, ph, pl] = b.plug_mm;
+  add('USB-C plug', 'cable', [pl, pw, ph], [m.usb.x - pl / 2, 0, m.usb.z], fb);
+  const [jd, jl] = j.plug_mm;
+  add('TRRS plug', 'cable', [jd, jd, jl], [-m.trrs.z, 0, m.trrs.x - jl / 2], alongX(fj), jd / 2);
+  return parts;
+}
+
+/**
+ * The openings for the plugs, in world coordinates: each plug's overmold,
+ * grown by clearance_mm all round, from its mouth out `reach` mm, square for
+ * the USB-C plug and round for the jack's.
+ */
+export function plugWays(
+  wasm: ManifoldToplevel,
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+  reach: number,
+) {
+  const M = wasm.Manifold;
+  const b = cfg.pro_micro;
+  const j = cfg.trrs;
+  const m = mouths(cfg);
+  const [pw, ph] = b.plug_mm;
+  const c = b.clearance_mm;
+  const usb = place(
+    box(M, [reach, pw + 2 * c, ph + 2 * c], [m.usb.x - reach / 2, 0, m.usb.z]),
+    frames.pro_micro,
+  );
+  const r = j.plug_mm[0] / 2 + j.clearance_mm;
+  const trrs = place(
+    M.cylinder(reach, r, r, 48).rotate([0, -90, 0]).translate([m.trrs.x, 0, m.trrs.z]),
+    frames.trrs,
+  );
+  return M.union([usb, trrs]);
+}
+
+/**
+ * The cradles on the bottom section: under the Pro Micro a pedestal between
+ * its pin rows (clear of the wire ends under them), guides along its long
+ * edges and a stop behind its far end, which takes the push of the USB-C
+ * plug; under the jack (lugs up) a pedestal, and round it a wall each side and
+ * one behind. Each reaches half a millimetre into the floor.
+ */
+export function cradles(
+  wasm: ManifoldToplevel,
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+): Manifold {
+  const M = wasm.Manifold;
+  const into = 0.5;
+  const b = cfg.pro_micro;
+  const j = cfg.trrs;
+  const c = b.clearance_mm;
+  const k = b.cradle;
+  // A block in a part's frame from below the floor (the part stands `standoff` over it) up to `top`.
+  const block = (standoff: number, x: number[], y: number[], top: number) =>
+    box(
+      M,
+      [x[1] - x[0], y[1] - y[0], top + standoff + into],
+      [(x[0] + x[1]) / 2, (y[0] + y[1]) / 2, (top - standoff - into) / 2],
+    );
+  const [bx, by, bz] = b.board_mm;
+  const hx = bx / 2;
+  const hy = by / 2;
+  const w = k.wall_mm;
+  const board = M.union([
+    block(
+      b.standoff_mm,
+      [-hx + k.pedestal_in_mm[0], hx - k.pedestal_in_mm[1]],
+      [-k.pedestal_width_mm / 2, k.pedestal_width_mm / 2],
+      0,
+    ),
+    ...[-1, 1].map((s) =>
+      block(
+        b.standoff_mm,
+        [-hx + k.guide_in_mm, hx + c + w],
+        s < 0 ? [-hy - c - w, -hy - c] : [hy + c, hy + c + w],
+        bz + k.above_mm,
+      ),
+    ),
+    block(b.standoff_mm, [hx + c, hx + c + w], [-hy - c - w, hy + c + w], bz + k.above_mm),
+  ]);
+  const [jx, jy, jz] = j.body_mm;
+  const jc = j.clearance_mm;
+  const jack = M.union([
+    block(j.standoff_mm, [-jx / 2, jx / 2], [-jy / 2, jy / 2], 0),
+    ...[-1, 1].map((s) =>
+      block(
+        j.standoff_mm,
+        [-jx / 2, jx / 2 + jc + w],
+        s < 0 ? [-jy / 2 - jc - w, -jy / 2 - jc] : [jy / 2 + jc, jy / 2 + jc + w],
+        jz * k.jack_walls,
+      ),
+    ),
+    block(
+      j.standoff_mm,
+      [jx / 2 + jc, jx / 2 + jc + w],
+      [-jy / 2 - jc - w, jy / 2 + jc + w],
+      jz * k.jack_walls,
+    ),
+  ]);
+  return M.union([place(board, frames.pro_micro), place(jack, frames.trrs)]);
+}
+
+/**
+ * The jack's link wires (trrs.wires), in the order listed: each from its Pro
+ * Micro pin straight up to a level, across to over its lug and down onto it.
+ * The lowest level is linkOver above the board's parts or the jack's top,
+ * whichever is higher, the next linkStep above it, and so on; each wire takes
+ * the lowest that keeps it out of those before, so they stay under the loom.
+ * On a pin a feed also lands on (`fed`), the link wire's end is holeShare
+ * along the pin row toward the port, so the two sit side by side in the hole.
+ */
+export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set<number>): Wire[] {
+  const b = cfg.pro_micro;
+  const w = cfg.wiring;
+  const f = frames.pro_micro;
+  const toPort = point(f, [-WIRING.holeShare, 0, 0]).map((x, i) => x - f.elements[12 + i]);
+  const over = Math.max(
+    point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2],
+    point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2],
+  );
+  const placed: ReturnType<typeof tubeOf>[] = [];
+  return cfg.trrs.wires.map((x) => {
+    const power = x.name === 'VCC' || x.name === 'GND';
+    const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
+    const at = point(f, pinAt(cfg, x.pin));
+    const from: V3 = fed.has(x.pin)
+      ? [at[0] + toPort[0], at[1] + toPort[1], at[2] + toPort[2]]
+      : at;
+    const to = lugAt(cfg, frames, x.lug);
+    const run = (z: number): V3[] => [from, [from[0], from[1], z], [to[0], to[1], z], to];
+    let points = run(over + WIRING.linkOver);
+    for (let k = 0; k < cfg.trrs.wires.length; k++) {
+      points = run(over + WIRING.linkOver + k * WIRING.linkStep);
+      if (!placed.some((t) => touches(t, tubeOf(points, diameter)))) break;
+    }
+    placed.push(tubeOf(points, diameter));
+    return {
+      net: `TRRS ${x.name}`,
+      group: 'link',
+      from: `pin ${x.pin}`,
+      to: `TRRS ${x.lug}`,
+      points,
+      diameter,
+      length: length(points) + 2 * w.end_allowance_mm,
+      feed: false,
+    };
+  });
+}
