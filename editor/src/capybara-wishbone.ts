@@ -1,4 +1,4 @@
-// The Skeletyl's walls (skeletyl-walls.ts), forked rib legs: limbs
+// The Capybara's walls (capybara-walls.ts), forked rib legs: limbs
 // built as the ribs are, out of the outer side of a rib's webs (between
 // neighbouring keys, and those its ends carry on in) and down to the rail. A limb is the rib carried on
 // sideways: it leaves the web's outer edge at its middle, in the rib's plane
@@ -88,8 +88,8 @@
 // the sides' ends (lips, rounds, drops and webs carried on), of the faces
 // standing on the outline (drops), of the tie, and of the ribbon. They stand on the straightened outline: placed
 // first on the outline without them, each at least as far out as it runs
-// across its feet, they ask for their feet (skeletylReach in
-// skeletyl-walls.ts), which its hull takes in before it is
+// across its feet, they ask for their feet (capybaraReach in
+// capybara-walls.ts), which its hull takes in before it is
 // straightened, so a straight run passes along them. Placed again on that,
 // each comes down where the run meets its feet, its foot turned along the run
 // (up to TURN): a pillar twisting to it all the way down, a wishbone's trunk
@@ -104,8 +104,8 @@
 // 4.2, so they run on out to it.
 import type { Manifold } from 'manifold-3d';
 import { add, cross, dot, scale, sub, type V3 } from './geometry';
-import type { Pose, Span } from './skeletyl';
-import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from './skeletyl-walls';
+import type { Pose, Span } from './capybara';
+import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from './capybara-walls';
 
 /**
  * Sizes in mm: the width (along the side) of every limb and every part of

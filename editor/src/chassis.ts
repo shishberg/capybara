@@ -1,4 +1,4 @@
-// Chassis: the open Skeletyl-style frame (skeletyl.ts) on a flat base plate,
+// Chassis: the open Capybara frame (capybara.ts) on a flat base plate,
 // built from the key poses. Each tile is held by glue posts under its plate
 // (gluePosts): at each corner a round post stands in the tile's corner notch,
 // filling it (but for the fit) from the tile's underside up into the plate,
@@ -21,7 +21,7 @@
 //               notch, and a leg, with a shelf over the tile's top edge, along
 //               each edge facing along the rib;
 //  rib          a run of keys along one key axis: each finger column, and each
-//               thumb row (skeletyl.ts).
+//               thumb row (capybara.ts).
 //
 // Coordinates: "key coordinates" are a key's own frame, with the origin at the
 // plate top's centre, x and y across the plate and z along its normal (up is
@@ -40,7 +40,7 @@ import {
 import { clipBox, seatSettings } from './seats';
 import { plateHalfWidths } from './plates';
 import { freeAllBut, keycapSolid, place, slab } from './manifold-util';
-import { ribAxes, skeletyl, SIZES as RIB } from './skeletyl';
+import { ribAxes, capybara, SIZES as RIB } from './capybara';
 import { landingBox, wiring, type Wiring } from './wiring';
 import { cradles, mouths, plugWays } from './wiring/pro-micro';
 
@@ -102,7 +102,7 @@ export const SIZES = {
   /**
    * A leg whose outer face stands within postFill of the frame (or another
    * key's posts) beside it below the shelf, a slit too narrow to print
-   * cleanly (as the Skeletyl fuses drops closer than fuseGap), is grown out
+   * cleanly (as the Capybara fuses drops closer than fuseGap), is grown out
    * into it, postInto past where it is nearest.
    */
   postFill: 1.5,
@@ -121,7 +121,7 @@ export const SIZES = {
    */
   postEdgeIn: 0.15,
   /**
-   * On the Skeletyl, the underside over the legs (the plate's, and past its
+   * On the Capybara, the underside over the legs (the plate's, and past its
    * edge the web's to the next key or the round of the rib's end) is sampled
    * about this far apart, along the rib and across it, for the legs' tops to
    * follow it glueInto up into it.
@@ -141,7 +141,7 @@ export const SIZES = {
   /** The ribbon's notch (and the plugs' ways) reach this far out from the landing. */
   notchLength: 40,
   /**
-   * The Skeletyl's base screws (screwSpots): one at each corner of the outline
+   * The Capybara's base screws (screwSpots): one at each corner of the outline
    * turning out by at least screwCorner degrees, sharpest first, skipping any
    * within screwApart (along the outline) of one already taken; then any run
    * between two longer than screwGap is split evenly so none is.
@@ -163,7 +163,7 @@ export const SIZES = {
   screwPilot: 1.7,
   screwClear: 2.3,
   screwHead: 4,
-  /** The Skeletyl's glue posts stop this far over its base plate, so none hangs just over it, apart from the frame standing on it. */
+  /** The Capybara's glue posts stop this far over its base plate, so none hangs just over it, apart from the frame standing on it. */
   postClear: 2,
 } as const;
 
@@ -830,7 +830,7 @@ export function buildChassis(
   const M = wasm.Manifold;
   const CS = wasm.CrossSection;
   const keyNames = Object.keys(frames).filter(isKey);
-  const built = skeletyl(wasm, cfg, frames, wired.wires);
+  const built = capybara(wasm, cfg, frames, wired.wires);
   const held = freeAllBut(
     wasm,
     () => posts(wasm, cfg, frames, built.frame),
@@ -932,7 +932,7 @@ export function buildChassis(
 }
 
 /**
- * Where the Skeletyl's base screws go, in plan, round its outline
+ * Where the Capybara's base screws go, in plan, round its outline
  * (counter-clockwise): at its sharpest corners out, no two closer than
  * screwApart along it, with the long runs between split so none is longer
  * than screwGap. Each is moved in from the outline (along the corner's

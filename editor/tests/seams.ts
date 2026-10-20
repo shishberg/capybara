@@ -19,7 +19,7 @@
 // a rib's, the rail's), or square, a part standing on another's flat face.
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { componentFrames, isKey, type Config } from '../src/geometry';
-import { skeletyl, SIZES as RIB } from '../src/skeletyl';
+import { capybara, SIZES as RIB } from '../src/capybara';
 import {
   buildChassis,
   gluePosts,
@@ -456,18 +456,18 @@ function spots(found: { kind: SeamKind; p: V3; parts: string[]; worst: number }[
 }
 
 /**
- * The Skeletyl's seams for a config, on the solid the editor draws (the frame
+ * The Capybara's seams for a config, on the solid the editor draws (the frame
  * with its pads, the switches seated and their holes cut, as buildSolid makes
- * it), its parts the frame's (skeletyl().parts).
+ * it), its parts the frame's (capybara().parts).
  */
-export function skeletylSeams(
+export function capybaraSeams(
   wasm: ManifoldToplevel,
   cfg: Config,
   raw?: Parameters<typeof seams>[4],
 ) {
   const frames = componentFrames(cfg);
   const wired = wiring(cfg, frames);
-  const built = skeletyl(wasm, cfg, frames, wired.wires);
+  const built = capybara(wasm, cfg, frames, wired.wires);
   const chassis = buildChassis(wasm, cfg, frames, wired);
   const M = wasm.Manifold;
   const named = Object.entries(frames).filter(([n]) => isKey(n));
@@ -540,7 +540,7 @@ export function skeletylSeams(
     outline: built.outline,
     triangles: drawn.numTri(),
     frameTriangles: built.frame.numTri(),
-    /** The fused pairs of drops (PROTOTYPE, skeletyl().fused). */
+    /** The fused pairs of drops (PROTOTYPE, capybara().fused). */
     fused: built.fused,
   };
 }

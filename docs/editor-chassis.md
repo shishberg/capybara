@@ -10,7 +10,8 @@ paths are relative to `editor/`.
 
 ## Construction
 
-The chassis is the **Skeletyl** (`src/skeletyl.ts`): a rib along each finger column and each thumb row, and one rail
+The chassis is the **Capybara** frame (`src/capybara.ts`; first inspired by
+BastardKB's Skeletyl, and called that until 20 Oct 2026): a rib along each finger column and each thumb row, and one rail
 round the outline on the floor. A rib is one swept solid: the key plates as
 slabs, curved webs between them tangent to the plates, and a lip and round at
 each end, clear of the tile pocket and the switch. Each side of a round
@@ -133,7 +134,7 @@ rail, not through it. The chassis cuts a notch for it 40 mm back from the
 landing's out end, but that notch lies wholly outside the frame and cuts
 nothing. The landing block (x −57.5 to −47.5, z 2 to 10) reaches about 7.6 mm
 past the rail's outer edge (x −49.9 there) and overlaps the rail. The walls
-are **wishbones** (`src/skeletyl-walls.ts`, `src/skeletyl-wishbone.ts`): limbs
+are **wishbones** (`src/capybara-walls.ts`, `src/capybara-wishbone.ts`): limbs
 standing on the outer sides. Each leaves its rib
 at the middle of the web between two neighbouring keys, starting from the
 web's own outer edge as the rib's mesh has it, in the rib's section, 3.4 mm

@@ -248,7 +248,7 @@ test('a thicker skin builds the frame in one piece, the adapter mount reaching t
     /skin_mm/,
   );
 });
-test('the default (Swung in) Skeletyl builds one piece and passes every check', () => {
+test('the default (Swung in) Capybara builds one piece and passes every check', () => {
   const r = buildSolid(wasm, clone(defaults)).report,
     failing = (xs: { name: string; passed: boolean }[]) =>
       xs.filter((x) => !x.passed).map((x) => x.name);
@@ -278,7 +278,7 @@ const proMicro = () => {
   p.config.controller.style = 'pro_micro';
   return p;
 };
-test('the Skeletyl on a Pro Micro builds one piece and passes every check', () => {
+test('the Capybara on a Pro Micro builds one piece and passes every check', () => {
   // As the default: the board, the jack and both plugs clear the chassis,
   // and no wire runs into another or into the chassis.
   const r = buildSolid(wasm, proMicro()).report,

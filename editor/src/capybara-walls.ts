@@ -1,19 +1,19 @@
-// The Skeletyl's walls. skeletyl.ts describes each outer side of the frame
+// The Capybara's walls. capybara.ts describes each outer side of the frame
 // (the first and last finger columns' and the thumb rows' sides away from the
 // keys' middle) as a WallSide, plain data, and unions the walls built for it
-// (the wishbones, skeletyl-wishbone.ts, which reads nothing else of
-// skeletyl.ts) into the frame. The walls ask for the outline to take in their
-// feet (skeletylReach): the frame is then built again with the outline's hull
+// (the wishbones, capybara-wishbone.ts, which reads nothing else of
+// capybara.ts) into the frame. The walls ask for the outline to take in their
+// feet (capybaraReach): the frame is then built again with the outline's hull
 // taking them in, and the walls built on that. The kit also says where the
 // main ribbon runs out of the frame (WallKit.ribbon), for the walls to keep
 // clear of (on a Pro Micro, the USB-C and TRRS plugs, whose cables run out the
 // same way).
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import type { Config, V3 } from './geometry';
-import type { Pose, Span } from './skeletyl';
+import type { Pose, Span } from './capybara';
 import { componentFrames, controllerStyle, dot, sub } from './geometry';
 import { controllerParts, landingBox } from './wiring/adapter';
-import { wishbone, wishboneReach } from './skeletyl-wishbone';
+import { wishbone, wishboneReach } from './capybara-wishbone';
 
 /**
  * One point along an outer side, in order along the rib (all coordinates in
@@ -42,7 +42,7 @@ export interface WebEdge {
 /**
  * One outer side of the frame: everything a wall variant needs to build a
  * wall from the rib's outer edge down to the rail round the outline, clear of
- * the keys. The contract between skeletyl.ts and the variants.
+ * the keys. The contract between capybara.ts and the variants.
  */
 export interface WallSide {
   /** Which rib: the column's name (e.g. "inner", "pinky") or "thumb", with " #2" etc. if the run parted into several ribs. */
@@ -75,7 +75,7 @@ export interface WallSide {
 export interface WallKit {
   wasm: ManifoldToplevel;
   cfg: Config;
-  /** The ribs' own construction (skeletyl.ts), for walls built as ribs are. */
+  /** The ribs' own construction (capybara.ts), for walls built as ribs are. */
   rib: RibKit;
   /** Every side the walls are built on in this build, in order (so walls on one can keep clear of another's). */
   sides: WallSide[];
@@ -92,7 +92,7 @@ export interface WallKit {
 }
 
 /**
- * The ribs' construction, as skeletyl.ts has it: a rib's solid along spans
+ * The ribs' construction, as capybara.ts has it: a rib's solid along spans
  * (laneSolid), each a stretch of it swept between two poses (poseSpan; its
  * sides the poses' sides o·s) or straight between two stations (lineSpan; a
  * pose's stations are sidesOf it), and the ends' round's radius.
@@ -141,7 +141,7 @@ export const RIBBON_GAP = 2;
 
 /**
  * WallKit.ribbon and ribbonTop: the ribbon's segments (controllerParts, the port
- * panel where the Skeletyl's chassis puts it: at the landing's outer end), or
+ * panel where the Capybara's chassis puts it: at the landing's outer end), or
  * on a Pro Micro the plugs, each a box grown by RIBBON_GAP; a point is in the ribbon's way if the box is
  * round it or anywhere straight over it, and the ribbon's top over it is the
  * highest such box's top there.
@@ -197,7 +197,7 @@ function ribbonClear(cfg: Config) {
 }
 
 /** The walls for every side. Each solid reaches a little (0.2 mm or so) into the rib and the rail so the union joins them. */
-export function skeletylWalls(
+export function capybaraWalls(
   wasm: ManifoldToplevel,
   cfg: Config,
   sides: () => WallSide[],
@@ -208,7 +208,7 @@ export function skeletylWalls(
 }
 
 /** What the walls ask of the outline for every side. */
-export function skeletylReach(
+export function capybaraReach(
   wasm: ManifoldToplevel,
   cfg: Config,
   sides: () => WallSide[],

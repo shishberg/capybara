@@ -1,4 +1,4 @@
-// The Skeletyl-style chassis (chassis.style "skeletyl"): an open frame of ribs
+// The Capybara chassis (chassis.style "capybara"): an open frame of ribs
 // standing on a rail, built from the key poses.
 //
 // A rib is a run of keys along one key axis: each finger column, front to
@@ -53,7 +53,7 @@
 // (bridges).
 // Nothing is cut out: chassis.ts adds the glue posts and the base, and the
 // checks report anything that runs into the tiles or the keycaps.
-// Walls stand under the outer sides, built by skeletyl-walls.ts from a
+// Walls stand under the outer sides, built by capybara-walls.ts from a
 // WallSide per side.
 // The hanging ends are supported from the frame's own parts: first a thumb
 // row's end is carried on into a column's front as one rib, then each column
@@ -109,13 +109,13 @@ import {
 import { switchHole } from './seats';
 import { outline } from './hand/frame';
 import {
-  skeletylReach,
-  skeletylWalls,
+  capybaraReach,
+  capybaraWalls,
   type Reach,
   type RibKit,
   type WallPoint,
   type WallSide,
-} from './skeletyl-walls';
+} from './capybara-walls';
 import type { Wire } from './wiring';
 
 /** Construction sizes in mm. */
@@ -157,7 +157,7 @@ export const SIZES = {
   footSpeck: 0.01,
   /** Segments per full turn of a rounded offset (round what the outline keeps clear of, and the tie's). */
   cornerSegments: 72,
-  /** An end drops to the floor if the outline is at most this far out along the end (plan) from where its drop's outer face would meet the floor straight down, at that face's nearer corner; its drop bends out that far, in the end's own plane, so that corner meets the outline (kind in skeletyl). */
+  /** An end drops to the floor if the outline is at most this far out along the end (plan) from where its drop's outer face would meet the floor straight down, at that face's nearer corner; its drop bends out that far, in the end's own plane, so that corner meets the outline (kind in capybara). */
   reach: 12,
   /** A wall side has points this many steps across each plate. */
   plateSteps: 5,
@@ -1693,7 +1693,7 @@ function keySpace(cfg: Config, frames: Record<string, Matrix4>, pressed: string[
 }
 
 /**
- * Rib's outer side (s) as a WallSide for the walls (skeletyl-walls.ts
+ * Rib's outer side (s) as a WallSide for the walls (capybara-walls.ts
  * documents each field). Its points are the rib's side as built (ribSide),
  * outward is across the rib at each, and the rail is found straight out
  * along it. A joined end is flush to the walls, its web's side handed over
@@ -2407,7 +2407,7 @@ function fusions(d: Dims, all: Rib[], ends: End[][]): Fusion[] {
  * on it with (the frame is built twice: first to ask, on the outline
  * without).
  */
-export function skeletyl(
+export function capybara(
   wasm: ManifoldToplevel,
   cfg: Config,
   frames: Record<string, Matrix4>,
@@ -2591,7 +2591,7 @@ export function skeletyl(
       .toPolygons()
       .map((p) => p.map((q) => [q[0], q[1]] as [number, number]))
       .reduce((x, y) => (area2(y) > area2(x) ? y : x));
-  // The outer sides (skeletyl-walls.ts), and the frame again taking in what
+  // The outer sides (capybara-walls.ts), and the frame again taking in what
   // the walls ask of the outline, if they do.
   const wallSides = () =>
     all.flatMap((rib, i) =>
@@ -2617,8 +2617,8 @@ export function skeletyl(
       : [],
   };
   if (!reach.feet.length) {
-    const more = skeletylReach(wasm, cfg, wallSides, ribKit);
-    if (more.feet.length) return skeletyl(wasm, cfg, frames, wires, more);
+    const more = capybaraReach(wasm, cfg, wallSides, ribKit);
+    if (more.feet.length) return capybara(wasm, cfg, frames, wires, more);
   }
   const solids = all.map((rib, i) => ribSolid(wasm, d, rib, ends[i]));
   // Each drop keyed into the rail (or the tie) under it (footKey), by rib.
@@ -2659,8 +2659,8 @@ export function skeletyl(
       'NonZero',
     ).extrude(SIZES.railHeight);
   const rail = stood(railPlan);
-  // The walls under the outer sides (skeletyl-walls.ts).
-  const walls = skeletylWalls(wasm, cfg, wallSides, ribKit);
+  // The walls under the outer sides (capybara-walls.ts).
+  const walls = capybaraWalls(wasm, cfg, wallSides, ribKit);
   return {
     frame: wasm.Manifold.union([
       ...solids,

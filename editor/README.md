@@ -10,7 +10,7 @@ earlier ones (the layout before it, which some tests built, and the `?hand`
 prototype's other presets) were removed on 19 Oct 2026 and stay in git history:
 509dbd1 is the last commit that has them.
 
-The editor edits the key layout; the chassis, the Skeletyl-style frame, is
+The editor edits the key layout; the chassis, the Capybara frame, is
 generated from it. Earlier chassis variants are on the `legacy-variants` branch
 (see [design status](../docs/design-status.md)).
 
@@ -193,7 +193,7 @@ unchanged: save it before the change and diff it after. It builds the default
 project and its variants.
 
 Construction sizes that are not in the config are named in `SIZES` at the top of
-`src/chassis.ts` and `src/skeletyl.ts`, the plates' in `src/plates.ts`, the seats' in `src/seats.ts`, the wiring's in `WIRING` in
+`src/chassis.ts` and `src/capybara.ts`, the plates' in `src/plates.ts`, the seats' in `src/seats.ts`, the wiring's in `WIRING` in
 `src/wiring/common.ts`; the checks' sizes and limits
 are in `CHECKS` in `src/solid.ts`.
 
@@ -202,9 +202,9 @@ check fails.
 
 The default project is Swung in, extra thumb keys included, laid out by the hand
 model on the defaults before it; `npm run default-config` regenerates
-`src/default-config.json` (`tests/default-config.ts`). On the Skeletyl it passes
+`src/default-config.json` (`tests/default-config.ts`). On the Capybara it passes
 every check, and the tests pin that. Every test builds Swung in, or a deliberate change of it.
-The seam check (`tests/seams.ts`) finds where the Skeletyl's parts meet badly
+The seam check (`tests/seams.ts`) finds where the Capybara's parts meet badly
 on the mesh as the editor draws it (slivers, ledges, unintended creases, gaps,
 thin skins, swayed shading), with the parts that meet there; `tests/seams.test.ts`
 pins its count per junction class (none for the bridges between ribs: they must

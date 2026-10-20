@@ -11,9 +11,9 @@ import assert from 'node:assert/strict';
 import Module from 'manifold-3d';
 import type { CrossSection, Manifold } from 'manifold-3d';
 import { clone, componentFrames, defaults } from '../src/geometry';
-import { SIZES, skeletyl } from '../src/skeletyl';
+import { SIZES, capybara } from '../src/capybara';
 import { wiring } from '../src/wiring';
-import { skeletylSeams, type Seam } from './seams';
+import { capybaraSeams, type Seam } from './seams';
 
 const wasm = await Module();
 wasm.setup();
@@ -141,8 +141,8 @@ const FUSED_SLIVERS = 1;
 
 const p = clone(defaults);
 
-test('Skeletyl: the seams by junction class are no more than pinned', () => {
-  const r = skeletylSeams(wasm, p.config);
+test('Capybara: the seams by junction class are no more than pinned', () => {
+  const r = capybaraSeams(wasm, p.config);
   assert.equal(r.drawn.decompose().length, 1, 'one piece');
   assert.equal(
     new wasm.CrossSection([r.outline], 'NonZero').decompose().length,
@@ -179,9 +179,9 @@ test('Skeletyl: the seams by junction class are no more than pinned', () => {
   }
 });
 
-test("Skeletyl: every drop's outer face is flush with the rail over its whole height", () => {
+test("Capybara: every drop's outer face is flush with the rail over its whole height", () => {
   const frames = componentFrames(p.config);
-  const built = skeletyl(wasm, p.config, frames, wiring(p.config, frames).wires);
+  const built = capybara(wasm, p.config, frames, wiring(p.config, frames).wires);
   const parts = built.parts();
   const under: Manifold = wasm.Manifold.union(
     parts.filter((q) => q.name === 'rail' || q.name === 'tie').map((q) => q.solid),
