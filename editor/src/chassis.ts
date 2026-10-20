@@ -42,7 +42,8 @@ import { plateHalfWidths } from './plates';
 import { freeAllBut, keycapSolid, place, slab } from './manifold-util';
 import { ribAxes, capybara, SIZES as RIB } from './capybara';
 import { landingBox, wiring, type Wiring } from './wiring';
-import { collar, cradles, mouths, plugWays } from './wiring/pro-micro';
+import { cradles, mouths, plugWays } from './wiring/pro-micro';
+import { mouthCollar } from './wiring/trrs-mouth.prototype';
 
 export interface ChassisResult {
   /** The frame, with the plates and glue posts. */
@@ -863,7 +864,7 @@ export function buildChassis(
     // The plugs come in through the frame and over notches in the plate's edge.
     const ways = plugWays(wasm, cfg, frames, SIZES.notchLength, built.outline);
     const uncarved = framed
-      .add(collar(wasm, cfg, frames, built.outline, RIB.railHeight))
+      .add(mouthCollar(wasm, cfg, frames, built.outline, RIB.railHeight))
       .subtract(ways);
     const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
     const e = frames.pro_micro.elements;

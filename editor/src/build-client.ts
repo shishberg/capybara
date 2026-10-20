@@ -8,6 +8,7 @@ import { shell } from './viewer';
 import { setShell, updateHardware, updateWiring, visibility } from './scene-parts';
 import { setBadge, updateFailures, showReport } from './report-view';
 import { prototypeSwitcher } from './prototype-switcher';
+import { MOUTHS } from './wiring/trrs-mouth.prototype';
 
 let busy = false,
   pending = false,
@@ -32,6 +33,15 @@ const controller = import.meta.env.DEV
     })
   : undefined;
 controller?.show(true);
+// PROTOTYPE ?mouth=: a second bar (↓ ↑) cycling what holds the jack's mouth in
+// the wall; the chassis rebuilds.
+import.meta.env.DEV &&
+  prototypeSwitcher({
+    param: 'mouth',
+    options: MOUTHS,
+    onChange: requestBuild,
+    keys: { prev: ['ArrowDown', '↓'], next: ['ArrowUp', '↑'] },
+  }).show(true);
 // A safety net: a fresh worker takes over every 8 builds, in case a build leaves
 // geometry-engine memory behind that its own cleanup missed.
 export function startWorker() {
