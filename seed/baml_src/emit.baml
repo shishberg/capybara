@@ -11,11 +11,10 @@ function KICAD_FOOTPRINT_ROOT() -> string {
     "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
 }
 
-/// Footprints this project generates rather than borrows, relative to `v3/`.
-///
-/// Only one library lives here: KiCad ships no Kailh hotswap land pattern, so
-/// `footprints/gen_hotswap.py` builds one from ergogen's own `mx.js` (vendored
-/// in this repo) on top of KiCad's outlines.
+/// Footprints KiCad doesn't ship, relative to the staged project. The seed
+/// copies the repo's `footprints/rosebear.pretty` there: one Kailh hotswap land
+/// pattern, generated in Rosebear by `v3/footprints/gen_hotswap.py` from
+/// ergogen's `mx.js` on top of KiCad's outlines.
 function LOCAL_FOOTPRINT_ROOT() -> string {
     "footprints"
 }
@@ -557,4 +556,27 @@ function emit_board(
     b: Board,
 ) -> string throws baml.errors.InvalidArgument | baml.errors.Io | baml.errors.ParseError {
     emit_panel([b], b.id)
+}
+
+/// One board carrying every board's copper, for the emitter's net table.
+function merge_boards(bs: Board[]) -> Board {
+    let out = Board { id: "all", components: [], outline: [], cuts: [], tracks: [], vias: [], zones: [] };
+    for (let b in bs) {
+        for (let c in b.components) {
+            out.components.push(c);
+        }
+        for (let k in b.cuts) {
+            out.cuts.push(k);
+        }
+        for (let t in b.tracks) {
+            out.tracks.push(t);
+        }
+        for (let v in b.vias) {
+            out.vias.push(v);
+        }
+        for (let z in b.zones) {
+            out.zones.push(z);
+        }
+    }
+    out
 }

@@ -22,21 +22,6 @@ function FFC_CONTACT_MA() -> float {
     400.0
 }
 
-/// FFC is made in standard way-counts; round a derived width up to one that can
-/// actually be ordered.
-function STANDARD_FFC_WAYS() -> int[] {
-    [4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 30, 32, 34, 40, 45, 50]
-}
-
-function standard_ffc_way(n: int) -> int throws baml.errors.InvalidArgument {
-    STANDARD_FFC_WAYS().find((w) -> {
-        w >= n
-    })
-        ?? throw baml.errors.InvalidArgument {
-            message: `no standard FFC wide enough for ${n} conductors`
-        }
-}
-
 /// Conductors needed to carry `total_ma` without exceeding the contact rating.
 /// Applies to both the supply and its return path.
 function power_conductors(total_ma: float) -> int {
@@ -425,14 +410,4 @@ function find_ribbon(rs: Ribbon[], id: string) -> Ribbon throws baml.errors.Inva
         r.id == id
     })
         ?? throw baml.errors.InvalidArgument { message: `no ribbon '${id}'` }
-}
-
-function key_signal_names(r: Ribbon) -> string[] {
-    r.signals
-        .filter((s) -> {
-            s.kind == SignalKind.Key
-        })
-        .map((s) -> {
-            s.name
-        })
 }

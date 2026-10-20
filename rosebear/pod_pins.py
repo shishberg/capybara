@@ -60,7 +60,7 @@ def reserved(spec):
 
 
 def stage_seed(spec,text,replace_once):
-    """Rewrite the staged v3 pod.baml to take its header and costs from pod.json.
+    """Rewrite the staged seed pod.baml to take its header and costs from pod.json.
 
     Reserved GPIOs are renamed so the seed's is_gpio() never offers them.
     """

@@ -36,7 +36,7 @@ def net(board, name):
 
 def footprint(board, root, libid, ref, pos, nets, angle=0, back=False):
     lib, name = libid.split(":")
-    directory = (root / "v3/footprints/rosebear.pretty" if lib == "rosebear" else
+    directory = (root / "footprints/rosebear.pretty" if lib == "rosebear" else
                  root / "footprints/rosebear_v4.pretty" if lib == "rosebear_v4" else LIB / (lib + ".pretty"))
     fp = pcb.FootprintLoad(str(directory), name)
     if not fp:
@@ -246,7 +246,7 @@ def save(board, path, config, root):
     path.with_suffix('.kicad_pro').write_text(json.dumps(pro,indent=2)+"\n")
     (path.parent/'fp-lib-table').write_text('(fp_lib_table (version 7)'+''.join(
         ' (lib (name "'+lib+'")(type "KiCad")(uri "'+str(directory)+'")(options "")(descr "Rosebear footprints"))'
-        for lib,directory in [('rosebear',root/'v3/footprints/rosebear.pretty'),('rosebear_v4',root/'footprints/rosebear_v4.pretty')])+')\n')
+        for lib,directory in [('rosebear',root/'footprints/rosebear.pretty'),('rosebear_v4',root/'footprints/rosebear_v4.pretty')])+')\n')
 
 
 def drc(path):

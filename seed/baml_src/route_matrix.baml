@@ -386,11 +386,6 @@ function strip_key_y(s: Strip, i: int) -> float {
     0.0 - (s.key_ys.at(i) ?? 0.0)
 }
 
-/// KiCad y of the neck's centreline where it meets this strip.
-function strip_band_y(s: Strip) -> float {
-    strip_key_y(s, 0) + band_offset()
-}
-
 /// Which contact of `c` carries `net`, 1-based, or 0 if none does.
 /// Which contact on a connector carries `net`, or 0.
 ///
@@ -828,11 +823,6 @@ function FFC_BODY_BACK() -> float {
 
 function FFC_BODY_FRONT() -> float {
     1.91
-}
-
-/// Half the body length of a `ways`-way horizontal FFC connector.
-function ffc_body_half(ways: int) -> float {
-    (ways * 1.0) / 2.0 + 3.8
 }
 
 /// The climb up the shelf into the pod link.

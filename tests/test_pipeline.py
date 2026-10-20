@@ -55,7 +55,7 @@ class PipelineTests(unittest.TestCase):
         self.assertIn('pod: IO30 is reserved for rgb but carries COL_R_RING',pod_pins.check(spec,pod,['trackball']))
 
     def test_seed_staging_hides_reserved_pins_and_uses_pod_json_costs(self):
-        staged=pod_pins.stage_seed(pod_pins.load(),(ROOT/'v3/baml_src/pod.baml').read_text(),seed.replace_once)
+        staged=pod_pins.stage_seed(pod_pins.load(),(ROOT/'seed/baml_src/pod.baml').read_text(),seed.replace_once)
         self.assertIn('"RSV_IO32"',staged); self.assertIn('"RSV_IO30"',staged); self.assertNotIn('"IO32"',staged)
         self.assertIn('return 4;',staged)
 

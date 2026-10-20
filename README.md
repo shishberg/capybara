@@ -1,6 +1,6 @@
 # Capybara
 
-A split keyboard that grew out of [Rosebear](https://github.com/shishberg/rosebear), whose v4 it was. Earlier versions and their design notes stay in that repo. [`v3/`](v3/README.md) holds the Rosebear v3 sources the paused board pipeline still builds from.
+A split keyboard that grew out of [Rosebear](https://github.com/shishberg/rosebear), whose v4 it was. Earlier versions and their design notes stay in that repo. [`seed/`](seed/README.md) holds the part of Rosebear's v3 generator that the paused board pipeline still runs.
 
 [Design status](docs/design-status.md) lists the current decisions and open questions. It takes precedence over any other doc that disagrees with it.
 
@@ -148,7 +148,7 @@ Finger bridges remain unqualified; the [transverse coupon and beam screen](docs/
 ## Source map and attribution
 
 - `rosebear/mechanical.py`: chassis transform export and developed well parameters.
-- `rosebear/seed.py`, `tools/seed.baml`: isolated legacy geometry/templates adapter with cache invalidation.
+- `rosebear/seed.py`, `seed/`: isolated legacy geometry/templates adapter with cache invalidation.
 - `rosebear/pcb.py`: native footprint placement, solder pads, local routing, DRC.
 - `rosebear/routing.py`, `route_cache.py`: optional autorouter and deterministic copper replay.
 - `rosebear/assembly.py`, `mount.py`: transformed assembly, harness and prototype carrier.

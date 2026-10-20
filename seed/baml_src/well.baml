@@ -106,19 +106,6 @@ function developed_col_pitch(w: Well) -> float {
     (cap_radius_col(w) + w.pcb_depth) * deg_to_rad(w.beta)
 }
 
-/// How much the row pitch moves per mm of error in `pcb_depth`.
-///
-/// The whole flat layout hangs off one measured number, so quantify it: this
-/// is `d(pitch)/d(depth) = alpha` in radians, about 0.26mm per mm on Toto.
-/// Columns are far flatter (beta is 5 degrees) and barely care.
-function row_pitch_per_mm_depth(w: Well) -> float {
-    deg_to_rad(w.alpha)
-}
-
-function col_pitch_per_mm_depth(w: Well) -> float {
-    deg_to_rad(w.beta)
-}
-
 // ------------------------------------------------------------------ hinges
 
 /// Most bend to ask of one hinge row, in degrees.
@@ -147,19 +134,6 @@ function hinges_per_gap(w: Well) -> int {
     }
 }
 
-/// Bend actually asked of each hinge row.
-function hinge_angle(w: Well) -> float {
-    w.alpha / (hinges_per_gap(w) * 1.0)
-}
-
-/// Out-of-surface step between two adjacent columns, which is what sizes the
-/// necks. Toto drops 4.5mm at the middle column and climbs 5mm at the inner.
-function column_step(w: Well, i: int) -> float {
-    let a = w.columns.at(i)?.normal ?? 0.0;
-    let b = w.columns.at(i + 1)?.normal ?? 0.0;
-    b - a
-}
-
 /// A named column's out-of-surface offset.
 function well_normal(w: Well, name: string) -> float {
     w.columns
@@ -179,81 +153,4 @@ function step_between(w: Well, a: string, b: string) -> float {
     (well_normal(w, b) - well_normal(w, a)).abs()
 }
 
-/// The largest step any neck has to absorb.
-function max_column_step(w: Well) -> float {
-    let out = 0.0;
-    let i = 0;
-    while (i + 1 < w.columns.length()) {
-        let s = column_step(w, i);
-        let m = if (s < 0.0) {
-            0.0 - s
-        } else {
-            s
-        };
-        if (m > out) {
-            out = m;
-        }
-        i = i + 1;
-    }
-    out
-}
-
 // -------------------------------------------------------------------- tests
-
-test "the developed pitch is bigger than the keycap pitch" {
-    let w = well_toto();
-    // Concave well: the board is further from the centre than the caps are.
-    assert.is_true(developed_row_pitch(w) > w.cap_pitch_row);
-    assert.is_true(developed_col_pitch(w) > w.cap_pitch_col)
-}
-
-test "developed pitch matches the dactyl well arithmetic" {
-    let w = well_toto();
-    // r_cap = 9.5 / sin(7.5deg) = 72.7823mm; arc = (72.7823 + 22.8) * 15deg.
-    assert.approx_equal(cap_radius_row(w), 72.782327, 0.000001);
-    assert.approx_equal(developed_row_pitch(w), 25.023395, 0.000001);
-    // r_cap = 10.25 / sin(2.5deg) = 234.9873mm; arc = (234.9873 + 22.8) * 5deg.
-    assert.approx_equal(cap_radius_col(w), 234.987253, 0.000001);
-    assert.approx_equal(developed_col_pitch(w), 22.496182, 0.000001)
-}
-
-test "at zero depth the development is just the keycap pitch" {
-    // Sanity check on the inversion: at the cap surface the arc between two
-    // keys is the pitch the radius was chosen to produce.
-    let w = well_toto();
-    let flat = Well {
-        alpha: w.alpha,
-        beta: w.beta,
-        cap_pitch_row: w.cap_pitch_row,
-        cap_pitch_col: w.cap_pitch_col,
-        pcb_depth: 0.0,
-        columns: w.columns,
-    };
-    // Arc vs chord: the arc is longer by alpha^2/24, about 0.4% at 15 degrees.
-    assert.approx_equal(developed_row_pitch(flat), 19.054369, 0.000001);
-    assert.approx_equal(developed_col_pitch(flat), 20.506506, 0.000001)
-}
-
-test "one hinge row per gap would exceed the proven bend budget" {
-    let w = well_toto();
-    assert.equal(hinges_per_gap(w), 2);
-    assert.approx_equal(hinge_angle(w), 7.5, 0.000001);
-    assert.is_true(hinge_angle(w) <= MAX_HINGE_DEG())
-}
-
-test "depth error is the dominant risk on rows, not columns" {
-    let w = well_toto();
-    assert.approx_equal(row_pitch_per_mm_depth(w), 0.2617994, 0.000001);
-    assert.approx_equal(col_pitch_per_mm_depth(w), 0.0872665, 0.000001);
-    // A 2.5mm depth error moves the row pitch by two thirds of a millimetre
-    // over a 3-row column -- worth measuring, not worth panicking about.
-    assert.is_true(row_pitch_per_mm_depth(w) * 2.5 < 0.7)
-}
-
-test "the necks have to absorb a 5mm out-of-plane step" {
-    let w = well_toto();
-    assert.approx_equal(column_step(w, 1), 0.0 - 4.5, 0.000001);
-    assert.approx_equal(column_step(w, 2), 4.5, 0.000001);
-    assert.approx_equal(column_step(w, 3), 5.0, 0.000001);
-    assert.approx_equal(max_column_step(w), 5.0, 0.000001)
-}

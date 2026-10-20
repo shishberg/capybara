@@ -115,12 +115,6 @@ function NECK_SAMPLES() -> int {
     24
 }
 
-/// Conductors that have to get across one hinge row. Sets the ligament count,
-/// and so the size of every hinge cut.
-function flex_hinge_traces() -> int {
-    strip_hinge_traces(MATRIX_ROWS().length())
-}
-
 /// Conductors crossing the busiest neck. Sets every neck's width.
 ///
 /// One width for all of them rather than one per gap: the difference is a
@@ -322,25 +316,4 @@ function flex_zones(
         Zone { net: "GND", layer: "F.Cu", outline: poly },
         Zone { net: "GND", layer: "B.Cu", outline: poly },
     ]
-}
-
-/// Every board of the segmented variant.
-///
-/// Both shapes of board are cut into islands joined by serpentines; they differ
-/// in what an island is. A finger half is cut down its columns by `strips_of`,
-/// which the unrolled well makes square and regular. The cluster is cut across
-/// its one foldable seam by `thumb_islands`, in a frame of its own.
-function build_flex_boards(f: Features) -> Board[] throws baml.errors.InvalidArgument {
-    let mods = partition_modules(layout_keys(f));
-    let ribbons = build_ribbons(mods, f);
-    let boards: Board[] = [];
-    for (let m in mods) {
-        if (m.id.starts_with("thumb")) {
-            boards.push(thumb_flex_board(m, ribbons, f));
-        } else {
-            boards.push(flex_board(m, ribbons, f));
-        }
-    }
-    boards.push(build_pod_board(ribbons, f));
-    boards
 }

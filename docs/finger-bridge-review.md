@@ -23,7 +23,7 @@ The generator chooses the larger of a step-based length and a tilt-based length.
 
 ## Missing validation
 
-`v3/baml_src/flex.baml` uses `sqrt(3*t*d/strain)` for a guided cantilever offset and `t*angle/(2*strain)` for pure bending. Its 0.83% strain allowance is a historical back-calculation, not a qualified allowable for this board's laminate and copper. Applying either scalar formula to total serpentine length does not evaluate torsion, curved-beam behavior, root stress, combined end translation and rotation, or chassis interference. Taking the maximum of the two lengths also does not evaluate their combined loading.
+`seed/baml_src/flex.baml` uses `sqrt(3*t*d/strain)` for a guided cantilever offset and `t*angle/(2*strain)` for pure bending. Its 0.83% strain allowance is a historical back-calculation, not a qualified allowable for this board's laminate and copper. Applying either scalar formula to total serpentine length does not evaluate torsion, curved-beam behavior, root stress, combined end translation and rotation, or chassis interference. Taking the maximum of the two lengths also does not evaluate their combined loading.
 
 The current assembly preview places rigid islands in key frames; it does not solve the deformation of the connecting material. The bridge therefore has no demonstrated installed clearance or strain margin. A passing build must continue to mark manufacturing release false.
 

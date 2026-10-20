@@ -41,23 +41,6 @@ function layout_keys(f: Features) -> PlacedKey[] throws baml.errors.InvalidArgum
     }
 }
 
-function features_base() -> Features {
-    Features { per_key_leds: false, led_ma_per_key: 0.0, matrix: false, flex: false }
-}
-
-function features_leds() -> Features {
-    Features { per_key_leds: true, led_ma_per_key: 20.0, matrix: false, flex: false }
-}
-
-/// Direct wiring replaced by a scanned diode matrix.
-function features_matrix() -> Features {
-    Features { per_key_leds: false, led_ma_per_key: 0.0, matrix: true, flex: false }
-}
-
-function features_matrix_leds() -> Features {
-    Features { per_key_leds: true, led_ma_per_key: 20.0, matrix: true, flex: false }
-}
-
 /// The segmented board: matrix wiring on the developed dactyl layout.
 ///
 /// The matrix is not optional here. Direct wiring makes the neck traffic

@@ -5,7 +5,7 @@ Keep project facts in the READMEs and docs, not here. This file covers where to 
 ## Orienting yourself
 
 - Read `README.md` before answering design questions. Its build, parts and outputs tables say which code and docs are current, and `docs/design-status.md` lists the decisions.
-- `v3/` is not a design version. Its README says what it is and what still depends on it. Change it only to fix that pipeline.
+- `seed/` is the part of Rosebear v3's generator that the paused board pipeline runs, not a design version. Its README says what still depends on it. Change it only to fix that pipeline.
 - Earlier versions and their design notes are in the Rosebear repo (github.com/shishberg/rosebear). This repo was Rosebear's `v4/` until the split, so older docs and commit messages call it v4.
 - Docs can disagree with each other or describe paused work. When they conflict, check the code or the generated output before trusting either doc.
 - `output/` is generated and gitignored. Never edit it by hand. It is still useful to read: generated pinout and wiring files often answer hardware questions faster than the source does.

@@ -9,19 +9,11 @@
 //
 // Deterministic: same config in, byte-identical boards out.
 
-function OUT_DIR() -> string {
-    "../output_v3"
-}
-
-function KICAD_CLI() -> string {
-    "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
-}
-
 /// A project footprint table beside the emitted boards.
 ///
 /// KiCad resolves `rosebear:` against the tables it can see, and a bare
 /// .kicad_pcb sees only the one in its own directory. `up` is how far back to
-/// `v3/` from there.
+/// the repo root from there.
 function write_lib_table(outdir: string, up: string) -> void throws baml.errors.Io {
     baml.fs.write(
         `${outdir}/fp-lib-table`,
@@ -127,101 +119,4 @@ function write_project(path: string, id: string, f: Features) -> void throws bam
             .concat([`\t"meta": { "filename": "${id}.kicad_pro", "version": 3 }`, "}", ""])
             .join("\n"),
     )
-}
-
-function write_boards(
-    f: Features,
-    outdir: string,
-) -> string[] throws baml.errors.InvalidArgument | baml.errors.Io | baml.errors.ParseError {
-    baml.fs.mkdir(outdir, baml.fs.MkdirOptions { recursive: true });
-    let written: string[] = [];
-    for (let b in build_boards(f)) {
-        let path = `${outdir}/${b.id}.kicad_pcb`;
-        baml.fs.write(path, emit_board(b));
-        write_project(outdir, b.id, f);
-        log.info(
-            `wrote ${path} (${b.components.length()} components, ${b.outline.length()}-sided outline)`,
-        );
-        written.push(path);
-    }
-    written
-}
-
-/// Run KiCad's own DRC over an emitted board. This is the check that matters:
-/// it proves the file parses in KiCad and that the geometry is manufacturable.
-/// All five boards in one file, laid out as they sit on the desk.
-///
-/// Written beside the individual boards on every build so it cannot go stale.
-/// Not DRC'd: it is a view of five separate boards that happen to share a file,
-/// and the interesting faults in it -- an outline overlapping its neighbour, a
-/// connector pointing away from the board it feeds -- are ones DRC has no rule
-/// for and a person spots at a glance.
-function write_panel(
-    f: Features,
-    outdir: string,
-) -> string throws baml.errors.InvalidArgument | baml.errors.Io | baml.errors.ParseError {
-    let bs = panel_boards(build_boards(f));
-    let path = `${outdir}/all.kicad_pcb`;
-    baml.fs.write(path, emit_panel(bs, "all"));
-    write_project(outdir, "all", f);
-    log.info(`wrote ${path} (${bs.length()} boards)`);
-    path
-}
-
-function drc(path: string) -> string throws baml.errors.Io | baml.errors.Timeout {
-    let report = `${path}.drc.json`;
-    // --refill-zones computes the ground pours (we emit only their outlines,
-    // not their fill), and --save-board writes them back, so the board that
-    // ships has the copper DRC actually checked.
-    let r = baml.sys.exec(
-        KICAD_CLI(),
-        ["pcb", "drc", "--format", "json", "-o", report, "--refill-zones", "--save-board", path],
-        null,
-    );
-    let out = r.stdout.to_string() catch_all (e) {
-        _ => ""
-    };
-    if (r.ok()) {
-        out
-    } else {
-        `FAILED (exit ${r.exit_code})\n${out}`
-    }
-}
-
-/// The segmented variant, written beside the rigid boards.
-///
-///   baml run flex
-///
-/// Its own directory: it is a different board from the same source, not a
-/// revision of the one in `../output_v3`, and mixing the two would make it
-/// impossible to tell which `finger_l.kicad_pcb` a fab file came from.
-function FLEX_OUT_DIR() -> string {
-    "../output_v3_flex"
-}
-
-function flex(
-) -> string throws baml.errors.InvalidArgument | baml.errors.Io | baml.errors.ParseError | baml.errors.Timeout {
-    let f = features_flex();
-    let paths = write_boards(f, FLEX_OUT_DIR());
-    write_lib_table(FLEX_OUT_DIR(), "../v3/");
-    write_panel(f, FLEX_OUT_DIR());
-    let lines: string[] = [];
-    for (let p in paths) {
-        lines.push(`--- ${p}`);
-        lines.push(drc(p));
-    }
-    lines.join("\n")
-}
-
-function build(
-) -> string throws baml.errors.InvalidArgument | baml.errors.Io | baml.errors.ParseError | baml.errors.Timeout {
-    let paths = write_boards(features_leds(), OUT_DIR());
-    write_lib_table(OUT_DIR(), "../v3/");
-    write_panel(features_leds(), OUT_DIR());
-    let lines: string[] = [];
-    for (let p in paths) {
-        lines.push(`--- ${p}`);
-        lines.push(drc(p));
-    }
-    lines.join("\n")
 }

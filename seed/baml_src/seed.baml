@@ -20,7 +20,7 @@ function seed_export() -> SeedExport throws baml.errors.InvalidArgument | baml.e
     let mods = partition_modules(layout_keys(f));
     let rs = build_ribbons(mods, f);
     baml.fs.mkdir("seed", baml.fs.MkdirOptions { recursive: true });
-    write_lib_table("seed", "../../../../v3/");
+    write_lib_table("seed", "../../../");
     let fingers: SeedFinger[] = [];
     for (let m in mods) {
         if (m.id.starts_with("finger")) {
@@ -42,4 +42,3 @@ function seed_export() -> SeedExport throws baml.errors.InvalidArgument | baml.e
     write_project("seed", "pod", f);
     SeedExport { fingers: fingers, well: w, pinout: pod_pinout(f) }
 }
-

@@ -844,18 +844,6 @@ function button_pins(left: HeaderPin[], right: HeaderPin[], n: int) -> ButtonPin
     })
 }
 
-function side_pin(btns: ButtonPin[], side: float, nth: int) -> HeaderPin {
-    (
-        btns
-            .filter((b) -> {
-                b.side == side
-            })
-            .at(nth)
-            ?.pin
-    )
-        ?? no_pin()
-}
-
 /// Buttons reach their pins on the back.
 ///
 /// The front between the sockets is pour and the front outside them is the
@@ -1133,14 +1121,6 @@ function concession(name: string) -> string {
     }
 }
 
-function pinout() -> string throws baml.errors.InvalidArgument {
-    pod_pinout(features_base())
-}
-
-function pinout_leds() -> string throws baml.errors.InvalidArgument {
-    pod_pinout(features_leds())
-}
-
 /// Which button, if any, is wired to this pin. Buttons are numbered in the
 /// order `button_pins` returns them, which is the order they are placed.
 function button_net_for(btns: ButtonPin[], side: float, p: HeaderPin) -> string {
@@ -1168,4 +1148,13 @@ function pod_button_pins(
         spares.push(spare_pins(hdr, choose_pins(hdr, gpio.length())));
     }
     button_pins(spares.at(0) ?? [], spares.at(1) ?? [], 2)
+}
+
+/// The header a hand's ribbon lands on.
+function header_for(hand: string) -> HeaderPin[] {
+    if (hand == "l") {
+        HEADER_LEFT()
+    } else {
+        HEADER_RIGHT()
+    }
 }
