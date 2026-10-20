@@ -1,4 +1,5 @@
 import { clone, type Project } from './geometry';
+import { mouthConfig } from './wiring/trrs-mouth.prototype';
 
 /**
  * PROTOTYPE URL overrides, for trying a variant without editing the project:
@@ -13,5 +14,6 @@ export function prototypeOverrides(p: Project, search: string): Project {
     out = clone(p);
   if (q.get('controller')) out.config.controller.style = q.get('controller')!;
   if (q.get('mouth')) (out.config.trrs as { mouth?: string }).mouth = q.get('mouth')!;
+  mouthConfig(out.config);
   return out;
 }

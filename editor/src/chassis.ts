@@ -864,7 +864,7 @@ export function buildChassis(
     // The plugs come in through the frame and over notches in the plate's edge.
     const ways = plugWays(wasm, cfg, frames, SIZES.notchLength, built.outline);
     const uncarved = framed
-      .add(mouthCollar(wasm, cfg, frames, built.outline, RIB.railHeight))
+      .add(mouthCollar(wasm, cfg, frames, built.outline, RIB.railHeight, framed))
       .subtract(ways);
     const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
     const e = frames.pro_micro.elements;
