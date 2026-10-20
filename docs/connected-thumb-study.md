@@ -52,12 +52,6 @@ Assuming the existing matrix and addressable RGB approach, one terminal thumb cl
 
 That is **seven conductors at the cluster boundary**, or eight with a returning LED data signal. Inside the cluster, the PCB carries LED power, ground and the data chain; there are no individual wire jumpers between keys. LED voltage, current budget, copper widths and the source of LED data must be restored consistently on the finger/pod design as well. The current v4 generated PCBs remain LED-free.
 
-## Trackball correction found during this assessment
-
-The prior trackball offset `[0, -28, 7]` in the home thumb's frame moved it along the thumb row. Its carrier intersected the far key's conservative keycap envelope, despite passing the PCB-only check.
-
-The configuration now uses `[28, 0, 7]`, moving the carrier to the side. A new regression check screens the carrier against all right-side keycaps using 18 × 18 mm bounding boxes from plate top to configured cap height. It rejects the old position and accepts the revised position. This is still a conservative-envelope check, not validation against actual cap meshes or the complete chassis. The support arm was updated to meet the carrier edge facing the anchor plate. Outboard thumb bridges on negative local x are the starting option, opposite the revised trackball placement.
-
 ## Reproduce and inspect
 
 ```sh

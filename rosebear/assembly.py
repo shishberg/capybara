@@ -120,8 +120,6 @@ def build(chassis,config,geometry,boards,out,thumb_geometries=None):
                 wire(result,'finger_'+hand,'W1/1','thumb_'+hand+'_near','W2/1',config)
                 wire(result,'thumb_'+hand+'_near','W2/1','thumb_'+hand+'_home','W2/1',config)
                 wire(result,'thumb_'+hand+'_home','W2/1','thumb_'+hand+'_far','W2/1',config)
-    from .mount import integrate
-    integrate(result,solids,config,out,chassis)
     # Test independently rotated bodies, including thumbs against finger islands.
     overlaps=[]
     for a,b in itertools.combinations(solids,2):
@@ -148,7 +146,7 @@ def build(chassis,config,geometry,boards,out,thumb_geometries=None):
     if 'flat_thumb' in chassis:
         f=result['modules']['thumb_r']['frame']
         m=[[f['axes'][j][i] for j in range(3)]+[f['origin'][i]] for i in range(3)]+[[0,0,0,1]]
-        (out/'chassis-right.scad').write_text('// New thumb fit assembly, not a complete chassis. The old case is only a reference.\nuse <assembly.scad>\nuse <trackball-carrier.scad>\npcb_islands(); assembled_carrier();\nmultmatrix('+json.dumps(m)+') {\n import("mechanical/flat-thumb/thumb-pcb-support-ring.stl");\n translate([0,0,3.5]) import("mechanical/flat-thumb/thumb-switch-plate.stl");\n}\n')
+        (out/'chassis-right.scad').write_text('// New thumb fit assembly, not a complete chassis. The old case is only a reference.\nuse <assembly.scad>\npcb_islands();\nmultmatrix('+json.dumps(m)+') {\n import("mechanical/flat-thumb/thumb-pcb-support-ring.stl");\n translate([0,0,3.5]) import("mechanical/flat-thumb/thumb-switch-plate.stl");\n}\n')
         result['required_chassis_changes']['thumb_seats']='Replace example thumb seats with the shared coplanar layout; no claim of old-case drop-in fit.'
 
     lines=['# Thumb wiring','', ('One four-conductor matrix harness per connected thumb cluster. No wires between thumb keys.' if thumb_geometries is not None or 'flat_thumb' in chassis else 'Four conductors leave each finger PCB: one row wire per thumb key and a shared column. Daisy-chain the column through W2 on all three tiles. Use a continuous stripped/tinned section or two fine conductors at the near and home column pads, with chassis strain relief. Each rigid tile has its own socket and diode.'),'',
@@ -157,11 +155,6 @@ def build(chassis,config,geometry,boards,out,thumb_geometries=None):
         lines.append('| '+w['from']+' | '+w['to']+' | '+w['net']+' | '+str(w['cut_length_mm'])+' mm |')
     lines+=['','Lengths are straight-line distance plus assembly slack; check the actual path through the case.',
             'Support the wire at the chassis before it reaches a solder pad. Do not strain a cut ligament.']
-    if 'trackball_wiring' in result:
-        lines += ['', '# Right trackball: direct pod harness', '', '| Pod pad | Trackball pad | Net | Module pin | GPIO |', '|---|---|---|---:|---:|']
-        for w in result['trackball_wiring']:
-            lines.append('| {pod_pad} | {trackball_pad} | {net} | {module_header_pin} | {gpio} |'.format(**w))
-        lines += ['', 'Use seven flexible wires. Measure the pod-to-module path in the assembled case; pod placement is not modeled.', 'Four direction pulse inputs plus a click switch, all active low. Calibrate direction mapping in firmware.']
     write_json(out/'assembly.json',result)
     (out/'wiring.md').write_text('\n'.join(lines)+'\n')
     return result

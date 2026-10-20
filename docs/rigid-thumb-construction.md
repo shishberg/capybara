@@ -21,4 +21,4 @@ The row leads remain independent. Only the shared column is connected between ti
 
 The generated model maps each tile directly into its key's full 3D frame. No unfolding or flex-radius model is used. The 1.6 mm board and socket envelopes reach approximately 1.405 mm below the original base datum. The proposed case uses a 3 mm base extension, leaving approximately 1.595 mm to the new bottom datum, plus generated PCB/component relief pockets.
 
-The original case is not a verified drop-in fit. The source mesh is not watertight, so the surface screen is approximate. Print a fit prototype and check wall thickness, bottom-plate attachment, socket retention, wire paths and strain relief before making a final set. The small right trackball and its separate harness remain.
+The original case is not a verified drop-in fit. The source mesh is not watertight, so the surface screen is approximate. Print a fit prototype and check wall thickness, bottom-plate attachment, socket retention, wire paths and strain relief before making a final set.

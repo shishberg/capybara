@@ -1,7 +1,6 @@
 """Cross-board electrical contract, independent of track connectivity DRC."""
 from .pcb import pad_of
 from . import pod_pins
-from .trackball import WIRES as TRACKBALL_WIRES
 
 
 def validate(boards,spec=None):
@@ -49,12 +48,5 @@ def validate(boards,spec=None):
         if pads(name,'W4').get('1')!=col:errors.append(name+': column wire')
     if 'pod' in boards:
         # Built groups must sit on their pod.json pins; unbuilt groups' GPIOs stay free.
-        errors+=pod_pins.check(spec,boards['pod'],['trackball'] if 'trackball' in boards else [])
-    if 'pod' in boards and 'trackball' in boards:
-        for i,net in enumerate(TRACKBALL_WIRES,1):
-            if pads('pod','WT'+str(i)).get('1')!=net or pads('trackball','W'+str(i)).get('1')!=net:
-                errors.append('trackball harness mismatch '+net)
-        for i,direction in enumerate(['UP','DOWN','LEFT','RIGHT'],1):
-            if pads('trackball','U'+str(i))!={'1':'TB_3V3','2':'TB_'+direction,'3':'GND'}:
-                errors.append('DRV5033 pinout mismatch U'+str(i))
+        errors+=pod_pins.check(spec,boards['pod'],[])
     return errors

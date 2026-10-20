@@ -103,7 +103,7 @@ def svg(data,path):
         p,u=h['point'],h['direction'];parts.append(line(add(p,scale_vector(u,-38)),add(p,scale_vector(u,38)),'stroke="#b55e19" stroke-width="1.5" stroke-dasharray="5 5"'))
         for c in h['outboard_candidates']:
             x,y=map(float,pt(c['center']).split(','));parts.append(f'<circle cx="{x}" cy="{y}" r="13" fill="#dce9fa" stroke="#3762a0" stroke-width="2"/>')
-    for i,t in enumerate(['Green: current rigid key-area envelopes','Dashed: exact relative rotation axes','Blue: candidate localized bend positions','', 'Straight bridges would crease through key areas.', 'Moving bends outboard avoids those areas.', '', 'Not checked here:', '• connecting-arm routing and swept clearance', '• complete chassis, keycaps and trackball carrier', '• finite-radius unfolding and material qualification', '• LED supply sizing and electrical routing']):
+    for i,t in enumerate(['Green: current rigid key-area envelopes','Dashed: exact relative rotation axes','Blue: candidate localized bend positions','', 'Straight bridges would crease through key areas.', 'Moving bends outboard avoids those areas.', '', 'Not checked here:', '• connecting-arm routing and swept clearance', '• complete chassis and keycaps', '• finite-radius unfolding and material qualification', '• LED supply sizing and electrical routing']):
         parts.append(f'<text x="640" y="{140+25*i}" font-size="14">{t}</text>')
     parts.append('<text x="30" y="680" font-size="14">Adjacent plane changes: 4.90° and 9.51°. Thumb/finger separation is retained.</text></g></svg>')
     path.write_text('\n'.join(parts))

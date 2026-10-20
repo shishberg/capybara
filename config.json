@@ -6,19 +6,6 @@
   "wire_pad_drill_mm": 1.0,
   "wire_pad_diameter_mm": 2.0,
   "wire_slack_mm": 20.0,
-  "trackball": {
-    "enabled": true,
-    "hand": "r",
-    "anchor": "thumb_home",
-    "offset_mm": [
-      30,
-      0.0,
-      7.0
-    ],
-    "ball_diameter_mm": 5.5,
-    "sensor": "DRV5033FAQDBZR",
-    "supply_v": 3.3
-  },
   "router": {
     "version": "2.4.1",
     "passes": 30,

@@ -13,7 +13,7 @@ ROWS=['top','home','bottom']
 CHAIN=[f'matrix_{c}_{r}' for n,c in enumerate(COLS) for r in (ROWS if n%2==0 else ROWS[::-1])]+['thumb_near','thumb_home','thumb_far']
 # Approximate terminal zones, not a purchased-board pinout. Local switch frame.
 PADS={'R':(-7,-7),'C':(7,5),'DI':(-7,-3),'DO':(7,-3),'+':(-7,0),'G':(7,-7)}
-colors={'rows':'#137bba','columns':'#bd7510','data':'#973bad','power':'#d33b40','ground':'#3e505e','trackball':'#008577'}
+colors={'rows':'#137bba','columns':'#bd7510','data':'#973bad','power':'#d33b40','ground':'#3e505e'}
 S=6
 
 def world(k,x,y,z=0.1):
@@ -92,10 +92,6 @@ def make(view):
             add(group,ps,f'{group}: {a} to {b}')
         p=pad(CHAIN[0],terminal,view);q=bp(pin);lane=-41-off
         add(group,[q,(q[0],54+off),(lane,54+off),(lane,p[1]),p],f'{group} input ribbon {pin}')
-    # Bought breakout's connector location is unspecified: bundle terminates at an edge zone.
-    for j,pin in enumerate([14,15,16,17,18,19,20]):
-        q=bp(pin)
-        add('trackball',[q,(q[0],q[1]-2),(BX+20+j*.9,q[1]-2),(BX+20+j*.9,74+j*.9),(103+j*.9,74+j*.9),(103+j*.9,30),(94+j*.9,30)],f'Trackball ribbon {pin}')
     svg=['<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1230" viewBox="0 0 1400 1230">','<rect width="1400" height="1230" fill="#f7f9fc"/>',text(35,42,'RIGHT HALF — PHYSICAL HANDWIRING STUDY',27,weight='bold'),text(35,72,'Underside • actual key frames • '+('plan projection' if view=='plan' else 'tilted key-depth study; accessory envelopes held fixed')+' • dimensions in mm'),text(35,98,'Candidate harness paths; 19 mm purchased tiles and terminal zones are approximate. No chassis-fit claim.',15)]
     for i,(g,c) in enumerate(colors.items()):
         x=35+i*170
@@ -110,15 +106,13 @@ def make(view):
         p=xy(point(k,view=view));svg.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="10" fill="#f7f9fc" stroke="#6f9984"/>')
         label=str(CHAIN.index(k)+1)
         svg.append(text(p[0]-6,p[1]+5,label,13,weight='bold'))
-    # Proposed, same-scale breakout and trackball envelopes.
+    # Proposed, same-scale breakout envelope.
     svg.append(poly([(BX-18,BY-15.5),(BX+18,BY-15.5),(BX+18,BY+15.5),(BX-18,BY+15.5)],'#e5eaf4','#637ea4',2,'7 4'))
     svg.append(poly([(BX-14,BY+9),(BX+14,BY+9),(BX+14,BY+13),(BX-14,BY+13)],'#65717b'))
     svg.append(poly([(BX-12,BY+13),(BX+12,BY+13),(BX+12,BY+25),(BX-12,BY+25)],'#dfdce9','#9b8eae'))
     for i in range(1,25):
         p=xy(bp(i));svg.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="3.5" fill="#d1a746"/>')
     p=xy((BX,BY-9.5));svg.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="24" fill="#7a8495" stroke="#45506a"/>')
-    svg.append(poly([(83,0),(105,0),(105,28),(83,28)],'#e1f0ed','#008577',2,'7 4'))
-    p=xy((94,13));svg.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="24" fill="#aac4bf"/>')
     for group,col in colors.items():
         svg.append(f'<g data-layer="{group}">')
         for g,ps,name in routes:
@@ -128,7 +122,6 @@ def make(view):
         for n,(x,y) in PADS.items():
             p=xy(point(k,x,y,view));svg.append(f'<circle cx="{p[0]}" cy="{p[1]}" r="3" fill="#bf9340" stroke="#fff" stroke-width=".7"/>')
     svg.append(text(*xy((BX-17,BY+30)),'24-way ribbon → central pod',15))
-    svg.append(text(*xy((78,-4)),'22 × 28 trackball',14))
     svg.append(text(400,992,'36 × 33 breakout (proposed)',14))
     svg.append('<path d="M400,1008 H520 M400,1003 V1013 M520,1003 V1013" stroke="#213143"/>')
     svg.append(text(429,1034,'20 mm',14))
@@ -141,11 +134,10 @@ def make(view):
         svg.append(f'<circle cx="{x}" cy="{z}" r="14" fill="#fff" stroke="#c66a25" stroke-width="2"/>'+text(x-5,z+5,str(n),15,weight='bold'))
         svg.append(text(1025,y,f'{n}  {title}',19,weight='bold'))
         for j,line in enumerate(lines):svg.append(text(1025,y+27+j*23,line,15))
-    note(1,(-8,49),205,'Breakout fan-out',['12 key-harness leads, plus','7 trackball leads on right.','Solder with the board out;','clamp the loom before FFC.'])
+    note(1,(-8,49),205,'Breakout fan-out',['12 key-harness leads.','Solder with the board out;','clamp the loom before FFC.'])
     note(2,(55,31),365,'Thumb transition',['7 conductors enter thumbs:','3 rows, C5, data, 5V, GND.','Keep a loose service loop;','support it at both ends.'])
     note(3,(3,22),525,'Between columns',['Rows cross the column,','RGB and power runs here.','Insulated wires cross;','crossings are not splices.'])
-    note(4,(88,42),685,'Trackball corridor',['7 wires around thumb edge.','Keep clear of key travel','and thumb screw access.','Mount position is provisional.'])
-    svg += [text(40,1085,'BUILD ORDER   1 Fit/support tiles   2 Columns   3 Rows   4 LED data   5 Power pair   6 Breakout + trackball',18,weight='bold'),text(40,1120,'Wire paths show traffic, not cut lengths. Allow slack for height changes; do not pull the boards together with wires.',16),text(40,1147,'Socket = dark body; LED = cream body; gold dots = approximate terminal zones. Numbers 1–18 follow the RGB chain.',16),text(40,1174,'Left half: mirror the key positions and omit trackball wiring. Same bought PCBs require rechecking pad orientation after placement.',16),text(40,1201,'Wire strokes are exaggerated for readability. Reserve a supported wiring space below sockets; its depth still needs a physical fit check.',16),'</svg>']
+    svg += [text(40,1085,'BUILD ORDER   1 Fit/support tiles   2 Columns   3 Rows   4 LED data   5 Power pair   6 Breakout',18,weight='bold'),text(40,1120,'Wire paths show traffic, not cut lengths. Allow slack for height changes; do not pull the boards together with wires.',16),text(40,1147,'Socket = dark body; LED = cream body; gold dots = approximate terminal zones. Numbers 1–18 follow the RGB chain.',16),text(40,1174,'Left half: mirror the key positions. Same bought PCBs require rechecking pad orientation after placement.',16),text(40,1201,'Wire strokes are exaggerated for readability. Reserve a supported wiring space below sockets; its depth still needs a physical fit check.',16),'</svg>']
     return ''.join(svg)
 
 for view in ['plan','tilted']:
@@ -167,5 +159,5 @@ for(const [id,groups] of Object.entries({matrix:['rows','columns'],lighting:['da
 # Count circuit segments, rather than each bend of a wire.
 make('plan')
 counts={g:sum(r[0]==g for r in routes) for g in colors}
-assert counts=={'rows':18,'columns':18,'data':18,'power':18,'ground':18,'trackball':7},counts
+assert counts=={'rows':18,'columns':18,'data':18,'power':18,'ground':18},counts
 print('Wrote physical layout views and HTML;',counts)

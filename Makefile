@@ -12,15 +12,6 @@ benchmark:
 
 .PHONY: build test benchmark
 
-# Individual handwired key-tile chassis; does not run PCB routing.
-chassis:
-	$(KICAD_PY) tools/build_chassis.py --foundation
-
-chassis-test:
-	$(KICAD_PY) tools/build_chassis.py --foundation-test
-
-.PHONY: chassis chassis-test
-
 # Live browser chassis editor; KiCad stays in the offline pipeline.
 editor:
 	npm --prefix editor run dev -- --port 5177 --strictPort

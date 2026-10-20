@@ -66,4 +66,19 @@ class ConnectedThumbGeometry(unittest.TestCase):
             from rosebear.pcb import pad_of,net
             pad_of(diode,1).SetNet(net(board,'WRONG_ROW'))
             self.assertIn('diode pinout near',thumb_checks.validate(board,g))
+    def test_route_cache_rejects_moved_placement_and_rule_change(self):
+        import copy,tempfile
+        from rosebear import thumb_pcb,route_cache
+        from rosebear.pcb import load_board,save,vec
+        cfg={**self.c,'rules':self.s['rules'],'pcb_thickness_mm':self.s['flex_thickness_mm']}
+        def board():
+            b=thumb_pcb.make(ROOT,thumb_geometry.build(self.ch,self.c,self.s,'r'))
+            with tempfile.TemporaryDirectory() as directory:
+                path=Path(directory)/'thumb.kicad_pcb';save(b,path,cfg,ROOT);return load_board(str(path))
+        cache=ROOT/'routes/thumb_r.json'
+        route_cache.replace(board(),cfg,cache)
+        moved=board();next(iter(moved.GetFootprints())).Move(vec(.1,0))
+        with self.assertRaisesRegex(ValueError,'placement/rules changed'):route_cache.replace(moved,cfg,cache)
+        changed=copy.deepcopy(cfg);changed['rules']['clearance_mm']+=.05
+        with self.assertRaisesRegex(ValueError,'placement/rules changed'):route_cache.replace(board(),changed,cache)
 if __name__=='__main__':unittest.main()

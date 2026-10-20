@@ -13,13 +13,13 @@ Each 1.6 mm FR4 board has three hotswap sockets, three SOD-123 diodes, and four 
 | W2 | W3 / F | Far, top matrix row |
 | W1 | W4 / C | Shared thumb column |
 
-Current defaults shift the cluster 5 mm away from the example finger well and position the custom trackball 30 mm sideways from home, to clear conservative envelopes. These are editable prototype choices. The example chassis is not a required final shape. The ICSH044A module is no longer planned; the pointing device is open (see [design status](design-status.md)).
+Current defaults shift the cluster 5 mm away from the example finger well, to clear conservative envelopes. These are editable prototype choices. The example chassis is not a required final shape.
 
 ## Outputs
 
 - `output/seeded/thumb_l.kicad_pcb`, `thumb_r.kicad_pcb`: current connected flat boards.
 - `output/fabrication/thumb_l/`, `thumb_r/`: per-hand Gerbers, drill files, BOM and layout.
-- `output/seeded/all.kicad_pcb`: six-board review overview: fingers, thumbs, pod, custom trackball.
+- `output/seeded/all.kicad_pcb`: five-board review overview: fingers, thumbs, pod.
 - `output/layout-chassis.json`: effective coplanar thumb switch frames used by the assembly.
 - `output/mechanical/flat-thumb/thumb-switch-plate.stl`: printable 1.5 mm switch clip plate with 14 mm openings.
 - `output/mechanical/flat-thumb/thumb-pcb-support-ring.stl`: printable alignment spacer, 3.5 mm high.

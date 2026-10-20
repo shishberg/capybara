@@ -9,7 +9,7 @@ def build(boards, path, config, root):
     copies=[]
     rows=[['finger_l','finger_r'],
           (['thumb_l','thumb_r'] if 'thumb_l' in boards else ['thumb_'+h+'_'+k for h in ['l','r'] for k in ['near','home','far']]),
-          ['pod','trackball']]
+          ['pod']]
     y=25
     for row in rows:
         x=20; height=0

@@ -12,7 +12,7 @@ from rosebear.job_guard import guard_entry
 guard_entry(Path(__file__).resolve().parents[1],__file__)
 import pcbnew as pcb
 import wx
-from rosebear import mechanical, pod_pins, seed, routing, assembly, trackball, route_cache, validate, overview, thumb_geometry, thumb_pcb, thumb_router, thumb_finish, thumb_checks, thumb_artifacts, thumb_mechanical, finger_artifacts, rigid_thumb, flat_thumb
+from rosebear import mechanical, pod_pins, seed, routing, assembly, route_cache, validate, overview, thumb_geometry, thumb_pcb, thumb_router, thumb_finish, thumb_checks, thumb_artifacts, thumb_mechanical, finger_artifacts, rigid_thumb, flat_thumb
 from rosebear.pcb import load_board, finger, thumb, save, drc, metrics
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -27,7 +27,7 @@ def main():
     parser.add_argument('--place-only',action='store_true')
     parser.add_argument('--no-router',action='store_true')
     parser.add_argument('--router',choices=['template','freerouting'],default='template')
-    parser.add_argument('--board',default='all',choices=['all','finger_l','finger_r','thumbs','pod','trackball']+['thumb_l','thumb_r'])
+    parser.add_argument('--board',default='all',choices=['all','finger_l','finger_r','thumbs','pod']+['thumb_l','thumb_r'])
     parser.add_argument('--mode',choices=['seeded','fresh'],default='seeded')
     args=parser.parse_args(); out=args.out.resolve(); out.mkdir(parents=True,exist_ok=True)
     if args.board=='all':mechanical.write_json(out/'build-status.json',{'status':'build in progress or interrupted','manufacturing_release':False})
@@ -75,25 +75,12 @@ def main():
                 flat_thumb.export_prototype(flat_spec,shape,out/'mechanical/flat-thumb',hand)
     if args.board in ('all','pod'):
         b=load_board(str(seedpath/'pod.kicad_pcb')); path=candidates/'pod.kicad_pcb'
-        active=['trackball'] if config['trackball']['enabled'] else []
-        if active:
-            mechanical.write_json(out/'trackball-pinout.json',trackball.extend_pod(b,ROOT,pins))
-        rows=pod_pins.pin_map(pins,b,active)
+        rows=pod_pins.pin_map(pins,b,[])
         mechanical.write_json(out/'pod-pins.json',rows)
         (out/'pinout.txt').write_text(pod_pins.render_text(pins,rows)+'\n')
-        mechanical.write_json(out/'firmware-pinout.json',{**pod_pins.firmware(pins,rows),**({'trackball':trackball.FIRMWARE} if active else {})})
+        mechanical.write_json(out/'firmware-pinout.json',pod_pins.firmware(pins,rows))
         save(b,path,config,ROOT)
         if not args.place_only: report['pod']={**metrics(b),'drc':drc(path),'bend_errors':[]}
-    if config['trackball']['enabled'] and args.board in ('all','trackball'):
-        b=trackball.make(ROOT,config); path=candidates/'trackball.kicad_pcb'; save(b,path,config,ROOT)
-        if not args.place_only:
-            if args.router=='freerouting' and not args.no_router:
-                b=routing.route(path,ROOT,out,config)
-            else:
-                route_cache.apply(b,config,ROOT/'routes/trackball.json')
-                save(b,path,config,ROOT)
-            checks=drc(path); report['trackball']={**metrics(b),'drc':checks,'bend_errors':[]}
-            print('trackball: '+str(metrics(b))+' violations='+str(len(checks['violations']))+' unconnected='+str(len(checks['unconnected'])),flush=True)
     mechanical.write_json(candidates/('report-'+args.board+'.json'),report)
     if any(v['drc']['violations'] or v['drc']['unconnected'] or v['bend_errors'] for v in report.values()): return 1
     if args.board=='all' and not args.place_only:

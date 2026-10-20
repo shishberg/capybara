@@ -35,7 +35,7 @@ Decided: no capacitors on the hand side, bulk or per column. The pod keeps the
 ## Physical handwiring layout
 
 Open **handwiring-layout.html** for the physical underside layout with independent
-row, column, LED data, power, ground and trackball layers. The matrix-only and
+row, column, LED data, power and ground layers. The matrix-only and
 lighting-only buttons make it easier to trace individual paths. Static copies:
 **handwiring-layout-plan.svg** and **handwiring-layout-tilted.svg**.
 The earlier **handwiring.svg** remains the logical connectivity reference.
@@ -47,14 +47,13 @@ confirmed pinout. This is a harness planning study, not a cut-length list or
 chassis clearance validation. The tilted view changes the key projection to
 expose depth; accessory envelopes remain fixed for comparison.
 
-The 36 × 33 mm hand breakout is proposed in the palm-side space below the fingers;
-the 22 × 28 mm purchased trackball breakout is proposed beside the thumbs. Neither
-accessory mount has been incorporated into or checked against the chassis here.
+The 36 × 33 mm hand breakout is proposed in the palm-side space below the fingers.
+Its mount has not been incorporated into or checked against the chassis here.
 The ribbon exits toward the palm and the separately housed central pod.
 
 Main assembly concerns:
 
-- **Breakout:** 12 key-harness leads plus seven trackball leads on the right.
+- **Breakout:** 12 key-harness leads.
   Leave it removable for soldering, keep leads clear of the FFC latch, and
   provide a chassis loom clamp. The drawn fan-out needs final dressing around
   the connector, not wires stretched over it.
@@ -64,18 +63,14 @@ Main assembly concerns:
   line crossings in the drawing are not electrical junctions. Power terminals
   typically take both incoming and outgoing wires; confirm the bought pads can
   accommodate the chosen wire before cutting the whole loom.
-- **Trackball:** left from an earlier plan; v4 has no pointing device. Its
-  seven-wire loom follows the outer thumb edge, clear of the
-  thumb key bodies, then returns to the breakout. Connector/pad locations on the
-  bought trackball are still provisional.
 - **Access:** solder and test small subassemblies before closing the chassis.
   Provide wiring space below the sockets and independently support every tile;
   neither wire tension nor solder joints should hold keys in place.
 
 The drawing accounts for 90 wire segments per half (18 row, 18 column, 18 LED
-data, 18 power and 18 ground), plus seven right-hand trackball leads. Continuous
+data, 18 power and 18 ground). Continuous
 stripped buses can reduce the number of cut pieces. It shows one right half;
-the left uses mirrored key positions without trackball wiring. Purchased PCBs
+the left uses mirrored key positions. Purchased PCBs
 are identical rather than mirrored, so check their physical terminal orientation
 when placing the left set.
 
@@ -122,7 +117,7 @@ compare that only if the checkout supports that assembled quantity.
 
 Thus compare `key option + breakout batch + pod batch + assembly + parts +
 shipping + checkout tax`. The pod does not include the plug-in WT9932P4-TINY
-module, USB cable, FFC cables, switches, keycaps, chassis or purchased trackball.
+module, USB cable, FFC cables, switches, keycaps or chassis.
 No separate finger or thumb PCBs are required with individual key tiles.
 
 For these small quantities, compare hand-fitting the common boards against
@@ -231,19 +226,19 @@ from the connector names. This is a removable interconnect, not a hot-plug desig
 | 7, 8, 9, 10, 11 | C0 pinky, C1 ring, C2 middle, C3 index, C4 inner |
 | 12 | RX, the thumb row (was C5) |
 | 13 | GND |
-| 14–19 | Spare. They were the trackball's 3V3 and signals |
+| 14–19 | Spare |
 | 20 | GND |
 | 21, 22, 23 | +5 V LED power, connected in parallel |
 | 24 | GND |
 
 Breakout wire pads W1–W24 correspond directly to connector pins. Repeated
-power/ground pads are electrically common; connect the key bus and trackball
-ground to convenient labelled pads. Mounting tabs of the connector are grounded.
+power/ground pads are electrically common; connect the key bus ground to
+convenient labelled pads. Mounting tabs of the connector are grounded.
 
 ## Pod and power
 
-The pod keeps the main build's WT9932P4-TINY header assignments for matrix,
-buttons and trackball (see `output/pinout.txt`). The RGB data lines use the
+The pod keeps the main build's WT9932P4-TINY header assignments for matrix
+and buttons (see `output/pinout.txt`). The RGB data lines use the
 `rgb` group in [`pod.json`](../pod.json), driven via an SN74AHCT125D powered
 from the LED 5 V rail, with 330-ohm output resistors, input pulldowns and local
 decoupling. Unused buffer inputs are grounded and unused outputs disabled.

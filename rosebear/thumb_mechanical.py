@@ -80,12 +80,6 @@ def analyze(g,chassis,out,mesh_path,config):
                 hit=np.all((p>=np.array(lo)-.15)&(p<=np.array(hi)+.15),axis=1)
                 if np.any(hit):hardware.append([label,key['id'],name])
     checks.append({'name':'Thumb PCB/components vs neighbouring switch/socket envelopes, 0.15 mm margin','failures':hardware})
-    if g['hand']=='r' and config['trackball']['enabled']:
-        key=next(k for k in chassis['keys'] if k['id']==config['trackball']['anchor'])
-        o,R=frame(key,'r',chassis['config']['plate_thickness']-config['plate_top_to_pcb_mm']);o=o+R@np.array(config['trackball']['offset_mm'])
-        p=(merged-o)@R;hit=np.all((p>=np.array([-16,-13,-5])-.3)&(p<=np.array([16,13,7])+.3),axis=1)
-        checks.append({'name':'Thumb PCB/components vs trackball carrier envelope, 0.3 mm margin','failures':p[hit][:5].tolist()})
-        carrier=trimesh.creation.box(extents=[32,26,12]);M=np.eye(4);M[:3,:3]=R;M[:3,3]=o+R@np.array([0,0,1]);carrier.apply_transform(M);carrier.visual.face_colors=[115,82,176,90];scene.add_geometry(carrier,node_name='trackball_clearance_envelope')
     scene.export(str(out/'thumb-folded.glb'));trimesh.util.concatenate(cutters).export(str(out/'thumb-relief.stl'))
     # Exact finite-radius return to the key frames.
     errors={}

@@ -59,8 +59,8 @@ function placeColumns(c: Config, keys: Record<string, KeyTop[]>, splay: Record<s
     });
   });
 }
-// chassis.json turns the home key a quarter turn in its place; keep that in
-// the 1×3. In the 1.5u + 2×1u cluster the 1.5u lies along the row.
+// In the 1×3 the home key is turned a quarter turn in its place. In the
+// 1.5u + 2×1u cluster the 1.5u lies along the row.
 export const keyTurn = (name: string, two: boolean) =>
   name === 'home' && !two ? [0, 0, -90] : [0, 0, 0];
 const r2 = (v: number) => Math.round(v * 100) / 100;

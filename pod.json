@@ -15,15 +15,6 @@
   },
   "fixed": {
     "_comment": "Hand-chosen assignments, net -> pin. A pin is its silkscreen name, or HEADER:number where the name repeats (GND). GPIOs listed here are reserved: the seed never assigns them, whether or not the group is built.",
-    "trackball": {
-      "TB_3V3": "3V3",
-      "GND": "J_R:26",
-      "TB_UP": "IO32",
-      "TB_DOWN": "IO26",
-      "TB_LEFT": "IO27",
-      "TB_RIGHT": "IO28",
-      "TB_BTN": "IO29"
-    },
     "rgb": {
       "RGB_L_3V3": "IO30",
       "RGB_R_3V3": "IO31",

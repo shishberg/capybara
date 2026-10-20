@@ -14,18 +14,13 @@ The keyboard's key layout is **Swung in**, the layout the printed frame uses and
 
 Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Skeletyl-style frame for the right hand from the key layout, with the tiles glued to posts under the key plates and the ribbon leaving through a notch in the frame's rail. The [editor guide](editor/README.md) covers the layout parameters and handles, autosave, project files and the clearance checks, and [editor chassis and wiring](docs/editor-chassis.md) how the case is built and wired. The FFC adapter's size is provisional (see design status).
 
-KiCad/PCB generation stays offline. The Python chassis generator is retained as a numerical reference; editing no longer requires export/rebuild handoffs. It and its `chassis.json` describe the layout before Swung in.
-
-`output/chassis/` retains the previous patched-shell outputs as frozen references.
-The [old parameter guide](docs/parametric-chassis.md) describes that earlier implementation.
-
 ## Hand model
 
 [`hand/`](hand/README.md) holds a measured model of the hand, in the editor's layout axes: fingertip rest positions, thumb landing points, segment lengths and the resting pose. Swung in was laid out from it in the editor's dev-only `?hand` mode, which shows the hand on the keys and checks its reach and the board's height: see the [hand prototype](docs/hand-prototype.md).
 
 ## Paused: seeded flex and flat-thumb boards
 
-The rest of this README describes the `make build` pipeline: flex finger boards, flat rigid thumb PCBs, the LED-free pod and the custom trackball board. The key tiles replace these boards for the first prototype. The pipeline, its tests and its docs are kept as reference and still build.
+The rest of this README describes the `make build` pipeline: flex finger boards, flat rigid thumb PCBs and the LED-free pod. The key tiles replace these boards for the first prototype. The pipeline, its tests and its docs are kept as reference and still build.
 
 Each hand has one 1.6 mm rigid three-key thumb PCB, with fanned outer keys and four wire pads between the home and far keys. All thumb switches share one plane. `flat_thumb.json` controls spacing, fan angles and the whole cluster pose; both PCB and switch-seat geometry use it. See [flat thumb construction](docs/flat-thumb-construction.md) for wiring and printable fit parts.
 
@@ -51,15 +46,14 @@ Outputs:
 | Artifact | Purpose |
 |---|---|
 | `output/seeded/all.kicad_pcb` | Combined labeled overview, grouped by board; rebuilt after a successful full build |
-| `output/seeded/*.kicad_pcb` (excluding `all`) | Six native routed boards: two fingers, two flat thumbs, pod, trackball |
+| `output/seeded/*.kicad_pcb` (excluding `all`) | Five native routed boards: two fingers, two flat thumbs, pod |
 | `output/seeded/report-all.json` | Metrics, DRC results, explicitly accepted legacy warnings, bend checks |
-| `output/electrical-contract.json` | Cross-board wire assignments, diode polarity and sensor pinout checks |
+| `output/electrical-contract.json` | Cross-board wire assignments and diode polarity checks |
 | `output/assembly.json` | Individual key frames, nominal collision checks, wiring graph |
 | `output/mechanical/flat-thumb/` | Watertight switch-plate and PCB alignment spacer STL files |
 | `output/fabrication/thumb_l/`, `thumb_r/` | Flat cluster layout, BOM and Gerber/drill files |
 | `output/assembly.scad` | Rigid-island preview and PCB seating relief subtraction modules |
-| `output/trackball-carrier.scad` | Prototype two-piece carrier; select `part="base"` or `part="lid"` |
-| `output/chassis-right.scad` | New thumb fit assembly preview with trackball; not a finished chassis |
+| `output/chassis-right.scad` | New thumb fit assembly preview; not a finished chassis |
 | `output/wiring.md` | Assembly connections |
 | `output/pod-pins.json`, `pinout.txt`, `firmware-pinout.json` | Pod pin map read back from the built pod: every header pin, its net and why (routed, fixed, reserved, unused) |
 
@@ -73,14 +67,13 @@ Open `chassis-right.scad` in OpenSCAD to review the new thumb fit assembly. The 
 
 Use the deterministic template build as the accepted baseline. Copper and placement are reproducible; native KiCad UUIDs and serialization order can differ between builds, so compare geometry and reports rather than raw file hashes. The finger topology still uses selected legacy BAML routing primitives; v4 stages and modifies a copy, with guarded overrides. This is a migration to a replaceable router interface, not a claim that all legacy routing has been discarded.
 
-Finger boards use the matrix-only seed routing, checked against the native footprints and protected bend regions. Flat thumb clusters use deterministic routing with three vias each. The trackball replays its validated route snapshot; the pod uses the matrix seed plus its seven direct trackball connections. Freerouting is optional regeneration tooling.
+Finger boards use the matrix-only seed routing, checked against the native footprints and protected bend regions. Flat thumb clusters use deterministic routing with three vias each. The pod uses the matrix seed. Freerouting is optional regeneration tooling.
 
 ```sh
 # Optional, networked tool installation. Pinned hashes are checked.
 # This bundled runtime is macOS Apple Silicon; other platforms may set
 # FREEROUTING_JAVA to their Java 25 executable.
 python3 tools/setup_router.py
-./run --reuse-geometry --router freerouting --board trackball
 make benchmark  # experimental finger candidate; failure is not an accepted build
 ```
 
@@ -119,42 +112,24 @@ DRC refills and saves zones. Every unconnected item or unexpected violation fail
 
 ## Pod pin map
 
-[`pod.json`](pod.json) is the only hand-edited pin map. It holds the WT9932P4-TINY header order, what each costly pin gives up (SD domain, UART0, JTAG, strapping), and the hand-chosen `fixed` groups (`trackball`, `rgb`). The seed assigns matrix and button pins from what remains and never takes a fixed group's GPIO, whether or not that group is built. `rosebear/pod_pins.py` stages these into the legacy seed, checks the built pod against them, and writes the generated maps listed above.
+[`pod.json`](pod.json) is the only hand-edited pin map. It holds the WT9932P4-TINY header order, what each costly pin gives up (SD domain, UART0, JTAG, strapping), and the hand-chosen `fixed` group (`rgb`). The seed assigns matrix and button pins from what remains and never takes a fixed group's GPIO, whether or not that group is built. `rosebear/pod_pins.py` stages these into the legacy seed, checks the built pod against them, and writes the generated maps listed above.
 
 To move or add a hand-chosen pin, edit `pod.json` and rebuild. Don't edit pin numbers anywhere else.
 
-## Trackball parts and firmware
-
-| Part | Quantity | Notes |
-|---|---:|---|
-| Small BlackBerry-style trackball assembly | 1 | Nominal 5.5 mm ball; verify your actual assembly |
-| DRV5033FAQDBZR | 4 | SOT-23 Hall switches; 3.3 V supply |
-| SparkFun COM-00097 tactile switch | 1 | Center click; reference pad geometry |
-| 100 nF 0603 capacitor | 4 | One per Hall sensor |
-| 10 kΩ 0603 resistor | 5 | Pullups for four motion outputs and click |
-| Flexible insulated wire | 7 conductors | Direct trackball-to-pod harness |
-| M2 bolts/nuts | 4 sets | Carrier through-fasteners; length depends on the fitted housing height |
-
-The DRV5033 has **pin 1 supply, pin 2 output, pin 3 ground**; it is not pin-compatible with the A1104 assumption in the old branch. See the [TI datasheet](https://www.ti.com/lit/ds/symlink/drv5033.pdf). The trackball's pod pins are the `trackball` group in [`pod.json`](pod.json). These are four independent direction pulse inputs, **not quadrature pairs**. Debounce click and calibrate direction mapping in the actual mounted orientation. This repository emits the pin map; it does not implement or flash the separate firmware repository.
-
-The old `.claude/worktrees/trackball` work remains separate. The trackball added here belongs to **v4**, alongside the connected thumb-cluster design.
-
 ## Mechanical verification boundary
 
-The thumb switch frames are coplanar by construction. Conservative checks cover board bounds and the custom trackball against keycap envelopes. They do not establish fit in the old case. The generated plate and alignment spacer are physical fit coupons; final retention and a new complete chassis remain to be designed after the fit trial.
+The thumb switch frames are coplanar by construction. Conservative checks cover board bounds. They do not establish fit in the old case. The generated plate and alignment spacer are physical fit coupons; final retention and a new complete chassis remain to be designed after the fit trial.
 
-Finger bridges remain unqualified; the [transverse coupon and beam screen](docs/finger-bend-coupon.md) are a construction experiment, not a released replacement. The trackball carrier likewise requires actual-part retention and sensor tests.
+Finger bridges remain unqualified; the [transverse coupon and beam screen](docs/finger-bend-coupon.md) are a construction experiment, not a released replacement.
 
-## Source map and attribution
+## Source map
 
 - `rosebear/mechanical.py`: chassis transform export and developed well parameters.
 - `rosebear/seed.py`, `seed/`: isolated legacy geometry/templates adapter with cache invalidation.
 - `rosebear/pcb.py`: native footprint placement, solder pads, local routing, DRC.
 - `rosebear/routing.py`, `route_cache.py`: optional autorouter and deterministic copper replay.
-- `rosebear/assembly.py`, `mount.py`: transformed assembly, harness and prototype carrier.
+- `rosebear/assembly.py`: transformed assembly and harness.
 - `rosebear/validate.py`, `thumb_checks.py`: electrical contracts and protected-flex checks.
 - `thumb_geometry.py`, `thumb_mechanical.py`: finite-radius pattern and folded clearance model.
 - `flat_thumb.py`, `flat_thumb.json`: current shared thumb layout, routing and printable fit geometry.
 - `thumb_artifacts.py`, `finger_artifacts.py`: manufacturing review exports.
-
-Trackball package geometry and sensor placement derive from [SparkFun's Blackberry Trackballer Breakout](https://github.com/sparkfun/Blackberry_Trackballer_Breakout), licensed CC BY-SA 4.0. The reference files and attribution are in `reference/`. Derived trackball hardware, footprint files, routing artifact and generated trackball hardware are distributed under the same license. See [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
