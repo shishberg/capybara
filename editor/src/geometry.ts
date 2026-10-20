@@ -230,7 +230,8 @@ export const controllerStyle = (c: Config) =>
  * before. Schema 8 grips the USB-C receptacle in the rear wall and moves the
  * jack to the front wishbone, with pins to suit. Schema 9 moves the jack to
  * the back of the inner side, gripped by a collar on the rail, with pins to
- * suit.
+ * suit. Schema 10 moves it under the wishbone nearest the back, its opening
+ * filled round the barrel.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -330,6 +331,15 @@ function migrate(c: Record<string, any>) {
       if (gnd()?.pin === 4) gnd().pin = gndPin();
     }
     c.schema = 9;
+  }
+  if (!(c.schema >= 10)) {
+    // Schema 10: the jack comes in under the wishbone nearest the back, its
+    // opening filled round the barrel. A project with it where schema 9 put
+    // it (if not moved) takes the new place; its pins still wire it without
+    // crossings.
+    if (c.trrs && same(at(c.trrs), [[-42.72, 30.3], -4.5, 6]))
+      for (const f of fields) c.trrs[f] = clone(d.trrs[f]);
+    c.schema = 10;
   }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;

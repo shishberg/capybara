@@ -3,7 +3,7 @@
 // section, the board's USB-C port facing out of the hand's back end and the
 // jack's barrel out of its inner side. Their pins, the parts, the plugs, the
 // openings for the plugs, the jack's collar and the cradles that hold them.
-import type { Manifold, ManifoldToplevel } from 'manifold-3d';
+import type { CrossSection, Manifold, ManifoldToplevel, Mat4 } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
 import { box, place } from '../manifold-util';
@@ -215,13 +215,19 @@ export function plugWays(
 
 /** The collar's wall (mm) round the jack plug's way, outside its chamfer's widest. */
 const COLLAR = 1;
+/** How far (mm) the filled opening laps into the limbs round it, so that it shares no face with them. */
+const LAP = 0.05;
 
 /**
- * The jack's collar, in world coordinates: where the jack's barrel faces open
- * wall, a boss standing on the rail round it, flush with the rail's outer
- * face (`outline`, plan) and in to the jack's body, so that the wall grips the
- * barrel there too; arched over it, COLLAR outside the chamfer round the
- * plug's way. It reaches half a millimetre into the rail (`rail`, its top).
+ * The jack's collar, in world coordinates. The jack stands under a wishbone,
+ * which forks over its plug's way: the opening between its legs and the rail
+ * is filled, `wall` thick inside the outline (`outline`, plan; the rail's
+ * outer face) as the legs are, and round the barrel a boss as deep as the
+ * barrel, in to the jack's body, so that the wall grips the barrel there too;
+ * arched over it, COLLAR outside the chamfer round the plug's way, and down
+ * to half a millimetre into the rail (`rail`, its top). The opening is the
+ * frame's (`frame`), seen along the barrel; where no opening holds the
+ * mouth, the boss stands alone.
  */
 export function collar(
   wasm: ManifoldToplevel,
@@ -229,6 +235,8 @@ export function collar(
   frames: Record<string, Matrix4>,
   outline: [number, number][],
   rail: number,
+  frame: Manifold,
+  wall: number,
 ) {
   const M = wasm.Manifold;
   const j = cfg.trrs;
@@ -237,21 +245,70 @@ export function collar(
   // From the body's face out past the outer face (cut back to it below).
   const [x0, x1] = [m.trrs.x - 10, -j.body_mm[0] / 2];
   const bottom = rail - 0.5 - frames.trrs.elements[14];
-  const solid = place(
-    M.union([
-      M.cylinder(x1 - x0, r, r, 64)
-        .rotate([0, 90, 0])
-        .translate([x0, 0, m.trrs.z]),
-      box(M, [x1 - x0, 2 * r, m.trrs.z - bottom], [(x0 + x1) / 2, 0, (m.trrs.z + bottom) / 2]),
-    ]),
-    frames.trrs,
+  let boss = M.union([
+    M.cylinder(x1 - x0, r, r, 64)
+      .rotate([0, 90, 0])
+      .translate([x0, 0, m.trrs.z]),
+    box(M, [x1 - x0, 2 * r, m.trrs.z - bottom], [(x0 + x1) / 2, 0, (m.trrs.z + bottom) / 2]),
+  ]);
+  let fill: Manifold | undefined;
+  const hole = opening(wasm, frame, frames.trrs, [x0, x1], bottom, m.trrs.z);
+  if (hole) {
+    // The opening, seen as (-z, y) along the frame's x: stood back up through
+    // the wall, and down half a millimetre into the rail as the boss is.
+    fill = hole
+      .offset(LAP, 'Round')
+      .extrude(x1 - x0)
+      .translate([0, 0, x0])
+      .rotate([0, 90, 0])
+      .add(box(M, [x1 - x0, 2, 1], [(x0 + x1) / 2, 0, bottom + 0.5]));
+    boss = boss.intersect(fill);
+  }
+  const bb = place(fill ? fill.add(boss) : boss, frames.trrs).boundingBox();
+  const cs = new wasm.CrossSection([outline], 'NonZero');
+  const prism = (c: CrossSection) =>
+    c.extrude(bb.max[2] - bb.min[2] + 2).translate([0, 0, bb.min[2] - 1]);
+  const bossIn = place(boss, frames.trrs).intersect(prism(cs));
+  if (!fill) return bossIn;
+  return place(fill, frames.trrs)
+    .intersect(prism(cs.subtract(cs.offset(-wall, 'Miter'))))
+    .add(bossIn);
+}
+
+/**
+ * The frame's opening the jack's mouth (frame y 0, height z) looks out
+ * through: the frame between x0 and x1 (in the jack's frame: the wall's
+ * depth there) from `bottom` up 30 mm, seen along x, and the hole in it that
+ * holds the mouth, as a cross-section in (-z, y); or none.
+ */
+function opening(
+  wasm: ManifoldToplevel,
+  frame: Manifold,
+  f: Matrix4,
+  [x0, x1]: [number, number],
+  bottom: number,
+  z: number,
+) {
+  const local = frame
+    .transform(f.clone().invert().elements as Mat4)
+    .intersect(box(wasm.Manifold, [x1 - x0, 60, 30], [(x0 + x1) / 2, 0, bottom + 15]));
+  // A hole winds clockwise.
+  const area = (p: [number, number][]) =>
+    p.reduce((a, q, i) => a + q[0] * p[(i + 1) % p.length][1] - p[(i + 1) % p.length][0] * q[1], 0);
+  const holds = (p: [number, number][], [u, v]: [number, number]) => {
+    let inside = false;
+    for (let i = 0, k = p.length - 1; i < p.length; k = i++)
+      if (
+        p[i][1] > v !== p[k][1] > v &&
+        u < ((p[k][0] - p[i][0]) * (v - p[i][1])) / (p[k][1] - p[i][1]) + p[i][0]
+      )
+        inside = !inside;
+    return inside;
+  };
+  const hole = (local.rotate([0, -90, 0]).project().toPolygons() as [number, number][][]).find(
+    (p) => area(p) < 0 && holds(p, [-z, 0]),
   );
-  const bb = solid.boundingBox();
-  return solid.intersect(
-    new wasm.CrossSection([outline], 'NonZero')
-      .extrude(bb.max[2] - bb.min[2] + 2)
-      .translate([0, 0, bb.min[2] - 1]),
-  );
+  return hole && new wasm.CrossSection([[...hole].reverse()], 'Positive');
 }
 
 /**

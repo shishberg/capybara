@@ -362,8 +362,8 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
 });
 test("on a Pro Micro the walls stand as on the default, clear of the jack's plug, over the rail", () => {
   // The USB-C plug runs out the back, through the rail and the rib over it;
-  // the jack's comes in at the back of the inner side, where no wall stands
-  // (its collar grips the barrel there).
+  // the jack's comes in under the wishbone nearest the back, which forks
+  // over it (its collar fills the opening and grips the barrel there).
   const walls = (cfg: typeof defaults.config) => {
     const frames = componentFrames(cfg);
     return capybara(wasm, cfg, frames, wiring(cfg, frames).wires)
@@ -422,6 +422,23 @@ test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', (
   assert(usb > 1, `the receptacle gripped for ${usb} mm`);
   const jack = gripped(barrel, bl);
   assert(jack > 0.9 * bl, `the barrel gripped for ${jack} mm`);
+  // Over the plug, the wishbone's opening is filled: the wall is solid from
+  // past the chamfer up 5 mm, in the wall from the mouth out half a millimetre.
+  const r = cfg.trrs.plug_mm[0] / 2 + cfg.trrs.clearance_mm;
+  const over = place(
+    box(M, [0.5, 2, 5], [m.trrs.x - 0.25, 0, m.trrs.z + r + 1.5 + 2.5]),
+    frames.trrs,
+  );
+  const filled = body.intersect(over).volume() / over.volume();
+  assert(filled > 0.99, `the wall over the plug ${filled} filled`);
+});
+test('a project with the jack placed as before schema 10 takes its new place', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 9;
+  c.trrs.position_mm = [-42.72, 30.3];
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
 });
 test('a project with the jack placed as before schema 9 takes its new place and pins', () => {
   const p = clone(defaults);
