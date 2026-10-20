@@ -1,8 +1,8 @@
 // The Pro Micro variant's hardware (controller.style "pro_micro"): an
-// nRF52840 board in Pro Micro form factor and a TRRS jack, side by side on
-// the bottom section at the hand's inner end, their ports facing out through
-// it. Their pins, the parts, the plugs, the openings for the plugs and the
-// cradles that hold them.
+// nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
+// section, the board's USB-C port facing out of the hand's back end and the
+// jack's barrel out of its inner side. Their pins, the parts, the plugs, the
+// openings for the plugs and the cradles that hold them.
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
@@ -215,8 +215,11 @@ export function cradles(
  * The jack's link wires (trrs.wires), in the order listed: each from its Pro
  * Micro pin straight up to a level, across to over its lug and down onto it.
  * The lowest level is linkOver above the board's parts or the jack's top,
- * whichever is higher, the next linkStep above it, and so on; each wire takes
- * the lowest that keeps it out of those before, so they stay under the loom.
+ * whichever is higher, the next linkStep above it, and so on. Placed in
+ * turn, each wire takes the lowest that keeps it out of those before, so they
+ * stay as low as the board and the jack let them; in the first order (the
+ * listed one first) that leaves none touching, since a wire coming down onto
+ * its lug can pass through one placed lower.
  * On a pin a feed also lands on (`fed`), the link wire's end is holeShare
  * along the pin row toward the port, so the two sit side by side in the hole.
  */
@@ -229,8 +232,7 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
     point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2],
     point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2],
   );
-  const placed: ReturnType<typeof tubeOf>[] = [];
-  return cfg.trrs.wires.map((x) => {
+  const runs = cfg.trrs.wires.map((x) => {
     const power = x.name === 'VCC' || x.name === 'GND';
     const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
     const at = point(f, pinAt(cfg, x.pin));
@@ -239,21 +241,41 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
       : at;
     const to = lugAt(cfg, frames, x.lug);
     const run = (z: number): V3[] => [from, [from[0], from[1], z], [to[0], to[1], z], to];
-    let points = run(over + WIRING.linkOver);
-    for (let k = 0; k < cfg.trrs.wires.length; k++) {
-      points = run(over + WIRING.linkOver + k * WIRING.linkStep);
-      if (!placed.some((t) => touches(t, tubeOf(points, diameter)))) break;
-    }
-    placed.push(tubeOf(points, diameter));
-    return {
-      net: `TRRS ${x.name}`,
-      group: 'link',
-      from: `pin ${x.pin}`,
-      to: `TRRS ${x.lug}`,
-      points,
-      diameter,
-      length: length(points) + 2 * w.end_allowance_mm,
-      feed: false,
-    };
+    return { x, diameter, run };
   });
+  // Each wire's points, placed in `order`, and whether none touches another.
+  const layOut = (order: number[]) => {
+    const placed: ReturnType<typeof tubeOf>[] = [];
+    const out: V3[][] = [];
+    let clear = true;
+    for (const i of order) {
+      const { diameter, run } = runs[i];
+      let points = run(over + WIRING.linkOver);
+      let hit = true;
+      for (let k = 0; k < runs.length && hit; k++) {
+        points = run(over + WIRING.linkOver + k * WIRING.linkStep);
+        hit = placed.some((t) => touches(t, tubeOf(points, diameter)));
+      }
+      clear &&= !hit;
+      placed.push(tubeOf(points, diameter));
+      out[i] = points;
+    }
+    return { out, clear };
+  };
+  const orders = (left: number[]): number[][] =>
+    left.length
+      ? left.flatMap((i) => orders(left.filter((j) => j !== i)).map((o) => [i, ...o]))
+      : [[]];
+  const all = orders(runs.map((_, i) => i));
+  const { out } = all.map(layOut).find((l) => l.clear) ?? layOut(all[0]);
+  return runs.map(({ x, diameter }, i) => ({
+    net: `TRRS ${x.name}`,
+    group: 'link',
+    from: `pin ${x.pin}`,
+    to: `TRRS ${x.lug}`,
+    points: out[i],
+    diameter,
+    length: length(out[i]) + 2 * w.end_allowance_mm,
+    feed: false,
+  }));
 }

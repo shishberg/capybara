@@ -1,5 +1,5 @@
 {
-  "schema": 6,
+  "schema": 7,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "geometry": {
     "row_pitch_mm": 24.5,
@@ -332,14 +332,14 @@
     "outside_mm": 20
   },
   "controller": {
-    "description": "What the hand's wires run to. ffc: the FFC adapter (adapter), whose ribbon (ribbon) runs to the pod. pro_micro: an nRF52840 board in Pro Micro form factor (pro_micro) in each hand, wired straight to its pins, with a TRRS jack (trrs) beside it for the link between the hands; both stand on the bottom section, their USB-C and TRRS ports facing out of the hand's inner end.",
+    "description": "What the hand's wires run to. ffc: the FFC adapter (adapter), whose ribbon (ribbon) runs to the pod. pro_micro: an nRF52840 board in Pro Micro form factor (pro_micro) in each hand, wired straight to its pins, with a TRRS jack (trrs) beside it for the link between the hands; both stand on the bottom section, the USB-C port facing out of the hand's back end and the TRRS jack out of its inner side.",
     "style": "ffc"
   },
   "pro_micro": {
     "provisional": true,
     "description": "nice!nano v2 or a board with its pinout (nRF52840, Pro Micro form factor), components up, on a cradle on the bottom section. Its position is in world coordinates, like the adapter's: the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires.",
-    "position_mm": [-29.5, 9],
-    "rotation_deg": 0,
+    "position_mm": [-21, 17],
+    "rotation_deg": -90,
     "board_mm": [33.3, 18, 1.6],
     "standoff_mm": 2,
     "pin_pitch_mm": 2.54,
@@ -401,10 +401,10 @@
   },
   "trrs": {
     "provisional": true,
-    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, in a cradle on the bottom section beside the Pro Micro, its barrel facing out of the hand's inner end. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame; wires joins each to a Pro Micro pin.",
-    "position_mm": [-39.2, -6],
+    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side through the wishbone under the inner column's back web, its plug clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame; wires joins each to a Pro Micro pin.",
+    "position_mm": [-42.3, 14.4],
     "rotation_deg": 0,
-    "standoff_mm": 0,
+    "standoff_mm": 6,
     "body_mm": [12, 6, 5],
     "barrel_mm": [2, 5],
     "plug_mm": [7, 25],

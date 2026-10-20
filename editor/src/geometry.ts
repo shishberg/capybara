@@ -225,6 +225,9 @@ export const controllerStyle = (c: Config) =>
  * the base, 14 mm at the top, 11 mm high) and travel (3.5 mm), where a project
  * still has the earlier guesses. Schema 6 has the measured tile (17 mm, its
  * holes and edge pads), where a project still has the provisional one.
+ * Schema 7 turns the Pro Micro's USB-C port to the back and stands the jack
+ * up to come in through a wishbone, where a project still has them as placed
+ * before.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -273,6 +276,19 @@ function migrate(c: Record<string, any>) {
       }
     }
     c.schema = 6;
+  }
+  if (!(c.schema >= 7)) {
+    // Schema 7: the Pro Micro's USB-C port faces the back, and the jack, up
+    // on a pedestal, the inner side through a wishbone. A project with either
+    // where schema 6 put it (if not moved) takes the new place.
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    const old = { pro_micro: [[-29.5, 9], 0, 2], trrs: [[-39.2, -6], 0, 0] };
+    for (const [k, was] of Object.entries(old)) {
+      const p = c[k];
+      if (p && same([p.position_mm, p.rotation_deg, p.standoff_mm], was))
+        for (const f of ['position_mm', 'rotation_deg', 'standoff_mm']) p[f] = clone(d[k][f]);
+    }
+    c.schema = 7;
   }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;

@@ -1,10 +1,10 @@
 // What wires keep out of, and the test for a wire's segment against it.
 import type { Matrix4 } from 'three';
-import { point, tilePartCentre, type V3 } from '../geometry';
+import { controllerStyle, point, tilePartCentre, type V3 } from '../geometry';
 import { plateHalfWidths } from '../plates';
 import { WIRING, distance, type Env } from './common';
 
-/** A box in a key's frame that wires must keep out of. */
+/** A box in a key's frame (or the jack's) that wires must keep out of. */
 interface Obstacle {
   inverse: Matrix4;
   lo: V3;
@@ -17,7 +17,7 @@ interface Obstacle {
 }
 
 export interface Obstacles {
-  /** Each tile from its underside up, and its parts with their clearance. */
+  /** Each tile from its underside up, and its parts with their clearance; on a Pro Micro, the jack. */
   tiles: Obstacle[];
   /** Where a wire climbs between keys at different heights: the plates. */
   plates: Obstacle[];
@@ -33,21 +33,21 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
   const plateHalf = plateHalfWidths(cfg);
   const [hx, hy] = env.half;
   const c = tile.component_clearance_mm;
+  // A box (lo to hi) in frame m.
+  const boxIn = (m: Matrix4, lo: V3, hi: V3, list = tiles) => {
+    const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((i) =>
+      point(m, [i & 1 ? hi[0] : lo[0], i & 2 ? hi[1] : lo[1], i & 4 ? hi[2] : lo[2]]),
+    );
+    list.push({
+      inverse: m.clone().invert(),
+      lo,
+      hi,
+      wlo: [0, 1, 2].map((k) => Math.min(...corners.map((p) => p[k]))),
+      whi: [0, 1, 2].map((k) => Math.max(...corners.map((p) => p[k]))),
+    });
+  };
   for (const key of keys) {
-    const m = frames[key];
-    const inverse = m.clone().invert();
-    const box = (lo: V3, hi: V3, list = tiles) => {
-      const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((i) =>
-        point(m, [i & 1 ? hi[0] : lo[0], i & 2 ? hi[1] : lo[1], i & 4 ? hi[2] : lo[2]]),
-      );
-      list.push({
-        inverse,
-        lo,
-        hi,
-        wlo: [0, 1, 2].map((k) => Math.min(...corners.map((p) => p[k]))),
-        whi: [0, 1, 2].map((k) => Math.max(...corners.map((p) => p[k]))),
-      });
-    };
+    const box = (lo: V3, hi: V3, list = tiles) => boxIn(frames[key], lo, hi, list);
     box([-hx, -hy, padZ], [hx, hy, 0]);
     // Each plate.
     const pt = -cfg.chassis.plate_thickness_mm;
@@ -59,6 +59,12 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
         at.map((x, k) => x + p.size_mm[k] / 2 + c) as V3,
       );
     }
+  }
+  // On a Pro Micro the jack stands up into the loom (its plug comes in over
+  // the rail), so the feeds keep out of it too: its body and barrel.
+  if (controllerStyle(cfg) === 'pro_micro') {
+    const [jx, jy, jz] = cfg.trrs.body_mm;
+    boxIn(frames.trrs, [-jx / 2 - cfg.trrs.barrel_mm[0], -jy / 2, 0], [jx / 2, jy / 2, jz]);
   }
 
   // The obstacles in a grid of square cells in plan, each in every cell its

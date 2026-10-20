@@ -20,7 +20,9 @@ import { freeAfter } from '../src/manifold-util';
 import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
-import { lugAt, pinAt, pinOf } from '../src/wiring/pro-micro';
+import { WIRING } from '../src/wiring/common';
+import { lugAt, mouths, pinAt, pinOf, plugWays } from '../src/wiring/pro-micro';
+import { SIZES as CAPYBARA, capybara } from '../src/capybara';
 import { solidOf } from './helpers';
 
 const wasm = await Module();
@@ -311,21 +313,72 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
     assert(feeds.length > 0, net.name);
     for (const f of feeds) assert(near(f.points.at(-1)!, at) || near(f.points[0], at), net.name);
   }
-  // Each of the jack's wires runs from its pin to its lug, under the loom.
+  // Each of the jack's wires runs from its pin to its lug, no higher than
+  // its level over the jack's top (the jack stands up into the loom, so that
+  // its plug comes in over the rail).
   const links = w.wires.filter((x) => x.group === 'link');
   assert.equal(links.length, cfg.trrs.wires.length);
+  const top = point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2];
+  const highest = top + WIRING.linkOver + (links.length - 1) * WIRING.linkStep;
   for (const t of cfg.trrs.wires) {
     const l = links.find((x) => x.net === `TRRS ${t.name}`)!;
     assert(near(l.points[0], point(frames.pro_micro, pinAt(cfg, t.pin))), t.name);
     assert(near(l.points.at(-1)!, lugAt(cfg, frames, t.lug)), t.name);
-    assert(
-      Math.max(...l.points.map((p) => p[2])) < cfg.chassis.skin_mm + cfg.wiring.loom_height_mm,
-      t.name,
-    );
+    assert(Math.max(...l.points.map((p) => p[2])) <= highest + 1e-9, t.name);
   }
+  // The feeds keep out of the jack: none comes within its radius of the body.
+  const [jx, jy, jz] = cfg.trrs.body_mm;
+  const inv = frames.trrs.clone().invert();
+  for (const f of w.wires.filter((x) => x.feed))
+    for (let i = 1; i < f.points.length; i++)
+      for (let s = 0; s <= 1; s += 0.02) {
+        const q = new Vector3(...f.points[i - 1])
+          .lerp(new Vector3(...f.points[i]), s)
+          .applyMatrix4(inv);
+        const out = Math.hypot(
+          Math.max(0, Math.abs(q.x) - jx / 2),
+          Math.max(0, Math.abs(q.y) - jy / 2),
+          Math.max(0, q.z - jz, -q.z),
+        );
+        assert(out > f.diameter / 2, `${f.net} ${f.from} to ${f.to} into the jack`);
+      }
   assert.deepEqual(crossings(w.wires), []);
   // The wiring panel names each net's pin by its number and its GPIO.
   assert.equal(w.nets.find((n) => n.name === 'DATA')!.label, '5, P0.17');
+});
+test("on a Pro Micro the walls stand as on the default, the jack's plug in through one, over the rail", () => {
+  // The USB-C plug runs out the back, where no wall stands; the jack's comes in
+  // through the inner back web's wishbone, filled in round it.
+  const walls = (cfg: typeof defaults.config) => {
+    const frames = componentFrames(cfg);
+    return capybara(wasm, cfg, frames, wiring(cfg, frames).wires)
+      .parts()
+      .filter((x) => x.name.startsWith('wall '))
+      .map((x) => x.solid);
+  };
+  const cfg = proMicro().config;
+  const mine = walls(cfg);
+  assert.equal(mine.length, walls(defaults.config).length);
+  const frames = componentFrames(cfg);
+  const ways = plugWays(wasm, cfg, frames, CHASSIS.notchLength);
+  assert(
+    wasm.Manifold.union(mine).intersect(ways).volume() > 50,
+    'a wall filled in round the jack',
+  );
+  // The jack's plug way clears the rail's top.
+  const m = mouths(cfg).trrs;
+  const mouth = point(frames.trrs, [m.x, 0, m.z]);
+  const r = cfg.trrs.plug_mm[0] / 2 + cfg.trrs.clearance_mm;
+  assert(mouth[2] - r > CAPYBARA.railHeight, `${mouth[2] - r} over the rail`);
+});
+test('a project with the Pro Micro and jack placed as before schema 7 takes their new places', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 6;
+  Object.assign(c.pro_micro, { position_mm: [-29.5, 9], rotation_deg: 0 });
+  Object.assign(c.trrs, { position_mm: [-39.2, -6], standoff_mm: 0 });
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
 });
 test('a project saved before the Pro Micro variant loads on the FFC adapter', () => {
   const p = clone(defaults);

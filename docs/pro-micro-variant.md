@@ -4,8 +4,8 @@ A PROTOTYPE alternative to the pod: an nRF52840 board in Pro Micro form factor i
 
 ## Parts per hand
 
-- **Controller:** nice!nano v2, or a SuperMini nRF52840 (same edge pinout, runs ZMK's `nice_nano_v2` board). Components up, USB-C out of the hand's inner end, in a cradle on the bottom section. The modelled board (`pro_micro.board_mm`) is a 33.3 × 18 mm envelope that covers both; neither maker publishes the nice!nano's outline or USB-C overhang, so the board, port and parts sizes are provisional until measured.
-- **Jack:** PJ-320A, lugs up, beside the board in its own cradle, barrel out of the same end. PJ-320A is made by several vendors with different bodies (XKB's is 12.2 mm plus a 2 mm nose, 6.2 × 5 mm); measure the one bought and its lugs (`trrs.lugs_mm`).
+- **Controller:** nice!nano v2, or a SuperMini nRF52840 (same edge pinout, runs ZMK's `nice_nano_v2` board). Components up, USB-C out of the hand's back end, in a cradle on the bottom section. The modelled board (`pro_micro.board_mm`) is a 33.3 × 18 mm envelope that covers both; neither maker publishes the nice!nano's outline or USB-C overhang, so the board, port and parts sizes are provisional until measured.
+- **Jack:** PJ-320A, lugs up, in its own cradle on a pedestal between the board and the inner side, barrel out through the wishbone under the inner column's back web. The pedestal stands the plug clear over the rail, and the wishbone is filled in between its legs with the plug's hole cut through it, so the rail is whole and the wall fits round the plug. PJ-320A is made by several vendors with different bodies (XKB's is 12.2 mm plus a 2 mm nose, 6.2 × 5 mm); measure the one bought and its lugs (`trrs.lugs_mm`).
 - **Wiring:** each net's feeds land on a board pin, and three short link wires run from the board to the jack. The pin map is `pro_micro.pins` and the jack's is `trrs.wires`, both in `default-config.json`; the editor's wiring panel lists each pin with its GPIO.
 
 ## Pins
