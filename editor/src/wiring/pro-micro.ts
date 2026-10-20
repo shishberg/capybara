@@ -2,7 +2,7 @@
 // nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
 // section, the board's USB-C port facing out of the hand's back end and the
 // jack's barrel out of its inner side. Their pins, the parts, the plugs, the
-// openings for the plugs and the cradles that hold them.
+// openings for the plugs, the jack's collar and the cradles that hold them.
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
@@ -211,6 +211,47 @@ export function plugWays(
     frames.trrs,
   );
   return M.union([usb, trrs]);
+}
+
+/** The collar's wall (mm) round the jack plug's way, outside its chamfer's widest. */
+const COLLAR = 1;
+
+/**
+ * The jack's collar, in world coordinates: where the jack's barrel faces open
+ * wall, a boss standing on the rail round it, flush with the rail's outer
+ * face (`outline`, plan) and in to the jack's body, so that the wall grips the
+ * barrel there too; arched over it, COLLAR outside the chamfer round the
+ * plug's way. It reaches half a millimetre into the rail (`rail`, its top).
+ */
+export function collar(
+  wasm: ManifoldToplevel,
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+  outline: [number, number][],
+  rail: number,
+) {
+  const M = wasm.Manifold;
+  const j = cfg.trrs;
+  const m = mouths(cfg);
+  const r = j.plug_mm[0] / 2 + j.clearance_mm + CHAMFER + COLLAR;
+  // From the body's face out past the outer face (cut back to it below).
+  const [x0, x1] = [m.trrs.x - 10, -j.body_mm[0] / 2];
+  const bottom = rail - 0.5 - frames.trrs.elements[14];
+  const solid = place(
+    M.union([
+      M.cylinder(x1 - x0, r, r, 64)
+        .rotate([0, 90, 0])
+        .translate([x0, 0, m.trrs.z]),
+      box(M, [x1 - x0, 2 * r, m.trrs.z - bottom], [(x0 + x1) / 2, 0, (m.trrs.z + bottom) / 2]),
+    ]),
+    frames.trrs,
+  );
+  const bb = solid.boundingBox();
+  return solid.intersect(
+    new wasm.CrossSection([outline], 'NonZero')
+      .extrude(bb.max[2] - bb.min[2] + 2)
+      .translate([0, 0, bb.min[2] - 1]),
+  );
 }
 
 /**

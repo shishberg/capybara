@@ -78,11 +78,7 @@
 // standing upright to RIBBON_GAP over its top before it slants. Those are
 // placed first, since where their feet go is the ribbon's to say. On Swung
 // in the ribbon leaves under the inner column's web between its home and top
-// keys. On a Pro Micro the plugs are in its place, and the fork over one is
-// filled in between its legs as high as they stand upright (WallKit.filled):
-// the chassis cuts the TRRS plug's way through that, under the inner
-// column's front web, so the wall grips the jack's barrel and the rail under
-// it stays whole.
+// keys. On a Pro Micro the plugs are in its place.
 //
 // The limb comes straight down where its round puts it, at least the lip and
 // the round out from the web's edge, or further out if that clears the keys
@@ -751,18 +747,6 @@ function limbAt(
                 HALF,
               ),
             ),
-            // Over a plug (kit.filled), filled in between the legs as high as
-            // they stand upright, for its way to be cut through.
-            ...(kind === 'over' && kit.filled
-              ? [
-                  [
-                    [-sl, rail - z4],
-                    [sr, rail - z4],
-                    [sr, rail + stand - z4],
-                    [-sl, rail + stand - z4],
-                  ] as [number, number][],
-                ]
-              : []),
           ].map((ring) => new CrossSection([ring], 'NonZero')),
         );
         // Stood up the wall thick: (u, v, e) to P4 + u a + (v + LAP / 2) z +

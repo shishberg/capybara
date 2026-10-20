@@ -89,8 +89,6 @@ export interface WallKit {
   ribbon: (points: V3[]) => boolean;
   /** The top of that grown ribbon straight over p (world z), or -Infinity where it isn't over p: so a wall can stand either side of it and span it above that. */
   ribbonTop: (p: V3) => number;
-  /** Whether a fork over it is filled in between its legs, for the way through to be cut to the plug (on a Pro Micro, where it is the plugs). */
-  filled: boolean;
 }
 
 /**
@@ -142,7 +140,7 @@ const wallKit = (wasm: ManifoldToplevel, cfg: Config, rib: RibKit, sides: WallSi
 export const RIBBON_GAP = 2;
 
 /**
- * WallKit.ribbon, ribbonTop and filled: the ribbon's segments (controllerParts, the port
+ * WallKit.ribbon and ribbonTop: the ribbon's segments (controllerParts, the port
  * panel where the Capybara's chassis puts it: at the landing's outer end), or
  * on a Pro Micro the plugs, each a box grown by RIBBON_GAP; a point is in the ribbon's way if the box is
  * round it or anywhere straight over it, and the ribbon's top over it is the
@@ -186,7 +184,6 @@ function ribbonClear(cfg: Config) {
     return lo <= hi;
   };
   return {
-    filled: controllerStyle(cfg) === 'pro_micro',
     ribbon: (points: V3[]) => points.every((p) => boxes.every((b) => !under(p, b))),
     ribbonTop: (p: V3) =>
       Math.max(

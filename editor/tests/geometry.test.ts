@@ -21,7 +21,7 @@ import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
 import { WIRING } from '../src/wiring/common';
-import { lugAt, mouths, pinAt, pinOf, plugWays } from '../src/wiring/pro-micro';
+import { lugAt, mouths, pinAt, pinOf } from '../src/wiring/pro-micro';
 import { SIZES as CAPYBARA, capybara } from '../src/capybara';
 import { solidOf } from './helpers';
 
@@ -360,10 +360,10 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   // The wiring panel names each net's pin by its number and its GPIO.
   assert.equal(w.nets.find((n) => n.name === 'DATA')!.label, '5, P0.17');
 });
-test("on a Pro Micro the walls stand as on the default, the jack's plug in through one, over the rail", () => {
+test("on a Pro Micro the walls stand as on the default, clear of the jack's plug, over the rail", () => {
   // The USB-C plug runs out the back, through the rail and the rib over it;
-  // the jack's comes in through the inner front web's wishbone, filled in
-  // round it.
+  // the jack's comes in at the back of the inner side, where no wall stands
+  // (its collar grips the barrel there).
   const walls = (cfg: typeof defaults.config) => {
     const frames = componentFrames(cfg);
     return capybara(wasm, cfg, frames, wiring(cfg, frames).wires)
@@ -375,15 +375,17 @@ test("on a Pro Micro the walls stand as on the default, the jack's plug in throu
   const mine = walls(cfg);
   assert.equal(mine.length, walls(defaults.config).length);
   const frames = componentFrames(cfg);
-  const ways = plugWays(wasm, cfg, frames, CHASSIS.notchLength);
-  assert(
-    wasm.Manifold.union(mine).intersect(ways).volume() > 50,
-    'a wall filled in round the jack',
-  );
-  // The jack's plug way clears the rail's top.
   const m = mouths(cfg).trrs;
-  const mouth = point(frames.trrs, [m.x, 0, m.z]);
   const r = cfg.trrs.plug_mm[0] / 2 + cfg.trrs.clearance_mm;
+  const way = place(
+    wasm.Manifold.cylinder(CHASSIS.notchLength, r, r, 48)
+      .rotate([0, -90, 0])
+      .translate([m.x, 0, m.z]),
+    frames.trrs,
+  );
+  assert(wasm.Manifold.union(mine).intersect(way).volume() < 1e-6, "no wall in the jack's way");
+  // The jack's plug way clears the rail's top.
+  const mouth = point(frames.trrs, [m.x, 0, m.z]);
   assert(mouth[2] - r > CAPYBARA.railHeight, `${mouth[2] - r} over the rail`);
 });
 test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', () => {
@@ -421,6 +423,16 @@ test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', (
   const jack = gripped(barrel, bl);
   assert(jack > 0.9 * bl, `the barrel gripped for ${jack} mm`);
 });
+test('a project with the jack placed as before schema 9 takes its new place and pins', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 8;
+  Object.assign(c.trrs, { position_mm: [-45.05, -7.7], rotation_deg: 0 });
+  c.pro_micro.pins.C3 = 16;
+  c.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin = 4;
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
+});
 test('a project with the Pro Micro and jack placed as before schema 8 takes their new places and pins', () => {
   const p = clone(defaults);
   const c = p.config as Record<string, any>;
@@ -428,7 +440,7 @@ test('a project with the Pro Micro and jack placed as before schema 8 takes thei
   c.pro_micro.position_mm = [-21, 17];
   Object.assign(c.pro_micro.pins, { RT: 11, RH: 12, RB: 17, RX: 18 });
   Object.assign(c.pro_micro.pins, { C0: 6, C1: 7, C2: 8, C3: 9, C4: 10 });
-  c.trrs.position_mm = [-42.3, 14.4];
+  Object.assign(c.trrs, { position_mm: [-42.3, 14.4], rotation_deg: 0 });
   c.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin = 3;
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
@@ -438,7 +450,7 @@ test('a project with the Pro Micro and jack placed as before schema 7 takes thei
   const c = p.config as Record<string, any>;
   c.schema = 6;
   Object.assign(c.pro_micro, { position_mm: [-29.5, 9], rotation_deg: 0 });
-  Object.assign(c.trrs, { position_mm: [-39.2, -6], standoff_mm: 0 });
+  Object.assign(c.trrs, { position_mm: [-39.2, -6], rotation_deg: 0, standoff_mm: 0 });
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
 });
