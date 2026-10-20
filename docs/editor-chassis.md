@@ -14,7 +14,12 @@ The default chassis is the **Skeletyl** (`src/skeletyl.ts`, `chassis.style:
 "skeletyl"`): a rib along each finger column and each thumb row, and one rail
 round the outline on the floor. A rib is one swept solid: the key plates as
 slabs, curved webs between them tangent to the plates, and a lip and round at
-each end, clear of the tile pocket and the switch. PROTOTYPE: the outline
+each end, clear of the tile pocket and the switch. Each side of a round
+turns over in its own upright plane, so the end comes out heading straight
+down, except PROTOTYPE on each finger column's back: there the round turns
+over the plate's own across, so the end keeps the plate's section without
+twisting and comes out heading down leaning across as the plate does (about
+15° on Swung in). PROTOTYPE: the outline
 runs straight from foot to foot: it is the hull of where the ends would drop
 straight down and of the outer sides of the first and last columns and the
 thumb rows (their plates and tile pockets), with no margin past them, so the
@@ -32,7 +37,11 @@ less than 1 mm above the rail) has its round drawn as tight as still clears the 
 the switch and the keys, down to a radius of the wall plus 0.5 mm. An end near the outline
 drops to the floor: the rib carried on down from its round as one sweep,
 keeping the across and the width it has at the bottom of the round all the
-way down to a square foot, so it never twists or splays. It stands straight down, or bends out in the end's own plane, along its
+way down to a square foot, so it never twists or splays. It stands straight
+down (PROTOTYPE: a finger column's back drop leaves its round leaning and
+straightens by its foot, about as an arc would, its foot out along the lean
+by its height times the tangent of half the lean: 4.5 to 8 mm on Swung in),
+or bends out in the end's own plane, along its
 heading, until the nearer corner of its outer face meets the outline (on Swung
 in only the ring column's back, 0.5 mm); an end whose outline is more than
 12 mm out hangs. Its outer face is flush with the rail's
@@ -60,8 +69,8 @@ any two ribs meet. The widening runs from their feet up as far as they stand
 that close, measured every 0.25 mm, and runs out over 1 mm above that; there
 is no fill and no fairing. The rail runs on under the pair without turning in
 between them, taking in both widened feet, its outer edge stepping from one
-face to the other where they meet (each face flush with it). On Swung in only the index and middle columns' back drops
-fuse (0.13 mm apart at most, widened 0.47 mm each, up to 33.5 mm). PROTOTYPE: **bridges**
+face to the other where they meet (each face flush with it). On Swung in no
+drops fuse. PROTOTYPE: **bridges**
 tie neighbouring ribs together up at the plates. Where two keys of different
 ribs face each other (their facing edges turned at most 35° from square on in
 plan, their plates at most 35° apart), a bridge spans the gap, however wide,

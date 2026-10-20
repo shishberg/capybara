@@ -90,6 +90,7 @@ import {
   cross,
   dot,
   isKey,
+  isThumb,
   keycapEnvelope,
   ROWS,
   scale,
@@ -523,10 +524,17 @@ const fromLine = (line: number[][], [x, z]: number[]) =>
 function endRound(d: Dims, k: RibKey, u: number) {
   const edge = u > 0 ? edgePose(d, k, u) : flip(edgePose(d, k, u));
   const t = edge.t;
-  const h = [...unitPlan(t), 0] as V3;
-  const [cos, sin] = [Math.hypot(t[0], t[1]), t[2]];
+  // The round turns in the plane of h (out along the end, level) and up,
+  // square to the end's axis: level across, or PROTOTYPE on a finger
+  // column's back the plate's own across, so it turns over the plate's
+  // tilt across rather than twisting out of it, and heads down leaning as
+  // the plate does across (up is then square to the plate's across).
+  const leans = u > 0 && !isThumb(k.name);
+  const up = unit(leans ? sub([0, 0, 1], scale(edge.c, edge.c[2])) : [0, 0, 1]);
+  const h = unit(sub(t, scale(up, dot(t, up))));
+  const [cos, sin] = [dot(t, h), dot(t, up)];
   // The round's outward direction where its tangent is at angle a up from h.
-  const out = (a: number): V3 => add(scale(h, -Math.sin(a)), [0, 0, Math.cos(a)]);
+  const out = (a: number): V3 => add(scale(h, -Math.sin(a)), scale(up, Math.cos(a)));
   const start = Math.atan2(sin, cos);
   // Each side's path: from its corner, a lip L long, then a round of radius R
   // about a centre under the lip's end.
@@ -540,7 +548,7 @@ function endRound(d: Dims, k: RibKey, u: number) {
       poseSide(edge, s),
       ...[...Array(SIZES.roundSteps + 1).keys()].map((j) => at(s, j / SIZES.roundSteps)),
     ];
-    return Object.assign(path, { at, turn: Math.PI / 2 + start });
+    return Object.assign(path, { at, turn: Math.PI / 2 + start, h, up });
   };
   // In the plate's own plane (along t and n from its edge's middle, seen
   // along c): the room under each side is under the plate (its underside
@@ -548,7 +556,7 @@ function endRound(d: Dims, k: RibKey, u: number) {
   // end; what must stay clear is the pocket's and switch body's edge under it.
   const n = cross(t, edge.c);
   const plane = (p: V3) => [dot(sub(p, edge.p), t), dot(sub(p, edge.p), n)];
-  const down = plane(add(edge.p, [0, 0, -1e3]));
+  const down = plane(add(edge.p, scale(up, -1e3)));
   const keep = d.keepClear.flatMap(([half, depth]) =>
     [-d.plate, -depth].map((z) => plane(keyPoint(k, half, u, 0, z))),
   );
@@ -638,22 +646,35 @@ const widenPair = (p: Pair, o: Pair, w: number): Pair => {
 
 /**
  * The top of the drop under the end of key k that faces u (-1 or 1 along):
- * the bottom of its round, heading straight down. Its sides are the round's,
- * so across it is the plate's across, tilted as the plate is (one side lower),
- * and its underside (inner face) is a wall in from its top (outer face),
- * straight back along the end.
+ * the bottom of its round, heading down as the round leaves it (straight
+ * down, or PROTOTYPE leaning across as the plate does). Its sides are the
+ * round's, so across it is the plate's across, tilted as the plate is (one
+ * side lower), and its underside (inner face) is a wall in from its top
+ * (outer face), straight back along the end.
  */
 function dropTop(d: Dims, k: RibKey, u: number): Pose {
   const round = endRound(d, k, u);
   const [l, r] = [-1, 1].map((s) => round(s).at(-1)![0]);
   return {
     p: lerp(l, r, 0.5),
-    t: [0, 0, -1],
+    t: scale(round.up, -1),
     c: unit(sub(r, l)),
     half: Math.hypot(...sub(r, l)) / 2,
     thick: d.wall,
-    n: [...unitPlan(scale(k.a, u)), 0] as V3,
+    n: round.h,
   };
+}
+/**
+ * PROTOTYPE: how far in plan the foot of a drop from `top` lands from under
+ * it: where it leans across (dropTop), it straightens by its foot, about as
+ * an arc would that turns from the lean to upright over its height, so its
+ * foot is out along the lean by that height times the tangent of half the lean.
+ */
+function leanOf(top: Pose): V3 {
+  const lean = Math.acos(Math.max(-1, Math.min(1, -top.t[2])));
+  if (lean < 1e-6) return [0, 0, 0];
+  const height = top.p[2] - SIZES.railHeight;
+  return scale([...unitPlan(top.t), 0] as V3, height * Math.tan(lean / 2));
 }
 
 /** Where a drop from `top` lands: its outer face's middle at q on the floor, heading straight down, across along plan direction `along` (the rail or the tie it stands on), as wide in plan as its top. */
@@ -668,7 +689,7 @@ function landing(top: Pose, q: V3, along: number[]): Pose {
   };
 }
 /** Where a drop from `top` would land straight down. */
-const straightDown = (top: Pose) => landing(top, top.p, top.c);
+const straightDown = (top: Pose) => landing(top, add(top.p, leanOf(top)), top.c);
 /** How high the lower side of the round at the end of key k that faces u ends. */
 function roundLow(d: Dims, k: RibKey, u: number) {
   const round = endRound(d, k, u);
@@ -1165,11 +1186,13 @@ const endKey = (rib: Rib, end: number): [RibKey, number] =>
   end ? [rib.keys.at(-1)!, 1] : [rib.keys[0], -1];
 
 /** The feet of a rib's end, if it dropped straight down: its outer face's foot at each side. */
-const feet = (d: Dims, rib: Rib, end: number) =>
-  [-1, 1].map((s): V3 => {
-    const p = endSide(d, ...endKey(rib, end), s, 'hang').at(-1)![0];
+const feet = (d: Dims, rib: Rib, end: number) => {
+  const down = straightDown(dropTop(d, ...endKey(rib, end)));
+  return [-1, 1].map((s): V3 => {
+    const p = poseSide(down, s)[0];
     return [p[0], p[1], 0];
   });
+};
 
 /**
  * The outline, counter-clockwise, before it is trimmed to the drops: straight
@@ -2464,7 +2487,7 @@ export function skeletyl(
     if (!(out <= SIZES.reach)) return 'hang';
     const drop: Drop = isLow(d, ...endKey(rib, e))
       ? { land: lowLand(d, ...endKey(rib, e)), foot: lowFootprint(d, ...endKey(rib, e)) }
-      : { land: landing(top, add(top.p, scale(top.n!, out)), top.c) };
+      : { land: landing(top, add(down.p, scale(top.n!, out)), top.c) };
     return endClear(cfg, d, frames, rib, e, drop) ? drop : 'hang';
   };
   const ends = all.map((rib) => [0, 1].map((e) => kind(rib, e)));
@@ -2619,7 +2642,9 @@ export function skeletyl(
   const bridged = bridges(wasm, cfg, d, frames, all, wires);
   const loop = area.subtract(inside);
   // PROTOTYPE ?ends=tie: the tie is part of the rail, filleted into it where
-  // they meet (and round its bends).
+  // they meet (and round its bends), inside the outline (where the tie meets
+  // the rail by one of the outline's corners, rounding would fill that
+  // corner in outside it too).
   const R = SIZES.tieRound;
   const railPlan = tie
     ? loop.add(tie).add(
@@ -2627,7 +2652,8 @@ export function skeletyl(
           .add(tie)
           .offset(R, 'Round', 2, SIZES.cornerSegments)
           .offset(-R, 'Round', 2, SIZES.cornerSegments)
-          .intersect(tie.offset(R + d.wall)),
+          .intersect(tie.offset(R + d.wall))
+          .intersect(area),
       )
     : loop;
   // The rail stood up, level, railHeight high. (Simplified first: the
