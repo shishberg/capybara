@@ -347,19 +347,13 @@ test('failure highlights take their colour from their kind', async ({ page }) =>
   expect(swatches).toEqual([0xff303e, 0xffa124, 0xf16bd8, 0x40e0ff].map(rgb));
 });
 test('prototype URL overrides are built and recorded in the saved report', async ({ page }) => {
-  await page.goto('/?plates=narrow&slope=55&recess=1.5');
+  await page.goto('/?controller=pro_micro');
   await rebuilt(page);
   const saved = page.waitForEvent('download');
   await page.locator('#report').click();
   const fs = await import('node:fs/promises'),
     json = JSON.parse(await fs.readFile((await (await saved).path())!, 'utf8'));
-  expect(json.evaluatedProject.config.chassis).toMatchObject({
-    plate_style: 'narrow',
-    plate_slope: 55,
-    deck_lift: 1.5,
-  });
+  expect(json.evaluatedProject.config.controller.style).toBe('pro_micro');
   // The editable project itself never carries them.
-  const own = (await project(page)).config.chassis;
-  expect(own.plate_style).toBeUndefined();
-  expect(own.deck_lift).toBeUndefined();
+  expect((await project(page)).config.controller.style).toBe('ffc');
 });

@@ -4,7 +4,7 @@ import type { BuildResult } from './solid';
 import type { Project } from './geometry';
 import { prototypeOverrides } from './prototype-overrides';
 import { $, S } from './state';
-import { shell, trim } from './viewer';
+import { shell } from './viewer';
 import { setShell, updateHardware, updateWiring, visibility } from './scene-parts';
 import { setBadge, updateFailures, showReport } from './report-view';
 import { prototypeSwitcher } from './prototype-switcher';
@@ -81,7 +81,7 @@ function restartWorker() {
 }
 export function requestBuild() {
   clearTimeout(S.timer);
-  for (const o of [shell, trim]) o.visible = !S.handCase || S.handCase();
+  shell.visible = !S.handCase || S.handCase();
   visibility();
   if (S.handCase && !S.handCase()) {
     $('view-state').textContent = S.handHeight?.() ?? '';
@@ -96,8 +96,6 @@ export function requestBuild() {
   const id = S.revision;
   setBadge('', 'Building chassis & checking fit…');
   const sent = prototypeOverrides(S.project, location.search);
-  $('subtitle').textContent =
-    `Right hand · ${sent.config.chassis.style === 'c64' ? 'C64' : 'Skeletyl'} chassis`;
   inFlight = { id, project: sent };
   worker.postMessage({ id, project: sent });
   timeout = setTimeout(() => {

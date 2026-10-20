@@ -47,12 +47,9 @@ self.onmessage = async (e: MessageEvent<{ id: number; project: Project }>) => {
     self.postMessage(
       { id, ...result },
       {
-        transfer: [
-          result.mesh,
-          result.base,
-          result.trim,
-          ...result.highlights.map((h) => h.mesh),
-        ].flatMap((m) => [m.positions.buffer as ArrayBuffer, m.indices.buffer as ArrayBuffer]),
+        transfer: [result.mesh, result.base, ...result.highlights.map((h) => h.mesh)].flatMap(
+          (m) => [m.positions.buffer as ArrayBuffer, m.indices.buffer as ArrayBuffer],
+        ),
       },
     );
   } catch (error) {

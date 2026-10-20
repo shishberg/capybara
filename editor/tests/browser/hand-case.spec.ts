@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { rebuilt } from './helpers';
 
-test('?hand shows no shell, trim or bottom section until the case is built', async ({ page }) => {
+test('?hand shows no shell or bottom section until the case is built', async ({ page }) => {
   await page.goto('/?hand');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -12,7 +12,7 @@ test('?hand shows no shell, trim or bottom section until the case is built', asy
   // The View box asks for the bottom section; only the hand's build-case gate hides it.
   await expect(page.locator('#base')).toBeChecked();
   const visible = () => page.evaluate(() => (window as any).rosebearEditor.getVisible());
-  expect(await visible()).toEqual({ shell: false, base: false, trim: false });
+  expect(await visible()).toEqual({ shell: false, base: false });
   // Control: with the case on, the same box shows it.
   await page.getByLabel('Build the case (often fails)').check();
   await rebuilt(page);

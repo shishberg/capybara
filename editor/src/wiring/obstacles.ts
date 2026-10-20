@@ -1,7 +1,7 @@
 // What wires keep out of, and the test for a wire's segment against it.
 import type { Matrix4 } from 'three';
-import { isThumb, point, tilePartCentre, type V3 } from '../geometry';
-import { PLATES, plateEdges, plateHalfWidths } from '../plates';
+import { point, tilePartCentre, type V3 } from '../geometry';
+import { plateHalfWidths } from '../plates';
 import { WIRING, distance, type Env } from './common';
 
 /** A box in a key's frame that wires must keep out of. */
@@ -19,10 +19,7 @@ interface Obstacle {
 export interface Obstacles {
   /** Each tile from its underside up, and its parts with their clearance. */
   tiles: Obstacle[];
-  /**
-   * Where a wire climbs between keys at different heights: the plates with the
-   * reach of an edge that has no neighbour.
-   */
+  /** Where a wire climbs between keys at different heights: the plates. */
   plates: Obstacle[];
   /** Whether a wire of radius r along a to b comes within r of an obstacle (the tiles, by default). */
   blocked: (a: V3, b: V3, r: number, among?: Obstacle[]) => boolean;
@@ -36,15 +33,6 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
   const plateHalf = plateHalfWidths(cfg);
   const [hx, hy] = env.half;
   const c = tile.component_clearance_mm;
-  const reach: Record<string, number[][]> = Object.assign(
-    {},
-    plateEdges(cfg, frames, keys.filter(isThumb)).reach,
-    plateEdges(
-      cfg,
-      frames,
-      keys.filter((k) => !isThumb(k)),
-    ).reach,
-  );
   for (const key of keys) {
     const m = frames[key];
     const inverse = m.clone().invert();
@@ -61,27 +49,9 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
       });
     };
     box([-hx, -hy, padZ], [hx, hy, 0]);
-    // Each plate with its edges' reach, as the chassis builds it, and each
-    // reach run on along its edge into the gap beside a neighbour, where the
-    // join between their reaches fills it.
-    const r = reach[key];
+    // Each plate.
     const pt = -cfg.chassis.plate_thickness_mm;
-    const lo = (axis: number): number => -plateHalf[axis] - r[axis][0];
-    const hi = (axis: number): number => plateHalf[axis] + r[axis][1];
     box([-plateHalf[0], -plateHalf[1], pt], [plateHalf[0], plateHalf[1], 0], plates);
-    box([lo(0), lo(1), -PLATES.reachThickness], [hi(0), hi(1), 0], plates);
-    for (const axis of [0, 1])
-      for (const side of [0, 1]) {
-        if (!r[axis][side]) continue;
-        const along = 1 - axis;
-        const a: V3 = [0, 0, -PLATES.reachThickness];
-        const b: V3 = [0, 0, 0];
-        a[axis] = side ? plateHalf[axis] : lo(axis);
-        b[axis] = side ? hi(axis) : -plateHalf[axis];
-        a[along] = lo(along) - (r[along][0] ? 0 : PLATES.neighbourGap / 2);
-        b[along] = hi(along) + (r[along][1] ? 0 : PLATES.neighbourGap / 2);
-        box(a, b, plates);
-      }
     for (const p of tile.components) {
       const at = tilePartCentre(cfg, p);
       box(

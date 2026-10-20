@@ -17,15 +17,15 @@ export function reportLines(r: Report): ReportLine[] {
   );
   add(
     r.pieces.length === 1
-      ? 'The case is one piece without the bottom section.'
-      : `The case is ${r.pieces.length} pieces without the bottom section.`,
+      ? 'The frame is one piece without the bottom section.'
+      : `The frame is ${r.pieces.length} pieces without the bottom section.`,
   );
   for (let i = 1; i < r.pieces.length; i++)
     add(`loose piece ${i}: ${(r.pieces[i] / 1000).toFixed(1)} cm³`, `loose piece ${i}`);
   add(
     r.footprint.length === 1
-      ? 'The case holds together along the parting line without the bottom section.'
-      : `The case meets the parting line in ${r.footprint.length} separate pieces.`,
+      ? 'The frame holds together along its foot without the bottom section.'
+      : `The frame's foot is ${r.footprint.length} separate pieces.`,
   );
   for (let i = 1; i < r.footprint.length; i++)
     add(`separate footprint ${i}: ${r.footprint[i].toFixed(0)} mm²`, `separate footprint ${i}`);
@@ -53,12 +53,6 @@ export function reportLines(r: Report): ReportLine[] {
       );
   for (const h of r.hardware)
     add(`${h.name}: ${h.volume.toFixed(2)} mm³ ${h.group}/chassis overlap`, h.name);
-  add(
-    r.wires.length
-      ? `${r.wires.length} wires run into the chassis.`
-      : `All ${r.wiring.wires} wires are clear of the chassis.`,
-  );
-  for (const w of r.wires) add(`${w.name}: ${w.volume.toFixed(2)} mm³ into the chassis`, w.name);
   add(
     r.crossings.length
       ? `${r.crossings.length} pairs of wires run into each other.`

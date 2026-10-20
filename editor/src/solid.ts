@@ -2,7 +2,7 @@ import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import { openingSpan, seatBox, seatSettings, seatSwitches, clipBox, switchHole } from './seats';
 import { RegionIndex, type Region } from './regions';
-import { buildChassis, chassisStyle } from './chassis';
+import { buildChassis } from './chassis';
 import { hardware } from './parts';
 import {
   box,
@@ -14,7 +14,6 @@ import {
   place,
   type Factory,
 } from './manifold-util';
-import { shell } from './shell';
 import { crossings, wiring, type Wiring } from './wiring';
 import {
   capClearance,
@@ -50,7 +49,7 @@ const CHECKS = {
   outsideReach: 1,
   /** Pieces smaller than this (mm³) are ignored when counting pieces: slivers left by boolean operations. */
   minPiece: 0.5,
-  /** The footprint check's section height above the parting line, and the smallest area it counts. */
+  /** The footprint check's section height above the floor, and the smallest area it counts. */
   footprintHeight: 1.5,
   minFootprint: 1,
   /** Highlighted footprints are extruded this tall. */
@@ -94,8 +93,6 @@ export interface Report {
   /** Keys whose keycap room had to remove chassis, and how much (mm³). */
   roomCuts: { name: string; volume: number }[];
   hardware: { name: string; group: string; volume: number }[];
-  /** Wires that run into the chassis or its bottom section, and how far (mm³). */
-  wires: { name: string; volume: number }[];
   /** The whole hand's wiring: wire count, solder joints and cut length (mm). */
   wiring: { wires: number; joints: number; length: number };
   /** Pairs of wires that run into each other, named together. */
@@ -119,9 +116,7 @@ export interface Highlight {
 export interface BuildResult {
   mesh: MeshData;
   base: MeshData;
-  /** The port panel's dark insert, with the ribbon's landing. */
-  trim: MeshData;
-  /** The port panel's end face in world x, where the ribbon leaves. */
+  /** Where the ribbon leaves, in world x. */
   panel: number;
   report: Report;
   highlights: Highlight[];
@@ -131,11 +126,7 @@ export interface BuildResult {
 export function buildSolid(wasm: ManifoldToplevel, project: Project): BuildResult {
   return freeAfter(wasm, () => build(wasm, project));
 }
-/**
- * The same build, with the wires routed elsewhere (`route`, in another worker)
- * while the case's shell is lofted here: the two are a second or so each, and
- * neither needs the other.
- */
+/** The same build, with the wires routed elsewhere (`route`, in another worker). */
 export async function buildSolidAsync(
   wasm: ManifoldToplevel,
   project: Project,
@@ -144,14 +135,7 @@ export async function buildSolidAsync(
   return freeAfterAsync(wasm, async () => {
     validateProject(project);
     const start = performance.now();
-    const cfg = project.config;
-    const routed = route(cfg);
-    // If shell() throws, nothing awaits `routed`; its rejection must not go unhandled.
-    routed.catch(() => {});
-    const built =
-      chassisStyle(cfg) === 'c64' ? shell({ wasm, cfg, frames: componentFrames(cfg) }) : undefined;
-    if (built) for (const m of [built.body, built.inside, built.slot]) m.status();
-    return build(wasm, project, { wired: await routed, built, start });
+    return build(wasm, project, { wired: await route(project.config), start });
   });
 }
 export type Keys = [string, Matrix4][];
@@ -283,12 +267,12 @@ function checkPieces(cut: Manifold) {
 }
 
 /**
- * Without the bottom section the case must also hold together along its
- * edge: a section just above the parting line must be one connected area.
+ * Without the bottom section the frame must also hold together along its
+ * foot: a section just above the floor must be one connected area.
  */
-function checkFootprint(cut: Manifold, split: number) {
+function checkFootprint(cut: Manifold) {
   const footprint = cut
-    .slice(split + CHECKS.footprintHeight)
+    .slice(CHECKS.footprintHeight)
     .decompose()
     .map((c) => ({ a: c.area(), c }))
     .filter((x) => x.a > CHECKS.minFootprint)
@@ -353,11 +337,7 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
   return { seats, highlights };
 }
 
-/**
- * Hardware against the chassis and its bottom section, and the adapter and
- * ribbon (or the Pro Micro, its jack and their plugs) against the port insert
- * too, which carries the landing.
- */
+/** Hardware (the tiles, the adapter and ribbon, or the Pro Micro, its jack and their plugs) against the chassis and its bottom section. */
 function checkHardware(
   p: Probe,
   project: Project,
@@ -365,14 +345,13 @@ function checkHardware(
   chassis: ReturnType<typeof buildChassis>,
   result: Manifold,
 ) {
-  const withTrim = result.add(chassis.trim);
   const against: Record<string, Manifold> = {
     pcb: result,
     components: result,
-    adapter: withTrim,
-    ribbon: withTrim,
-    controller: withTrim,
-    cable: withTrim,
+    adapter: result,
+    ribbon: result,
+    controller: result,
+    cable: result,
   };
   const highlights: Highlight[] = [];
   const overlaps: Report['hardware'] = [];
@@ -411,54 +390,20 @@ function checkHardware(
   return { hardware: overlaps, highlights };
 }
 
-/**
- * Shapes that must miss `target`: intersect their union with it once, and
- * only when that hits, find which of them do.
- */
-function misses(
-  p: Probe,
-  shapes: { name: string; solid: Manifold }[],
-  target: Manifold,
-  kind: Highlight['kind'],
-  highlights: Highlight[],
-) {
-  const out: { name: string; volume: number }[] = [];
-  if (!shapes.length || p.volume(p.M.union(shapes.map((x) => x.solid)), target) <= CHECKS.overlap)
-    return out;
-  for (const x of shapes) {
-    const v = p.collision(target, x.solid, x.name, kind, highlights);
-    if (v > CHECKS.overlap) out.push({ name: x.name, volume: v });
-  }
-  return out;
-}
-
-/**
- * Every wire, as a tube of its diameter, must miss every other wire, and the
- * chassis and its bottom section if given (the Skeletyl's wiring is placed by
- * hand).
- */
-function checkWires(p: Probe, wired: Wiring, result?: Manifold) {
+/** Every wire, as a tube of its diameter, must miss every other wire. */
+function checkWires(p: Probe, wired: Wiring) {
   const tube = (points: number[][], d: number) =>
     p.M.union(points.slice(1).map((q, i) => capsule(p.M, points[i], q, d / 2, CHECKS.wireSides)));
   const wireName = (w: Wiring['wires'][number]) =>
     `${w.net}: ${w.from.replace(/^(matrix|thumb)_/, '')} to ${w.to.replace(/^(matrix|thumb)_/, '')}`;
   const highlights: Highlight[] = [];
-  const wires = !result
-    ? []
-    : misses(
-        p,
-        wired.wires.map((w) => ({ name: wireName(w), solid: tube(w.points, w.diameter) })),
-        result,
-        'wire',
-        highlights,
-      );
   const crossed = crossings(wired.wires).map(([a, b]) => {
     const [x, y] = [wired.wires[a], wired.wires[b]];
     const name = `${wireName(x)} and ${wireName(y)}`;
     p.collision(tube(x.points, x.diameter), tube(y.points, y.diameter), name, 'wire', highlights);
     return name;
   });
-  return { wires, crossings: crossed, highlights };
+  return { crossings: crossed, highlights };
 }
 
 /** Each keycap, at rest and over its full travel grown by its clearance, must miss the chassis. */
@@ -511,7 +456,7 @@ function checkCapGaps(M: Factory, cfg: Project['config'], rests: Record<string, 
 function build(
   wasm: ManifoldToplevel,
   project: Project,
-  given: { wired?: Wiring; built?: ReturnType<typeof shell>; start?: number } = {},
+  given: { wired?: Wiring; start?: number } = {},
 ): BuildResult {
   validateProject(project);
   const start = given.start ?? performance.now();
@@ -519,7 +464,7 @@ function build(
   const nodes = componentFrames(cfg);
   const keys: Keys = Object.entries(nodes).filter(([name]) => isKey(name));
   const wired = given.wired ?? wiring(cfg, nodes);
-  const chassis = buildChassis(wasm, cfg, nodes, wired, given.built);
+  const chassis = buildChassis(wasm, cfg, nodes, wired);
   if (chassis.body.status() !== 'NoError') throw Error('Invalid chassis: ' + chassis.body.status());
   const M = wasm.Manifold;
   const probe = makeProbe(
@@ -538,14 +483,14 @@ function build(
   if (cut.status() !== 'NoError' || cut.volume() <= 0)
     throw Error('Cutouts produced an invalid solid: ' + cut.status());
   const loose = checkPieces(cut);
-  const footprint = checkFootprint(cut, chassis.split);
+  const footprint = checkFootprint(cut);
   const rooms = checkRooms(chassis.roomCuts);
-  // Checked as one solid; the case and its bottom section are still returned
+  // Checked as one solid; the frame and its bottom section are still returned
   // (and printed) separately.
   const result = cut.add(chassis.base);
   const seats = checkSeats(probe, cfg, keys, result);
   const hw = checkHardware(probe, project, nodes, chassis, result);
-  const wireChecks = checkWires(probe, wired, chassisStyle(cfg) === 'c64' ? result : undefined);
+  const wireChecks = checkWires(probe, wired);
   const caps = checkKeycaps(probe, cfg, keys, result);
   const capGaps = checkCapGaps(M, cfg, caps.rests);
 
@@ -559,12 +504,10 @@ function build(
     rooms.roomCuts.length === 0 &&
     capGaps.every((c) => c.gap > 0) &&
     opened.openings.every((o) => o.passed) &&
-    wireChecks.wires.length === 0 &&
     wireChecks.crossings.length === 0;
   return {
     mesh,
     base: meshData(chassis.base),
-    trim: meshData(chassis.trim),
     panel: chassis.panel,
     highlights: [
       ...opened.highlights,
@@ -586,7 +529,6 @@ function build(
       footprint: footprint.footprint,
       roomCuts: rooms.roomCuts,
       hardware: hw.hardware,
-      wires: wireChecks.wires,
       wiring: {
         wires: wired.wires.length,
         joints: wired.nets.reduce((t, n) => t + n.joints, 0),

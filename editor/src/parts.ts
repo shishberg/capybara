@@ -30,7 +30,7 @@ export interface Part {
 export function hardware(
   project: Project,
   nodes = componentFrames(project.config),
-  /** The port panel's end face in world x, from a build. */
+  /** Where the ribbon leaves, in world x, from a build. */
   panel?: number,
 ): Part[] {
   const cfg = project.config;

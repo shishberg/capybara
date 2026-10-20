@@ -322,7 +322,7 @@
   },
   "ribbon": {
     "provisional": true,
-    "description": "24-way 0.5 mm FFC from the adapter, through a loop and a tied-down landing, out through the port panel on the finger bin's inner end.",
+    "description": "24-way 0.5 mm FFC from the adapter, through a loop and a tied-down landing, out over the rail at the hand's inner end.",
     "width_mm": 12.5,
     "thickness_mm": 0.12,
     "loop_radius_mm": 4,
@@ -567,7 +567,6 @@
     ]
   },
   "chassis": {
-    "style": "skeletyl",
     "plate_thickness_mm": 3,
     "plate_margin_mm": 0.9,
     "skin_mm": 2

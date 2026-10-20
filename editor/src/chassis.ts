@@ -1,27 +1,15 @@
-// Chassis: chassis.style "skeletyl" (the default) is the open Skeletyl-style
-// frame (skeletyl.ts) on a flat base plate; "c64" is the C64-styled shell
-// (shell/) with the key plates in its wells. Both are built from the key poses.
-// The C64:
-// The shell is a hollow case parted along a groove all round: the case above
-// it, and the bottom section below, which is the base the adapter stands on.
-// In each well the plates make one sheet: each key's plate, joined to its
-// neighbours' edge to edge, and reaching out on its other edges to the wall
-// round the well. Under every plate a tile pocket is kept clear, open below
-// to the hollow, so the tiles can be soldered from below with the base off.
-// The ribbon leaves through the port panel on the finger bin's inner end (or
-// the USB-C and TRRS plugs come in through it: controller.style "pro_micro").
-// Both: each tile is held by glue posts under its plate (gluePosts): at each
-// corner a round post stands in the tile's corner notch, filling it (but for
-// the fit) from the tile's underside up into the plate, and along the two
-// edges that face along the key's rib (its north and south on a finger key) a
-// leg stands just outside the tile, the corner posts running on into it, from
-// the plate's underside down to the tile's underside. The posts locate the tile; a
-// shelf on each leg, just over the tile's top edge, sets its height. The tile is
-// glued to the shelves and to the legs along its edges, and the glue holds it
-// when a switch is pressed into its socket. On the Skeletyl the legs run on
-// out past the plate's edge and go up into the web or the rib's end over
-// them, their tops following its underside; in the C64's case they go up into
-// the sheet.
+// Chassis: the open Skeletyl-style frame (skeletyl.ts) on a flat base plate,
+// built from the key poses. Each tile is held by glue posts under its plate
+// (gluePosts): at each corner a round post stands in the tile's corner notch,
+// filling it (but for the fit) from the tile's underside up into the plate,
+// and along the two edges that face along the key's rib (its north and south
+// on a finger key) a leg stands just outside the tile, the corner posts
+// running on into it, from the plate's underside down to the tile's
+// underside. The posts locate the tile; a shelf on each leg, just over the
+// tile's top edge, sets its height. The tile is glued to the shelves and to
+// the legs along its edges, and the glue holds it when a switch is pressed
+// into its socket. The legs run on out past the plate's edge and go up into
+// the web or the rib's end over them, their tops following its underside.
 //
 // Terms:
 //  tile         the small bought PCB under each switch (hotswap socket, LED, diode);
@@ -32,9 +20,8 @@
 //  glue post    what holds a tile under its plate: a corner post in each corner
 //               notch, and a leg, with a shelf over the tile's top edge, along
 //               each edge facing along the rib;
-//  rib          (the Skeletyl's) a run of keys along one key axis: each finger
-//               column, and each thumb row (skeletyl.ts);
-//  well         an opening through the shell's deck that a group of keys sits in.
+//  rib          a run of keys along one key axis: each finger column, and each
+//               thumb row (skeletyl.ts).
 //
 // Coordinates: "key coordinates" are a key's own frame, with the origin at the
 // plate top's centre, x and y across the plate and z along its normal (up is
@@ -46,43 +33,24 @@ import {
   controllerStyle,
   keycapEnvelope,
   isKey,
-  isThumb,
-  point,
   tileTop,
   tileUnderside,
   type Config,
 } from './geometry';
 import { clipBox, seatSettings } from './seats';
-import {
-  facetFloor,
-  narrowPlates,
-  plateHalfWidths,
-  PLATES,
-  sheet,
-  tilePocketDepth,
-  tilePocketHalf,
-} from './plates';
-import { capsule, down, freeAllBut, keycapSolid, place, slab } from './manifold-util';
-import { shell } from './shell';
+import { plateHalfWidths } from './plates';
+import { freeAllBut, keycapSolid, place } from './manifold-util';
 import { ribAxes, skeletyl } from './skeletyl';
 import { landingBox, wiring, type Wiring } from './wiring';
 import { cradles, mouths, plugWays } from './wiring/pro-micro';
 
-/** Which chassis to build: "skeletyl" (the default) or "c64". */
-export const chassisStyle = (cfg: Config) =>
-  (cfg.chassis as { style?: string }).style === 'c64' ? 'c64' : 'skeletyl';
-
 export interface ChassisResult {
-  /** The case above the parting line, with the plates. */
+  /** The frame, with the plates and glue posts. */
   body: Manifold;
-  /** The bottom section, below the parting line, with the adapter's mount (or the Pro Micro's and the jack's cradles). */
+  /** The bottom section: the base plate, with the adapter's mount and the ribbon's landing (or the Pro Micro's and the jack's cradles). */
   base: Manifold;
-  /** The port panel's dark insert, a separate part, with the ribbon's landing. */
-  trim: Manifold;
-  /** The port panel's end face, in world x (the Skeletyl's: the landing's outer end, or the USB-C port's mouth). */
+  /** Where the ribbon leaves, in world x: the landing's outer end (or the USB-C port's mouth). */
   panel: number;
-  /** Where the case and the bottom section part. */
-  split: number;
   /** For each key, the chassis its keycap's room (and the switch rim's) had to remove. */
   roomCuts: { name: string; cut: Manifold }[];
   /** For each key, how its glue posts were fitted to what stands round them (posts()). */
@@ -94,14 +62,6 @@ export interface ChassisResult {
  * coordinates unless noted.
  */
 export const SIZES = {
-  /** Skirts stop this far above the parting line, as the walls round the wells do. */
-  skirtFoot: 3.6,
-  /** A wire's notch in a skirt has a radius this much more than the wire's. */
-  skirtWireClear: 0.3,
-  /** A skirt piece the notches leave is kept only if it overlaps the sheets or the case by this much (mm³). */
-  skirtPiece: 0.5,
-  /** Skirts keep this far clear of a tile's edge (plan): its edge pads, and a soldering iron's way up to them. */
-  skirtClear: 1.5,
   /** The keycap's room is this much wider than the cap plus its clearance, in total. */
   keycapRoomExtra: 0.2,
   /** The keycap room's height above the cap's lowest point. */
@@ -175,10 +135,10 @@ export const SIZES = {
   postUnder: 0.5,
   /** The adapter's rests stand this far in from its hole edge. */
   adapterRestIn: 7,
-  /** Skeletyl tie tunnels: centres this far in from the landing's ends, tops this far under its top. */
+  /** Tie tunnels across the ribbon's landing: centres this far in from the landing's ends, tops this far under its top. */
   tieIn: 2.75,
   tieBridge: 1,
-  /** The Skeletyl's ribbon notch reaches this far out from the landing. */
+  /** The ribbon's notch (and the plugs' ways) reach this far out from the landing. */
   notchLength: 40,
 } as const;
 
@@ -205,8 +165,7 @@ export interface PostFit {
   grow: [number, number];
   /**
    * The underside over each edge's legs and band, which they follow glueInto
-   * up into it (the Skeletyl's). Without it they go glueInto up into the
-   * plate (the C64's sheet).
+   * up into it. Without it (plainFit) they go glueInto up into the plate.
    */
   over?: [Over, Over];
 }
@@ -291,8 +250,8 @@ export function gluePosts(cfg: Config, axis: number, fit: PostFit = plainFit) {
     const legTop = over ? Math.max(...over.z.flat()) + SIZES.glueInto : top;
     // Up in what is over them, they stop postEdgeIn inside its sides, which
     // run on from the plate's (a face flush with a side leaves a sheet of
-    // nothing where it meets the side's edge); in the plate alone (the C64's
-    // sheet) they are cut back there with the rest, above its underside.
+    // nothing where it meets the side's edge); in the plate alone (plainFit)
+    // they are cut back there with the rest, above its underside.
     const end = over ? side - SIZES.postEdgeIn : side;
     legs[i].push(box(s, [inner, outer], [-end, end], [shelf, legTop]));
     for (const t of [-1, 1]) {
@@ -537,16 +496,8 @@ export function postSolid(
   ]).subtract(reliefs);
 }
 
-/**
- * Which key axis each key's glue posts face along: the Skeletyl's rib's
- * (ribAxes), and y (north and south) on every key of the C64, whose plates
- * make one sheet.
- */
-export function postAxes(cfg: Config, frames: Record<string, Matrix4>) {
-  const keys = Object.keys(frames).filter(isKey);
-  if (chassisStyle(cfg) === 'c64') return Object.fromEntries(keys.map((n) => [n, 1]));
-  return ribAxes(cfg, frames);
-}
+/** Which key axis each key's glue posts face along: its rib's (ribAxes). */
+export const postAxes = (cfg: Config, frames: Record<string, Matrix4>) => ribAxes(cfg, frames);
 
 /**
  * Every key's glue posts, placed, each fitted (PostFit) to `around` (the
@@ -554,11 +505,10 @@ export function postAxes(cfg: Config, frames: Record<string, Matrix4>) {
  * outer face stands within postFill of them beside it is grown out into them
  * (postFill, postInto: past where they are nearest, or where they are at its
  * foot if further), not into the room kept under another key's plate, nor
- * into what a leg stands on across its whole width (the tie). On the
- * Skeletyl each edge's legs and band follow the underside of what is over
- * them (the plate's, and past its edge the web's or the rib end's), sampled
- * every postStep or so from its mesh, glueInto up into it. In the C64's case
- * they go up into the sheet.
+ * into what a leg stands on across its whole width. Each edge's legs and
+ * band follow the underside of what is over them (the plate's, and past its
+ * edge the web's or the rib end's), sampled every postStep or so from its
+ * mesh, glueInto up into it.
  */
 function posts(
   wasm: ManifoldToplevel,
@@ -571,7 +521,6 @@ function posts(
   const keys = Object.keys(frames).filter(isKey);
   const plain = [0, 1].map((axis) => postSolid(wasm, cfg, axis));
   const target = around.add(M.union(keys.map((n) => place(plain[axes[n]], frames[n]))));
-  const c64 = chassisStyle(cfg) === 'c64';
   const fits: Record<string, PostFit> = {};
   const solids: Manifold[] = [];
   // The room kept for a key's tile, posts and switch: inside its legs, from
@@ -630,7 +579,7 @@ function posts(
             ),
           );
           const at = (m: Manifold) => near(m, axis, (v) => s * v - g.outer);
-          // Not into what a leg stands on (the tie, under its whole width): its
+          // Not into what a leg stands on (under its whole width): its
           // top left past the grown leg would be a ledge.
           const stands = [-1, 1].some((t) => {
             const under = around
@@ -658,127 +607,125 @@ function posts(
         // The underside over each edge's legs and band, from the shelf up, as
         // `around`'s mesh has it: where a vertical line through each point of a
         // grid over them first meets it (at the shelf where it is in it there).
-        const overs = c64
-          ? undefined
-          : ([-1, 1].map((s, k): Over => {
-              const spread = (a: number, b: number, at: number[]) => {
-                const marks = [a, ...at.filter((x) => x > a && x < b), b];
-                return marks
-                  .slice(1)
-                  .flatMap((x, i) => {
-                    const p = marks[i];
-                    const steps = Math.max(1, Math.ceil((x - p) / SIZES.postStep - 1e-9));
-                    return [...Array(steps).keys()].map((j) => p + ((x - p) * j) / steps);
-                  })
-                  .concat([b]);
-              };
-              const plateHalf = plateHalfWidths(cfg)[axis];
-              const out = g.outer + grow[k];
-              const al = spread(g.inner, out, [g.edge, plateHalf, g.outer]);
-              // (Across, postEdgeIn inside the plate's sides, where postSolid()
-              // stops the legs up in what is over them.)
-              const side = g.reach[0] - SIZES.postEdgeIn;
-              const ac = spread(-side, side, [-SIZES.postFrom, SIZES.postFrom]);
-              const reach = 0.1;
-              const mesh = around
-                .intersect(
-                  place(
-                    box(
-                      [s * (g.inner - reach), s * (out + reach)],
-                      [-g.reach[0] - reach, g.reach[0] + reach],
-                      [g.shelf, 5],
-                    ),
-                    frames[n],
-                  ),
-                )
-                .transform(inverse)
-                .getMesh();
-              const v = mesh.vertProperties;
-              const tv = mesh.triVerts;
-              const p = (k: number) => [
-                s * v[k * mesh.numProp + axis],
-                v[k * mesh.numProp + 1 - axis],
-                v[k * mesh.numProp + 2],
-              ];
-              // Where a vertical line through each point crosses the frame's
-              // faces: [z, how much the face's outward normal points up].
-              const crossings = al.map(() => ac.map((): [number, number][] => []));
-              // (The mirror and the swap of along and across turn the faces.)
-              const turn = s * (axis === 0 ? 1 : -1);
-              for (let t = 0; t < tv.length; t += 3) {
-                const [a, b, c] = [tv[t], tv[t + 1], tv[t + 2]].map(p);
-                const det = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
-                if (Math.abs(det) < 1e-12) continue;
-                const [d, f] = [b, c].map((q) => q.map((x, k) => x - a[k]));
-                const cross = [d[1] * f[2] - d[2] * f[1], d[2] * f[0] - d[0] * f[2], det];
-                const up = (turn * det) / Math.hypot(...cross);
-                const lo = [Math.min(a[0], b[0], c[0]), Math.min(a[1], b[1], c[1])];
-                const hi = [Math.max(a[0], b[0], c[0]), Math.max(a[1], b[1], c[1])];
-                al.forEach((x, i) => {
-                  if (x < lo[0] - 1e-6 || x > hi[0] + 1e-6) return;
-                  ac.forEach((y, j) => {
-                    if (y < lo[1] - 1e-6 || y > hi[1] + 1e-6) return;
-                    const u = ((b[0] - x) * (c[1] - y) - (c[0] - x) * (b[1] - y)) / det;
-                    const w = ((c[0] - x) * (a[1] - y) - (a[0] - x) * (c[1] - y)) / det;
-                    const e = 1 - u - w;
-                    if (Math.min(u, w, e) < -1e-6) return;
-                    crossings[i][j].push([u * a[2] + w * b[2] + e * c[2], up]);
-                  });
-                });
-              }
-              // The underside over each point: where the line first goes into the
-              // frame, or, where it is in the frame at the shelf (the rail, or a
-              // wall a grown leg goes into), first goes back in after leaving it.
-              // NaN where there is none, or where the line goes in through a side
-              // (steeper than postUnder: the frame narrower there than the plate,
-              // its side leaning over the leg where the key is tilted to it), or
-              // stays in the frame all the way up.
-              const z = crossings.map((r) =>
-                r.map((list) => {
-                  const sorted = list.sort((x, y) => x[0] - y[0]);
-                  let k = 0;
-                  if (sorted.length && sorted[0][0] < g.shelf + 1e-4) {
-                    k = sorted.findIndex(([, up]) => up > 0);
-                    if (k < 0) return NaN;
-                    while (k < sorted.length && sorted[k][1] > 0) k++;
-                  }
-                  if (k >= sorted.length) return NaN;
-                  const [h, up] = sorted[k];
-                  return -up >= SIZES.postUnder ? h : NaN;
-                }),
-              );
-              // Each such point takes the nearest point's that has an underside.
-              const hits = z.flatMap((r, i) => r.flatMap((h, j) => (isNaN(h) ? [] : [[i, j, h]])));
-              if (!hits.length) throw new Error(`glue posts: nothing over ${n}'s legs`);
-              for (const [i, r] of z.entries())
-                for (const [j, h] of r.entries())
-                  if (isNaN(h)) {
-                    const d = ([a, b]: number[]) => Math.hypot(al[a] - al[i], ac[b] - ac[j]);
-                    r[j] = hits.reduce((p, q) => (d(q) < d(p) ? q : p))[2];
-                  }
-              // Each point then takes the highest of its own and its neighbours',
-              // so where the underside steps down between two points (a wall or
-              // bone coming down beside the leg's end) the leg's top runs up into
-              // the higher side's level over the step, rather than sloping
-              // across under it and closing a hollow there.
-              const up = z.map((r, i) =>
-                r.map((_, j) =>
-                  Math.max(
-                    ...[i - 1, i, i + 1].flatMap((a) =>
-                      [j - 1, j, j + 1].map((b) => z[a]?.[b] ?? -Infinity),
-                    ),
-                  ),
+        const overs = [-1, 1].map((s, k): Over => {
+          const spread = (a: number, b: number, at: number[]) => {
+            const marks = [a, ...at.filter((x) => x > a && x < b), b];
+            return marks
+              .slice(1)
+              .flatMap((x, i) => {
+                const p = marks[i];
+                const steps = Math.max(1, Math.ceil((x - p) / SIZES.postStep - 1e-9));
+                return [...Array(steps).keys()].map((j) => p + ((x - p) * j) / steps);
+              })
+              .concat([b]);
+          };
+          const plateHalf = plateHalfWidths(cfg)[axis];
+          const out = g.outer + grow[k];
+          const al = spread(g.inner, out, [g.edge, plateHalf, g.outer]);
+          // (Across, postEdgeIn inside the plate's sides, where postSolid()
+          // stops the legs up in what is over them.)
+          const side = g.reach[0] - SIZES.postEdgeIn;
+          const ac = spread(-side, side, [-SIZES.postFrom, SIZES.postFrom]);
+          const reach = 0.1;
+          const mesh = around
+            .intersect(
+              place(
+                box(
+                  [s * (g.inner - reach), s * (out + reach)],
+                  [-g.reach[0] - reach, g.reach[0] + reach],
+                  [g.shelf, 5],
                 ),
-              );
-              return { al, ac, z: up };
-            }) as [Over, Over]);
-        fits[n] = overs ? { grow, over: overs } : { grow };
+                frames[n],
+              ),
+            )
+            .transform(inverse)
+            .getMesh();
+          const v = mesh.vertProperties;
+          const tv = mesh.triVerts;
+          const p = (k: number) => [
+            s * v[k * mesh.numProp + axis],
+            v[k * mesh.numProp + 1 - axis],
+            v[k * mesh.numProp + 2],
+          ];
+          // Where a vertical line through each point crosses the frame's
+          // faces: [z, how much the face's outward normal points up].
+          const crossings = al.map(() => ac.map((): [number, number][] => []));
+          // (The mirror and the swap of along and across turn the faces.)
+          const turn = s * (axis === 0 ? 1 : -1);
+          for (let t = 0; t < tv.length; t += 3) {
+            const [a, b, c] = [tv[t], tv[t + 1], tv[t + 2]].map(p);
+            const det = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
+            if (Math.abs(det) < 1e-12) continue;
+            const [d, f] = [b, c].map((q) => q.map((x, k) => x - a[k]));
+            const cross = [d[1] * f[2] - d[2] * f[1], d[2] * f[0] - d[0] * f[2], det];
+            const up = (turn * det) / Math.hypot(...cross);
+            const lo = [Math.min(a[0], b[0], c[0]), Math.min(a[1], b[1], c[1])];
+            const hi = [Math.max(a[0], b[0], c[0]), Math.max(a[1], b[1], c[1])];
+            al.forEach((x, i) => {
+              if (x < lo[0] - 1e-6 || x > hi[0] + 1e-6) return;
+              ac.forEach((y, j) => {
+                if (y < lo[1] - 1e-6 || y > hi[1] + 1e-6) return;
+                const u = ((b[0] - x) * (c[1] - y) - (c[0] - x) * (b[1] - y)) / det;
+                const w = ((c[0] - x) * (a[1] - y) - (a[0] - x) * (c[1] - y)) / det;
+                const e = 1 - u - w;
+                if (Math.min(u, w, e) < -1e-6) return;
+                crossings[i][j].push([u * a[2] + w * b[2] + e * c[2], up]);
+              });
+            });
+          }
+          // The underside over each point: where the line first goes into the
+          // frame, or, where it is in the frame at the shelf (the rail, or a
+          // wall a grown leg goes into), first goes back in after leaving it.
+          // NaN where there is none, or where the line goes in through a side
+          // (steeper than postUnder: the frame narrower there than the plate,
+          // its side leaning over the leg where the key is tilted to it), or
+          // stays in the frame all the way up.
+          const z = crossings.map((r) =>
+            r.map((list) => {
+              const sorted = list.sort((x, y) => x[0] - y[0]);
+              let k = 0;
+              if (sorted.length && sorted[0][0] < g.shelf + 1e-4) {
+                k = sorted.findIndex(([, up]) => up > 0);
+                if (k < 0) return NaN;
+                while (k < sorted.length && sorted[k][1] > 0) k++;
+              }
+              if (k >= sorted.length) return NaN;
+              const [h, up] = sorted[k];
+              return -up >= SIZES.postUnder ? h : NaN;
+            }),
+          );
+          // Each such point takes the nearest point's that has an underside.
+          const hits = z.flatMap((r, i) => r.flatMap((h, j) => (isNaN(h) ? [] : [[i, j, h]])));
+          if (!hits.length) throw new Error(`glue posts: nothing over ${n}'s legs`);
+          for (const [i, r] of z.entries())
+            for (const [j, h] of r.entries())
+              if (isNaN(h)) {
+                const d = ([a, b]: number[]) => Math.hypot(al[a] - al[i], ac[b] - ac[j]);
+                r[j] = hits.reduce((p, q) => (d(q) < d(p) ? q : p))[2];
+              }
+          // Each point then takes the highest of its own and its neighbours',
+          // so where the underside steps down between two points (the frame
+          // coming down beside the leg's end) the leg's top runs up into
+          // the higher side's level over the step, rather than sloping
+          // across under it and closing a hollow there.
+          const up = z.map((r, i) =>
+            r.map((_, j) =>
+              Math.max(
+                ...[i - 1, i, i + 1].flatMap((a) =>
+                  [j - 1, j, j + 1].map((b) => z[a]?.[b] ?? -Infinity),
+                ),
+              ),
+            ),
+          );
+          return { al, ac, z: up };
+        }) as [Over, Over];
+        fits[n] = { grow, over: overs };
         const plainOwn = place(postSolid(wasm, cfg, axis, { ...fits[n], grow: [0, 0] }), frames[n]);
         if (!grow.some((x) => x > 0)) return plainOwn;
         // Grown, but not into the room kept under another key's plate. (One
         // cut of the grown posts, which hold the plain ones, rather than a
         // union of the two: their coincident faces left zero-volume slivers
-        // where a wall crosses a leg's end.)
+        // where the frame crosses a leg's end.)
         const rooms = M.union(keys.filter((k) => k !== n).map((k) => place(room, frames[k])));
         return place(postSolid(wasm, cfg, axis, fits[n]), frames[n]).subtract(
           rooms.subtract(plainOwn),
@@ -789,107 +736,6 @@ function posts(
     solids.push(own);
   }
   return { solid: M.union(solids), fits };
-}
-
-/** The space under every plate for its tile and the switch body: cut out of the case. */
-function pockets(
-  M: ManifoldToplevel['Manifold'],
-  cfg: Config,
-  frames: Record<string, Matrix4>,
-  keyNames: string[],
-) {
-  const plateThickness = cfg.chassis.plate_thickness_mm;
-  const sw = cfg.switch;
-  // The tile, its components and the switch body, below the plate.
-  const pocketDepth = tilePocketDepth(cfg);
-  const pocketHalf = tilePocketHalf(cfg);
-  return M.union(
-    keyNames.flatMap((n) => [
-      place(
-        M.cube(
-          [2 * pocketHalf[0], 2 * pocketHalf[1], pocketDepth - plateThickness],
-          true,
-        ).translate([0, 0, -(pocketDepth + plateThickness) / 2]),
-        frames[n],
-      ),
-      place(
-        M.cube(
-          [
-            sw.cutout_mm[0] + sw.cutout_clearance_mm,
-            sw.cutout_mm[1] + sw.cutout_clearance_mm,
-            PLATES.switchBelowPlate - plateThickness,
-          ],
-          true,
-        ).translate([0, 0, -(PLATES.switchBelowPlate + plateThickness) / 2]),
-        frames[n],
-      ),
-    ]),
-  );
-}
-
-/**
- * The skirts round both wells' edges, under their plates. Each stops on the
- * other sheet, is notched where the wires pass, and drops any piece the
- * notches leave standing on its own.
- */
-function skirts(
-  M: ManifoldToplevel['Manifold'],
-  cfg: Config,
-  frames: Record<string, Matrix4>,
-  keyNames: string[],
-  fingers: ReturnType<typeof sheet>,
-  thumbs: ReturnType<typeof sheet>,
-  case_: Manifold,
-  split: number,
-  wired: Wiring,
-) {
-  const plateThickness = cfg.chassis.plate_thickness_mm;
-  // Each tile, its edge pads and a soldering iron's way up to them (along the
-  // key's axis) stay clear.
-  const tileBottom = tileUnderside(cfg);
-  const [hx, hy] = tilePocketHalf(cfg).map((h) => h + SIZES.skirtClear);
-  const keepClear = M.union(
-    keyNames.map((n) => {
-      return M.hull(
-        down(
-          [-plateThickness, tileBottom, tileBottom - cfg.wiring.solder_access_mm[1]].flatMap((z) =>
-            [-hx, hx].flatMap((x) => [-hy, hy].map((y) => point(frames[n], [x, y, z]))),
-          ),
-        ),
-      );
-    }),
-  );
-  const aboveFoot = M.cube([1000, 1000, 400]).translate([-500, -500, split + SIZES.skirtFoot]);
-  const unnotched = M.union([
-    fingers.skirt.subtract(thumbs.top),
-    thumbs.skirt.subtract(fingers.top),
-  ])
-    .intersect(aboveFoot)
-    .subtract(keepClear);
-  // Only the wires' segments that come near a skirt notch it: a union of every
-  // segment would cost more than everything else here.
-  const near = unnotched.decompose().map((p) => p.boundingBox());
-  const wireWays = M.union(
-    wired.wires.flatMap((w) => {
-      const r = w.diameter / 2 + SIZES.skirtWireClear;
-      return w.points.slice(1).flatMap((q, i) => {
-        const p = w.points[i];
-        const reaches = near.some((b) =>
-          [0, 1, 2].every(
-            (k) => Math.min(p[k], q[k]) - r <= b.max[k] && Math.max(p[k], q[k]) + r >= b.min[k],
-          ),
-        );
-        return reaches ? [capsule(M, p, q, r, 8)] : [];
-      });
-    }),
-  );
-  const sheetsAndCase = M.union([fingers.cores, thumbs.cores, fingers.rest, thumbs.rest, case_]);
-  return M.union(
-    unnotched
-      .subtract(wireWays)
-      .decompose()
-      .filter((p) => p.intersect(sheetsAndCase).volume() > SIZES.skirtPiece),
-  );
 }
 
 /**
@@ -939,90 +785,20 @@ function keycapRooms(
   return { cutters, roomCuts };
 }
 
-export function buildChassis(
-  wasm: ManifoldToplevel,
-  cfg: Config,
-  frames: Record<string, Matrix4>,
-  // The wires and the shell, when the caller has made them already.
-  wired: Wiring = wiring(cfg, frames),
-  given?: ReturnType<typeof shell>,
-): ChassisResult {
-  if (chassisStyle(cfg) === 'skeletyl') return skeletylChassis(wasm, cfg, frames, wired);
-  const built = given ?? shell({ wasm, cfg, frames });
-  const M = wasm.Manifold;
-  const keyNames = Object.keys(frames).filter(isKey);
-  const [fingerWell, thumbWell] = built.wells;
-  const fingers = sheet(
-    M,
-    cfg,
-    frames,
-    keyNames.filter((n) => n.startsWith('matrix_')),
-    fingerWell,
-    narrowPlates(cfg),
-    facetFloor(cfg),
-  );
-  const thumbs = sheet(M, cfg, frames, keyNames.filter(isThumb), thumbWell);
-  const bounds = built.body.boundingBox();
-  const aboveSplit = M.cube([1000, 1000, bounds.max[2] - built.split + 1]).translate([
-    -500,
-    -500,
-    built.split,
-  ]);
-  // The case, open under the plates.
-  const case_ = built.body.subtract(
-    M.union([fingers.rooms, thumbs.rooms]).intersect(aboveSplit).intersect(built.inside),
-  );
-  // Neither well's reaches and joins run on in under the other's sheet.
-  const plates = M.union([
-    fingers.cores,
-    thumbs.cores,
-    fingers.rest.subtract(thumbs.below),
-    thumbs.rest.subtract(fingers.below),
-    skirts(M, cfg, frames, keyNames, fingers, thumbs, case_, built.split, wired),
-  ]);
-  const solid = case_.add(plates);
-  const carved = solid.subtract(pockets(M, cfg, frames, keyNames));
-  const held = freeAllBut(
-    wasm,
-    () => posts(wasm, cfg, frames, carved),
-    (h) => [h.solid],
-  );
-  const uncarved = carved.add(held.solid);
-  const { cutters, roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
-  // All at once: one boolean against the whole case, not two per key.
-  const whole = uncarved.subtract(M.union(cutters));
-  // The case above the parting groove's bottom, and the bottom section below
-  // it with the adapter's mount (or the Pro Micro's and the jack's cradles),
-  // less the ribbon's slot (or the plugs' ways).
-  const below = slab(M, whole.boundingBox(), 20, -1, built.split + 1);
-  const base = whole
-    .intersect(below)
-    .add(controllerMount(wasm, cfg, frames))
-    .subtract(built.slot);
-  return {
-    body: whole.subtract(below),
-    base,
-    trim: built.trim,
-    panel: built.panel,
-    split: built.split,
-    roomCuts,
-    postFits: held.fits,
-  };
-}
-
 /**
- * The Skeletyl: its frame with the glue posts, on a base plate inside its
+ * The chassis: the frame with the glue posts, on a base plate inside its
  * outline (skin_mm thick, the frame's rail standing on the floor in it). The
  * plate carries the adapter's mount and the ribbon's landing, which ends where
  * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
  * jack's cradles, their plugs coming in through openings in the frame. The
  * frame's bridges keep clear of the wires.
  */
-function skeletylChassis(
+export function buildChassis(
   wasm: ManifoldToplevel,
   cfg: Config,
   frames: Record<string, Matrix4>,
-  wired: Wiring,
+  // The wires, when the caller has routed them already.
+  wired: Wiring = wiring(cfg, frames),
 ): ChassisResult {
   const M = wasm.Manifold;
   const CS = wasm.CrossSection;
@@ -1048,9 +824,7 @@ function skeletylChassis(
         .extrude(cfg.chassis.skin_mm)
         .add(cradles(wasm, cfg, frames))
         .subtract(ways),
-      trim: M.union([]),
       panel: e[12] + e[0] * mouths(cfg).usb.x,
-      split: 0,
       roomCuts,
       postFits: held.fits,
     };
@@ -1084,7 +858,7 @@ function skeletylChassis(
   );
   const base = footprint
     .extrude(cfg.chassis.skin_mm)
-    .add(controllerMount(wasm, cfg, frames))
+    .add(adapterMount(wasm, cfg, frames))
     .add(landing)
     .subtract(tunnels);
   // The ribbon's notch, from the landing out, low over the base plate.
@@ -1106,22 +880,12 @@ function skeletylChassis(
   return {
     body: uncarved,
     base,
-    trim: M.union([]),
-    // The landing's outer end, in world x (as the C64's panel face, for the ribbon's path).
+    // The landing's outer end, in world x, for the ribbon's path.
     panel: e[12] + e[0] * out,
-    // The frame stands 1 mm into the plate: its footprint just above the floor
-    // must be one area, as the C64's just above its parting line.
-    split: 0,
     roomCuts,
     postFits: held.fits,
   };
 }
-
-/** What holds the hand's board on the bottom section: the adapter's mount, or the Pro Micro's and the jack's cradles. */
-const controllerMount = (wasm: ManifoldToplevel, cfg: Config, frames: Record<string, Matrix4>) =>
-  controllerStyle(cfg) === 'pro_micro'
-    ? cradles(wasm, cfg, frames)
-    : adapterMount(wasm, cfg, frames);
 
 /**
  * The adapter's mount on the bottom section: a boss with a peg through each of

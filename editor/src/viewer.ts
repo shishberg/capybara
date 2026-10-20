@@ -52,19 +52,13 @@ export const basePlate = new T.Mesh(
   new T.MeshStandardMaterial({ color: 0x7f9a96, roughness: 0.8 }),
 );
 scene.add(basePlate);
-// The port panel's dark insert.
-export const trim = new T.Mesh(
-  new T.BufferGeometry(),
-  new T.MeshStandardMaterial({ color: 0x2a2826, roughness: 0.6 }),
-);
-scene.add(trim);
-// The box the size readout measures: case, bottom section and trim.
+// The box the size readout measures: frame and bottom section.
 export const bounds = new T.Box3Helper(new T.Box3(), 0xffd36b);
 bounds.visible = false;
 scene.add(bounds);
 export function measure() {
   const box = bounds.box.makeEmpty();
-  for (const m of [shell, basePlate, trim]) box.expandByObject(m);
+  for (const m of [shell, basePlate]) box.expandByObject(m);
   const s = box.getSize(new T.Vector3());
   $('size').textContent = box.isEmpty()
     ? 'Size: no chassis'

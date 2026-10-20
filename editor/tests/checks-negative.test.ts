@@ -13,8 +13,7 @@ wasm.setup();
 test('the middle column pushed 8 mm into the ring column fails seats, openings, pieces and hardware there', () => {
   // (Moving the thumb cluster off the fingers, as this test did before Swung
   // in, now fails the wire router instead: no route keeps the thumbs' wires
-  // above the base.) The wire check's failures are pinned on the C64 case in
-  // geometry.test.ts: the Skeletyl's router keeps the wires clear of it.
+  // above the base.)
   const p = clone(defaults);
   p.config.geometry.columns[2].offset_mm[0] += 8;
   const r = buildSolid(wasm, p).report;

@@ -19,7 +19,6 @@ import { tilePocketDepth } from '../src/plates';
 import { freeAfter } from '../src/manifold-util';
 import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
-import { shell } from '../src/shell';
 import { crossings, holes, nets, wiring } from '../src/wiring';
 import { lugAt, pinAt, pinOf } from '../src/wiring/pro-micro';
 import { solidOf } from './helpers';
@@ -218,106 +217,6 @@ test('thumb clusters fan on an arc and tilt into a well', () => {
   delete (none.config.geometry as { thumb_extra?: unknown }).thumb_extra;
   assert(!componentFrames(none.config).thumb_x1);
 });
-// The C64 shell, the chassis these checks were written for, on Swung in.
-const c64 = () => {
-  const p = clone(defaults);
-  p.config.chassis.style = 'c64';
-  return p;
-};
-test("the C64 chassis on Swung in: flat seats where they pass, failing Swung in's known checks", () => {
-  // The C64 case was built for the layout before Swung in and doesn't fit it:
-  // Swung in's thumb keys sit low and close to the finger keys, so seats,
-  // keycap rooms, hardware and wires fail, and the case is two pieces on
-  // nine footprints. Pinned, so a change shows up; the seats that pass are
-  // still flat, and the seating still leaves the plates' edges alone.
-  const p = c64(),
-    r = buildSolid(wasm, p),
-    failing = (xs: { name: string; passed: boolean }[]) =>
-      xs.filter((x) => !x.passed).map((x) => x.name);
-  console.log(
-    'WASM build',
-    r.report.milliseconds.toFixed(0) + ' ms',
-    'volume',
-    r.report.volume.toFixed(0),
-  );
-  assert.equal(r.report.seats.length, 20);
-  const badSeats = failing(r.report.seats);
-  assert.deepEqual(badSeats, ['thumb_far', 'thumb_x2']);
-  assert.equal(r.report.pieces.length, 2);
-  assert.equal(r.report.footprint.length, 9);
-  assert.deepEqual(
-    r.report.roomCuts.map((c) => c.name),
-    [
-      'matrix_middle_top',
-      'matrix_middle_home',
-      'matrix_ring_top',
-      'matrix_ring_home',
-      'matrix_ring_bottom',
-      'matrix_pinky_home',
-      'matrix_pinky_bottom',
-      'thumb_x1',
-    ],
-  );
-  assert.deepEqual(
-    r.report.hardware.map((h) => h.name),
-    ['Ribbon 7', 'Ribbon 8', 'Ribbon 9', 'Ribbon 10'],
-  );
-  assert.equal(r.report.wires.length, 3);
-  assert.deepEqual(failing(r.report.keycaps), []);
-  assert.deepEqual(
-    r.report.capGaps.filter((g) => !(g.gap > 0)).map((g) => g.between),
-    [],
-  );
-  assert(r.report.openings.length > 0 && r.report.openings.every((o) => o.passed));
-  assert.equal(r.report.passed, false);
-  const mounted = solidOf(wasm, r.mesh);
-  try {
-    for (const [name, m] of Object.entries(componentFrames(p.config)))
-      if ((name.startsWith('matrix_') || name.startsWith('thumb_')) && !badSeats.includes(name)) {
-        const inverse = m.clone().invert();
-        // Ray through four lip locations measures both faces of the seat.
-        for (const [x, y] of [
-          [7.7, 0],
-          [-7.7, 0],
-          [0, 7.7],
-          [0, -7.7],
-        ]) {
-          const a = new Vector3(x, y, 1).applyMatrix4(m).toArray(),
-            b = new Vector3(x, y, -3).applyMatrix4(m).toArray();
-          const hits = mounted.rayCast(a, b);
-          assert.equal(hits.length, 2, name);
-          const heights = hits
-            .map((h) => new Vector3(...h.position).applyMatrix4(inverse).z)
-            .sort((a, b) => b - a);
-          assert(Math.abs(heights[0]) < 1e-4, name);
-          assert(Math.abs(heights[1] + 1.5) < 1e-4, name);
-        }
-      }
-    // The seats only change the plate inside their footprint: its side edges
-    // match the chassis before seating. This guards the order in seatSwitches:
-    // fill first, then trim (the reverse cuts a wedge from a plate's edge).
-    const chassis = buildChassis(wasm, p.config, componentFrames(p.config)).body;
-    for (const [name, m] of Object.entries(componentFrames(p.config)))
-      if (name.startsWith('matrix_') && !badSeats.includes(name))
-        for (const side of [-1, 1])
-          for (const y of [-6, 0, 6]) {
-            const a = new Vector3(side * 11, y, -0.5).applyMatrix4(m).toArray(),
-              b = new Vector3(side * 8, y, -0.5).applyMatrix4(m).toArray();
-            const first = (s: typeof mounted) =>
-              Math.min(99, ...s.rayCast(a, b).map((h) => h.distance));
-            // Where the plate runs on into a bridge to the next column, the ray
-            // starts inside both bodies and there is no edge to compare; one
-            // mesh may still have an internal seam there that the other lacks.
-            const probe = wasm.Manifold.cube([0.1, 0.1, 0.1], true).translate(a);
-            const inside = [mounted, chassis].every((s) => s.intersect(probe).volume() > 5e-4);
-            if (inside) continue;
-            assert(Math.abs(first(mounted) - first(chassis)) < 1e-3, `${name} ${side} ${y}`);
-          }
-  } finally {
-    mounted.delete();
-  }
-});
-// The bottom section must be one piece: a mount that floats off the floor splits it.
 const basePieces = (cfg: typeof defaults.config) =>
   freeAfter(wasm, () => {
     const pieces = buildChassis(wasm, cfg, componentFrames(cfg)).base.decompose();
@@ -325,10 +224,8 @@ const basePieces = (cfg: typeof defaults.config) =>
     pieces.forEach((p) => p.delete());
     return big;
   });
-test('a thicker skin builds the case in one piece, the adapter mount reaching the floor', () => {
-  // On the Skeletyl, the case alone (the checks are the default's, pinned
-  // below): the C64 case on Swung in throws with a 3 mm skin ("joined: 2
-  // shared runs" in shell/bin.ts).
+test('a thicker skin builds the frame in one piece, the adapter mount reaching the floor', () => {
+  // The chassis alone (the checks are the default's, pinned below).
   const p = clone(defaults);
   p.config.chassis.skin_mm = 3;
   const [body, base] = freeAfter(wasm, () => {
@@ -364,7 +261,6 @@ test('the default (Swung in) Skeletyl builds one piece and passes every check', 
   assert(r.openings.length > 0);
   assert.deepEqual(failing(r.openings), []);
   assert.deepEqual(r.hardware, []);
-  assert.deepEqual(r.wires, []);
   assert.deepEqual(r.crossings, []);
   assert.deepEqual(
     r.capGaps.filter((g) => !(g.gap > 0)).map((g) => g.between),
@@ -395,7 +291,6 @@ test('the Skeletyl on a Pro Micro builds one piece and passes every check', () =
   assert.deepEqual(r.roomCuts, []);
   assert.deepEqual(failing(r.openings), []);
   assert.deepEqual(r.hardware, []);
-  assert.deepEqual(r.wires, []);
   assert.deepEqual(r.crossings, []);
   assert.equal(r.passed, true);
 });
@@ -568,32 +463,6 @@ test('a failed wire router rejects the build, and the next build still runs', as
   assert.equal(r.report.wiring.wires, 100);
   assert.equal(r.report.pieces.length, 1);
 });
-test('a shell that throws while the router is still working leaves no unhandled rejection', async () => {
-  const unhandled: unknown[] = [];
-  const note = (e: unknown) => unhandled.push(e);
-  process.on('unhandledRejection', note);
-  const real = wasm.Manifold;
-  wasm.Manifold = new Proxy(real, {
-    construct() {
-      throw Error('shell failed');
-    },
-  });
-  try {
-    await assert.rejects(
-      buildSolidAsync(
-        wasm,
-        c64(),
-        () => new Promise((_, no) => setTimeout(() => no(Error('router crashed')), 10)),
-      ),
-      /shell failed/,
-    );
-    await new Promise((r) => setTimeout(r, 50));
-  } finally {
-    wasm.Manifold = real;
-    process.off('unhandledRejection', note);
-  }
-  assert.deepEqual(unhandled, []);
-});
 
 test('keycapEnvelope: the measured cap grown by its clearance, down to where it is pressed', () => {
   const c = defaults.config,
@@ -613,22 +482,12 @@ test('keycapEnvelope: the measured cap grown by its clearance, down to where it 
   assert.equal(keycapEnvelope(deep, 'matrix_index_home').floor, -2);
   assert.equal(keycapEnvelope(deep, 'matrix_index_home', { clampFloor: true }).floor, 0);
 });
-test('a wide keycap clearance fails the C64 swept check by the taper, not the at-rest one', () => {
-  // The index bottom key, which passes at the usual clearance.
-  const p = c64();
-  p.config.switch.keycap_clearance_mm = 6;
-  const r = buildSolid(wasm, p),
-    k = r.report.keycaps.find((x) => x.name === 'matrix_index_bottom')!;
-  assert.equal(k.atRest, 0);
-  assert(Math.abs(k.swept - 12.84) < 0.05, String(k.swept));
-  assert.equal(r.report.passed, false);
-});
-test("the shell builds the same case when the thumb row's end keys are renamed", () => {
+test("the chassis is the same when the thumb row's end keys are renamed", () => {
   const p = clone(defaults),
     names = { far: 'left', near: 'right' } as Record<string, string>;
   for (const k of p.config.geometry.thumb.keys) k.name = names[k.name] ?? k.name;
   validateProject(p);
   const volume = (c: typeof p.config) =>
-    freeAfter(wasm, () => shell({ wasm, cfg: c, frames: componentFrames(c) }).body.volume());
+    freeAfter(wasm, () => buildChassis(wasm, c, componentFrames(c)).body.volume());
   assert.equal(volume(p.config), volume(defaults.config));
 });

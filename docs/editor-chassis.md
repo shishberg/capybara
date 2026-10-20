@@ -10,8 +10,7 @@ paths are relative to `editor/`.
 
 ## Construction
 
-The default chassis is the **Skeletyl** (`src/skeletyl.ts`, `chassis.style:
-"skeletyl"`): a rib along each finger column and each thumb row, and one rail
+The chassis is the **Skeletyl** (`src/skeletyl.ts`): a rib along each finger column and each thumb row, and one rail
 round the outline on the floor. A rib is one swept solid: the key plates as
 slabs, curved webs between them tangent to the plates, and a lip and round at
 each end, clear of the tile pocket and the switch. Each side of a round
@@ -163,54 +162,19 @@ assembly is soldered first and lifted in, so the frame has no wire ways and
 the checks don't test the wires against it. The board's height to the keycaps'
 tops shows under its size.
 
-`chassis.style: "c64"` (or `?chassis=c64`) builds the C64 case below instead.
-`src/chassis.ts` builds it from the key poses, on the case from `src/shell/`:
+`src/chassis.ts` adds what holds the keys:
 
-- **Case**: a Commodore 64 style "breadbin". The finger keys sit in one well;
-  the thumb row's deck is carried on in front of it as part of the same solid,
-  with the thumbs in their own well. The deck follows a surface fitted through
-  the key plates. A bullnose runs along the front, a grill and badge across the
-  back, and a groove all round is the **parting line**. The case is hollow and
-  each well is open through it, with a wall down from the deck round it. A
-  rounded wall stands between the thumb deck and the finger well.
-- **Bottom section**: the case below the parting line, a separate print. It
-  carries the **adapter mount**: a boss with a peg through each of the
-  adapter's two mounting holes, beside the connector, and two rests under its
-  solder-hole end.
-- **Port panel**: a rounded recess in the finger bin's inner end, straddling
-  the parting line, with a dark **trim** insert (a separate part) at its back.
-  The main ribbon leaves through a slot in it. The insert also holds the
-  ribbon. A neck round the slot passes through the wall, where the two halves
-  close on it. Inside the case it carries the ribbon's **landing**, a block on
-  the bottom section with two tunnels across it for cable ties that pass over the
-  ribbon. The landing reaches below the neck, so a pull on the ribbon bears on
-  the wall. The landing is 10 mm long from the wall, so the adapter stands far
-  enough in for its loop to clear it.
 - **Tile**: the bought 1U key PCB under each switch (see [the v4 README](../README.md)),
   17 × 17 × 1.6 mm with notched corners, its top 5 mm below the plate top. Its
   **tile pocket** is the space under the plate kept clear for the tile, its parts
   (the hotswap socket, 1.9 mm deep, is the deepest: the pocket reaches 8.8 mm below
-  the plate top) and the switch body, open below to the hollow so the tiles can be
-  soldered with the bottom section off. A part's `center_mm[2]` is measured from
+  the plate top) and the switch body, open below. A part's `center_mm[2]` is measured from
   the board's top; `src/geometry.ts` has the helpers every use goes through.
 - **Plate**: the square a switch clips into, 3 mm thick. It reaches 0.9 mm
   past the 15.8 mm switch seat on each side, or to the edge of the tile pocket if
   that is further, so the plate always covers the tile.
-- **Plate sheet**: in each well the plates make one sheet. Each plate joins its
-  neighbours edge to edge, and reaches out on its other edges to the well's
-  wall. The reaches and joins are 2 mm thick, so wires can pass under them.
-  Neither well's sheet runs under the other's.
-- **Rooms**: the case is cut back under the plates, straight down from 8 mm
-  past each plate's open edges, so the tiles, their solder pads and the wires
-  have room inside the wall round the well.
-- **Skirts**: where a cut-back room would open the deck's wall, a skirt 1.2 mm
-  thick and up to 10 mm deep runs round the well's edge to close it. Skirts stop
-  3.6 mm above the parting line, keep clear of the tiles, the soldering iron's
-  way to each pad and the wires, and are dropped where a piece would be left
-  loose.
-- **Glue posts**: each tile is held under its plate by posts, on the Skeletyl
-  and the C64 alike, and glued to them. The glue holds it when a switch is
-  pressed into its socket.
+- **Glue posts**: each tile is held under its plate by posts, glued to them.
+  The glue holds it when a switch is pressed into its socket.
   - In each corner a round post (1.35 mm radius) stands in the tile's corner
     notch, concentric with it and 0.15 mm clear of it, from the tile's
     underside up into the plate. It is the whole round wherever it is clear:
@@ -225,7 +189,7 @@ tops shows under its size.
     past the plate's underside (`SEAT.trimUnder`), so it leaves the round
     below that.
   - Along the two edges that face along the key's rib (north and south on a
-    finger key; every key's north and south on the C64), a leg stands 0.15 mm
+    finger key), a leg stands 0.15 mm
     outside the tile. A leg is 1.6 mm thick (`postMin`: four 0.4 mm lines, two
     perimeters a side). It runs down from the plate to the tile's underside
     at each end of the edge, from the plate's side in to 6.25 mm from the
@@ -236,8 +200,7 @@ tops shows under its size.
     seat. It sets the tile's height: 0.15 mm of glue over the tile's top. The
     shelf keeps 0.5 mm off the ring of any hole near the edge, and is dropped
     where less than 1 mm is left.
-  - The legs stand 1.4 mm out past the plate's edge. On the Skeletyl they go
-    up into what is over them there, the web to the next key or the round of
+  - The legs stand 1.4 mm out past the plate's edge. They go up into what is over them there, the web to the next key or the round of
     the rib's end, 0.3 mm (`glueInto`, as the shelves and corner posts go
     into the plate), so they join it on a surface rather than at a slit or a
     near-coincident face. Their tops follow its underside, sampled from the
@@ -249,21 +212,16 @@ tops shows under its size.
     takes the highest of its own and its neighbours', so where the underside
     steps down beside a leg's end (a wall or bone coming down) the leg runs
     up to the higher level over the step rather than closing a hollow under
-    it. On the Skeletyl the legs, and with them the shelves and corner
+    it. The legs, and with them the shelves and corner
     posts, stop 0.15 mm (`postEdgeIn`) inside the plate's sides all the way
     up. A leg
     within 1.5 mm of the frame or another key's post beside it is grown out
     into it, not leaving a slit too narrow to print (by default only on the
-    thumbs), but not into the tie it stands on. In the C64's case the legs go
-    up into the sheet.
+    thumbs), but not into the tie it stands on.
   - Everything clears the switch's clip reliefs, and the posts stay inside the
     plate's sides.
 - Above each plate the chassis is kept clear of the switch housing's rim (the
   seat footprint, up to the keycap's lowest point) and of the keycap's travel.
-- **Wire port**: the thumb wires reach the finger well through a round way
-  (`wiring.port_diameter_mm`, 5 mm) in front of the gap between the inner and
-  index columns' bottom keys, inside the case's hollow.
-
 ## Wiring
 
 `src/wiring/` models the hand wiring from these assumptions:
@@ -301,9 +259,11 @@ tops shows under its size.
   keeps it shallow where a low edge would take the run under the pads below the
   floor; one across the tile runs just under its parts. A wire between
   two tiles joins its two legs with a straight run. Where that would run into a
-  plate or its reach, it steps back under the higher tile and drops, or turns a
+  plate, it steps back under the higher tile and drops, or turns a
   corner in plan, or runs under both ends.
-- **Wire port**: thumb wires reach the fingers through the wire port. Each takes
+- **Wire port**: thumb wires reach the fingers through the wire port, a round
+  way (`wiring.port_diameter_mm`, 5 mm) in front of the gap between the inner
+  and index columns' bottom keys. Each takes
   its own place in a hexagonal grid across the port, 1.02 mm apart, chosen to
   suit the directions its two ends lie in. A thumb's wires gather just off its
   edge facing the port, each offset as its place, so they run to the port side
@@ -318,7 +278,7 @@ tops shows under its size.
   route given the others, and routes that meet another wire cost more each
   round until none meet. Pairs that still meet are repaired together with the
   wires most in their way. Routing runs in a worker of its own
-  (`src/wiring-worker.ts`) while the build worker lofts the shell, so the wires
+  (`src/wiring-worker.ts`) while the build worker builds the chassis, so the wires
   follow an edit when the chassis rebuilds.
 - **Wire**: 30 AWG (0.6 mm) for signals, 26 AWG (0.9 mm) for power and ground.
 - **Cut length**: each wire's path plus 5 mm at each end. A feed also has a
@@ -330,4 +290,4 @@ The default hand has 100 wires, 200 solder joints and about 6 m of wire.
 
 The **main ribbon** is a 24-way 0.5 mm FFC, 12.5 mm wide. From the adapter's
 connector it makes a half loop of radius 4 mm, lies on the landing where it is
-tied down, and leaves through the port panel's slot.
+tied down, and leaves over the rail.

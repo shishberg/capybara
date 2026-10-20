@@ -13,7 +13,6 @@ import {
   renderer,
   shell,
   basePlate,
-  trim,
   parts,
   failures,
   render,
@@ -33,7 +32,7 @@ Object.assign(window, {
     getRevision: () => S.revision,
     getSolidRevision: () => S.solidRevision,
     getSelected: () => S.selected,
-    getVisible: () => ({ shell: shell.visible, base: basePlate.visible, trim: trim.visible }),
+    getVisible: () => ({ shell: shell.visible, base: basePlate.visible }),
     handleScreen: (id: string) => {
       const h = handles(S.project).find((h) => h.id === id);
       if (!h) throw Error('No handle ' + id);
@@ -71,7 +70,6 @@ const marks = !import.meta.env.DEV
       targets: () => [
         [shell, 'shell'],
         [basePlate, 'bottom section'],
-        [trim, 'trim'],
         ...parts.children.map((o): [T.Object3D, string] => [o, o.userData.group ?? 'other']),
         ...handTargets(),
       ],

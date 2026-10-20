@@ -60,8 +60,7 @@ const segmentPart = (
 /**
  * The ribbon's centre line, in the adapter's frame: out of the connector's
  * mouth, over the slack loop, down to the landing's top and straight out
- * through the port panel, whose end face it crosses at x = `panel`, to
- * outside_mm beyond it.
+ * past where it leaves the hand, x = `panel`, to outside_mm beyond it.
  */
 function ribbonPath(cfg: Config, panel = defaultPanel(cfg)) {
   const a = cfg.adapter;
@@ -95,13 +94,12 @@ function landingEnd(cfg: Config) {
     -a.board_mm[0] / 2 + a.connector_inset_mm - WIRING.landingGap - 2 * cfg.ribbon.loop_radius_mm
   );
 }
-// Until a build has placed the port panel: as if the landing ran up to the loop.
+// Until a build has placed where the ribbon leaves: as if the landing ran up to the loop.
 const defaultPanel = (cfg: Config) => landingEnd(cfg) - cfg.ribbon.landing_mm[0] - WIRING.panelGap;
 
 /**
- * The ribbon's landing, on the port panel's insert inside the case: its length
- * in from the wall and its width, and in the adapter's frame its bottom (on the
- * bottom section) and top (under the ribbon), and the x it must stop short of,
+ * The ribbon's landing, on the bottom section: its length and its width, and
+ * in the adapter's frame its bottom (on the bottom section) and top (under the ribbon), and the x it must stop short of,
  * clear of the slack loop.
  */
 export function landingBox(cfg: Config) {
@@ -133,7 +131,7 @@ export function holeAlong(cfg: Config, frames: Record<string, Matrix4>): V3 {
 export function controllerParts(
   cfg: Config,
   frames = componentFrames(cfg),
-  /** The port panel's end face in world x, once a build has placed it. */
+  /** Where the ribbon leaves, in world x, once a build has placed it. */
   panelX?: number,
 ): Part[] {
   return controllerStyle(cfg) === 'pro_micro'
@@ -145,7 +143,7 @@ export function controllerParts(
 function adapterParts(
   cfg: Config,
   frames = componentFrames(cfg),
-  /** The port panel's end face in world x, once a build has placed it. */
+  /** Where the ribbon leaves, in world x, once a build has placed it. */
   panelX?: number,
 ): Part[] {
   const a = cfg.adapter;

@@ -277,6 +277,10 @@ function migrate(c: Record<string, any>) {
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;
+  // The chassis variants since dropped: the C64 case, the Skeletyl's wall
+  // designs and end supports, and the C64's plate and deck settings.
+  for (const k of ['style', 'walls', 'ends', 'plate_style', 'plate_slope', 'deck_lift'])
+    delete c.chassis?.[k];
   // Switch fields every build reads. Not the whole section: its override tables
   // may be emptied on purpose.
   if (c.switch)

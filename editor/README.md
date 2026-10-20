@@ -10,10 +10,9 @@ earlier ones (the layout before it, which some tests built, and the `?hand`
 prototype's other presets) were removed on 19 Oct 2026 and stay in git history:
 509dbd1 is the last commit that has them.
 
-The editor edits the key layout; the chassis is generated from it. The
-construction is the Skeletyl-style frame; the C64-styled case chosen earlier from
-the shape prototypes (see [design status](../docs/design-status.md)) is kept as
-`?chassis=c64`.
+The editor edits the key layout; the chassis, the Skeletyl-style frame, is
+generated from it. Earlier chassis variants are on the `legacy-variants` branch
+(see [design status](../docs/design-status.md)).
 
 How the case is built and wired is in [editor chassis and wiring](../docs/editor-chassis.md).
 The tile is measured. The wiring, the FFC adapter and the ribbon dimensions are
@@ -60,10 +59,8 @@ pair tucked in front of it). The keys fan along an arc:
 | `keys`                          | Key names in order along the arc, each with an optional `offset_mm` and `rotation_deg` (the middle thumb key is turned 90° for its 1.5u cap). |
 
 `chassis` holds `plate_thickness_mm` (3), `plate_margin_mm` (0.9: a plate reaches this far
-past its switch seat, or to the edge of the tile pocket if that is further) and `skin_mm`, the case's skin all round: floor,
-walls and deck (the adapter and loom stand on the floor). `skin_mm` must exceed
-1.5 mm, for the port neck. The case's other sizes are named at the top of the
-`src/shell/` files.
+past its switch seat, or to the edge of the tile pocket if that is further) and `skin_mm`, the base plate's thickness
+(the adapter and loom stand on it). `skin_mm` must exceed 1.5 mm.
 
 ## Use
 
@@ -118,10 +115,10 @@ runs against a fraction of the mesh:
 - Tiles (with their corner notches, where the glue posts' rounds stand, 0.15 mm
   clear), tile
   components, the FFC adapter with its connector and
-  latch room, and the main ribbon must not overlap the chassis or the bottom
-  section. The adapter and the ribbon must not overlap the port insert either.
-- **Wires**: each wire, as a tube of its diameter, must miss the chassis, the
-  bottom section and every other wire (wires may touch).
+  latch room, and the main ribbon (or the Pro Micro, its TRRS jack and both
+  plugs) must not overlap the chassis or the bottom section.
+- **Wires**: each wire, as a tube of its diameter, must miss every other wire
+  (wires may touch).
   Wires that hit are listed and highlighted cyan.
 - **Solder access**: with the bottom section off, a 2 mm round iron's way 8 mm
   straight down from each pad, along the key's normal, must miss the chassis.
@@ -134,9 +131,9 @@ runs against a fraction of the mesh:
   Each keycap's room is cut out of the chassis before this check, so it fails
   only when the room is smaller than the keycap's travel; the keycap room check
   below reports chassis that was in the way.
-- Without the bottom section the case must be one piece; loose pieces over
-  0.5 mm³ are listed and highlighted. It must also hold together along the
-  parting line: a section 1.5 mm above it must be one connected area. Separate footprints are listed and highlighted.
+- Without the bottom section the frame must be one piece; loose pieces over
+  0.5 mm³ are listed and highlighted. It must also hold together along its
+  foot: a section 1.5 mm above the floor must be one connected area. Separate footprints are listed and highlighted.
 - No chassis may be built where a keycap goes. Each keycap's room (the keycap
   and its clearance from its lowest point up, and the switch housing's rim below
   that) is cut out of the chassis, and whatever it removed is listed and
@@ -158,16 +155,15 @@ build frees every geometry object it made, including those made with `new`, so t
 geometry engine's heap stays flat from one build to the next (`tests/geometry.test.ts` pins that
 objects made with `new` are freed); a fresh worker still takes over every eight builds as a safety net. A
 build of the default project takes about 2 s in node on a laptop, more than half
-of it the wire router (the browser routes the wires in a worker of their own while
-the shell is lofted). The checks cut
-each probe against the case near its key, not the whole case.
+of it the wire router (the browser routes the wires in a worker of their own). The
+checks cut each probe against the frame near its key, not the whole frame.
 
 ## Prototype flags and dev-only tools
 
-**URL flags** work in the built site too. They try a chassis variant without editing
-the project (`src/prototype-overrides.ts`): `?plates=narrow|facets` (narrow also takes
-`&slope=<deg>`) and `?recess=<mm>`, which sets the finger and thumb decks' height above
-the fitted key surface (the well's wall reaching down as much further).
+**URL flags** work in the built site too. `?controller=ffc|pro_micro` (`src/prototype-overrides.ts`)
+picks what the hand's wires run to without editing the project: the FFC adapter,
+or the [Pro Micro variant](../docs/pro-micro-variant.md). The dev editor's switcher bar
+(← →) cycles it.
 
 The dev server (`make editor`) has two things the built site (`dist/`) does not:
 
@@ -197,8 +193,7 @@ unchanged: save it before the change and diff it after. It builds the default
 project and its variants.
 
 Construction sizes that are not in the config are named in `SIZES` at the top of
-`src/chassis.ts`, the case's at the top of the `src/shell/` files, and the plate
-sheet's in `src/plates.ts`, the seats' in `src/seats.ts`, the wiring's in `WIRING` in
+`src/chassis.ts` and `src/skeletyl.ts`, the plates' in `src/plates.ts`, the seats' in `src/seats.ts`, the wiring's in `WIRING` in
 `src/wiring/common.ts`; the checks' sizes and limits
 are in `CHECKS` in `src/solid.ts`.
 
@@ -208,8 +203,7 @@ check fails.
 The default project is Swung in, extra thumb keys included, laid out by the hand
 model on the defaults before it; `npm run default-config` regenerates
 `src/default-config.json` (`tests/default-config.ts`). On the Skeletyl it passes
-every check, and the tests pin that. Every test builds Swung in, or a deliberate change of it. The C64 case (`?chassis=c64`) was built for
-the earlier layout and fails more of them on Swung in; its tests pin those too.
+every check, and the tests pin that. Every test builds Swung in, or a deliberate change of it.
 The seam check (`tests/seams.ts`) finds where the Skeletyl's parts meet badly
 on the mesh as the editor draws it (slivers, ledges, unintended creases, gaps,
 thin skins, swayed shading), with the parts that meet there; `tests/seams.test.ts`
@@ -220,5 +214,5 @@ The glue posts under each plate are meant geometry (as the plates and seats
 are), so their own faces are not counted, nor what the frame's faces are
 split into within 0.5 mm (`postMeet`) of a leg that goes up into them.
 
-The editor's cleanup is tracked in [CLEANUP-PLAN.md](CLEANUP-PLAN.md), which lists
-each task's status and the decisions left to the owner.
+The decisions the editor's cleanup left to the owner are in
+[CLEANUP-PLAN.md](CLEANUP-PLAN.md).

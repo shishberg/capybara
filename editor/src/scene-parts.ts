@@ -13,7 +13,6 @@ import { $, S } from './state';
 import {
   shell,
   basePlate,
-  trim,
   edges,
   bounds,
   parts,
@@ -110,7 +109,7 @@ const wireColors: Record<string, number> = {
   link: 0xff9f40,
 };
 const ADAPTER_GROUPS = ['adapter', 'ribbon', 'controller', 'cable'];
-// The port panel's end face as last built: the ribbon is drawn out through it.
+// Where the ribbon leaves, as last built: the ribbon is drawn out past it.
 let panel: number | undefined;
 // A box tapering from size (x, y at its bottom, z its height, centred) to a
 // top face of top (x, y).
@@ -250,7 +249,6 @@ export function setShell(r: BuildResult) {
   S.hasShell = true;
   setMesh(shell, r.mesh);
   setMesh(basePlate, r.base);
-  setMesh(trim, r.trim);
   setEdges();
   measure();
   if (panel !== r.panel) {

@@ -13,9 +13,9 @@
 //  chain    keys joined one to the next by a net's wires (wiring.nets[].chains);
 //  feed     the wire from a chain's end to its adapter hole;
 //  loom     the height above the bottom section at which feeds run to the adapter;
-//  wire port  where thumb wires pass from under the thumb well to under the
-//           finger well: a straight round way in front of the gap between the
-//           inner and index columns' bottom keys, inside the case's hollow;
+//  wire port  where thumb wires pass from under the thumbs to under the
+//           finger columns: a straight round way in front of the gap between
+//           the inner and index columns' bottom keys;
 //  slack loop  the arch the ribbon makes between the connector and the landing,
 //           so a pull held by the ties never reaches the connector.
 import {

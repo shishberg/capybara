@@ -1,14 +1,11 @@
-// Manifold idioms the shell, chassis, solid and hand frame share, and the
+// Manifold idioms the chassis, solid and hand frame share, and the
 // scope that frees what a build makes.
-import type { CrossSection, Manifold, ManifoldToplevel, Mat4, Vec3 } from 'manifold-3d';
+import type { Manifold, ManifoldToplevel, Mat4, Vec3 } from 'manifold-3d';
 import type { Matrix4 } from 'three';
 import type { KeycapEnvelope, MeshData } from './geometry';
 
 /** The Manifold constructors of a loaded module. */
 export type Factory = ManifoldToplevel['Manifold'];
-
-/** A plan shape's prism, run far above and below any part so cuts through it are clean. */
-export const prism = (cs: CrossSection) => cs.extrude(400).translate([0, 0, -1]);
 
 /** A slab round a box's plan, `margin` past it on every side, `height` tall from `z0`. */
 export const slab = (

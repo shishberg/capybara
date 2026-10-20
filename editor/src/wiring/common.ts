@@ -222,7 +222,7 @@ export const WIRING = {
   linkOver: 1,
   /** each this far above the one before. */
   linkStep: 1.2,
-  /** Before a build places the port panel, it is this far past the landing. */
+  /** Before a build places where the ribbon leaves, it is this far past the landing. */
   panelGap: 2,
   /** A pad's drawn box is this thick. */
   padThickness: 0.1,

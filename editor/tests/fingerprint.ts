@@ -1,5 +1,5 @@
 // Prints a fingerprint of the chassis for several configs (body, base, solid,
-// trim, wiring, hardware placements, digests of every report check value and the
+// wiring, hardware placements, digests of every report check value and the
 // failure lists) and of Swung in's ?hand settings (key frames, check problems, a digest
 // of the check's numbers, test frame). A refactor that should
 // not change the geometry must leave every line unchanged. Usage: npm run
@@ -111,7 +111,6 @@ const failures = (r: Report) =>
     ['foot', r.footprint.map(r2)],
     ['room', r.roomCuts.map((x) => `${x.name}:${r2(x.volume)}`)],
     ['hw', r.hardware.map((x) => `${x.name}:${r2(x.volume)}`)],
-    ['wire', r.wires.map((x) => `${x.name}:${r2(x.volume)}`)],
     ['cross', r.crossings],
   ]
     .map(([k, v]) => `${k} ${listed((v as string[]).slice().sort())}`)
@@ -149,9 +148,7 @@ for (const [name, change] of Object.entries(variants)) {
     );
     console.log(
       ' '.repeat(9),
-      'trim',
-      describe(chassis.trim),
-      '| wires',
+      'wires',
       w.length,
       r2(w.reduce((a, x) => a + x.length, 0)),
       digest(
