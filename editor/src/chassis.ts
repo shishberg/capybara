@@ -856,7 +856,7 @@ export function buildChassis(
   );
   if (controllerStyle(cfg) === 'pro_micro') {
     // The plugs come in through the frame and over notches in the plate's edge.
-    const ways = plugWays(wasm, cfg, frames, SIZES.notchLength);
+    const ways = plugWays(wasm, cfg, frames, SIZES.notchLength, built.outline);
     const uncarved = framed.subtract(ways);
     const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
     const e = frames.pro_micro.elements;

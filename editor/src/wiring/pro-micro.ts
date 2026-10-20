@@ -115,29 +115,99 @@ export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[
 }
 
 /**
- * The openings for the plugs, in world coordinates: each plug's overmold,
- * grown by clearance_mm all round, from its mouth out `reach` mm, square for
- * the USB-C plug and round for the jack's.
+ * The wall's fit round a port (mm): the clearance round its nose (the USB-C
+ * receptacle's shell, the jack's barrel), which stands in the wall so that it
+ * grips it; and the chamfer round the plug's opening where it meets the
+ * wall's outer face.
+ */
+const GRIP = 0.15;
+const CHAMFER = 1;
+
+/**
+ * The openings for the plugs, in world coordinates. Each port's nose stands
+ * in the wall, its mouth short of the outer face, so the openings are: round
+ * the nose, grown by GRIP, from its mouth in (with the board's end under the
+ * USB-C receptacle, which reaches into the wall too); and the plug's overmold,
+ * grown by clearance_mm, from its mouth out `reach` mm, CHAMFER wider at 45°
+ * where it crosses `outline` (plan), the wall's outer face (no deeper than
+ * the mouth). Square for the USB-C plug and round for the jack's.
  */
 export function plugWays(
   wasm: ManifoldToplevel,
   cfg: Config,
   frames: Record<string, Matrix4>,
   reach: number,
+  outline?: [number, number][],
 ) {
   const M = wasm.Manifold;
   const b = cfg.pro_micro;
   const j = cfg.trrs;
   const m = mouths(cfg);
+  // How far out from mouth x (in frame f, along its -x) the outer face is.
+  const face = (f: Matrix4, x: number, z: number) => {
+    if (!outline) return undefined;
+    const p = point(f, [x, 0, z]);
+    const q = point(f, [x - 1, 0, z]);
+    const d = [q[0] - p[0], q[1] - p[1]];
+    let best: number | undefined;
+    outline.forEach((a, i) => {
+      const e = outline[(i + 1) % outline.length];
+      const s = [e[0] - a[0], e[1] - a[1]];
+      const den = d[0] * s[1] - d[1] * s[0];
+      if (Math.abs(den) < 1e-12) return;
+      const w = [a[0] - p[0], a[1] - p[1]];
+      const t = (w[0] * s[1] - w[1] * s[0]) / den;
+      const u = (w[0] * d[1] - w[1] * d[0]) / den;
+      if (t > 0 && u >= 0 && u <= 1 && (best === undefined || t < best)) best = t;
+    });
+    return best;
+  };
+  const e = 0.5;
+  // The chamfer, no deeper than the mouth, so that the nose stays gripped.
+  const chamfer = (d: number) => Math.min(CHAMFER, d);
+  // USB-C: the receptacle's shell and the board's end under it, the plug, and
+  // the chamfer: a hull from the plug's opening CHAMFER in from the face to it
+  // grown CHAMFER (and e past).
+  const [bx, by, bz] = b.board_mm;
+  const end = -bx / 2 - GRIP;
+  const [ux, uy, uz] = b.usb_mm;
   const [pw, ph] = b.plug_mm;
   const c = b.clearance_mm;
+  const du = face(frames.pro_micro, m.usb.x, m.usb.z);
+  const thin = (x: number, grow: number) =>
+    box(M, [0.01, pw + 2 * c + 2 * grow, ph + 2 * c + 2 * grow], [x, 0, m.usb.z]);
   const usb = place(
-    box(M, [reach, pw + 2 * c, ph + 2 * c], [m.usb.x - reach / 2, 0, m.usb.z]),
+    M.union([
+      box(M, [ux, uy + 2 * GRIP, uz + 2 * GRIP], [m.usb.x + ux / 2, 0, bz + uz / 2]),
+      box(
+        M,
+        [m.usb.x + ux - end, by + 2 * GRIP, bz + 2 * GRIP],
+        [(m.usb.x + ux + end) / 2, 0, bz / 2],
+      ),
+      box(M, [reach, pw + 2 * c, ph + 2 * c], [m.usb.x - reach / 2, 0, m.usb.z]),
+      ...(du === undefined
+        ? []
+        : [M.hull([thin(m.usb.x - du + chamfer(du), 0), thin(m.usb.x - du - e, chamfer(du) + e)])]),
+    ]),
     frames.pro_micro,
   );
+  // The jack: its barrel, the plug, and the chamfer: a cone the same way.
+  const [bl, bd] = j.barrel_mm;
   const r = j.plug_mm[0] / 2 + j.clearance_mm;
+  const dj = face(frames.trrs, m.trrs.x, m.trrs.z);
+  // Along -x from x, h long, radius r0 there to r1 at its far end.
+  const out = (x: number, h: number, r0: number, r1: number) =>
+    M.cylinder(h, r0, r1, 48).rotate([0, -90, 0]).translate([x, 0, m.trrs.z]);
   const trrs = place(
-    M.cylinder(reach, r, r, 48).rotate([0, -90, 0]).translate([m.trrs.x, 0, m.trrs.z]),
+    M.union([
+      M.cylinder(bl, bd / 2 + GRIP, bd / 2 + GRIP, 48)
+        .rotate([0, 90, 0])
+        .translate([m.trrs.x, 0, m.trrs.z]),
+      out(m.trrs.x, reach, r, r),
+      ...(dj === undefined
+        ? []
+        : [out(m.trrs.x - dj + chamfer(dj), chamfer(dj) + e, r, r + chamfer(dj) + e)]),
+    ]),
     frames.trrs,
   );
   return M.union([usb, trrs]);

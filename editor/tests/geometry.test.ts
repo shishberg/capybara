@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import Module from 'manifold-3d';
+import Module, { type Manifold } from 'manifold-3d';
 import { Vector3 } from 'three';
 import {
   defaults,
@@ -16,7 +16,7 @@ import {
 } from '../src/geometry';
 import { hardware } from '../src/parts';
 import { tilePocketDepth } from '../src/plates';
-import { freeAfter } from '../src/manifold-util';
+import { box, freeAfter, place } from '../src/manifold-util';
 import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
@@ -304,7 +304,8 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   const frames = componentFrames(cfg);
   const w = wiring(cfg, frames);
   const hole = holes(cfg, frames);
-  const near = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i])) < 0.51;
+  const near = (a: number[], b: number[], by = 0.51) =>
+    Math.hypot(...a.map((x, i) => x - b[i])) < by;
   // Every net's feeds end on the Pro Micro pin pro_micro.pins gives it.
   for (const net of nets(cfg)) {
     const at = point(frames.pro_micro, pinAt(cfg, pinOf(cfg, net.name)));
@@ -315,14 +316,17 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   }
   // Each of the jack's wires runs from its pin to its lug, no higher than
   // its level over the jack's top (the jack stands up into the loom, so that
-  // its plug comes in over the rail).
+  // its plug comes in over the rail). On a pin a net's feeds land on too, it
+  // starts beside them in the hole.
+  const fed = new Set(Object.values(cfg.pro_micro.pins));
   const links = w.wires.filter((x) => x.group === 'link');
   assert.equal(links.length, cfg.trrs.wires.length);
   const top = point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2];
   const highest = top + WIRING.linkOver + (links.length - 1) * WIRING.linkStep;
   for (const t of cfg.trrs.wires) {
     const l = links.find((x) => x.net === `TRRS ${t.name}`)!;
-    assert(near(l.points[0], point(frames.pro_micro, pinAt(cfg, t.pin))), t.name);
+    const share = fed.has(t.pin) ? WIRING.holeShare : 0;
+    assert(near(l.points[0], point(frames.pro_micro, pinAt(cfg, t.pin)), share + 0.51), t.name);
     assert(near(l.points.at(-1)!, lugAt(cfg, frames, t.lug)), t.name);
     assert(Math.max(...l.points.map((p) => p[2])) <= highest + 1e-9, t.name);
   }
@@ -347,8 +351,9 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   assert.equal(w.nets.find((n) => n.name === 'DATA')!.label, '5, P0.17');
 });
 test("on a Pro Micro the walls stand as on the default, the jack's plug in through one, over the rail", () => {
-  // The USB-C plug runs out the back, where no wall stands; the jack's comes in
-  // through the inner back web's wishbone, filled in round it.
+  // The USB-C plug runs out the back, through the rail and the rib over it;
+  // the jack's comes in through the inner front web's wishbone, filled in
+  // round it.
   const walls = (cfg: typeof defaults.config) => {
     const frames = componentFrames(cfg);
     return capybara(wasm, cfg, frames, wiring(cfg, frames).wires)
@@ -370,6 +375,53 @@ test("on a Pro Micro the walls stand as on the default, the jack's plug in throu
   const mouth = point(frames.trrs, [m.x, 0, m.z]);
   const r = cfg.trrs.plug_mm[0] / 2 + cfg.trrs.clearance_mm;
   assert(mouth[2] - r > CAPYBARA.railHeight, `${mouth[2] - r} over the rail`);
+});
+test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', () => {
+  // The chassis keeps out of each port's nose but closes round it: a ring a
+  // millimetre thick round the nose, outside the grip, is in the wall for
+  // over a millimetre of the receptacle's length and nearly all the barrel's.
+  const M = wasm.Manifold;
+  const cfg = proMicro().config;
+  const frames = componentFrames(cfg);
+  const body = buildChassis(wasm, cfg, frames).body;
+  const m = mouths(cfg);
+  const [ux, uy, uz] = cfg.pro_micro.usb_mm;
+  const bz = cfg.pro_micro.board_mm[2];
+  const shell = (g: number) =>
+    place(
+      box(M, [ux, uy + 2 * g, uz + 2 * g], [m.usb.x + ux / 2, 0, bz + uz / 2]),
+      frames.pro_micro,
+    );
+  const [bl, bd] = cfg.trrs.barrel_mm;
+  const barrel = (g: number) =>
+    place(
+      M.cylinder(bl, bd / 2 + g, bd / 2 + g, 48)
+        .rotate([0, 90, 0])
+        .translate([m.trrs.x, 0, m.trrs.z]),
+      frames.trrs,
+    );
+  // How many millimetres of the nose's length the ring is in the wall for.
+  const gripped = (nose: (g: number) => Manifold, length: number) => {
+    assert(body.intersect(nose(0)).volume() < 1e-6, 'clear of the nose');
+    const ring = nose(1).subtract(nose(0.2));
+    return (body.intersect(ring).volume() / ring.volume()) * length;
+  };
+  const usb = gripped(shell, ux);
+  assert(usb > 1, `the receptacle gripped for ${usb} mm`);
+  const jack = gripped(barrel, bl);
+  assert(jack > 0.9 * bl, `the barrel gripped for ${jack} mm`);
+});
+test('a project with the Pro Micro and jack placed as before schema 8 takes their new places and pins', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 7;
+  c.pro_micro.position_mm = [-21, 17];
+  Object.assign(c.pro_micro.pins, { RT: 11, RH: 12, RB: 17, RX: 18 });
+  Object.assign(c.pro_micro.pins, { C0: 6, C1: 7, C2: 8, C3: 9, C4: 10 });
+  c.trrs.position_mm = [-42.3, 14.4];
+  c.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin = 3;
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
 });
 test('a project with the Pro Micro and jack placed as before schema 7 takes their new places', () => {
   const p = clone(defaults);

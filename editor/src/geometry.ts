@@ -227,7 +227,8 @@ export const controllerStyle = (c: Config) =>
  * holes and edge pads), where a project still has the provisional one.
  * Schema 7 turns the Pro Micro's USB-C port to the back and stands the jack
  * up to come in through a wishbone, where a project still has them as placed
- * before.
+ * before. Schema 8 grips the USB-C receptacle in the rear wall and moves the
+ * jack to the front wishbone, with pins to suit.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -289,6 +290,29 @@ function migrate(c: Record<string, any>) {
         for (const f of ['position_mm', 'rotation_deg', 'standoff_mm']) p[f] = clone(d[k][f]);
     }
     c.schema = 7;
+  }
+  if (!(c.schema >= 8)) {
+    // Schema 8: the Pro Micro's USB-C receptacle sits in the rear wall,
+    // centred on the rib, and the jack comes in through the front wishbone.
+    // A project with either where schema 7 put it (if not moved) takes the
+    // new place. With both in their new places, pins still as schema 7 had
+    // them take the ones that wire the new places without crossings.
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    const fields = ['position_mm', 'rotation_deg', 'standoff_mm'];
+    const at = (p: Record<string, any>) => fields.map((f) => p[f]);
+    const old = { pro_micro: [[-21, 17], -90, 2], trrs: [[-42.3, 14.4], 0, 6] };
+    for (const [k, was] of Object.entries(old))
+      if (c[k] && same(at(c[k]), was)) for (const f of fields) c[k][f] = clone(d[k][f]);
+    const placed = (k: string) => c[k] && same(at(c[k]), at(d[k]));
+    if (placed('pro_micro') && placed('trrs')) {
+      const pins = { RT: 11, RH: 12, RB: 17, RX: 18, C0: 6, C1: 7, C2: 8, C3: 9, C4: 10 };
+      if (Object.entries(pins).every(([n, i]) => c.pro_micro.pins?.[n] === i))
+        Object.assign(c.pro_micro.pins, clone(d.pro_micro.pins));
+      const gnd = c.trrs.wires?.find((w: { name: string }) => w.name === 'GND');
+      if (gnd?.pin === 3)
+        gnd.pin = d.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin;
+    }
+    c.schema = 8;
   }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
