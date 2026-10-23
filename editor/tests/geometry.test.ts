@@ -437,7 +437,7 @@ test('on a Pro Micro the reset switch lies plunger down on its pedestal, pressed
   // on the pedestal; a pin's way up through the hole to the plunger's tip is
   // clear; the tip stands over the floor, which is solid round the hole, so
   // nothing flat under the hand, nor a fingertip, reaches it. Its two link
-  // wires run from RST and the GND beside it to a leg on each side.
+  // wires run from RST and the GND beside it to two diagonal legs.
   const M = wasm.Manifold;
   const cfg = proMicro().config;
   const r = cfg.reset;
@@ -481,8 +481,10 @@ test('on a Pro Micro the reset switch lies plunger down on its pedestal, pressed
     assert.deepEqual(l.points.at(-1), legAt(cfg, frames, x.leg));
     assert(w.nets.some((n) => n.name === `Reset ${x.name}` && n.wires === 1));
   }
-  // One leg on each side: legs 1 and 2 are joined, and 3 and 4.
-  assert.notEqual(r.wires[0].leg <= 2, r.wires[1].leg <= 2);
+  // Diagonal legs, which a press joins whichever pairs the switch always joins:
+  // straight across (1 and 3, 2 and 4) or along a side (1 and 2, 3 and 4).
+  const [a, b] = r.wires.map((x) => x.leg);
+  assert(a <= 2 !== b <= 2 && a % 2 !== b % 2, `legs ${a} and ${b} are diagonal`);
   assert.deepEqual(crossings(w.wires), []);
 });
 test('a project with the jack placed as before schema 10 takes its new place', () => {

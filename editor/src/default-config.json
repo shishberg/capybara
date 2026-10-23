@@ -424,7 +424,7 @@
   },
   "reset": {
     "provisional": true,
-    "description": "6 x 6 mm SMD tactile switch, the hand's reset button, plunger down on a pedestal on the bottom section beside the Pro Micro's RST and GND pins, pressed with a pin through a hole in the bottom section under it. A press shorts RST to GND: one resets the board, two quick ones enter its bootloader. Its position is in world coordinates, like the jack's: the body's centre in plan and its turn about the vertical; standoff_mm is the pedestal's height, the plunger's proud height and the gap under its tip. body_mm is the body without the plunger; plunger_mm its diameter and how far it stands proud. The legs stand out of the body's two y sides, on its back (up, as it lies), leg_pitch_mm apart along each side and leg_span_mm tip to tip across; legs 1 and 2 are on the -y side and 3 and 4 on +y (odd ones at -x), each side's two joined. wires joins a leg on each side to a Pro Micro pin. hole_mm is the pin hole's diameter.",
+    "description": "6 x 6 mm SMD tactile switch, the hand's reset button, plunger down on a pedestal on the bottom section beside the Pro Micro's RST and GND pins, pressed with a pin through a hole in the bottom section under it. A press shorts RST to GND: one resets the board, two quick ones enter its bootloader. Its position is in world coordinates, like the jack's: the body's centre in plan and its turn about the vertical; standoff_mm is the pedestal's height, the plunger's proud height and the gap under its tip. body_mm is the body without the plunger; plunger_mm its diameter and how far it stands proud. The legs stand out of the body's two y sides, on its back (up, as it lies), leg_pitch_mm apart along each side and leg_span_mm tip to tip across; legs 1 and 2 are on the -y side and 3 and 4 on +y (odd ones at -x). Two legs are always joined, straight across or along a side by make, so wires takes two diagonal legs, which a press joins in either kind, to Pro Micro pins. hole_mm is the pin hole's diameter.",
     "position_mm": [-8, 32.5],
     "rotation_deg": 0,
     "standoff_mm": 1.8,
@@ -436,7 +436,7 @@
     "clearance_mm": 0.4,
     "wires": [
       { "name": "RST", "leg": 1, "pin": 22 },
-      { "name": "GND", "leg": 3, "pin": 23 }
+      { "name": "GND", "leg": 4, "pin": 23 }
     ]
   },
   "wiring": {
