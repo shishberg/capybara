@@ -11,18 +11,18 @@ A PROTOTYPE alternative to the pod: an nRF52840 board in Pro Micro form factor i
 
 ## Pins
 
-ZMK's wired split uses the board's `pro_micro_serial` UART: TX on pin 1 (P0.06), RX on pin 2 (P0.08). LED data is on pin 5 (P0.17). All three are high-frequency pins; the rest of the edge pins are low-frequency (10 kHz or less), fine for the matrix but not for LED data or the UART. P0.09 and P0.10 (pins 13 and 14) are NFC pins and are left free. The matrix and LEDs take 12 of the board's 21 GPIOs.
+The link is a UART on the board's `pro_micro_serial` pins, pin 1 (P0.06) and pin 2 (P0.08). LED data is on pin 5 (P0.17). All three are high-frequency pins; the rest of the edge pins are low-frequency (10 kHz or less), fine for the matrix but not for LED data or the UART. P0.09 and P0.10 (pins 13 and 14) are NFC pins and are left free. The matrix and LEDs take 12 of the board's 21 GPIOs.
 
 ## The link
 
-- **Firmware:** ZMK's wired split (full-duplex UART, mainline since v0.3.0 and still marked experimental). The half on USB is the central. Set `CONFIG_ZMK_SPLIT_BLE=n` so the split stays on the wire.
-- **Cable:** a straight TRRS cable carries TX, RX and GND (sleeve, ring 2, ring 1; the tip is spare). Both hands are wired the same, so the peripheral's devicetree swaps its UART's TX and RX pins.
+- **Firmware:** RMK's serial split over a full-duplex UART, in [`firmware/`](../firmware/README.md). The left hand is the central, on USB to the host.
+- **Cable:** a straight TRRS cable carries TX, RX and GND (sleeve, ring 2, ring 1; the tip is spare). Both hands are wired the same, so the left hand transmits on P0.06 and the right on P0.08.
 - **No power on the cable.** The board's VCC pin is the output of its 3.3 V regulator, which doesn't feed the nRF52840, and nice!nano's makers say the boards aren't designed to power each other. Each hand needs its own power.
 - **Never plug or unplug the cable while either hand is powered,** by USB or battery (ZMK's warning, which holds even without power on the cable).
 
 ## LEDs
 
-There is no 5 V pin: RAW is the battery. The LEDs run from VCC, 3.3 V, which ZMK switches off through P0.13 (`CONFIG_ZMK_RGB_UNDERGLOW_EXT_POWER`) so the dark LEDs' 1 mA each doesn't drain the battery. The wiring's `+5V` net is that VCC pin.
+There is no 5 V pin: RAW is the battery. The LEDs run from VCC, 3.3 V, which P0.13 switches (high is on), so the dark LEDs' 1 mA each needn't drain the battery. The firmware doesn't drive the LEDs yet and holds VCC off. The wiring's `+5V` net is that VCC pin.
 
 ## Open
 

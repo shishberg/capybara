@@ -18,6 +18,10 @@ Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capy
 
 [`hand/`](hand/README.md) holds a measured model of the hand, in the editor's layout axes: fingertip rest positions, thumb landing points, segment lengths and the resting pose. Swung in was laid out from it in the editor's dev-only `?hand` mode, which shows the hand on the keys and checks its reach and the board's height: see the [hand prototype](docs/hand-prototype.md).
 
+## Firmware
+
+[`firmware/`](firmware/README.md) is RMK firmware for the [Pro Micro variant](docs/pro-micro-variant.md): one nRF52840 board per hand, the hands joined by a TRRS serial link. `make firmware` builds the two UF2s into `output/firmware/`.
+
 ## Paused: seeded flex and flat-thumb boards
 
 The rest of this README describes the `make build` pipeline: flex finger boards, flat rigid thumb PCBs and the LED-free pod. The key tiles replace these boards for the first prototype. The pipeline, its tests and its docs are kept as reference and still build.

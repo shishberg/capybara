@@ -20,3 +20,15 @@ editor-test:
 	npm --prefix editor test
 
 .PHONY: editor editor-test
+
+# Pro Micro variant firmware (RMK); see firmware/README.md. uf2.py refuses an image that
+# would write outside the app window.
+FIRMWARE_ELF = firmware/target/thumbv7em-none-eabihf/release
+
+firmware:
+	cd firmware && cargo build --release
+	mkdir -p output/firmware
+	python3 firmware/uf2.py $(FIRMWARE_ELF)/central output/firmware/capybara-central.uf2
+	python3 firmware/uf2.py $(FIRMWARE_ELF)/peripheral output/firmware/capybara-peripheral.uf2
+
+.PHONY: firmware
