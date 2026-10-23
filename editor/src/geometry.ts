@@ -241,7 +241,8 @@ export const controllerStyle = (c: Config) =>
  * the back of the inner side, gripped by a collar on the rail, with pins to
  * suit. Schema 10 moves it under the wishbone nearest the back, its opening
  * filled round the barrel. Schema 11 stands the reset switch against the
- * back wall, its plunger out through it.
+ * back wall, its plunger out through it. Schema 12 makes it a low switch in a
+ * pocket in the wall.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -359,6 +360,13 @@ function migrate(c: Record<string, any>) {
     if (c.reset && same(at(c.reset), [[-8, 32.5], 0, 1.8])) c.reset = clone(d.reset);
     delete c.pro_micro?.cradle?.reset_walls;
     c.schema = 11;
+  }
+  if (!(c.schema >= 12)) {
+    // Schema 12: the reset switch is a low one in a pocket in the back wall.
+    // A project with it where schema 11 put it (if not moved) takes the new
+    // switch whole.
+    if (c.reset && same(at(c.reset), [[-5, 38.24], -87.65, 1])) c.reset = clone(d.reset);
+    c.schema = 12;
   }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;

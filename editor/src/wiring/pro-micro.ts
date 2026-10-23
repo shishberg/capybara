@@ -1,8 +1,8 @@
 // The Pro Micro variant's hardware (controller.style "pro_micro"): an
 // nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
 // section, the board's USB-C port facing out of the hand's back end and the
-// jack's barrel out of its inner side, and a reset switch standing against
-// the back wall, its plunger out through it. Their pins, the parts, the
+// jack's barrel out of its inner side, and a reset switch in a pocket in the
+// back wall, its plunger out through it. Their pins, the parts, the
 // plugs, the openings for the plugs and the plunger, the jack's collar and
 // the cradles that hold them.
 import type { CrossSection, Manifold, ManifoldToplevel, Mat4 } from 'manifold-3d';
@@ -93,8 +93,8 @@ export function mouths(cfg: Config) {
   };
 }
 
-/** A reset switch leg's width and thickness (mm), for display: a gull-wing leg's flat end. */
-const LEG = [0.7, 0.3];
+/** A reset switch leg's width and thickness (mm): a gull-wing leg's flat end. */
+const LEG = [0.8, 0.3];
 
 /** A part `size` about `center` in frame f, turned so its z axis (a cylinder's) runs along f's x. */
 const alongX = (f: Matrix4) => f.clone().multiply(new Matrix4().makeRotationY(Math.PI / 2));
@@ -260,10 +260,13 @@ export function plugWays(
 }
 
 /**
- * The reset switch's way, in world coordinates: a bore round its plunger,
- * grown by clearance_mm, from its body's face out through the back wall to
- * the outer face (`outline`, plan), chamfered CHAMFER at 45° there as the
- * plugs' openings are. The plunger stands proud of the face.
+ * The reset switch's way, in world coordinates: a pocket in the inside of the
+ * back wall round its body, and round its legs, which stand out of its back,
+ * each grown by clearance_mm, which leaves a skin of the wall in front of its
+ * plunger face; and a hole round its plunger, grown by clearance_mm, through
+ * the skin to the outer face (`outline`, plan), chamfered at 45° there as the
+ * plugs' openings are, by no more than half the skin. The plunger stands proud
+ * of the face.
  */
 export function resetWay(
   wasm: ManifoldToplevel,
@@ -275,12 +278,23 @@ export function resetWay(
   const f = frames.reset;
   const r = cfg.reset;
   const e = 0.5;
-  const bore = r.plunger_mm[0] / 2 + r.clearance_mm;
+  const c = r.clearance_mm;
+  const [rx, ry, rz] = r.body_mm;
+  const bore = r.plunger_mm[0] / 2 + c;
+  // From z0 back to a millimetre behind the body, past the wall's inside.
+  const pocket = (x: number, y: number, z0: number) =>
+    box(M, [x + 2 * c, y + 2 * c, rz + 1 - z0], [0, 0, (z0 + rz + 1) / 2]);
+  const held = [
+    pocket(rx, ry, 0),
+    pocket(r.leg_pitch_mm + LEG[0], r.leg_span_mm, rz - LEG[1] - 2 * c),
+  ];
   const d = toOutline(outline, point(f, [0, 0, 0]), point(f, [0, 0, -1]));
-  if (d === undefined) return place(M.cylinder(10 + e, bore, bore, 48).translate([0, 0, -10]), f);
+  if (d === undefined)
+    return place(M.union([...held, M.cylinder(10 + e, bore, bore, 48).translate([0, 0, -10])]), f);
   const chamfer = Math.min(CHAMFER, d / 2);
   return place(
     M.union([
+      ...held,
       M.cylinder(d + 2 * e, bore, bore, 48).translate([0, 0, -d - e]),
       M.cylinder(chamfer + e, bore + chamfer + e, bore, 48).translate([0, 0, -d - e]),
     ]),
@@ -391,10 +405,9 @@ function opening(
  * its pin rows (clear of the wire ends under them), guides along its long
  * edges and a stop behind its far end, which takes the push of the USB-C
  * plug; under the jack (lugs up) a pedestal, and round it a wall each side and
- * one behind; under the reset switch (on edge against the back wall) a
- * pedestal, and behind it a stop, twice as thick as the walls, which takes the
- * press, narrower than the body so that its legs are clear. Each reaches half
- * a millimetre into the floor.
+ * one behind; behind the reset switch (in its pocket in the back wall) a stop,
+ * twice as thick as the walls, which takes the press, narrower than the body
+ * so that its legs are clear. Each reaches half a millimetre into the floor.
  */
 export function cradles(
   wasm: ManifoldToplevel,
@@ -454,17 +467,13 @@ export function cradles(
       jz * k.jack_walls,
     ),
   ]);
-  // The switch's frame has x up, so these run in x from under the floor's top.
+  // The switch's frame has x up, so the stop runs in x from under the floor's
+  // top to the body's top.
   const r = cfg.reset;
   const [rx, ry, rz] = r.body_mm;
-  const rc = r.clearance_mm;
   const low = -rx / 2 - r.standoff_mm - into;
-  const upTo = (x: number, y: number, z: number[]) =>
-    box(M, [x - low, y, z[1] - z[0]], [(x + low) / 2, 0, (z[0] + z[1]) / 2]);
-  const reset = M.union([
-    upTo(-rx / 2, ry, [0, rz]),
-    upTo(rx / 2, ry - 2, [rz + rc, rz + rc + 2 * w]),
-  ]);
+  const z0 = rz + r.clearance_mm;
+  const reset = box(M, [rx / 2 - low, ry - 2, 2 * w], [(rx / 2 + low) / 2, 0, z0 + w]);
   return M.union([
     place(board, frames.pro_micro),
     place(jack, frames.trrs),

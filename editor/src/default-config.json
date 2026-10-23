@@ -1,5 +1,5 @@
 {
-  "schema": 11,
+  "schema": 12,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "geometry": {
     "row_pitch_mm": 24.5,
@@ -349,7 +349,7 @@
     "usb_overhang_mm": 1,
     "parts_mm": [22, 12, 1.2],
     "plug_mm": [12.5, 7, 25],
-    "clearance_mm": 0.4,
+    "clearance_mm": 0.2,
     "cradle": {
       "wall_mm": 1.2,
       "above_mm": 0.5,
@@ -423,14 +423,14 @@
   },
   "reset": {
     "provisional": true,
-    "description": "6 x 6 x 7 mm SMD tactile switch, the hand's reset button, standing on edge against the inside of the back wall beside the USB-C port, its plunger out through a bore in the wall to stand proud of the outer face, pressed with a fingertip; under it a pedestal on the bottom section sets its height, and behind it a stop takes the press. A press shorts RST to GND: one resets the board, two quick ones enter its bootloader. Its position is in world coordinates, like the jack's: the middle of the body's plunger face in plan, and its turn about the vertical; at 0 the plunger faces -x. standoff_mm is the pedestal's height, under the body's lower edge. body_mm is the body without the plunger, as it stands: its height, its width along the wall and its depth from the plunger face back; plunger_mm the plunger's diameter and how far it stands proud of the body. The legs stand out of the body's two sides at its back, leg_pitch_mm apart, one over the other, and leg_span_mm tip to tip across; legs 1 and 2 are on the side to the right seen from inside, 3 and 4 on the left, the odd ones lower. Two legs are always joined, straight across or along a side by make, so wires takes two diagonal legs, which a press joins in either kind, to Pro Micro pins; each wire comes onto its leg from behind.",
-    "position_mm": [-5, 38.24],
+    "description": "6.5 x 6.5 mm low-profile SMD tactile switch with a metal body 2 mm thick and a round plunger 1 mm proud of it, the hand's reset button, pressed with a fingertip. It sits in a pocket in the inside of the back wall beside the USB-C port, a skin of the wall in front of it and its plunger out through a hole in the skin to stand proud of the outer face; behind it a stop on the bottom section takes the press. A press shorts RST to GND: one resets the board, two quick ones enter its bootloader. Its position is in world coordinates, like the jack's: the middle of the body's plunger face in plan, and its turn about the vertical; at 0 the plunger faces -x. standoff_mm is the body's lower edge above the bottom section. body_mm is the body without the plunger, as it stands: its height, its width along the wall and its depth from the plunger face back; plunger_mm the plunger's diameter and how far it stands proud of the body. clearance_mm is the fit of the pocket round the body and its legs and of the hole round the plunger. The legs stand out of the body's two sides at its back, leg_pitch_mm apart, one over the other, and leg_span_mm tip to tip across; legs 1 and 2 are on the side to the right seen from inside, 3 and 4 on the left, the odd ones lower. A fifth tab between two of them is left unwired. Two legs are always joined, straight across or along a side by make, so wires takes two diagonal legs, which a press joins in either kind, to Pro Micro pins; each wire comes onto its leg from behind.",
+    "position_mm": [-5, 40.24],
     "rotation_deg": -87.65,
-    "standoff_mm": 1,
-    "body_mm": [6, 6, 3.5],
-    "plunger_mm": [3.5, 3.5],
-    "leg_pitch_mm": 4.5,
-    "leg_span_mm": 9,
+    "standoff_mm": 1.5,
+    "body_mm": [6.5, 6.5, 2],
+    "plunger_mm": [3.25, 1],
+    "leg_pitch_mm": 4.4,
+    "leg_span_mm": 8.7,
     "clearance_mm": 0.4,
     "wires": [
       { "name": "RST", "leg": 4, "pin": 22 },
