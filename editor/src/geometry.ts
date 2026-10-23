@@ -204,7 +204,15 @@ export function componentFrames(cfg: Config) {
   if (controllerStyle(cfg) === 'pro_micro') {
     n.pro_micro = onFloor(cfg.pro_micro);
     n.trrs = onFloor(cfg.trrs);
-    n.reset = onFloor(cfg.reset);
+    // The reset switch stands on edge, its frame's origin the middle of its
+    // plunger face: x up, z back from the face (the plunger along -z, which
+    // faces world -x at rotation 0) and y across.
+    const r = cfg.reset;
+    n.reset = onFloor(r)
+      .multiply(frame([0, 0, r.body_mm[0] / 2]))
+      .multiply(
+        new Matrix4().makeBasis(new Vector3(0, 0, 1), new Vector3(0, -1, 0), new Vector3(1, 0, 0)),
+      );
   } else n.adapter = onFloor(cfg.adapter);
   return n;
 }
@@ -232,7 +240,8 @@ export const controllerStyle = (c: Config) =>
  * jack to the front wishbone, with pins to suit. Schema 9 moves the jack to
  * the back of the inner side, gripped by a collar on the rail, with pins to
  * suit. Schema 10 moves it under the wishbone nearest the back, its opening
- * filled round the barrel.
+ * filled round the barrel. Schema 11 stands the reset switch against the
+ * back wall, its plunger out through it.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -341,6 +350,15 @@ function migrate(c: Record<string, any>) {
     if (c.trrs && same(at(c.trrs), [[-42.72, 30.3], -4.5, 6]))
       for (const f of fields) c.trrs[f] = clone(d.trrs[f]);
     c.schema = 10;
+  }
+  if (!(c.schema >= 11)) {
+    // Schema 11: the reset switch stands against the back wall, its plunger
+    // out through it, where it lay plunger down over a pin hole in the bottom
+    // section. A project with it where schema 10 put it (if not moved) takes
+    // the new switch whole.
+    if (c.reset && same(at(c.reset), [[-8, 32.5], 0, 1.8])) c.reset = clone(d.reset);
+    delete c.pro_micro?.cradle?.reset_walls;
+    c.schema = 11;
   }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;

@@ -432,53 +432,58 @@ test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', (
   const filled = body.intersect(over).volume() / over.volume();
   assert(filled > 0.99, `the wall over the plug ${filled} filled`);
 });
-test('on a Pro Micro the reset switch lies plunger down on its pedestal, pressed with a pin through the floor', () => {
-  // The switch and its plunger clear the bottom section, the body standing
-  // on the pedestal; a pin's way up through the hole to the plunger's tip is
-  // clear; the tip stands over the floor, which is solid round the hole, so
-  // nothing flat under the hand, nor a fingertip, reaches it. Its two link
-  // wires run from RST and the GND beside it to two diagonal legs.
+test('on a Pro Micro the reset switch stands against the back wall, its plunger out through it', () => {
+  // The switch and its plunger clear the chassis, the body standing on its
+  // pedestal with a stop behind it; the wall is solid round the plunger's
+  // bore, which holds it, and its tip stands proud of everything round it,
+  // so a fingertip reaches it. Its two link wires run from RST and the GND
+  // beside it to two diagonal legs, coming onto them from behind.
   const M = wasm.Manifold;
   const cfg = proMicro().config;
   const r = cfg.reset;
   const frames = componentFrames(cfg);
   const { body, base } = buildChassis(wasm, cfg, frames);
   const chassis = body.add(base);
-  const [rx, ry] = r.body_mm;
+  const [rx, ry, rz] = r.body_mm;
   const [pd, pp] = r.plunger_mm;
   const inSwitch = (m: Manifold) => place(m, frames.reset);
-  const plunger = inSwitch(M.cylinder(pp, pd / 2, pd / 2, 48).translate([0, 0, -pp]));
-  const switchBody = inSwitch(
-    box(M, r.body_mm as [number, number, number], [0, 0, r.body_mm[2] / 2]),
-  );
+  // Along the plunger, from z0 to z1 in the switch's frame, radius r0 to r1.
+  const along = (z0: number, z1: number, r0: number, r1?: number) => {
+    const c = (r: number) => M.cylinder(z1 - z0, r, r, 48);
+    return inSwitch((r1 ? c(r0).subtract(c(r1)) : c(r0)).translate([0, 0, z0]));
+  };
+  const switchBody = inSwitch(box(M, [rx, ry, rz], [0, 0, rz / 2]));
   assert(
-    chassis.intersect(plunger.add(switchBody)).volume() < 1e-6,
+    chassis.intersect(along(-pp, 0, pd / 2).add(switchBody)).volume() < 1e-6,
     'the switch clears the chassis',
   );
-  const under = inSwitch(
-    box(M, [rx, ry, 0.2], [0, 0, -0.1]).subtract(
-      M.cylinder(1, pd / 2 + r.clearance_mm, pd / 2 + r.clearance_mm, 48).translate([0, 0, -0.5]),
-    ),
+  const solid = (m: Manifold, part: Manifold, what: string) =>
+    assert(part.intersect(m).volume() / m.volume() > 0.99, what);
+  solid(
+    inSwitch(box(M, [0.2, ry, rz], [-rx / 2 - 0.1, 0, rz / 2])),
+    base,
+    'the body stands on its pedestal',
   );
-  assert(base.intersect(under).volume() / under.volume() > 0.99, 'the body stands on its pedestal');
-  const tip = point(frames.reset, [0, 0, -pp])[2];
-  assert(tip > cfg.chassis.skin_mm, `the plunger's tip ${tip} over the floor`);
-  const pin = r.hole_mm / 2 - 0.1;
-  const way = inSwitch(M.cylinder(tip + 1, pin, pin, 32).translate([0, 0, -pp - tip - 1]));
-  assert(chassis.intersect(way).volume() < 1e-6, "the pin's way to the plunger is clear");
-  const ring = inSwitch(
-    M.cylinder(0.5, pd / 2, pd / 2, 48)
-      .subtract(M.cylinder(0.5, r.hole_mm / 2 + 0.05, r.hole_mm / 2 + 0.05, 32))
-      .translate([0, 0, -r.standoff_mm - 0.6]),
+  const stop = r.clearance_mm + 0.2;
+  solid(inSwitch(box(M, [rx / 2, 2, 0.2], [0, 0, rz + stop])), base, 'a stop stands behind it');
+  const bore = pd / 2 + r.clearance_mm;
+  solid(along(-1.5, -0.5, bore + 1, bore + 0.05), body, 'the wall is solid round the bore');
+  assert(
+    chassis.intersect(along(-pp - 5, -pp + 0.5, 4)).volume() < 1e-6,
+    'the tip stands half a millimetre proud of everything round it',
   );
-  assert(base.intersect(ring).volume() / ring.volume() > 0.99, 'the floor is solid round the hole');
   const w = wiring(cfg, frames);
   assert.equal(r.wires.length, 2);
   for (const x of r.wires) {
     const l = w.wires.find((y) => y.net === `Reset ${x.name}`)!;
     assert.equal(cfg.pro_micro.pinout[x.pin - 1], x.name);
     assert.deepEqual(l.points[0], point(frames.pro_micro, pinAt(cfg, x.pin)));
-    assert.deepEqual(l.points.at(-1), legAt(cfg, frames, x.leg));
+    const leg = legAt(cfg, frames, x.leg);
+    assert.deepEqual(l.points.at(-1), leg);
+    const behind = l.points.at(-2)!;
+    const back = new Vector3(...behind).sub(new Vector3(...leg));
+    const into = new Vector3().setFromMatrixColumn(frames.reset, 2);
+    assert(Math.abs(back.dot(into) - WIRING.linkBehind) < 1e-9, `${x.name} comes from behind`);
     assert(w.nets.some((n) => n.name === `Reset ${x.name}` && n.wires === 1));
   }
   // Diagonal legs, which a press joins whichever pairs the switch always joins:
@@ -486,6 +491,21 @@ test('on a Pro Micro the reset switch lies plunger down on its pedestal, pressed
   const [a, b] = r.wires.map((x) => x.leg);
   assert(a <= 2 !== b <= 2 && a % 2 !== b % 2, `legs ${a} and ${b} are diagonal`);
   assert.deepEqual(crossings(w.wires), []);
+});
+test('a project with the reset switch placed as before schema 11 takes the new switch', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 10;
+  Object.assign(c.reset, {
+    position_mm: [-8, 32.5],
+    rotation_deg: 0,
+    standoff_mm: 1.8,
+    plunger_mm: [3.5, 1.5],
+    hole_mm: 2,
+  });
+  c.pro_micro.cradle.reset_walls = 0.6;
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
 });
 test('a project with the jack placed as before schema 10 takes its new place', () => {
   const p = clone(defaults);

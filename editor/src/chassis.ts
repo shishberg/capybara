@@ -823,7 +823,7 @@ function keycapRooms(
  * the rail's inside (screwSpots). The plate carries the adapter's mount and the ribbon's landing, which ends where
  * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
  * jack's cradles, their plugs coming in through openings in the frame, and
- * the reset switch's, over its pin hole through the plate. The
+ * the reset switch's, its plunger out through a bore in the back wall. The
  * frame's bridges keep clear of the wires.
  */
 export function buildChassis(
@@ -866,7 +866,8 @@ export function buildChassis(
     const wall = (cfg.chassis as { wall_mm?: number }).wall_mm ?? RIB.wall;
     const uncarved = framed
       .add(collar(wasm, cfg, frames, built.outline, RIB.railHeight, framed, wall))
-      .subtract(ways);
+      .subtract(ways)
+      .subtract(resetWay(wasm, cfg, frames, built.outline));
     const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
     const e = frames.pro_micro.elements;
     return {
@@ -875,7 +876,6 @@ export function buildChassis(
         .extrude(cfg.chassis.skin_mm)
         .add(cradles(wasm, cfg, frames))
         .subtract(ways)
-        .subtract(resetWay(wasm, cfg, frames))
         .subtract(holes),
       panel: e[12] + e[0] * mouths(cfg).usb.x,
       roomCuts,
