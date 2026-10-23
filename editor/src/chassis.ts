@@ -42,7 +42,7 @@ import { plateHalfWidths } from './plates';
 import { freeAllBut, keycapSolid, place, slab } from './manifold-util';
 import { ribAxes, capybara, SIZES as RIB } from './capybara';
 import { landingBox, wiring, type Wiring } from './wiring';
-import { collar, cradles, mouths, plugWays } from './wiring/pro-micro';
+import { collar, cradles, mouths, plugWays, resetWay } from './wiring/pro-micro';
 
 export interface ChassisResult {
   /** The frame, with the plates and glue posts. */
@@ -822,7 +822,8 @@ function keycapRooms(
  * with the rail's outer face. Screws come up through the plate into bosses on
  * the rail's inside (screwSpots). The plate carries the adapter's mount and the ribbon's landing, which ends where
  * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
- * jack's cradles, their plugs coming in through openings in the frame. The
+ * jack's cradles, their plugs coming in through openings in the frame, and
+ * the reset switch's, over its pin hole through the plate. The
  * frame's bridges keep clear of the wires.
  */
 export function buildChassis(
@@ -874,6 +875,7 @@ export function buildChassis(
         .extrude(cfg.chassis.skin_mm)
         .add(cradles(wasm, cfg, frames))
         .subtract(ways)
+        .subtract(resetWay(wasm, cfg, frames))
         .subtract(holes),
       panel: e[12] + e[0] * mouths(cfg).usb.x,
       roomCuts,

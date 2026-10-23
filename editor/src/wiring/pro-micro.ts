@@ -1,8 +1,10 @@
 // The Pro Micro variant's hardware (controller.style "pro_micro"): an
 // nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
 // section, the board's USB-C port facing out of the hand's back end and the
-// jack's barrel out of its inner side. Their pins, the parts, the plugs, the
-// openings for the plugs, the jack's collar and the cradles that hold them.
+// jack's barrel out of its inner side, and a reset switch beside the board,
+// plunger down over a pin hole in the bottom section. Their pins, the parts,
+// the plugs, the openings for the plugs, the jack's collar, the reset
+// switch's hole and the cradles that hold them.
 import type { CrossSection, Manifold, ManifoldToplevel, Mat4 } from 'manifold-3d';
 import { Matrix4 } from 'three';
 import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
@@ -60,6 +62,22 @@ export const lugAt = (cfg: Config, frames: Record<string, Matrix4>, name: string
 };
 
 /**
+ * The reset switch's leg n (1 to 4; reset), in world coordinates on its back
+ * (up, as it lies plunger down): legs 1 and 2 on its -y side, 3 and 4 on +y,
+ * the odd ones at -x, each where it stands out past the body, halfway out.
+ */
+export const legAt = (cfg: Config, frames: Record<string, Matrix4>, n: number) => {
+  const r = cfg.reset;
+  if (!(Number.isInteger(n) && n >= 1 && n <= 4)) throw Error(`No reset switch leg ${n}`);
+  const [, by, bz] = r.body_mm;
+  return point(frames.reset, [
+    ((n % 2 ? -1 : 1) * r.leg_pitch_mm) / 2,
+    ((n <= 2 ? -1 : 1) * (by / 2 + r.leg_span_mm / 2)) / 2,
+    bz,
+  ]);
+};
+
+/**
  * Where each port's plug goes in, in its part's frame: the mouth's x (the
  * plug comes in along +x from there), and its centre's y and z. The USB-C
  * receptacle stands on the board's top, its mouth usb_overhang_mm past the
@@ -74,10 +92,13 @@ export function mouths(cfg: Config) {
   };
 }
 
+/** A reset switch leg's width and thickness (mm), for display: a gull-wing leg's flat end. */
+const LEG = [0.7, 0.3];
+
 /** A part `size` about `center` in frame f, turned so its z axis (a cylinder's) runs along f's x. */
 const alongX = (f: Matrix4) => f.clone().multiply(new Matrix4().makeRotationY(Math.PI / 2));
 
-/** The Pro Micro, the jack and both plugs, as parts for display and the checks. */
+/** The Pro Micro, the jack, both plugs and the reset switch, as parts for display and the checks. */
 export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[] {
   const b = cfg.pro_micro;
   const j = cfg.trrs;
@@ -111,6 +132,26 @@ export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[
   add('USB-C plug', 'cable', [pl, pw, ph], [m.usb.x - pl / 2, 0, m.usb.z], fb);
   const [jd, jl] = j.plug_mm;
   add('TRRS plug', 'cable', [jd, jd, jl], [-m.trrs.z, 0, m.trrs.x - jl / 2], alongX(fj), jd / 2);
+  // The reset switch, plunger down, and its legs out of its back.
+  const r = cfg.reset;
+  const fr = frames.reset;
+  const [rx, ry, rz] = r.body_mm;
+  const [pd, pp] = r.plunger_mm;
+  add('Reset switch', 'controller', [rx, ry, rz], [0, 0, rz / 2], fr);
+  add('Reset switch plunger', 'controller', [pd, pd, pp], [0, 0, -pp / 2], fr, pd / 2);
+  const out = (r.leg_span_mm - ry) / 2;
+  for (let n = 1; n <= 4; n++)
+    add(
+      `Reset switch leg ${n}`,
+      'controller',
+      [LEG[0], out, LEG[1]],
+      [
+        ((n % 2 ? -1 : 1) * r.leg_pitch_mm) / 2,
+        (n <= 2 ? -1 : 1) * (ry / 2 + out / 2),
+        rz - LEG[1] / 2,
+      ],
+      fr,
+    );
   return parts;
 }
 
@@ -211,6 +252,34 @@ export function plugWays(
     frames.trrs,
   );
   return M.union([usb, trrs]);
+}
+
+/**
+ * The reset switch's way, in world coordinates: a bore round its plunger,
+ * grown by clearance_mm, through its pedestal (the plunger's tip stands short
+ * of the floor, so nothing under the hand presses it), and under it the pin
+ * hole through the floor, chamfered CHAMFER at 45° where it meets the
+ * underside, as the plugs' openings are.
+ */
+export function resetWay(wasm: ManifoldToplevel, cfg: Config, frames: Record<string, Matrix4>) {
+  const M = wasm.Manifold;
+  const r = cfg.reset;
+  const floor = cfg.chassis.skin_mm;
+  const e = 0.5;
+  const bore = r.plunger_mm[0] / 2 + r.clearance_mm;
+  const pin = r.hole_mm / 2;
+  // From the floor's top (z0, in the switch's frame) and its underside (z1).
+  const z0 = -r.standoff_mm;
+  const z1 = z0 - floor;
+  const chamfer = Math.min(CHAMFER, floor / 2);
+  return place(
+    M.union([
+      M.cylinder(r.standoff_mm + 0.01, bore, bore, 48).translate([0, 0, z0]),
+      M.cylinder(floor + 2, pin, pin, 32).translate([0, 0, z1 - 1]),
+      M.cylinder(chamfer + e, pin + chamfer + e, pin, 32).translate([0, 0, z1 - e]),
+    ]),
+    frames.reset,
+  );
 }
 
 /** The collar's wall (mm) round the jack plug's way, outside its chamfer's widest. */
@@ -316,7 +385,9 @@ function opening(
  * its pin rows (clear of the wire ends under them), guides along its long
  * edges and a stop behind its far end, which takes the push of the USB-C
  * plug; under the jack (lugs up) a pedestal, and round it a wall each side and
- * one behind. Each reaches half a millimetre into the floor.
+ * one behind; under the reset switch (plunger down) a pedestal, its bore cut
+ * by resetWay, and a wall round it. Each reaches half a millimetre into the
+ * floor.
  */
 export function cradles(
   wasm: ManifoldToplevel,
@@ -376,16 +447,35 @@ export function cradles(
       jz * k.jack_walls,
     ),
   ]);
-  return M.union([place(board, frames.pro_micro), place(jack, frames.trrs)]);
+  const r = cfg.reset;
+  const [rx, ry, rz] = r.body_mm;
+  const rc = r.clearance_mm;
+  const [ox, oy] = [rx / 2 + rc + w, ry / 2 + rc + w];
+  const [ix, iy] = [rx / 2 + rc, ry / 2 + rc];
+  const top = rz * k.reset_walls;
+  const reset = M.union([
+    block(r.standoff_mm, [-ix, ix], [-iy, iy], 0),
+    ...[-1, 1].flatMap((s) => [
+      block(r.standoff_mm, s < 0 ? [-ox, -ix] : [ix, ox], [-oy, oy], top),
+      block(r.standoff_mm, [-ox, ox], s < 0 ? [-oy, -iy] : [iy, oy], top),
+    ]),
+  ]);
+  return M.union([
+    place(board, frames.pro_micro),
+    place(jack, frames.trrs),
+    place(reset, frames.reset),
+  ]);
 }
 
 /**
- * The jack's link wires (trrs.wires), in the order listed: each from its Pro
- * Micro pin straight up to a level, across to over its lug and down onto it.
- * The lowest level is linkOver above the board's parts or the jack's top,
- * whichever is higher, the next linkStep above it, and so on. Placed in
- * turn, each wire takes the lowest that keeps it out of those before, so they
- * stay as low as the board and the jack let them; in the first order (the
+ * The link wires: the jack's (trrs.wires) and the reset switch's
+ * (reset.wires), each in the order listed, from its Pro Micro pin straight up
+ * to a level, across to over its lug or leg and down onto it. The jack's
+ * lowest level is linkOver above the board's parts or the jack's top,
+ * whichever is higher, and the switch's above the board's parts or its back;
+ * the next is linkStep above it, and so on. Placed in turn, each wire takes
+ * the lowest that keeps it out of those before, so they stay as low as the
+ * board and the jack (or the switch) let them; in the first order (the
  * listed one first) that leaves none touching, since a wire coming down onto
  * its lug can pass through one placed lower.
  * On a pin a feed also lands on (`fed`), the link wire's end is holeShare
@@ -393,21 +483,48 @@ export function cradles(
  */
 export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set<number>): Wire[] {
   const b = cfg.pro_micro;
+  const f = frames.pro_micro;
+  const parts = point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2];
+  const trrs = cfg.trrs.wires.map((x) => ({
+    name: x.name,
+    net: `TRRS ${x.name}`,
+    pin: x.pin,
+    to: `TRRS ${x.lug}`,
+    end: lugAt(cfg, frames, x.lug),
+  }));
+  const reset = cfg.reset.wires.map((x) => ({
+    name: x.name,
+    net: `Reset ${x.name}`,
+    pin: x.pin,
+    to: `reset leg ${x.leg}`,
+    end: legAt(cfg, frames, x.leg),
+  }));
+  const top = (frame: Matrix4, z: number) => Math.max(parts, point(frame, [0, 0, z])[2]);
+  return [
+    ...links(cfg, frames, fed, trrs, top(frames.trrs, cfg.trrs.body_mm[2])),
+    ...links(cfg, frames, fed, reset, top(frames.reset, cfg.reset.body_mm[2])),
+  ];
+}
+
+/** Link wires from Pro Micro pins to `end`s, their lowest level linkOver above `over` (linkWires). */
+function links(
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+  fed: Set<number>,
+  list: { name: string; net: string; pin: number; to: string; end: V3 }[],
+  over: number,
+): Wire[] {
   const w = cfg.wiring;
   const f = frames.pro_micro;
   const toPort = point(f, [-WIRING.holeShare, 0, 0]).map((x, i) => x - f.elements[12 + i]);
-  const over = Math.max(
-    point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2],
-    point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2],
-  );
-  const runs = cfg.trrs.wires.map((x) => {
+  const runs = list.map((x) => {
     const power = x.name === 'VCC' || x.name === 'GND';
     const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
     const at = point(f, pinAt(cfg, x.pin));
     const from: V3 = fed.has(x.pin)
       ? [at[0] + toPort[0], at[1] + toPort[1], at[2] + toPort[2]]
       : at;
-    const to = lugAt(cfg, frames, x.lug);
+    const to = x.end;
     const run = (z: number): V3[] => [from, [from[0], from[1], z], [to[0], to[1], z], to];
     return { x, diameter, run };
   });
@@ -437,10 +554,10 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
   const all = orders(runs.map((_, i) => i));
   const { out } = all.map(layOut).find((l) => l.clear) ?? layOut(all[0]);
   return runs.map(({ x, diameter }, i) => ({
-    net: `TRRS ${x.name}`,
+    net: x.net,
     group: 'link',
     from: `pin ${x.pin}`,
-    to: `TRRS ${x.lug}`,
+    to: x.to,
     points: out[i],
     diameter,
     length: length(out[i]) + 2 * w.end_allowance_mm,

@@ -194,8 +194,8 @@ export function componentFrames(cfg: Config) {
     if (c) clusterFrames(c).forEach((m, i) => (n['thumb_' + c.keys[i].name] = m));
   const tent = tentFrame(cfg);
   for (const key in n) n[key].premultiply(tent);
-  // The adapter, or the Pro Micro and its TRRS jack, stand on the bottom
-  // section, so they are placed in world coordinates.
+  // The adapter, or the Pro Micro, its TRRS jack and its reset switch, stand
+  // on the bottom section, so they are placed in world coordinates.
   const onFloor = (p: { position_mm: number[]; rotation_deg: number; standoff_mm: number }) =>
     frame(
       [p.position_mm[0], p.position_mm[1], cfg.chassis.skin_mm + p.standoff_mm],
@@ -204,6 +204,7 @@ export function componentFrames(cfg: Config) {
   if (controllerStyle(cfg) === 'pro_micro') {
     n.pro_micro = onFloor(cfg.pro_micro);
     n.trrs = onFloor(cfg.trrs);
+    n.reset = onFloor(cfg.reset);
   } else n.adapter = onFloor(cfg.adapter);
   return n;
 }
@@ -372,6 +373,7 @@ function migrate(c: Record<string, any>) {
     'controller',
     'pro_micro',
     'trrs',
+    'reset',
     'wiring',
     'chassis',
   ])

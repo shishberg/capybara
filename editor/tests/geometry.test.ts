@@ -21,7 +21,7 @@ import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
 import { WIRING } from '../src/wiring/common';
-import { lugAt, mouths, pinAt, pinOf } from '../src/wiring/pro-micro';
+import { legAt, lugAt, mouths, pinAt, pinOf } from '../src/wiring/pro-micro';
 import { SIZES as CAPYBARA, capybara } from '../src/capybara';
 import { solidOf } from './helpers';
 
@@ -329,7 +329,7 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   // its plug comes in over the rail). On a pin a net's feeds land on too, it
   // starts beside them in the hole.
   const fed = new Set(Object.values(cfg.pro_micro.pins));
-  const links = w.wires.filter((x) => x.group === 'link');
+  const links = w.wires.filter((x) => x.group === 'link' && x.net.startsWith('TRRS '));
   assert.equal(links.length, cfg.trrs.wires.length);
   const top = point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2];
   const highest = top + WIRING.linkOver + (links.length - 1) * WIRING.linkStep;
@@ -431,6 +431,59 @@ test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', (
   );
   const filled = body.intersect(over).volume() / over.volume();
   assert(filled > 0.99, `the wall over the plug ${filled} filled`);
+});
+test('on a Pro Micro the reset switch lies plunger down on its pedestal, pressed with a pin through the floor', () => {
+  // The switch and its plunger clear the bottom section, the body standing
+  // on the pedestal; a pin's way up through the hole to the plunger's tip is
+  // clear; the tip stands over the floor, which is solid round the hole, so
+  // nothing flat under the hand, nor a fingertip, reaches it. Its two link
+  // wires run from RST and the GND beside it to a leg on each side.
+  const M = wasm.Manifold;
+  const cfg = proMicro().config;
+  const r = cfg.reset;
+  const frames = componentFrames(cfg);
+  const { body, base } = buildChassis(wasm, cfg, frames);
+  const chassis = body.add(base);
+  const [rx, ry] = r.body_mm;
+  const [pd, pp] = r.plunger_mm;
+  const inSwitch = (m: Manifold) => place(m, frames.reset);
+  const plunger = inSwitch(M.cylinder(pp, pd / 2, pd / 2, 48).translate([0, 0, -pp]));
+  const switchBody = inSwitch(
+    box(M, r.body_mm as [number, number, number], [0, 0, r.body_mm[2] / 2]),
+  );
+  assert(
+    chassis.intersect(plunger.add(switchBody)).volume() < 1e-6,
+    'the switch clears the chassis',
+  );
+  const under = inSwitch(
+    box(M, [rx, ry, 0.2], [0, 0, -0.1]).subtract(
+      M.cylinder(1, pd / 2 + r.clearance_mm, pd / 2 + r.clearance_mm, 48).translate([0, 0, -0.5]),
+    ),
+  );
+  assert(base.intersect(under).volume() / under.volume() > 0.99, 'the body stands on its pedestal');
+  const tip = point(frames.reset, [0, 0, -pp])[2];
+  assert(tip > cfg.chassis.skin_mm, `the plunger's tip ${tip} over the floor`);
+  const pin = r.hole_mm / 2 - 0.1;
+  const way = inSwitch(M.cylinder(tip + 1, pin, pin, 32).translate([0, 0, -pp - tip - 1]));
+  assert(chassis.intersect(way).volume() < 1e-6, "the pin's way to the plunger is clear");
+  const ring = inSwitch(
+    M.cylinder(0.5, pd / 2, pd / 2, 48)
+      .subtract(M.cylinder(0.5, r.hole_mm / 2 + 0.05, r.hole_mm / 2 + 0.05, 32))
+      .translate([0, 0, -r.standoff_mm - 0.6]),
+  );
+  assert(base.intersect(ring).volume() / ring.volume() > 0.99, 'the floor is solid round the hole');
+  const w = wiring(cfg, frames);
+  assert.equal(r.wires.length, 2);
+  for (const x of r.wires) {
+    const l = w.wires.find((y) => y.net === `Reset ${x.name}`)!;
+    assert.equal(cfg.pro_micro.pinout[x.pin - 1], x.name);
+    assert.deepEqual(l.points[0], point(frames.pro_micro, pinAt(cfg, x.pin)));
+    assert.deepEqual(l.points.at(-1), legAt(cfg, frames, x.leg));
+    assert(w.nets.some((n) => n.name === `Reset ${x.name}` && n.wires === 1));
+  }
+  // One leg on each side: legs 1 and 2 are joined, and 3 and 4.
+  assert.notEqual(r.wires[0].leg <= 2, r.wires[1].leg <= 2);
+  assert.deepEqual(crossings(w.wires), []);
 });
 test('a project with the jack placed as before schema 10 takes its new place', () => {
   const p = clone(defaults);

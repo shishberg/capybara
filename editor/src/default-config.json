@@ -332,12 +332,12 @@
     "outside_mm": 20
   },
   "controller": {
-    "description": "What the hand's wires run to. ffc: the FFC adapter (adapter), whose ribbon (ribbon) runs to the pod. pro_micro: an nRF52840 board in Pro Micro form factor (pro_micro) in each hand, wired straight to its pins, with a TRRS jack (trrs) beside it for the link between the hands; both stand on the bottom section, the USB-C port facing out of the hand's back end and the TRRS jack out of its inner side.",
+    "description": "What the hand's wires run to. ffc: the FFC adapter (adapter), whose ribbon (ribbon) runs to the pod. pro_micro: an nRF52840 board in Pro Micro form factor (pro_micro) in each hand, wired straight to its pins, with a TRRS jack (trrs) beside it for the link between the hands and a reset switch (reset); all three stand on the bottom section, the USB-C port facing out of the hand's back end and the TRRS jack out of its inner side.",
     "style": "ffc"
   },
   "pro_micro": {
     "provisional": true,
-    "description": "nice!nano v2 or a board with its pinout (nRF52840, Pro Micro form factor), components up, on a cradle on the bottom section, its USB-C receptacle gripped in the back wall. Its position is in world coordinates, like the adapter's: the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires.",
+    "description": "nice!nano v2 or a board with its pinout (nRF52840, Pro Micro form factor), components up, on a cradle on the bottom section, its USB-C receptacle gripped in the back wall. Its position is in world coordinates, like the adapter's: the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires, the reset switch's reset.wires.",
     "position_mm": [-22.5, 22.7],
     "rotation_deg": -90,
     "board_mm": [33.3, 18, 1.6],
@@ -356,7 +356,8 @@
       "guide_in_mm": 6,
       "pedestal_in_mm": [3, 4],
       "pedestal_width_mm": 9,
-      "jack_walls": 0.6
+      "jack_walls": 0.6,
+      "reset_walls": 0.6
     },
     "pinout": [
       "P0.06",
@@ -419,6 +420,23 @@
       { "name": "TX", "lug": "S", "pin": 1 },
       { "name": "RX", "lug": "R2", "pin": 2 },
       { "name": "GND", "lug": "R1", "pin": 3 }
+    ]
+  },
+  "reset": {
+    "provisional": true,
+    "description": "6 x 6 mm SMD tactile switch, the hand's reset button, plunger down on a pedestal on the bottom section beside the Pro Micro's RST and GND pins, pressed with a pin through a hole in the bottom section under it. A press shorts RST to GND: one resets the board, two quick ones enter its bootloader. Its position is in world coordinates, like the jack's: the body's centre in plan and its turn about the vertical; standoff_mm is the pedestal's height, the plunger's proud height and the gap under its tip. body_mm is the body without the plunger; plunger_mm its diameter and how far it stands proud. The legs stand out of the body's two y sides, on its back (up, as it lies), leg_pitch_mm apart along each side and leg_span_mm tip to tip across; legs 1 and 2 are on the -y side and 3 and 4 on +y (odd ones at -x), each side's two joined. wires joins a leg on each side to a Pro Micro pin. hole_mm is the pin hole's diameter.",
+    "position_mm": [-8, 32.5],
+    "rotation_deg": 0,
+    "standoff_mm": 1.8,
+    "body_mm": [6, 6, 3.5],
+    "plunger_mm": [3.5, 1.5],
+    "leg_pitch_mm": 4.5,
+    "leg_span_mm": 9,
+    "hole_mm": 2,
+    "clearance_mm": 0.4,
+    "wires": [
+      { "name": "RST", "leg": 1, "pin": 22 },
+      { "name": "GND", "leg": 3, "pin": 23 }
     ]
   },
   "wiring": {

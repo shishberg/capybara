@@ -115,7 +115,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       feed: isFeed,
     };
   });
-  // On a Pro Micro, its jack's link wires too.
+  // On a Pro Micro, its jack's and its reset switch's link wires too.
   if (controllerStyle(cfg) === 'pro_micro') {
     const fed = new Set(nets(cfg).map((n) => pinOf(cfg, n.name)));
     wires.push(...linkWires(cfg, frames, fed));
@@ -133,12 +133,15 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
     };
   });
   if (controllerStyle(cfg) === 'pro_micro')
-    for (const x of cfg.trrs.wires) {
-      const own = wires.filter((y) => y.net === `TRRS ${x.name}`);
+    for (const x of [
+      ...cfg.trrs.wires.map((t) => ({ net: `TRRS ${t.name}`, pin: t.pin, to: t.lug })),
+      ...cfg.reset.wires.map((t) => ({ net: `Reset ${t.name}`, pin: t.pin, to: `leg ${t.leg}` })),
+    ]) {
+      const own = wires.filter((y) => y.net === x.net);
       summaries.push({
-        name: `TRRS ${x.name}`,
+        name: x.net,
         pin: x.pin,
-        label: `${pinName(cfg, x.pin)} to ${x.lug}`,
+        label: `${pinName(cfg, x.pin)} to ${x.to}`,
         group: 'link',
         wires: own.length,
         joints: 2 * own.length,

@@ -61,10 +61,16 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
     }
   }
   // On a Pro Micro the jack stands up into the loom (its plug comes in over
-  // the rail), so the feeds keep out of it too: its body and barrel.
+  // the rail), so the feeds keep out of it too: its body and barrel; and out
+  // of the reset switch and its legs.
   if (controllerStyle(cfg) === 'pro_micro') {
     const [jx, jy, jz] = cfg.trrs.body_mm;
     boxIn(frames.trrs, [-jx / 2 - cfg.trrs.barrel_mm[0], -jy / 2, 0], [jx / 2, jy / 2, jz]);
+    const r = cfg.reset;
+    const [rx, ry, rz] = r.body_mm;
+    const hx = Math.max(rx, r.leg_pitch_mm + 1) / 2;
+    const hy = Math.max(ry, r.leg_span_mm) / 2;
+    boxIn(frames.reset, [-hx, -hy, 0], [hx, hy, rz]);
   }
 
   // The obstacles in a grid of square cells in plan, each in every cell its

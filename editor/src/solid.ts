@@ -338,7 +338,7 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
   return { seats, highlights };
 }
 
-/** Hardware (the tiles, the adapter and ribbon, or the Pro Micro, its jack and their plugs) against the chassis and its bottom section. */
+/** Hardware (the tiles, the adapter and ribbon, or the Pro Micro, its jack, their plugs and its reset switch) against the chassis and its bottom section. */
 function checkHardware(
   p: Probe,
   project: Project,

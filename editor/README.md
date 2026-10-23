@@ -115,8 +115,8 @@ runs against a fraction of the mesh:
 - Tiles (with their corner notches, where the glue posts' rounds stand, 0.15 mm
   clear), tile
   components, the FFC adapter with its connector and
-  latch room, and the main ribbon (or the Pro Micro, its TRRS jack and both
-  plugs) must not overlap the chassis or the bottom section.
+  latch room, and the main ribbon (or the Pro Micro, its TRRS jack, both
+  plugs and its reset switch) must not overlap the chassis or the bottom section.
 - **Wires**: each wire, as a tube of its diameter, must miss every other wire
   (wires may touch).
   Wires that hit are listed and highlighted cyan.
