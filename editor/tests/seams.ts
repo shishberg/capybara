@@ -59,6 +59,8 @@ export const SEAMS = {
   postMeet: 0.5,
   /** Likewise a base screw's boss stands on the plate against the rail and whatever stands on it there: what is within this of the boss is its join. */
   bossMeet: 0.5,
+  /** PROTOTYPE: and a bridge lands on a web's side as on a plate's edge: what is within this of where it goes in is its join. */
+  landMeet: 1,
 };
 
 export type SeamKind = 'sliver' | 'ledge' | 'crease' | 'gap' | 'thin' | 'shading';
@@ -520,7 +522,22 @@ export function capybaraSeams(
   // And the base screws' bosses, from the plate to the rail's top.
   const bosses = chassis.screws;
   const bossReach = CHASSIS.screwBoss / 2 + SEAMS.bossMeet;
+  // PROTOTYPE: and where a bridge lands on a web's side, from landMeet out of
+  // it to landMeet past where it ends in the web.
+  const m = SEAMS.landMeet;
+  const landed = (p: V3) =>
+    built.landings.some((l) => {
+      const q = sub(p, l.p);
+      const n = cross(l.t, l.c);
+      return (
+        dot(q, l.t) >= -m &&
+        dot(q, l.t) <= RIB.bridgeInto + m &&
+        Math.abs(dot(q, l.c)) <= l.half + m &&
+        Math.abs(dot(q, n) + l.thick / 2) <= l.thick / 2 + m
+      );
+    });
   const meant = (p: V3) =>
+    landed(p) ||
     (p[2] <= RIB.railHeight + SEAMS.bossMeet &&
       bosses.some((b) => Math.hypot(p[0] - b[0], p[1] - b[1]) <= bossReach)) ||
     local.some(({ to, zones }) => {

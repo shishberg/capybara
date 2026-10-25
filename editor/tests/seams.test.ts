@@ -98,7 +98,9 @@ function classOf(s: Seam) {
  *    faces along where they meet; what that leaves within postMeet of a leg
  *    is meant (as the leg is).
  *  - bridges (PROTOTYPE): a straight slab between every facing pair of
- *    neighbouring keys, however wide the gap (twelve on Swung in). The walls
+ *    neighbouring keys, however wide the gap, else a stepped one, and from a
+ *    key's edge to a web's side facing it (fourteen on Swung in); where one
+ *    lands on a web, what is within landMeet is meant. The walls
  *    don't read the bridges, but the frame's one union re-meshes with them,
  *    and the walls' and rail's spots of no area or a few hundredths come and
  *    go with it. None of these spots touches a bridge.
