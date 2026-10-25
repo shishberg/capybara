@@ -7,8 +7,10 @@ import { requestBuild } from './build-client';
 const NAMES: Record<string, string> = {
   now: 'as now (hard corners)',
   sweep: 'sides swept into the edges, quarter circle',
-  spline: 'waisted spline, tangent to each edge',
-  steep: 'waisted spline, meeting each edge at 45°',
+  spline: 'waisted, curve leaving along each plate',
+  steep: 'waisted, curve leaving steeper',
+  curve: 'square corners, curve leaving along each plate',
+  'curve-steep': 'square corners, curve leaving steeper',
 };
 
 export function setupBridgePrototype() {

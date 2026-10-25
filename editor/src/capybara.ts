@@ -122,10 +122,12 @@ import type { Wire } from './wiring';
 /**
  * PROTOTYPE: how bridges meet the plates, to compare (the editor's ?bridge=):
  * 'now' as they are; 'sweep' their sides swept into each edge (bridgeSweep);
- * 'spline' a straight slab's middle bent along a curve leaving each plate
- * along its plane; 'steep' leaving halfway between that and straight across.
+ * 'spline' waisted across the gap, tangent to each edge, and curved leaving
+ * each plate along its plane; 'steep' waisted meeting each edge at 45° and
+ * curved leaving halfway between that and straight across; 'curve' and
+ * 'curve-steep' those curves with square corners (slab, sweepOut).
  */
-export const BRIDGE_STYLES = ['now', 'sweep', 'spline', 'steep'] as const;
+export const BRIDGE_STYLES = ['now', 'sweep', 'spline', 'steep', 'curve', 'curve-steep'] as const;
 export let bridgeStyle: (typeof BRIDGE_STYLES)[number] = 'now';
 export const setBridgeStyle = (style: string | undefined) => {
   bridgeStyle = BRIDGE_STYLES.find((x) => x === style) ?? 'now';
@@ -235,6 +237,8 @@ export const SIZES = {
    */
   stepWidth: 8,
   stepLeast: 0.9,
+  /** PROTOTYPE: the least radius a curved bridge's inner edge bends round. */
+  bendLeast: 0.5,
   stepReach: 4,
   stepProbe: 0.02,
   webReach: 15,
@@ -2352,6 +2356,7 @@ function bridges(
     P: RibKey,
     Q?: RibKey,
     end = (b: Pose, dist: number) => sidesOf(ahead(b, dist), 1),
+    bent = bridgeStyle !== 'now' && bridgeStyle !== 'sweep',
   ) => {
     let [a, b] = poses(1);
     if (dot(a.c, b.c) <= 0) return undefined;
@@ -2363,50 +2368,168 @@ function bridges(
     const slope = Math.max(
       ...[a, b].map((q) => Math.asin(Math.min(1, Math.abs(dot(way, normalOf(q)))))),
     );
-    if (slope > steep) return undefined;
-    const half = Math.min(SIZES.bridgeWidth / 2 / Math.cos(slope), room);
+    // PROTOTYPE (bridgeStyle): bent, curving out of each plate along its
+    // plane ('spline', 'curve') or halfway between that and straight across
+    // ('steep', 'curve-steep'), its edges offset round that curve: so as
+    // steep as it likes, and no wider for it.
+    const leaning = bridgeStyle === 'steep' || bridgeStyle === 'curve-steep';
+    if (slope > steep && !bent) return undefined;
+    const half = Math.min(SIZES.bridgeWidth / 2 / (bent ? 1 : Math.cos(slope)), room);
     if (half < SIZES.bridgeWidth / 2) return undefined;
     [a, b] = poses(half);
     const [a1, b1] = [ahead(a, SIZES.bridgeOut), ahead(b, -SIZES.bridgeOut)];
-    // PROTOTYPE (bridgeStyle): the sides swept into each edge (sweepOut);
-    // and for 'spline' and 'steep' the middle bent along a Hermite curve
-    // leaving each plate along its plane ('spline'), or halfway between that
-    // and straight across ('steep').
+    // PROTOTYPE (bridgeStyle): the sides swept into each edge (sweepOut).
     const r =
-      bridgeStyle === 'now' ? 0 : Math.max(0, Math.min(SIZES.bridgeSweep, room - half));
+      bridgeStyle === 'now' || bridgeStyle.startsWith('curve')
+        ? 0
+        : Math.max(0, Math.min(SIZES.bridgeSweep, room - half));
     const gap = dot(sub(b.p, a.p), a.t);
     const len = bridgeStyle === 'sweep' ? r : gap / 2;
     const edges: Edge[] = [
       { p: a.p, t: a.t, r, len },
       { p: b.p, t: scale(b.t, -1), r, len },
     ];
-    const chord = sub(b1.p, a1.p);
-    const reach = Math.hypot(...chord);
-    const leave = (t: V3) =>
-      scale(unit(bridgeStyle === 'steep' ? add(t, unit(chord)) : t), reach);
-    const [ta, tb] = [leave(a1.t), leave(b1.t)];
-    const bend = (f: number): V3 =>
-      bridgeStyle === 'spline' || bridgeStyle === 'steep'
-        ? add(scale(sub(ta, chord), f ** 3 - 2 * f * f + f), scale(sub(tb, chord), f ** 3 - f * f))
-        : [0, 0, 0];
-    // Its stations, about bridgeProbe apart across the gap.
-    const steps = Math.ceil(reach / probe);
-    const across = (f: number) =>
-      sidesOf(a1, 1).map((pair, j) =>
-        pair.map((x, z) => add(lerp(x, end(b, -SIZES.bridgeOut)[j][z], f), bend(f))),
-      ) as [Pair, Pair];
-    const stations = [
-      sidesOf(a, 1),
-      ...[...Array(steps + 1).keys()].map((j) => across(j / steps)),
-      end(b, 0),
-    ].map((x) => swept(x, edges));
-    const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
-    if (!unfolded(left, right)) return undefined;
-    if (!space.clear(samples(left, right))) return undefined;
-    // Points through it, about bridgeProbe apart: clear of the other
-    // keys' plates, and each wire kept wireGap off.
-    const inside = filling(left, right);
-    if (!offPlates(inside, P, Q) || !offWires(inside, a.p)) return undefined;
+    const reach = Math.hypot(...sub(b1.p, a1.p));
+    const [from, to] = [sidesOf(a1, 1), end(b, -SIZES.bridgeOut)];
+    // The curve: its middle straight on out of each end (along its plane,
+    // or 'leaning' halfway to straight across), round a corner, straight
+    // across and round another corner in, the corners halfway across the
+    // gap. Each of its edges (top and underside, each side) follows that
+    // offset, its corners shifted as a parallel curve's would be, so the
+    // section stays as thick round the bends, and rounded from where it
+    // leaves the plate. Where the gap is too narrow for the inner edge to go
+    // round inside the outer at the plate's thickness, the inner edges are
+    // shifted only as far as leaves them bendLeast round, so the leg between
+    // the bends thins.
+    const middleOf = (s: [Pair, Pair]) =>
+      lerp(...(s.map((p) => lerp(p[0], p[1], 0.5)) as [V3, V3]), 0.5);
+    const [mA, mB] = [from, to].map(middleOf);
+    const chord = sub(mB, mA);
+    const leave = (t: V3) => (leaning ? unit(add(t, unit(chord))) : t);
+    const [u0, u2] = [leave(a1.t), leave(b1.t)];
+    // The corners halfway across, else (where that's in a keycap's room)
+    // further over towards the higher plate, its leg under that one's edge.
+    const curveAt = (k: number) => {
+      const reachOut = (u: V3, t: V3, k: number) =>
+        Math.min((Math.hypot(...chord) * 2 * k) / 3, (dot(chord, t) * k) / dot(u, t));
+      const [r0, r1] = [reachOut(u0, a1.t, k), reachOut(u2, b1.t, 1 - k)];
+      const [c0, c1] = [add(mA, scale(u0, r0)), sub(mB, scale(u2, r1))];
+      const u1 = Math.hypot(...sub(c1, c0)) > 1e-9 ? unit(sub(c1, c0)) : u0;
+      const towards = (u: V3, v: V3) => {
+        const w = sub(v, scale(u, dot(v, u)));
+        return Math.hypot(...w) > 1e-9 ? unit(w) : ([0, 0, 0] as V3);
+      };
+      // Each corner's shift per unit offset: inwards (+) along the way in.
+      const tans = [turnOf(u0, u1), turnOf(u1, u2)].map((x) => Math.tan(x / 2));
+      const bends = [towards(u0, u1), towards(scale(u2, -1), scale(u1, -1))];
+      const lines = [0, 1].flatMap((j) => [0, 1].map((z) => [from[j][z], to[j][z]] as [V3, V3]));
+      const shifts = lines.map(([s, e]) => [
+        dot(sub(s, mA), bends[0]) * tans[0],
+        dot(sub(e, mB), bends[1]) * tans[1],
+      ]);
+      const least = [0, 1].map((i) => SIZES.bendLeast * tans[i]);
+      const most = Math.max(
+        0,
+        Math.min(
+          1,
+          ...shifts.flatMap((x) =>
+            [0, 1].map((i) => (x[i] > 1e-9 ? ([r0, r1][i] - least[i]) / x[i] : 1)),
+          ),
+        ),
+      );
+      // Each edge's path: [start, heading, length, radius, turned to (arcs)].
+      type Piece = [V3, V3, number, number, V3?];
+      // As far as that, else half as far, else not at all (each edge offset
+      // only along the plates' normals, as a straight slab's sections are),
+      // whichever first is clear.
+      const tryWith = (lambda: number) => {
+        const paths = lines.map(([s, e], k): Piece[] => {
+          const p0 = add(c0, sub(s, mA));
+          const p1 = add(c1, sub(e, mB));
+          const [d0, d1] = [
+            add(p0, scale(u0, -lambda * shifts[k][0])),
+            add(p1, scale(u2, lambda * shifts[k][1])),
+          ];
+          const mid = Math.hypot(...sub(d1, d0));
+          const u = mid > 1e-9 ? unit(sub(d1, d0)) : u0;
+          const turns = [turnOf(u0, u), turnOf(u, u2)];
+          const t = turns.map((x) => Math.tan(x / 2));
+          let cut = [Math.hypot(...sub(d0, s)), Math.hypot(...sub(e, d1))].map((x, i) =>
+            t[i] > 1e-6 ? x : 0,
+          );
+          if (cut[0] + cut[1] > mid) cut = cut.map((x) => (x * mid) / (cut[0] + cut[1]));
+          const radius = cut.map((x, i) => (t[i] > 1e-6 ? x / t[i] : 0));
+          return [
+            [s, u0, Math.hypot(...sub(d0, s)) - cut[0], 0],
+            [sub(d0, scale(u0, cut[0])), u0, radius[0] * turns[0], radius[0], u],
+            [add(d0, scale(u, cut[0])), u, mid - cut[0] - cut[1], 0],
+            [sub(d1, scale(u, cut[1])), u, radius[1] * turns[1], radius[1], u2],
+            [add(d1, scale(u2, cut[1])), u2, Math.hypot(...sub(e, d1)) - cut[1], 0],
+          ];
+        });
+        const pointOn = ([p, u, , radius, v]: Piece, s: number): V3 => {
+          if (!v || radius < 1e-9) return add(p, scale(u, s));
+          const bend = towards(u, v);
+          const phi = s / radius;
+          return add(
+            add(p, scale(bend, radius * (1 - Math.cos(phi)))),
+            scale(u, radius * Math.sin(phi)),
+          );
+        };
+        // The edges' pieces over the same stretches of f, each as long as the
+        // edges' on average.
+        const lengths = [0, 1, 2, 3, 4].map(
+          (i) => paths.reduce((s, x) => s + Math.max(0, x[i][2]), 0) / paths.length,
+        );
+        const total = lengths.reduce((s, x) => s + x, 0);
+        const pointAt = (path: Piece[], f: number): V3 => {
+          let s = f * total;
+          for (let i = 0; i < 5; i++) {
+            if (s > lengths[i] && i < 4) {
+              s -= lengths[i];
+              continue;
+            }
+            const l = Math.max(0, path[i][2]);
+            return pointOn(
+              path[i],
+              lengths[i] > 1e-9 ? (Math.min(s, lengths[i]) / lengths[i]) * l : 0,
+            );
+          }
+          return path[4][0];
+        };
+        // Its stations, about bridgeProbe apart along it.
+        const steps = Math.ceil((bent ? total : reach) / probe);
+        const across = (f: number) => {
+          if (!bent)
+            return from.map((pair, j) => pair.map((x, z) => lerp(x, to[j][z], f))) as [Pair, Pair];
+          return [0, 1].map((j) => [0, 1].map((z) => pointAt(paths[j * 2 + z], f))) as [Pair, Pair];
+        };
+        const stations = [
+          sidesOf(a, 1),
+          ...[...Array(steps + 1).keys()].map((j) => across(j / steps)),
+          end(b, 0),
+        ].map((x) => swept(x, edges));
+        const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
+        if (!unfolded(left, right)) return undefined;
+        if (!space.clear(samples(left, right))) return undefined;
+        // Points through it, about bridgeProbe apart: clear of the other
+        // keys' plates, and each wire kept wireGap off.
+        const inside = filling(left, right);
+        if (!offPlates(inside, P, Q) || !offWires(inside, a.p)) return undefined;
+        return { across, total };
+      };
+      return (bent ? [most, most / 2, 0] : [0]).reduce<Found | undefined>(
+        (found, lambda) => found ?? tryWith(lambda),
+        undefined,
+      );
+    };
+    type Found = { across: (f: number) => [Pair, Pair]; total: number };
+    const rising = dot(chord, sub(from[0][0], from[0][1])) > 0;
+    const found = (bent ? [0.5, 0.65, 0.8, 0.9] : [0.5])
+      .map((k) => (rising ? k : 1 - k))
+      .reduce<Found | undefined>((found, k) => found ?? curveAt(k), undefined);
+    if (!found) return undefined;
+    const { across, total } = found;
     return laneSolid(
       wasm,
       [
@@ -2419,7 +2542,7 @@ function bridges(
           straight: false,
           steps: Math.max(
             stepsOf(turnOf(normalOf(a1), normalOf(b1)) + turnOf(a1.c, b1.c)),
-            bridgeStyle === 'spline' || bridgeStyle === 'steep' ? 24 : 0,
+            bent ? Math.ceil(total / 0.2) : 0,
           ),
         },
         lineSpan(end(b, -SIZES.bridgeOut), end(b, SIZES.bridgeInto)),
@@ -2486,7 +2609,7 @@ function bridges(
       const sweepTo = (q: Pose, t: V3, most: number): Edge => {
         const quarter = bridgeStyle === 'sweep';
         let r =
-          bridgeStyle === 'now'
+          bridgeStyle === 'now' || bridgeStyle.startsWith('curve')
             ? 0
             : Math.max(0, Math.min(SIZES.bridgeSweep, quarter ? most : Infinity));
         while (r > 0 && ![-1, 1].every((u) => fits(add(q.p, scale(q.c, u * (q.half + r))))))
@@ -2504,12 +2627,11 @@ function bridges(
         const n = Math.ceil(
           Math.max(...[0, 1].map((j) => Math.hypot(...sub(q[j][0], p[j][0])))) / probe,
         );
-        return [...Array(n + (i === 2 ? 1 : 0)).keys()].map(
-          (f) =>
-            swept(
-              p.map((pair, j) => pair.map((x, z) => lerp(x, q[j][z], f / n))) as [Pair, Pair],
-              edgesOf[i],
-            ),
+        return [...Array(n + (i === 2 ? 1 : 0)).keys()].map((f) =>
+          swept(
+            p.map((pair, j) => pair.map((x, z) => lerp(x, q[j][z], f / n))) as [Pair, Pair],
+            edgesOf[i],
+          ),
         );
       });
       const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
@@ -2567,6 +2689,18 @@ function bridges(
       const solid =
         nearestMiddle(lo, hi, (m, room) =>
           slab((half) => [at(P, sP, e, 1, m, half), at(Q, sQ, e, -1, m, half)], room, space, P, Q),
+        ) ??
+        // PROTOTYPE: else (bent, as bridgeStyle has it) straight.
+        nearestMiddle(lo, hi, (m, room) =>
+          slab(
+            (half) => [at(P, sP, e, 1, m, half), at(Q, sQ, e, -1, m, half)],
+            room,
+            space,
+            P,
+            Q,
+            undefined,
+            false,
+          ),
         ) ??
         // PROTOTYPE: else stepped, from the higher plate (the one whose edge
         // stands above the other's plate) down to the lower, its leg at m
@@ -2689,14 +2823,17 @@ function bridges(
             );
             return [p, sub(p, scale(gn, g.thick - 2 * SIZES.bridgeSkin))];
           }) as [Pair, Pair];
-        return slab(
-          (half) => [at(P, sP, e, 1, m, half), (landed = pose(half))],
-          Math.min(room, w.spare - SIZES.bridgeInset),
-          space,
-          P,
-          undefined,
-          land,
-        );
+        const make = (bent?: boolean) =>
+          slab(
+            (half) => [at(P, sP, e, 1, m, half), (landed = pose(half))],
+            Math.min(room, w.spare - SIZES.bridgeInset),
+            space,
+            P,
+            undefined,
+            land,
+            bent,
+          );
+        return make() ?? make(false);
       });
       return solid
         ? [
