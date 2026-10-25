@@ -73,7 +73,7 @@ function classOf(s: Seam) {
  *    meets it edge to edge; the drops on the tie stand wholly on it, clear of
  *    its bends and fillets by tieGap.
  *  - the walls: the outline's hull takes in the limbs' feet, so its inner
- *    side runs straight along them, 2.6 to 2.7 mm further out than without
+ *    side runs straight along them, about 5 mm further out than without
  *    them, and turns in to the inner column's front drops where they stand:
  *    the rail's corners and its meeting with those drops and the thumbs'
  *    (rail, rail+rib) are cut differently there; and where the run passes
@@ -83,14 +83,15 @@ function classOf(s: Seam) {
  *    outer edge, its sides upright; where the web slopes (the pinky's, 28°,
  *    and the inner home and top keys', 24°) the sides meet its sloping face
  *    square, which the check counts as creases (it lets only square creases
- *    onto level or upright faces pass). rail+wall: where a limb's foot meets
- *    the rail's inner side or top (the fork's back leg's foot, the pinky
- *    front pillar turned to stand along the run, the thumb pillar's foot); the
- *    back corners moved with the leaning feet and left one. The thumb extra
- *    row's carried web has a pillar about 11 mm on from thumb_x1's corner:
- *    its root's sides on the web's sloping face (rib+wall), ledges and
- *    shadings where its second round (the web slopes along the side) meets
- *    its first (wall); the outline's run from thumb_x2's corner goes to its
+ *    onto level or upright faces pass). Where the web slopes, each limb's
+ *    section leans across its sweep's tight turn out of the rib; carried
+ *    round it untwisted, and meshed finely enough down its sides, it leaves
+ *    nothing there. rail+wall: a shading where the inner front fork's front
+ *    leg's foot meets the rail's top. wall: a sliver where the pinky's back
+ *    pillar's foot meets the rail. The thumb extra row's carried web has a
+ *    wishbone about 11 mm on from thumb_x1's corner: its root's sides on the
+ *    web's sloping face (rib+wall), a ledge of a few hundredths just under
+ *    its root (wall); the outline's run from thumb_x2's corner goes to its
  *    foot, so the tie meets the rail at an angle and its fillet there leaves
  *    a sliver and a gap (rail).
  *  - glue posts: each leg goes 0.3 mm up into the web or the rib's end over
@@ -120,7 +121,14 @@ function classOf(s: Seam) {
  *    when the FFC adapter was dropped and these became the default, with no
  *    change to the geometry: rail by 4, rail+rib by 2, rail+wall by 1 (a
  *    ledge where the collar meets the rail, at x −49.9, y 21.4) and rib by 1
- *    over the counts with the adapter.
+ *    over the counts with the adapter. The collar's fill meets the fork's
+ *    legs and crotch face to face (wall: a sliver each side and the crease
+ *    each leg's inner face makes with it; at the crotch a crease and a gap
+ *    of a hundredth). Its back leg's foot stands exactly on the rail's top,
+ *    as every limb's does; with the fill over both, the union keeps the
+ *    foot's underside and the rail's top there, a fold (a 180° crease) and a
+ *    sliver beside it (rail+wall, by 1 up when the wishbones' sweeps moved
+ *    the inner side out and the jack with it, where it was a ledge).
  *  - leaning fronts (PROTOTYPE): each finger column's front end turns over
  *    its plate's own across too, as its back does, so it doesn't twist, and
  *    its drop curves back from the lean to land where it did upright. rib
@@ -129,9 +137,9 @@ function classOf(s: Seam) {
  *    the rail).
  */
 const PINS: Record<string, number> = {
-  rail: 16,
+  rail: 15,
   'rail+rib': 12,
-  'rail+wall': 2,
+  'rail+wall': 3,
   rib: 8,
   'rib+wall': 6,
   wall: 8,

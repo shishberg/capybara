@@ -117,6 +117,7 @@ edge that faces the side of a web (a rib's end carried on from its key's
 plate to another key's) within 15 mm, of another rib and joining neither of
 the web's keys, is bridged to it as to a plate: the slab lands on the web's
 side and follows its twist. On Swung in there are fourteen:
+
 - straight between every two neighbouring finger keys but ring and pinky at
   the back and bottom rows (up to 6.2 mm across and 59° steep, middle and
   ring at the back the widest, 6.8 mm wide);
@@ -172,15 +173,24 @@ standing on the outer sides. Each leaves its rib
 at the middle of the web between two neighbouring keys, starting from the
 web's own outer edge as the rib's mesh has it, in the rib's section, 3.4 mm
 wide (every limb and every part of one, root to feet). After a 0.5 mm lip it
-turns down in one round as tight as its section allows (its inner face 0.5 mm
-round, the ends' least: 3.5 mm on the outside, where the ends' rounds are 5)
-and runs straight down onto the rail flush, so it stands as near under its
-column as clears and a key press loads it down the limb more than across its
-joint. A wishbone's
+sweeps down in one cubic Bézier, leaving along the rib and arriving upright on
+the rail, flush, its leading handle reaching no further out than its foot, so
+it never leans out past upright. Of those curves it takes the roundest: no
+point of its section comes nearer the centre of a bend than 0.5 mm (the ends'
+least inner radius), counting the section's lower corner where the web's edge
+slopes and the section leans across the bend, and of the curves that allow,
+the one whose tightest bend is loosest, so it turns out of the rib only as
+tightly as it must and comes on down in a long curve. Its section is carried
+round the bend with it and twists to stand along the run only by how far along
+the sweep it is, easing in and out, so its tight turn out of the rib doesn't
+twist. It comes down as near its web as such a sweep fits, so it stands as
+near under its column as clears and a key press loads it down the limb more
+than across its joint. A wishbone's trunk sweeps down to upright just over its
+fork. A wishbone's
 trunk forks into two legs, each slanting at 45° and standing 9 mm
 from the trunk's middle (or as near as clears, and no further than halfway to
 the next web), so the fork is as high as that spread needs; where no fork fits
-under the trunk's round it is a pillar. A limb comes down as near its web as
+under where its sweep can come upright it is a pillar. A limb comes down as near its web as
 clears, its legs narrower there before it goes further out. A limb in a plug's way forks
 over it: its opening centred on the plug, 2 mm clear each side
 and above. Every limb keeps clear of the keys, the drops, the tie and the
@@ -188,20 +198,20 @@ plugs. The outline's hull takes in the limbs' feet, so it runs
 straight along them, and each foot is turned along its run (up to 5°) so it
 stands flush. On Swung in the inner column has a limb at both its webs: at the
 bottom–home web a wishbone forking 9.7 mm over the rail, legs 8.8 and 9.0 mm out, and at the home–top web a fork over the TRRS plug, 18.1 mm
-up, legs 6.0 and 8.4 mm out. Their rib rises 15° out of the column, so their
-round turns 105°; they stand 4.9 to 5.0 mm out from their webs' edges (7.6 and
-8.3 mm with the ends' radius and a 1 mm lip), 2.6 to 2.7 mm past the outline
-without them, so the inner side runs that much further out (the footprint
-3 mm wider). The pinky has a pillar at both its webs (too low to fork): they
-leave falling 15° and would stand 3.0 to 3.1 mm out, but the outline there is
-4.1 to 4.2 mm out, so they run on out to it. The thumbs' webs between
-keys are too short. A web an end carries on in to a column's front is a span
-with nothing under it, so it gets a limb too, as near the plate it leaves as
-clears (from 2.2 mm on from the plate's corner, then each 1 mm further). On
-Swung in that puts a pillar (no fork clears there) under the thumb extra row's 41 mm
-web to the middle column, about 11 mm on from `thumb_x1`'s corner, just past
-where the tie meets the rail, 3.0 mm out from the web's edge; the outline runs
-straight from `thumb_x2`'s corner to its foot. The thumb row's carried web
+up, legs 6.1 and 8.3 mm out. Their rib rises 15° out of the column, so their
+sweep turns 105°; they stand 7.1 and 6.9 mm out from their webs' edges, about
+5 mm past the outline without them, so the inner side runs that much further
+out (the footprint 109.5 mm wide). The pinky has a pillar at both its webs (too
+low to fork): they leave falling 15° and would stand 3.4 and 4.3 mm out, but
+the outline there is 4.0 and 4.4 mm out, so they run on out to it. The thumbs'
+webs between keys are too short. A web an end carries on in to a column's
+front is a span with nothing under it, so it gets a limb too, as near the
+plate it leaves as clears (from 2.2 mm on from the plate's corner, then each
+1 mm further). On Swung in that puts a wishbone under the thumb extra row's
+41 mm web to the middle column, about 11 mm on from `thumb_x1`'s corner, just
+past where the tie meets the rail, 3.7 mm out from the web's edge, forking
+9.7 mm over the rail, legs 7.3 and 9.0 mm out; the outline runs straight from
+`thumb_x2`'s corner to its foot. The thumb row's carried web
 faces in, over the thumb extra row: no limb is placed where the outline across
 its feet is more than 10 mm out. The
 assembly is soldered first and lifted in, so the frame has no wire ways and
@@ -268,6 +278,7 @@ tops shows under its size.
     plate's sides.
 - Above each plate the chassis is kept clear of the switch housing's rim (the
   seat footprint, up to the keycap's lowest point) and of the keycap's travel.
+
 ## Wiring
 
 `src/wiring/` models the hand wiring from these assumptions:

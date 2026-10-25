@@ -1,5 +1,5 @@
 {
-  "schema": 13,
+  "schema": 14,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "geometry": {
     "row_pitch_mm": 24.5,
@@ -364,8 +364,8 @@
   "trrs": {
     "provisional": true,
     "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side under the wishbone nearest the back, which forks over its plug; the opening between that wishbone's legs is filled round the barrel, gripping it, and its plug is clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame; wires joins each to a Pro Micro pin.",
-    "position_mm": [-43.9, 15.35],
-    "rotation_deg": -4.5,
+    "position_mm": [-45.54, 15.32],
+    "rotation_deg": -6.15,
     "standoff_mm": 6,
     "body_mm": [12, 6, 5],
     "barrel_mm": [2, 5],

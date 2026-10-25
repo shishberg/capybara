@@ -2,21 +2,24 @@
 // built as the ribs are, out of the outer side of a rib's webs (between
 // neighbouring keys, and those its ends carry on in) and down to the rail. A limb is the rib carried on
 // sideways: it leaves the web's outer edge at its middle, in the rib's plane
-// there, runs a short lip, turns down in one round about that edge (thinning
-// from the rib to a wall, as an end does), so it doesn't twist, and runs
-// down, its top now its outer face, to stand on the rail, its faces flush
-// with the rail's: a rib's end turned to the side. Where the edge isn't
-// level, the round leaves it leaning along the side, and a second round, in
-// its outer face, turns it upright (if it leans more than STRAIGHT). Its
-// section is the rib's (laneSolid), so its edges are crisp, and every bend is
-// one way, once. The lip is as short as the root has room for, and each
-// round as tight as the limb's section allows, its inner face the ends'
-// least radius (kit.rib.inner, 0.5 mm) round: the first's outer face the
-// rib's thickness more (3.5 mm on Swung in, where the ends' rounds are 5),
-// the second's middle half the limb's width more. So the limb turns down
-// as soon as it leaves the column and stands as near under it as clears:
-// a key pressed on the column loads it down the limb more than across its
-// joint.
+// there, runs a short lip, and sweeps down (thinning from the rib to a wall,
+// as an end does) to stand upright on the rail, its top now its outer face,
+// its faces flush with the rail's: a rib's end turned to the side. The sweep
+// is one cubic Bézier (sweep, roundest), leaving the lip along the rib and
+// arriving upright, its lip's handle reaching no further out than its foot,
+// so it never leans out past upright: of those, the one whose tightest bend
+// is loosest against what its section allows (no point of it nearer the
+// bend's centre than the ends' least inner radius, kit.rib.inner, 0.5 mm),
+// so it curves over the whole height rather than turning at once and running
+// straight down. Each station is square to it, its across carried round the
+// bend and twisted on to level along the side by how far along it is (so
+// where the edge isn't level it leans along the side at the top, through its
+// tight turn out of the rib, and stands upright at the foot). Its section is
+// the rib's (laneSolid), so its edges are crisp. The lip is as short as the
+// root has room for. It comes down as near under the column as such a sweep
+// fits: a key pressed on the column loads it down the limb more than across
+// its joint. A
+// wishbone's trunk sweeps down to upright just over where its legs leave it.
 //
 // It starts from the web's own outer edge, as the rib's mesh has it
 // (WallSide.webs): its top and underside there are the edge's own points
@@ -52,9 +55,9 @@
 // each SLIDE, 1 mm, further on), as a finger key's side has one near each
 // web. On Swung in that is the thumb extra row's, 41 mm from thumb_x1 to the
 // middle column's front, over open floor. The floor tie meets the rail
-// under the web's first few mm, so its nearer places don't clear; a pillar
-// stands about 11 mm on from thumb_x1's corner (no fork clears there), 3.0 mm
-// out from the web's edge, near where the user marked.
+// under the web's first few mm, so its nearer places don't clear; a
+// wishbone stands about 11 mm on from thumb_x1's corner, 3.7 mm out from the
+// web's edge, near where the user marked.
 // The thumb row's carried web faces in, over the thumb extra row, and no
 // limb is placed where the outline across its feet is more than S.far
 // (10 mm) out: a limb is for a side facing open floor, near the rail.
@@ -66,9 +69,9 @@
 // as near that as clears (down to LEAST); the fork is then as high as the
 // legs need to reach their feet at SLANT, each standing upright S.upright
 // first: so its height follows from the spread wanted at the feet. Narrower
-// pairs are tried, so that it forks lower, where it doesn't fit under the
-// trunk's round; where none does, it is a pillar, and where no pillar
-// clears, there is none. Below its rounds a wishbone is all in its outer
+// pairs are tried, so that it forks lower, where it doesn't fit under where
+// its sweep can come upright; where none does, it is a pillar, and where no
+// pillar clears, there is none. Below its sweep a wishbone is all in its outer
 // face's plane, so it is drawn there as one shape (trunk and legs) and stood
 // up the wall thick: the fork is a crisp crotch and a crisp kink each side.
 //
@@ -79,8 +82,8 @@
 // placed first, since where their feet go is the plug's to say. On Swung
 // in the TRRS plug comes in under the inner side's wishbone nearest the back.
 //
-// The limb comes straight down where its round puts it, at least the lip and
-// the round out from the web's edge, or further out if that clears the keys
+// The limb comes down as near its web's edge as its sweep fits (leastAt),
+// or further out if that clears the keys
 // (tiles, switch bodies, keycap rooms and switch holes' columns: side.clear):
 // nearest first, a wishbone's legs narrower there before it goes further.
 // Limbs are placed for every side at once, each clear of those before it, of
@@ -91,16 +94,14 @@
 // capybara-walls.ts), which its hull takes in before it is
 // straightened, so a straight run passes along them. Placed again on that,
 // each comes down where the run meets its feet, its foot turned along the run
-// (up to TURN): a pillar twisting to it all the way down, a wishbone's trunk
-// over TWIST under its rounds. So each foot stands flush on the run, and the
+// (up to TURN): the sweep twisting to it on the way down. So each foot stands flush on the run, and the
 // rail needs no step out. On Swung in the inner column's limbs can't come
-// down inside the outline (their lip and round alone reach 2.6 to 2.7 mm
-// past it: their rib rises 15° out of the column, so the round turns 105°),
-// so its inner side runs that much further out along them; they stand 4.9
-// to 5.0 mm out from their webs' edges (7.6 and 8.3 with the ends' radius
-// and a 1 mm lip). The pinky's leave falling 15° and would stand 3.0 to
-// 3.1 mm out, but the outline there (the pinky's tiles and ends) is 4.1 to
-// 4.2, so they run on out to it.
+// down inside the outline (their rib rises 15° out of the column, so their
+// sweep turns 105°, and they stand 7.1 and 6.9 mm out from their webs'
+// edges, about 5 mm past it), so its inner side runs that much further out
+// along them. The pinky's leave falling 15° and would stand 3.4 and 4.3 mm
+// out, but the outline there (the pinky's tiles and ends) is 4.0 and 4.4, so
+// they run on out to it.
 import type { Manifold } from 'manifold-3d';
 import { add, cross, dot, scale, sub, type V3 } from './geometry';
 import type { Pose, Span } from './capybara';
@@ -114,7 +115,7 @@ import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from './capybara-wa
  * across); how far a limb starts inside the rib; the least its root's sides
  * stay in from the plates' corners at the web's ends, along the edge; the
  * least lip past the web's edge (as short as the root's blend to the
- * lip's section has room for, so that the limb turns down at once); the least a wishbone's leg stands upright
+ * lip's section has room for, so that the limb's sweep starts at once); the least a wishbone's leg stands upright
  * over the rail before it slants; how
  * far past its feet (along the side: more than the rail is wide) and in from
  * the web's edge the floor round them runs, which keeps clear of the drops
@@ -162,8 +163,10 @@ const PLUG_STEP = 0.05;
  * A limb's root: how near (mm) its sides come to the edge's points, at
  * least; how far inside the rib's top and underside it starts (more than the
  * mesh's chords stand off its surface there); how far out past the edge its
- * sides stay upright; and its lanes about this far apart down its sides (the
- * ribs' SIZES.ribMesh).
+ * sides stay upright; and its lanes about this far apart down its sides
+ * (half the ribs' SIZES.ribMesh: where the web's edge slopes, the limb's
+ * section leans across its sweep's tight bend out of the rib, so its sides
+ * twist there, and lanes as far apart as a rib's shade).
  */
 const SNAP = 0.15;
 const SINK = 0.05;
@@ -172,22 +175,14 @@ const RISE = 0.3;
 const BLEND = 8;
 /** The steepest web edge (radians) a limb's root's sides stand upright on. */
 const UPRIGHT = (5 * Math.PI) / 180;
-const MESH = 2;
+const MESH = 1;
 /** How finely (mm) a root's corner is stepped into the rib, to the nearest floats inside it (rootOf). */
 const INSIDE = 1e-7;
 /** The gap side.clear keeps (mm), and a hair more. */
 const GAP = 0.31;
-/**
- * The most a limb leans along the side under a sloping edge (radians), and
- * the least it is turned upright for by a round of its own: under that, its
- * straight run down takes the lean out (the round's few hundredths of a mm
- * left slivers where a wishbone's trunk meets its legs, and at a pillar's foot).
- */
+/** The steepest web edge (radians) a limb leaves: its sweep turns it upright on the way down. */
 const LEAN = (50 * Math.PI) / 180;
-const STRAIGHT = (2 * Math.PI) / 180;
-/** The least a pillar's straight run down to the rail (mm), where there is no height for more. */
-const SHORT = 0.2;
-/** How far a wishbone's rib comes straight down under its rounds before the trunk's shape takes over. */
+/** How far a wishbone's rib comes straight down under its sweep before the trunk's shape takes over. */
 const LAP = 1;
 const DOWN: V3 = [0, 0, -1];
 /**
@@ -198,8 +193,20 @@ const DOWN: V3 = [0, 0, -1];
  */
 const TURN = (5 * Math.PI) / 180;
 const FLUSH = 0.02;
-/** How far down (mm) a wishbone's trunk turns to the run under its rounds, before its rib comes on straight (LAP). */
-const TWIST = 1;
+/**
+ * A limb's sweep (roundest): how many places along it its bend is checked
+ * at; its handles tried on a GRID by GRID grid of fractions, then honed to
+ * HONE; how far out (mm) past its lip it may come down at most (REACH), and
+ * how the least it fits at is found: stepping out PACE (mm), then to FINE;
+ * and how far (radians) it turns between its stations at most.
+ */
+const CHECK = 48;
+const GRID = 10;
+const HONE = 0.002;
+const REACH = 25;
+const PACE = 0.25;
+const FINE = 0.01;
+const PIECE = Math.PI / 72;
 
 /**
  * A limb: its solids' spans (the trunk, then any legs), the floor round its
@@ -474,39 +481,66 @@ function limbAt(
   if (shift === undefined) return undefined;
   const o = add(mid, scale(c, shift / dot(c, level)));
   const start = rootOf(web.edge, o, C, c);
-  // The limb's outer face, once it has turned down, is upright through the
-  // edge: w out of it (level), along it level (a), and d down it square to
-  // the edge. The round turns it from C to d about the edge, so it doesn't
-  // twist; where the edge isn't level, d leans along the side, and a second
-  // round, in the face, turns it upright.
+  // The limb's outer face, where it stands upright, is upright through the
+  // edge: w out of it (level), and along it level (a). (A web sloping more
+  // than LEAN along the side, or heading out of the column little, gets none.)
   let w = unit([c[1], -c[0], 0]);
   if (dot(w, C) < 0) w = scale(w, -1);
   const a = cross(w, DOWN);
-  const d = cross(c, w);
   const cw = dot(C, w);
-  const [du, dv] = [dot(d, a), d[2]];
-  const lean = Math.acos(Math.max(-1, Math.min(1, -dv)));
-  if (cw < 0.3 || lean > LEAN) return undefined;
-  // The round, through the turn from C to d, and the second, in the face,
-  // from d to straight down: each as tight as the limb's section allows, its
-  // inner face kit.rib.inner round (the rib's thickness, or half the limb's
-  // width, in from its outer face's).
-  const R = thick + kit.rib.inner;
-  const T = R * Math.tan(Math.acos(Math.max(-1, Math.min(1, dot(C, d)))) / 2);
-  const Tb = lean > STRAIGHT ? (kit.rib.inner + HALF) * Math.tan(lean / 2) : 0;
-  // Along the side from where the outer face's top is over to the trunk's foot's middle.
-  const uf = (T + Tb) * du;
-  // Along the side (from the edge's middle) to where the outer face's top is, X out.
+  if (cw < 0.3 || Math.asin(Math.min(1, Math.abs(c[2]))) > LEAN) return undefined;
+  // Along the side (from the edge's middle) to where the lip's heading is X
+  // out: the foot stands under it, so the sweep is in one upright plane.
   const along = (X: number) => (X / cw) * dot(C, a);
   // Under the trunk's foot's middle, on the outer face, X out.
-  const under = (X: number) => add([o[0], o[1], 0], add(scale(w, X), scale(a, along(X) + uf)));
+  const under = (X: number) => add([o[0], o[1], 0], add(scale(w, X), scale(a, along(X))));
   // Along the side from there, how far its feet reach each way (legs' spreads, or 0 for a pillar).
   const reachOf = ([sl, sr]: [number, number]) =>
     forked ? [-(sl + HALF), sr + HALF] : [-HALF, HALF];
-  // How far out (plan, along w from the web's edge's middle) it comes
-  // down: the least the lip and round need, or as far out as the outline
-  // runs across its feet (measure), if further.
-  const least = (T + S.lip) * cw;
+  // The limb inside the rib and at its lip's end, where its sweep starts.
+  const P0: Pose = { p: sub(o, scale(C, S.into)), t: C, c, n: N, half: HALF, thick };
+  const P1: Pose = { ...P0, p: add(o, scale(C, S.lip)) };
+  // Upright at its foot's middle, X out and z high (square to the side).
+  const foot = (X: number, z: number): Pose => ({
+    p: add(under(X), [0, 0, z]),
+    t: DOWN,
+    c: a,
+    n: w,
+    half: HALF,
+    thick: wall,
+  });
+  // The nearest X out any sweep could come down: no curve turning from the
+  // lip's heading to straight down, with no bend tighter than r, runs less
+  // than r (1 + its rise) across, in its plane. (However its section is
+  // tilted across the bend, it reaches its thickness or its half width into
+  // it.)
+  const r = Math.min(thick, wall, HALF) + kit.rib.inner;
+  const nearest = S.lip * cw + (r * (1 + C[2]) * cw) / Math.hypot(C[0], C[1]);
+  // The least X out its sweep down to upright z high fits at (roundest),
+  // found stepping out by PACE from the nearest, then to FINE between the
+  // last two: further out it can be rounder, until (leaving the rib heading
+  // down, with little drop) it would have to turn back up. None within REACH.
+  const leasts = new Map<number, number>();
+  const leastAt = (z: number) => {
+    if (!leasts.has(z)) {
+      const fits = (X: number) => (roundest(kit, P1, foot(X, z), w, 1)?.ratio ?? 0) >= 1;
+      let [lo, hi] = [nearest - PACE, Infinity];
+      for (let X = lo + PACE; X <= S.lip * cw + REACH && hi === Infinity; X += PACE)
+        if (fits(X)) hi = X;
+        else lo = X;
+      while (hi - lo > FINE) {
+        const m = (lo + hi) / 2;
+        if (fits(m)) hi = m;
+        else lo = m;
+      }
+      leasts.set(z, hi);
+    }
+    return leasts.get(z)!;
+  };
+  // The fork's crotch with legs [sl, sr] standing upright `stand` (fork):
+  // where the trunk's sweep comes down to; or the rail, for a pillar.
+  const endOf = (legs: [number, number], stand: number) =>
+    forked ? (crotch(legs, stand)?.least ?? Infinity) + LAP : rail;
   // How far out the outline is (along w) at points along the side across
   // the feet, X out: [u, out] from lo to hi.
   const acrossAt = (X: number, legs: [number, number]) => {
@@ -514,7 +548,7 @@ function limbAt(
     const n = Math.ceil(hi - lo) * 2;
     return Array.from({ length: n + 1 }, (_, j): [number, number] => {
       const u = lo + ((hi - lo) * j) / n;
-      const p = add(o, scale(a, along(X) + uf + u));
+      const p = add(o, scale(a, along(X) + u));
       return [u, toRings(rings, sub(p, scale(w, S.back)), w) - S.back];
     });
   };
@@ -538,7 +572,7 @@ function limbAt(
   };
   // (Where the feet are depends a little on how far out they are.)
   const outlineOf = (legs: [number, number]) =>
-    outlineAt(Math.max(least, outlineAt(least, legs)), legs);
+    outlineAt(Math.max(nearest, outlineAt(nearest, legs)), legs);
   // Its feet's outer faces' bottom edge, along the side from under the
   // trunk's middle, and its inner faces' (a wall in).
   // (Turned along a run k further out per mm along the side: along it, and
@@ -628,7 +662,7 @@ function limbAt(
   // legs stand upright before they slant.
   let tries: { legs: [number, number]; stand: number }[] = [{ legs: [0, 0], stand: 0 }];
   if (forked) {
-    const g = under(Math.max(least, outline));
+    const g = under(Math.max(nearest, outline));
     if (kind === 'over') {
       const over = overAt(g);
       if (!over) return undefined;
@@ -643,8 +677,9 @@ function limbAt(
   const order = FURTHER.flatMap((more) => tries.map((t) => ({ ...t, more })));
   for (const { legs, stand, more } of order) {
     const out = forked ? outlineOf(legs) : outline;
-    if (!(out < Infinity)) continue;
-    const X = Math.max(least, out) + more;
+    // At least as far out as its sweep down to its crotch (or the rail) needs.
+    const X = Math.max(leastAt(endOf(legs, stand)), out) + more;
+    if (!(X < Infinity)) continue;
     // (Over a plug, the legs as it crosses where they come down.)
     let at = kind === 'over' ? overAt(under(X)) : { legs, stand };
     if (!at) continue;
@@ -666,15 +701,13 @@ function limbAt(
    * side.clear tests them, and as they are).
    */
   function build(X: number, [sl, sr]: [number, number], stand: number, k: number) {
-    const L = X / cw;
-    const corner = add(o, scale(C, L));
     // Under the trunk's foot's middle, on the outer face.
     const g = under(X);
-    // Below its rounds, the outer face turned about the upright through g to
+    // At its foot, the outer face turned about the upright through g to
     // run along the run: along it, and out of it.
     const [fa, fw] = turned(k);
     // A pose on the outer face (turned, unless [a, w]) at u along it from
-    // the feet's middle and height v, heading (du, dv), `h` wide.
+    // the feet's middle and height v, heading (hu, hv), `h` wide.
     const upright = (
       u: number,
       v: number,
@@ -693,35 +726,31 @@ function limbAt(
         thick: wall,
       };
     };
-    const P0: Pose = { p: sub(o, scale(C, S.into)), t: C, c, n: N, half: HALF, thick };
-    const P1: Pose = { ...P0, p: add(o, scale(C, L - T)) };
-    const P2 = upright(T * du - uf, corner[2] + T * dv, du, dv, HALF, [a, w]);
-    const P3 = Tb ? upright(0, P2.p[2] + Tb * dv - Tb, 0, -1, HALF, [a, w]) : P2;
-    const top = P3.p[2];
-    if (top < rail + (forked ? S.upright : SHORT)) return undefined;
     const { lineSpan, poseSpan, sidesOf } = kit.rib;
     const line = (p: Pose, q: Pose) => lineSpan(sidesOf(p, 1), sidesOf(q, 1));
-    // From P3 (square to the side) to a pose turned to the run: ruled, its
-    // lanes meshed every ribMesh or so, as they twist.
-    const twist = (p: Pose, q: Pose): Span => (k ? { ...line(p, q), straight: false } : line(p, q));
-    const head = [line(P0, P1), poseSpan(P1, P2, 1), ...(Tb ? [poseSpan(P2, P3, 1)] : [])];
+    // From the lip down to upright (and turned to the run) at q, in one sweep.
+    const down = (q: Pose) => sweep(kit, P1, q, w);
     let pieces: Span[][];
     let forkAt: number | undefined;
     let make: (kit: WallKit) => Manifold;
     if (!forked) {
-      pieces = [[...head, twist(P3, upright(0, rail, 0, -1, HALF))]];
+      const swept = down(upright(0, rail, 0, -1, HALF));
+      if (!swept) return undefined;
+      pieces = [[line(P0, P1), ...swept]];
       make = (kit) => limbSolid(kit, start, pieces[0].slice(1));
     } else {
-      // Turned to the run (if it is turned) TWIST down; then the rib comes
-      // on down LAP straight, and what stands under it starts half way along
-      // that, so that they are one, meeting level (where it is exact), in
-      // one plane, rather than touching.
-      const Pt = k ? upright(0, top - TWIST, 0, -1, HALF) : P3;
-      const trunk = [...head, ...(k ? [twist(P3, Pt)] : [])];
-      const P4 = upright(0, Pt.p[2] - LAP, 0, -1, HALF);
-      const legs = fork(P4.p[2], stand);
+      // Swept down to upright just over where the legs leave it; then the
+      // rib comes on down LAP straight, and what stands under it starts half
+      // way along that, so that they are one, meeting level (where it is
+      // exact), in one plane, rather than touching.
+      const legs = fork(stand);
       if (!legs) return undefined;
       forkAt = legs.zf;
+      const P4 = upright(0, legs.least, 0, -1, HALF);
+      const Pt = upright(0, P4.p[2] + LAP, 0, -1, HALF);
+      const swept = down(Pt);
+      if (!swept) return undefined;
+      const trunk = [line(P0, P1), ...swept];
       const rib = [...trunk, line(Pt, P4)];
       pieces = [[...trunk, line(Pt, upright(0, legs.bottom, 0, -1, HALF))], ...legs.spans];
       // Under that, all of it is in the outer face's plane: so it is that
@@ -836,33 +865,15 @@ function limbAt(
     };
 
     /**
-     * The legs from the trunk at height up to `top` down to the rail, at
-     * SLANT, standing upright `stand` above it: the fork's height, the
-     * trunk's bottom, and each leg's spans and its middle's path in the
-     * outer face's plane; none if they don't fit under `top`.
+     * The legs (crotch) down to the rail: the fork's height, the lowest the
+     * trunk's rib may come down to, the trunk's bottom, and each leg's spans
+     * and its middle's path in the outer face's plane; none if they don't fit.
      */
-    function fork(top: number, stand: number) {
-      const [H, h] = [HALF, HALF];
-      const slant = (SLANT * Math.PI) / 180;
-      const [ca, sa] = [Math.cos(slant), Math.sin(slant)];
-      // Along each leg's inner side from the crotch to the corner over its foot, and the round's reach.
+    function fork(stand: number) {
+      const at = crotch([sl, sr], stand);
+      if (!at) return undefined;
+      const { zf, s0, sqs, Tl, ca, sa, h } = at;
       const spreads = [sl, sr];
-      const sqs = spreads.map((s) => (s - h * ca) / sa);
-      const Tl = kit.rib.radius * Math.tan(slant / 2);
-      if (sqs.some((sq) => sq - Tl < 0.5)) return undefined;
-      // The fork as high as its legs need to reach their feet at SLANT
-      // (each standing upright `stand` first), the wider's: so its height
-      // follows from the spread wanted at the feet.
-      const zf = rail + Math.max(...sqs.map((sq) => sq * ca - h * sa + Tl + stand));
-      // The trunk stops a little under where each leg's outer side
-      // crosses its side, inside both legs; each leg starts inside it, its
-      // end's corners a little inside the trunk's sides (a narrow trunk
-      // stops lower, so that they are).
-      if ((2 * h) / ca - H - 0.3 <= 0) return undefined;
-      const s0 = Math.min(((2 * h) / ca - H - 0.3) / sa + 0.3 / ca, (H - 0.3) / sa);
-      const bottom = Math.min(zf + ((2 * h) / ca - H - 0.3) / Math.tan(slant), zf + s0 * ca - 0.3);
-      if (bottom <= zf) return undefined;
-      if (zf + 2 * h * sa + s0 * ca > top - 0.3) return undefined;
       const spans = [-1, 1].map((sg, i) => {
         const [spread, sq] = [spreads[i], sqs[i]];
         // The leg's middle at s along its inner side from the crotch.
@@ -883,10 +894,208 @@ function limbAt(
         ];
         return { spans: [line(L0, L1), poseSpan(L1, L2, 1), line(L2, L3)], path };
       });
-      return { zf, bottom, spans: spans.map((x) => x.spans), paths: spans.map((x) => x.path) };
+      return { ...at, spans: spans.map((x) => x.spans), paths: spans.map((x) => x.path) };
     }
   }
+
+  /**
+   * A fork's crotch, its legs [sl, sr] out, leaving the trunk at SLANT and
+   * standing upright `stand` above the rail: its height (zf), the lowest the
+   * trunk's rib may come down to (least), the trunk's bottom, and how the
+   * legs run (along each leg's inner side from the crotch to the corner over
+   * its foot, the round's reach there, and where each leg starts inside the
+   * trunk); none if the legs don't fit.
+   */
+  function crotch([sl, sr]: [number, number], stand: number) {
+    const [H, h] = [HALF, HALF];
+    const slant = (SLANT * Math.PI) / 180;
+    const [ca, sa] = [Math.cos(slant), Math.sin(slant)];
+    const sqs = [sl, sr].map((s) => (s - h * ca) / sa);
+    const Tl = kit.rib.radius * Math.tan(slant / 2);
+    if (sqs.some((sq) => sq - Tl < 0.5)) return undefined;
+    // The fork as high as its legs need to reach their feet at SLANT
+    // (each standing upright `stand` first), the wider's: so its height
+    // follows from the spread wanted at the feet.
+    const zf = rail + Math.max(...sqs.map((sq) => sq * ca - h * sa + Tl + stand));
+    // The trunk stops a little under where each leg's outer side
+    // crosses its side, inside both legs; each leg starts inside it, its
+    // end's corners a little inside the trunk's sides (a narrow trunk
+    // stops lower, so that they are).
+    if ((2 * h) / ca - H - 0.3 <= 0) return undefined;
+    const s0 = Math.min(((2 * h) / ca - H - 0.3) / sa + 0.3 / ca, (H - 0.3) / sa);
+    const bottom = Math.min(zf + ((2 * h) / ca - H - 0.3) / Math.tan(slant), zf + s0 * ca - 0.3);
+    if (bottom <= zf) return undefined;
+    // (Its legs' tops under the trunk's rib.)
+    const least = zf + 2 * h * sa + s0 * ca + 0.3;
+    return { zf, least, bottom, s0, sqs, Tl, ca, sa, h };
+  }
 }
+
+/**
+ * A limb's sweep from its lip (pose a, heading out of the rib) down to
+ * upright at b (roundest), if it is round enough. It is spans each turning
+ * PIECE, so that its stations are as close in turn where it bends hard (out
+ * of the rib) as where it bends least (coming on down): spaced along the
+ * curve, they would leave its inner face's tight round a few facets.
+ */
+function sweep(kit: WallKit, a: Pose, b: Pose, w: V3): Span[] | undefined {
+  const r = roundest(kit, a, b, w);
+  if (!r || r.ratio < 1) return undefined;
+  const { q, section } = r;
+  const at = (f: number): ReturnType<Span['at']> =>
+    f <= 0
+      ? kit.rib.sidesOf(a, 1)
+      : f >= 1
+        ? kit.rib.sidesOf(b, 1)
+        : kit.rib.sidesOf({ p: bezier(q, f), ...section(f), half: a.half }, 1);
+  // How far it has turned by each of CHECK * CHECK places along it, and
+  // where it has turned each PIECE.
+  const n = CHECK * CHECK;
+  const ahead = Array.from({ length: n + 1 }, (_, j) => unit(bezierAhead(q, j / n)));
+  const turned = [0];
+  for (let j = 1; j <= n; j++)
+    turned.push(turned[j - 1] + Math.acos(Math.min(1, dot(ahead[j - 1], ahead[j]))));
+  const m = Math.max(1, Math.ceil(turned[n] / PIECE));
+  const ends = [0];
+  for (let k = 1, j = 0; k < m; k++) {
+    const want = (turned[n] * k) / m;
+    while (turned[j + 1] < want) j++;
+    ends.push((j + (want - turned[j]) / (turned[j + 1] - turned[j])) / n);
+  }
+  ends.push(1);
+  return ends.slice(1).map((f1, k) => {
+    const f0 = ends[k];
+    return { at: (f: number) => at(f0 + (f1 - f0) * f), steps: 1 };
+  });
+}
+
+/**
+ * The roundest sweep from a (heading out of the rib) down to upright at b:
+ * its middle one cubic Bézier, leaving a along its heading and arriving at b
+ * heading down, a's handle reaching no further out (along w, a plan unit
+ * outward) than b, so it never heads back in past upright, and b's no
+ * higher than a; of those, the one whose tightest bend, against what its
+ * section allows there, is loosest. So it turns out of the rib only as
+ * tightly as it must and comes on down in a long curve.
+ *
+ * Each section is square to it, its across a's carried round as it turns
+ * (not twisting with the bend: a's across, leaning in the plane the sweep
+ * bends in where the web's edge slopes, keeps its lean) and twisted on to
+ * b's by how far along it is, so that it twists least where it bends hard,
+ * out of the rib, easing in and out, so that it runs on from the straight lip
+ * and into what stands under it without a crease; its thickness from a's to
+ * b's. A bend allows no point of the section nearer
+ * its centre than kit.rib.inner, as an end's round: where the section is
+ * tilted across the bend (a web's edge sloping along the side), its lower
+ * corner is deeper into the bend than its underside's middle.
+ *
+ * Its control points, its section (heading, across and thickness) at f
+ * along it, and how much looser than allowed its tightest bend is (ratio:
+ * under 1, too tight); or the first found at least `enough` that; none if b
+ * isn't out from and under a.
+ */
+function roundest(kit: WallKit, a: Pose, b: Pose, w: V3, enough = Infinity) {
+  const [out, drop] = [dot(sub(b.p, a.p), w), a.p[2] - b.p[2]];
+  if (!(out > 0 && drop > 0)) return undefined;
+  const smooth = (f: number) => 3 * f * f - 2 * f ** 3;
+  const thick = (f: number) => a.thick + (b.thick - a.thick) * smooth(f);
+  // The curve through control points q (in one plane, square to k): its
+  // section at f. Its across is a's carried round with it, as it turns in
+  // that plane, and twisted on about it to b's by how far along it f is
+  // (from its length at CHECK places).
+  const k = unit(cross(a.t, b.t));
+  const turned = (t: V3) => Math.atan2(dot(cross(a.t, t), k), dot(a.t, t));
+  const carried = about(a.c, k, turned(b.t));
+  const twist = Math.atan2(dot(cross(carried, b.c), b.t), dot(carried, b.c));
+  const sectionOf = (q: V3[]) => {
+    const speed = Array.from({ length: CHECK + 1 }, (_, j) => len(bezierAhead(q, j / CHECK)));
+    const run = [0];
+    for (let j = 1; j <= CHECK; j++) run.push(run[j - 1] + (speed[j - 1] + speed[j]) / 2);
+    return (f: number) => {
+      const j = Math.min(CHECK - 1, Math.floor(f * CHECK));
+      const along = (run[j] + (run[j + 1] - run[j]) * (f * CHECK - j)) / run[CHECK];
+      const t = unit(bezierAhead(q, f));
+      const c = about(about(a.c, k, turned(t)), t, twist * smooth(along));
+      return { t, c: unit(sub(c, scale(t, dot(c, t)))), thick: thick(f) };
+    };
+  };
+  // Its handles i of the way out and k of the way down: the control points,
+  // and its tightest bend against what is allowed (or one no looser than
+  // `beat`, if it is that tight).
+  const shape = (i: number, k: number, beat = -Infinity) => {
+    const q = [
+      a.p,
+      add(a.p, scale(a.t, (i * out) / dot(a.t, w))),
+      sub(b.p, scale(b.t, k * drop)),
+      b.p,
+    ];
+    const section = sectionOf(q);
+    let ratio = Infinity;
+    for (let j = 0; j <= CHECK; j++) {
+      const f = j / CHECK;
+      const v = bezierAhead(q, f);
+      const bent = cross(v, bezierBend(q, f));
+      const bend = (2 * len(bent)) / (3 * len(v) ** 3);
+      if (!(bend > 0)) continue;
+      // Toward the bend's centre, and how far the section reaches that way
+      // from its top's middle (the curve): its corners, half across and
+      // (the underside's) its thickness down.
+      const { t, c, thick: h } = section(f);
+      const inward = unit(cross(bent, v));
+      const deep = Math.abs(dot(c, inward)) * a.half + Math.max(0, -dot(cross(t, c), inward) * h);
+      ratio = Math.min(ratio, 1 / (bend * (deep + kit.rib.inner)));
+      if (ratio <= beat) break;
+    }
+    return { q, section, ratio, i, k };
+  };
+  // Over a grid of handles (a's furthest out first: the roundest, mostly),
+  // then nearer the best, each step half the last; or the first `enough`.
+  let best = shape(1, 1);
+  for (let x = GRID; x >= 1; x--)
+    for (let y = 1; y <= GRID; y++) {
+      const s = shape(x / GRID, y / GRID, best.ratio);
+      if (s.ratio > best.ratio) best = s;
+      if (best.ratio >= enough) return best;
+    }
+  for (let h = 1 / GRID / 2; h > HONE; h /= 2)
+    for (const [di, dk] of [
+      [h, 0],
+      [-h, 0],
+      [0, h],
+      [0, -h],
+    ]) {
+      const [i, k] = [best.i + di, best.k + dk];
+      if (i <= 0 || i > 1 || k <= 0 || k > 1) continue;
+      const s = shape(i, k, best.ratio);
+      if (s.ratio > best.ratio) best = s;
+      if (best.ratio >= enough) break;
+    }
+  return best;
+}
+
+/** v turned by `angle` (radians, right-handed) about unit axis k. */
+const about = (v: V3, k: V3, angle: number): V3 =>
+  add(
+    add(scale(v, Math.cos(angle)), scale(cross(k, v), Math.sin(angle))),
+    scale(k, dot(k, v) * (1 - Math.cos(angle))),
+  );
+
+/** The cubic Bézier through control points q at f, and its first and second derivatives (over 3, and over 6). */
+const bezier = (q: V3[], f: number) =>
+  [(1 - f) ** 3, 3 * f * (1 - f) ** 2, 3 * f * f * (1 - f), f ** 3].reduce<V3>(
+    (x, k, m) => add(x, scale(q[m], k)),
+    [0, 0, 0],
+  );
+const bezierAhead = (q: V3[], f: number) =>
+  [(1 - f) ** 2, 2 * f * (1 - f), f * f].reduce<V3>(
+    (x, k, m) => add(x, scale(sub(q[m + 1], q[m]), k)),
+    [0, 0, 0],
+  );
+const bezierBend = (q: V3[], f: number) =>
+  add(
+    scale(sub(sub(q[2], q[1]), sub(q[1], q[0])), 1 - f),
+    scale(sub(sub(q[3], q[2]), sub(q[2], q[1])), f),
+  );
 
 /**
  * How far (mm, along h from the web's middle o) a limb's middle is from the
@@ -984,7 +1193,7 @@ function rootOf(edge: { top: V3[]; under: V3[]; face: V3[][] }, o: V3, C: V3, c:
  * the very edges the web's mesh has there, rather than near them), and on
  * along `spans` (from the first's start, the lip's end). Its lanes across the
  * top and the underside run through the edge's points, each kept at its place
- * across the limb, and down its sides as the ribs' (one every MESH or so).
+ * across the limb, and down its sides one every MESH or so.
  */
 function limbSolid(kit: WallKit, root: Root, spans: Span[]): Manifold {
   const { along, mesh } = kit.rib;

@@ -493,11 +493,19 @@ test('a project with the reset switch placed as before schema 11 takes the new s
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
 });
+test('a project with the jack placed as before schema 14 takes its new place', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 13;
+  Object.assign(c.trrs, { position_mm: [-43.9, 15.35], rotation_deg: -4.5 });
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
+});
 test('a project with the jack placed as before schema 10 takes its new place', () => {
   const p = clone(defaults);
   const c = p.config as Record<string, any>;
   c.schema = 9;
-  c.trrs.position_mm = [-42.72, 30.3];
+  Object.assign(c.trrs, { position_mm: [-42.72, 30.3], rotation_deg: -4.5 });
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
 });

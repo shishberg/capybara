@@ -360,6 +360,15 @@ function migrate(c: Record<string, any>) {
       c.wiring.description = d.wiring.description;
     c.schema = 13;
   }
+  if (!(c.schema >= 14)) {
+    // Schema 14: the wishbones sweep down, standing further out, so the
+    // inner side's wall is out and turned where the jack looks through it. A
+    // project with it where schema 13 put it (if not moved) takes the new
+    // place, its barrel as far into the wall and square to it as before.
+    if (c.trrs && same(at(c.trrs), [[-43.9, 15.35], -4.5, 6]))
+      for (const f of fields) c.trrs[f] = clone(d.trrs[f]);
+    c.schema = 14;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;
