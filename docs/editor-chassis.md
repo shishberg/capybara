@@ -121,15 +121,24 @@ of the frame. The **base plate** is the bottom section, a separate print: the
 outline, `skin_mm` (2 mm) thick, with the frame standing on it. The frame is
 cut off level with the plate's top, so the two meet in one flat seam, the
 plate's edge flush with the rail's outer face; the glue posts stop 2 mm over
-it, so none hangs just over it. Six M2 countersunk self-tapping screws come
-up through the plate (2.3 mm holes, countersunk to 4 mm) into bosses on the
-rail's inside, 5 mm across, from the plate to the rail's top, with 1.7 mm
-pilots (`screwSpots` in `src/chassis.ts`): one at each corner of the outline
-that turns out 45° or more, sharpest first, none within 40 mm of another
-along the outline, and the runs between split evenly so none is over 80 mm,
-each boss 2.6 mm in from the outline. On Swung in they are at the pinky's
-front and back corners, the middle's back, the inner back corner, the middle
-of the inner side and the thumb row's tip, about 55 to 80 mm apart. The
+it, so none hangs just over it. Six M2×4 pan-head machine screws come up
+through the plate (2.3 mm holes) into M2×3 heat-set inserts (about 3.6 mm
+across), pressed up from the frame's underside into bosses on the rail's
+inside, 6 mm across, from the plate to the rail's top. Each head sits flush
+in a counterbore 4.4 mm across and 1.6 mm deep. Over it the plate stands up
+in a pad 4.8 mm across and 0.8 mm high, into a socket in the boss's
+underside, so 1.2 mm of plate is clamped under the head. The insert's 3.2 mm
+hole runs from the pad's top (z 2.8) to the rail's top (z 6), and the screw
+reaches z 5.6. The spots (`screwSpots` in `src/chassis.ts`): one at each
+corner of the outline that turns out 45° or more, sharpest first, none within
+40 mm of another along the outline, and the runs between split evenly so none
+is over 80 mm, each boss 3.1 mm in from the outline. A spot whose boss would
+come within 0.5 mm of a key tile slides along the outline, half a millimetre
+at a time either way, until it doesn't. On Swung in they are at the pinky's
+front and back corners, the middle's back, the inner back corner and the
+middle of the inner side, about 55 to 80 mm apart, and beside the thumb
+row's tip: thumb_x2 hangs to z 3.7 over the tip itself, so that screw is
+10.6 mm along the outer edge, toward thumb_x1. The
 plate carries the adapter mount and the ribbon's landing. On Swung in the ribbon leaves on the inner side, along
 −x at y ≈ 16 under the web between the inner home and top keys. It lies on the
 landing at z ≈ 10, about 4 mm over the rail's top (z 6), so it passes over the

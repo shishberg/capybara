@@ -55,6 +55,8 @@ export interface ChassisResult {
   roomCuts: { name: string; cut: Manifold }[];
   /** For each key, how its glue posts were fitted to what stands round them (posts()). */
   postFits: Record<string, PostFit>;
+  /** Where the base screws go, in plan (screwSpots, moved clear of the tiles). */
+  screws: [number, number][];
 }
 
 /**
@@ -150,19 +152,32 @@ export const SIZES = {
   screwApart: 40,
   screwGap: 80,
   /**
-   * Each screw is an M2 countersunk self-tapper up through the base plate into
-   * a boss on the rail's inside, screwBoss across and as high as the rail, its
-   * centre screwInset in from the outline at least (so its pilot keeps that
-   * less half the pilot to the rail's outer face, and the boss stays just
+   * Each screw is an M2×4 pan-head machine screw up through the base plate
+   * into an M2×3 heat-set insert, pressed up from below into a boss on the
+   * rail's inside, screwBoss across and as high as the rail, its centre
+   * screwInset in from the outline at least (so its insert's hole keeps that
+   * less half the hole to the rail's outer face, and the boss stays just
    * inside the outline rather than being trimmed flush with it, which leaves
-   * slivers). The pilot is screwPilot across; the plate's hole screwClear
-   * across, countersunk at 90° to screwHead across at its underside.
+   * slivers). The plate's hole is screwClear across, counterbored screwHead
+   * across and screwHeadDepth deep at its underside so the head sits flush.
+   * Over the head the plate stands up in a pad, screwPad across and padHeight
+   * high, into a socket in the boss padGap wider all round, so the head
+   * clamps padHeight more than the plate's skin less the counterbore. The
+   * insert's hole is insertHole across, from the pad's top through the boss.
+   * A spot whose boss would come within screwClearance of a tile is slid
+   * along the outline, screwSlide at a time, until it doesn't.
    */
-  screwBoss: 5,
-  screwInset: 2.6,
-  screwPilot: 1.7,
+  screwBoss: 6,
+  screwInset: 3.1,
+  insertHole: 3.2,
   screwClear: 2.3,
-  screwHead: 4,
+  screwHead: 4.4,
+  screwHeadDepth: 1.6,
+  screwPad: 4.8,
+  padHeight: 0.8,
+  padGap: 0.15,
+  screwClearance: 0.5,
+  screwSlide: 0.5,
   /** The Capybara's glue posts stop this far over its base plate, so none hangs just over it, apart from the frame standing on it. */
   postClear: 2,
 } as const;
@@ -845,20 +860,43 @@ export function buildChassis(
   // The base plate: the outline the frame stands on.
   const footprint = new CS([built.outline], 'NonZero');
   const floor = cfg.chassis.skin_mm;
-  const spots = screwSpots(built.outline);
+  const tiles = M.union(
+    keyNames.map((n) =>
+      place(
+        M.cube(cfg.tile.size_mm as Vec3, true).translate([
+          0,
+          0,
+          tileTop(cfg) - cfg.tile.size_mm[2] / 2,
+        ]),
+        frames[n],
+      ),
+    ),
+  );
+  const bossRoom = SIZES.screwBoss / 2 + SIZES.screwClearance;
+  const spots = screwSpots(built.outline, (c) =>
+    tiles
+      .intersect(
+        M.cylinder(RIB.railHeight + SIZES.screwClearance - floor, bossRoom, bossRoom, 32).translate(
+          [c[0], c[1], floor],
+        ),
+      )
+      .isEmpty(),
+  );
   const column = (d: number, z0: number, z1: number, top = d) =>
     M.union(spots.map((c) => M.cylinder(z1 - z0, d / 2, top / 2, 32).translate([c[0], c[1], z0])));
-  // Cut off level with the plate's top, with the screws' bosses and their pilots.
+  // Cut off level with the plate's top, with the screws' bosses, the sockets for the plate's pads and the inserts' holes.
+  const padTop = floor + SIZES.padHeight;
   const bb = built.frame.boundingBox();
   const below = (z: number) => slab(M, bb, 1, bb.min[2] - 1, z - bb.min[2] + 1);
   const framed = built.frame
     .add(held.solid.subtract(below(floor + SIZES.postClear)))
     .subtract(below(floor))
     .add(column(SIZES.screwBoss, floor, RIB.railHeight))
-    .subtract(column(SIZES.screwPilot, floor - 1, RIB.railHeight));
-  const sink = (SIZES.screwHead - SIZES.screwClear) / 2;
-  const holes = column(SIZES.screwClear, -1, floor + 1).add(
-    column(SIZES.screwHead + 0.02, -0.01, sink, SIZES.screwClear),
+    .subtract(column(SIZES.screwPad + 2 * SIZES.padGap, floor - 1, padTop))
+    .subtract(column(SIZES.insertHole, floor - 1, RIB.railHeight));
+  const pads = column(SIZES.screwPad, floor - 0.01, padTop);
+  const holes = column(SIZES.screwClear, -1, padTop + 1).add(
+    column(SIZES.screwHead, -1, SIZES.screwHeadDepth),
   );
   if (controllerStyle(cfg) === 'pro_micro') {
     // The plugs come in through the frame and over notches in the plate's edge.
@@ -874,12 +912,14 @@ export function buildChassis(
       body: uncarved,
       base: footprint
         .extrude(cfg.chassis.skin_mm)
+        .add(pads)
         .add(cradles(wasm, cfg, frames))
         .subtract(ways)
         .subtract(holes),
       panel: e[12] + e[0] * mouths(cfg).usb.x,
       roomCuts,
       postFits: held.fits,
+      screws: spots,
     };
   }
   // The landing, in the adapter's frame, from `out` (where the ribbon leaves) in to its end.
@@ -911,6 +951,7 @@ export function buildChassis(
   );
   const base = footprint
     .extrude(cfg.chassis.skin_mm)
+    .add(pads)
     .add(adapterMount(wasm, cfg, frames))
     .add(landing)
     .subtract(tunnels)
@@ -938,6 +979,7 @@ export function buildChassis(
     panel: e[12] + e[0] * out,
     roomCuts,
     postFits: held.fits,
+    screws: spots,
   };
 }
 
@@ -946,9 +988,14 @@ export function buildChassis(
  * (counter-clockwise): at its sharpest corners out, no two closer than
  * screwApart along it, with the long runs between split so none is longer
  * than screwGap. Each is moved in from the outline (along the corner's
- * bisector, or square to the edge) until it is screwInset from every edge.
+ * bisector, or square to the edge) until it is screwInset from every edge;
+ * one that isn't `clear` there is slid along the outline, screwSlide at a
+ * time either way, to the nearest place that is.
  */
-export function screwSpots(outline: [number, number][]): [number, number][] {
+export function screwSpots(
+  outline: [number, number][],
+  clear: (p: [number, number]) => boolean = () => true,
+): [number, number][] {
   const n = outline.length;
   const at = (i: number) => outline[((i % n) + n) % n];
   const along: number[] = [0];
@@ -995,7 +1042,7 @@ export function screwSpots(outline: [number, number][]): [number, number][] {
         return Math.hypot(x[0] - p[0] - t * dx, x[1] - p[1] - t * dy);
       }),
     );
-  return all.map((s) => {
+  const spotAt = (s: number) => {
     const i = Math.max(0, along.findIndex((a) => a > s + 1e-9) - 1);
     const corner = s - along[i] < 1e-9;
     const p = corner
@@ -1007,6 +1054,14 @@ export function screwSpots(outline: [number, number][]): [number, number][] {
     let k = 0;
     while (k < 20 && edgeGap([p[0] + d[0] * k, p[1] + d[1] * k]) < SIZES.screwInset) k += 0.05;
     return [p[0] + d[0] * k, p[1] + d[1] * k] as [number, number];
+  };
+  return all.map((s) => {
+    for (let t = 0; t < SIZES.screwApart / 2; t += SIZES.screwSlide)
+      for (const u of t ? [s + t, s - t] : [s]) {
+        const p = spotAt((u + round) % round);
+        if (clear(p)) return p;
+      }
+    return spotAt(s);
   });
 }
 

@@ -20,14 +20,7 @@
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { componentFrames, isKey, type Config } from '../src/geometry';
 import { capybara, SIZES as RIB } from '../src/capybara';
-import {
-  buildChassis,
-  gluePosts,
-  postAxes,
-  screwSpots,
-  SIZES as CHASSIS,
-  type PostFit,
-} from '../src/chassis';
+import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS, type PostFit } from '../src/chassis';
 import { openingSpan, seatSettings, seatSwitches } from '../src/seats';
 import { plateHalfWidths } from '../src/plates';
 import { wiring } from '../src/wiring';
@@ -525,7 +518,7 @@ export function capybaraSeams(
     return { to, zones: [...zones, ...postZones(axes[n], chassis.postFits[n])] };
   });
   // And the base screws' bosses, from the plate to the rail's top.
-  const bosses = screwSpots(built.outline);
+  const bosses = chassis.screws;
   const bossReach = CHASSIS.screwBoss / 2 + SEAMS.bossMeet;
   const meant = (p: V3) =>
     (p[2] <= RIB.railHeight + SEAMS.bossMeet &&
