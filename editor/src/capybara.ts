@@ -119,6 +119,18 @@ import {
 import type { Wire } from './wiring';
 
 /** Construction sizes in mm. */
+/**
+ * PROTOTYPE: how bridges meet the plates, to compare (the editor's ?bridge=):
+ * 'now' as they are; 'sweep' their sides swept into each edge (bridgeSweep);
+ * 'spline' a straight slab's middle bent along a curve leaving each plate
+ * along its plane; 'steep' leaving halfway between that and straight across.
+ */
+export const BRIDGE_STYLES = ['now', 'sweep', 'spline', 'steep'] as const;
+export let bridgeStyle: (typeof BRIDGE_STYLES)[number] = 'now';
+export const setBridgeStyle = (style: string | undefined) => {
+  bridgeStyle = BRIDGE_STYLES.find((x) => x === style) ?? 'now';
+};
+
 export const SIZES = {
   /** The ends and the rail are this thick, unless chassis.wall_mm says. */
   wall: 2.4,
@@ -205,6 +217,12 @@ export const SIZES = {
   bridgeSteep: 60,
   wireGap: 0.5,
   bridgeProbe: 0.5,
+  /**
+   * PROTOTYPE: a bridge's sides sweep out into each plate's edge it leaves, a
+   * quarter circle bridgeSweep round (tangent to the side and to the edge),
+   * less where there is less room along the edge or the bridge (bridges).
+   */
+  bridgeSweep: 1.5,
   /**
    * PROTOTYPE: where no straight bridge fits between two keys, a stepped one:
    * out of the higher plate in its plane, down a leg in the gap and in to the
@@ -2289,6 +2307,40 @@ function bridges(
       thick: d.plate - 2 * SIZES.bridgeSkin,
     };
   };
+  // PROTOTYPE (bridgeStyle): how far out a bridge's sides sweep at x out of
+  // an edge, r out at it (and so on into the plate) and back to straight
+  // `len` out: 'sweep' a quarter circle (len = r); 'spline' a quarter ellipse
+  // over half the gap, so tangent to the edge; 'steep' a cubic over half the
+  // gap meeting the edge at 45°. All tangent to the side where they end.
+  const sweepOut = ({ r, len }: Edge, x: number) => {
+    if (x <= 0) return r;
+    if (x >= len) return 0;
+    const u = x / len;
+    if (bridgeStyle !== 'steep') return r * (1 - Math.sqrt(1 - (1 - u) ** 2));
+    const slope = Math.max(-len, -3 * r);
+    return r * (2 * u ** 3 - 3 * u * u + 1) + slope * (u ** 3 - 2 * u * u + u);
+  };
+  // A station's sides swept out from edges (a point on each, out of its plate
+  // along t), by how far its top's middle is out of each.
+  type Edge = { p: V3; t: V3; r: number; len: number };
+  const swept = (sides: [Pair, Pair], edges: Edge[]) => {
+    const mid = lerp(sides[0][0], sides[1][0], 0.5);
+    const w = edges.reduce((sum, q) => sum + sweepOut(q, dot(sub(mid, q.p), q.t)), 0);
+    return sides.map((p, j) => widenPair(p, sides[1 - j], w)) as [Pair, Pair];
+  };
+  // A span swept so, meshed fine enough to follow the sweep (a step per
+  // twelfth of its length along it).
+  const sweptSpan = (span: Span, edges: Edge[]): Span => {
+    const r = Math.min(...edges.filter((q) => q.r > 0).map((q) => Math.min(q.r, q.len)));
+    if (!isFinite(r)) return span;
+    const [p, q] = [0, 1].map((f) => lerp(span.at(f)[0][0], span.at(f)[1][0], 0.5));
+    const steps = Math.ceil((12 * Math.hypot(...sub(q, p))) / r);
+    return {
+      at: (f) => swept(span.at(f), edges),
+      straight: false,
+      steps: Math.max(span.steps, steps),
+    };
+  };
   // A straight slab from pose a (on P's edge, heading out of it) to pose b
   // (heading into what it joins), as `poses(half)` has them, if it fits, at
   // most `room` wide either side of its middle. Its section `dist` on along b
@@ -2316,17 +2368,38 @@ function bridges(
     if (half < SIZES.bridgeWidth / 2) return undefined;
     [a, b] = poses(half);
     const [a1, b1] = [ahead(a, SIZES.bridgeOut), ahead(b, -SIZES.bridgeOut)];
+    // PROTOTYPE (bridgeStyle): the sides swept into each edge (sweepOut);
+    // and for 'spline' and 'steep' the middle bent along a Hermite curve
+    // leaving each plate along its plane ('spline'), or halfway between that
+    // and straight across ('steep').
+    const r =
+      bridgeStyle === 'now' ? 0 : Math.max(0, Math.min(SIZES.bridgeSweep, room - half));
+    const gap = dot(sub(b.p, a.p), a.t);
+    const len = bridgeStyle === 'sweep' ? r : gap / 2;
+    const edges: Edge[] = [
+      { p: a.p, t: a.t, r, len },
+      { p: b.p, t: scale(b.t, -1), r, len },
+    ];
+    const chord = sub(b1.p, a1.p);
+    const reach = Math.hypot(...chord);
+    const leave = (t: V3) =>
+      scale(unit(bridgeStyle === 'steep' ? add(t, unit(chord)) : t), reach);
+    const [ta, tb] = [leave(a1.t), leave(b1.t)];
+    const bend = (f: number): V3 =>
+      bridgeStyle === 'spline' || bridgeStyle === 'steep'
+        ? add(scale(sub(ta, chord), f ** 3 - 2 * f * f + f), scale(sub(tb, chord), f ** 3 - f * f))
+        : [0, 0, 0];
     // Its stations, about bridgeProbe apart across the gap.
-    const steps = Math.ceil(Math.hypot(...sub(b1.p, a1.p)) / probe);
+    const steps = Math.ceil(reach / probe);
     const across = (f: number) =>
       sidesOf(a1, 1).map((pair, j) =>
-        pair.map((x, z) => lerp(x, end(b, -SIZES.bridgeOut)[j][z], f)),
+        pair.map((x, z) => add(lerp(x, end(b, -SIZES.bridgeOut)[j][z], f), bend(f))),
       ) as [Pair, Pair];
     const stations = [
       sidesOf(a, 1),
       ...[...Array(steps + 1).keys()].map((j) => across(j / steps)),
       end(b, 0),
-    ];
+    ].map((x) => swept(x, edges));
     const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
     if (!unfolded(left, right)) return undefined;
     if (!space.clear(samples(left, right))) return undefined;
@@ -2342,12 +2415,15 @@ function bridges(
         // section to the other's (a step per 5°), so its twisted faces
         // shade as one rather than fold along a diagonal.
         {
-          ...lineSpan(sidesOf(a1, 1), end(b, -SIZES.bridgeOut)),
+          at: across,
           straight: false,
-          steps: stepsOf(turnOf(normalOf(a1), normalOf(b1)) + turnOf(a1.c, b1.c)),
+          steps: Math.max(
+            stepsOf(turnOf(normalOf(a1), normalOf(b1)) + turnOf(a1.c, b1.c)),
+            bridgeStyle === 'spline' || bridgeStyle === 'steep' ? 24 : 0,
+          ),
         },
         lineSpan(end(b, -SIZES.bridgeOut), end(b, SIZES.bridgeInto)),
-      ],
+      ].map((span) => (r ? sweptSpan(span, edges) : span)),
       'bridge',
     );
   };
@@ -2404,6 +2480,24 @@ function bridges(
       ] as [Pair, Pair][];
       // The leg stands at least as tall as the plates are thick.
       if (dot(sub(backs[0], feet[0]), L.n) < d.plate) return undefined;
+      // PROTOTYPE (bridgeStyle): the top's sides swept into U's edge and the
+      // foot's into L's (sweepOut), each back to straight by the leg (`most`
+      // out), and less where the stretch has no room for it.
+      const sweepTo = (q: Pose, t: V3, most: number): Edge => {
+        const quarter = bridgeStyle === 'sweep';
+        let r =
+          bridgeStyle === 'now'
+            ? 0
+            : Math.max(0, Math.min(SIZES.bridgeSweep, quarter ? most : Infinity));
+        while (r > 0 && ![-1, 1].every((u) => fits(add(q.p, scale(q.c, u * (q.half + r))))))
+          r = Math.max(0, r - 0.1);
+        return { p: q.p, t, r, len: quarter ? r : most };
+      };
+      const edgesOf = [
+        [sweepTo(top, a.t, dot(sub(lerp(tops[0], tops[1], 0.5), top.p), a.t))],
+        [],
+        [sweepTo(b, out, o)],
+      ];
       // Its stations, about bridgeProbe apart along each stretch.
       const stations = corners.slice(1).flatMap((q, i) => {
         const p = corners[i];
@@ -2411,7 +2505,11 @@ function bridges(
           Math.max(...[0, 1].map((j) => Math.hypot(...sub(q[j][0], p[j][0])))) / probe,
         );
         return [...Array(n + (i === 2 ? 1 : 0)).keys()].map(
-          (f) => p.map((pair, j) => pair.map((x, z) => lerp(x, q[j][z], f / n))) as [Pair, Pair],
+          (f) =>
+            swept(
+              p.map((pair, j) => pair.map((x, z) => lerp(x, q[j][z], f / n))) as [Pair, Pair],
+              edgesOf[i],
+            ),
         );
       });
       const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
@@ -2428,7 +2526,7 @@ function bridges(
           .map((q, i) =>
             i === 1
               ? { ...lineSpan(corners[i], q), straight: false, steps: stepsOf(turnOf(U.n, L.n)) }
-              : lineSpan(corners[i], q),
+              : sweptSpan(lineSpan(corners[i], q), edgesOf[i]),
           ),
         'bridge',
       );

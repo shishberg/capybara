@@ -77,7 +77,11 @@ export function requestBuild() {
   const id = S.revision;
   setBadge('', 'Building chassis & checking fit…');
   inFlight = { id, project: S.project };
-  worker.postMessage({ id, project: S.project });
+  worker.postMessage({
+    id,
+    project: S.project,
+    bridge: new URLSearchParams(location.search).get('bridge') ?? undefined,
+  });
   timeout = setTimeout(() => {
     busy = false;
     pending = false;
