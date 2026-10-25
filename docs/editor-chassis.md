@@ -104,13 +104,15 @@ where another key's plate is in the way, or where it would come near what the
 keys hold (the two keys' keycaps only as low as they are pressed) or near a
 wire (the router doesn't route round the frame, so the bridges keep 0.5 mm
 off the routed wires). Where no straight slab goes, the bridge is
-**stepped**: out of the higher plate's edge in its plane, down a leg standing
-square to the lower plate, and in to the lower plate's edge in its plane, so
-it passes under the lower key's keycap room rather than through it. The
-leg's far face is flush with the higher plate's edge at its top and leans
-back 0.08 mm from it at its foot; its near face is as close to the lower
-plate's edge as clears that keycap room (from 0.5 mm, every 0.02 mm), the leg
-at least 0.9 mm thick. It is 8 mm wide if that fits, else 4 mm. A key's plate
+**stepped**: square out of the higher plate's edge in its plane, down a leg,
+and in to the lower plate's edge in its plane, so it passes under the lower
+key's keycap room rather than through it. The leg's far face is the higher
+plate's edge face carried on down; its near face stands square to the lower
+plate, as close to its edge as clears that keycap room (from 0.5 mm, every
+0.02 mm), the leg at least 0.9 mm thick. The top comes out of the higher
+plate's edge wherever along it the leg comes up, as wide as the leg is
+there. It is 8 mm wide if that fits, else 4 mm, and it doesn't keep off the
+wires. A key's plate
 edge that faces the side of a web (a rib's end carried on from its key's
 plate to another key's) within 15 mm, of another rib and joining neither of
 the web's keys, is bridged to it as to a plate: the slab lands on the web's
@@ -122,10 +124,9 @@ side and follows its twist. On Swung in there are fourteen:
   thumb_x1 (7.3 and 7.7 mm across);
 - stepped between ring and pinky at the back row, where the pinky's plate
   stands 12.5 mm above the ring's (a straight slab would slope 76°): out
-  1.3 mm from the pinky's edge, down a 13.8 mm leg 1.1 to 1.3 mm thick, and
-  in 1.0 mm to the ring's edge, 4 mm wide (at 8 mm it runs into a keycap's
-  room or within 0.5 mm of the pinky column's wire, which runs just outside
-  the pinky's edge);
+  1.3 mm from the pinky's edge, down a 14.5 mm leg at least 1.2 mm thick, and
+  in 1.0 mm to the ring's edge, 8 mm wide (8.5 mm where it leaves the pinky:
+  the leg is square to the ring, which is 19° off square to the pinky);
 - from thumb_near's edge to the web from thumb_x1 to the middle column's
   bottom key, 6.9 mm across and 3.8 mm down, 4.6 mm wide.
 

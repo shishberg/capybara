@@ -209,15 +209,14 @@ export const SIZES = {
    * PROTOTYPE: where no straight bridge fits between two keys, a stepped one:
    * out of the higher plate in its plane, down a leg in the gap and in to the
    * lower plate in its plane, stepWidth wide along the edges (else
-   * bridgeWidth), the leg at least stepLeast thick, its far face flush with
-   * the higher plate's edge at its top and leaning back to stepBack in from
-   * it at its foot, and its near face moved out stepProbe at a time until it
-   * clears the lower key's keycap. A key's plate edge facing a joined web's
-   * side within webReach is bridged to it as to a plate.
+   * bridgeWidth), only where the higher plate's edge is within stepReach of
+   * the lower's. The leg is at least stepLeast thick, its far face the higher
+   * plate's edge face carried on down, its near face moved out stepProbe at a
+   * time until it clears the lower key's keycap. A key's plate edge facing a
+   * joined web's side within webReach is bridged to it as to a plate.
    */
   stepWidth: 8,
   stepLeast: 0.9,
-  stepBack: 0.08,
   stepReach: 4,
   stepProbe: 0.02,
   webReach: 15,
@@ -2353,42 +2352,58 @@ function bridges(
     );
   };
   // PROTOTYPE: a stepped bridge from the higher plate, U (pose a on its edge,
-  // heading out), to the lower, L (pose b on its edge, heading in): straight
-  // on out of U in its own plane, down a leg standing along L's normal in the
-  // gap, and in to L in its plane, under L's keycap's room as it is pressed.
-  // The leg's far face is flush with U's edge at its top, leaning back to
-  // stepBack in from it at its foot, and its near face as close to L's edge
-  // as clears (from bridgeLeast out, every stepProbe), the leg at least
-  // stepLeast thick. Its corners are mitred, so it is one sweep.
-  const stepped = (a: Pose, b: Pose, U: RibKey, L: RibKey, space: ReturnType<typeof keySpace>) => {
+  // heading out, for its plane and edge), to the lower, L (pose b on its
+  // edge, heading in): straight out of U's edge in its plane, down a leg in
+  // the gap and in to L in its plane, under L's keycap's room as it is
+  // pressed. The leg's near face stands along L's normal, as close to L's edge
+  // as clears (from bridgeLeast out, every stepProbe); its far face is U's
+  // edge face carried on down, so the two are one face. The top is as wide as
+  // the leg comes up through U's plane, square out of U's edge, wherever along
+  // it that is, if `fits` it there. The leg is at least stepLeast thick.
+  const stepped = (
+    a: Pose,
+    b: Pose,
+    U: RibKey,
+    L: RibKey,
+    space: ReturnType<typeof keySpace>,
+    fits: (x: V3) => boolean,
+  ) => {
     if (dot(a.c, b.c) <= 0) return undefined;
     const out = scale(b.t, -1);
-    // How far out from L's edge U's edge meets its underside, on either
-    // side (the leg's far face's top, flush with U's edge), and stepBack in
-    // from the nearest of U's edge (its foot, leaning back from the top).
-    const top = [0, 1].map((j) => dot(sub(sidesOf(a, 1)[j][1], sidesOf(b, 1)[j][0]), out));
-    const foot =
-      Math.min(
-        ...sidesOf(a, 1)
-          .flat()
-          .map((x) => dot(sub(x, b.p), out)),
-      ) - SIZES.stepBack;
-    if (Math.max(...top) > SIZES.stepReach) return undefined;
-    // A leg's line, o out from L's edge on side j, at L's top (and up it to
-    // `level` below U's top, in U's plane).
+    if (dot(sub(a.p, b.p), out) > SIZES.stepReach) return undefined;
+    // A point on L's top, o out from L's edge on side j; up along L's normal
+    // to U's top; onto U's edge face; down that face to L's underside.
     const leg = (o: number, j: number) => add(sidesOf(b, 1)[j][0], scale(out, o));
-    const onU = (x: V3, level: number) =>
-      add(x, scale(L.n, (-level - dot(sub(x, a.p), U.n)) / dot(L.n, U.n)));
-    const under = scale(L.n, -b.thick);
-    for (let o = SIZES.bridgeLeast; o <= foot - SIZES.stepLeast + 1e-9; o += SIZES.stepProbe) {
+    const onU = (x: V3) => add(x, scale(L.n, -dot(sub(x, a.p), U.n) / dot(L.n, U.n)));
+    const toEdge = (x: V3) => sub(x, scale(a.t, dot(sub(x, a.p), a.t)));
+    const down = unit(sub(L.n, scale(a.t, dot(L.n, a.t))));
+    const toFoot = (x: V3) =>
+      add(x, scale(down, (-b.thick - dot(sub(x, b.p), L.n)) / dot(down, L.n)));
+    for (let o = SIZES.bridgeLeast; ; o += SIZES.stepProbe) {
+      const tops = [0, 1].map((j) => onU(leg(o, j)));
+      const backs = tops.map((x) => sub(toEdge(x), scale(U.n, a.thick)));
+      const feet = backs.map(toFoot);
+      const thin = Math.min(
+        ...[0, 1].flatMap((j) => [
+          dot(sub(backs[j], tops[j]), out),
+          dot(sub(feet[j], leg(o, j)), out),
+        ]),
+      );
+      if (thin < SIZES.stepLeast) return undefined;
+      if (!backs.every(fits)) return undefined;
+      const top: Pose = {
+        ...a,
+        p: toEdge(lerp(tops[0], tops[1], 0.5)),
+        half: Math.abs(dot(sub(tops[1], tops[0]), a.c)) / 2,
+      };
       const corners = [
-        sidesOf(ahead(a, -SIZES.bridgeInto), 1),
-        [0, 1].map((j): Pair => [onU(leg(o, j), 0), onU(leg(top[j], j), a.thick)]),
-        [0, 1].map((j): Pair => [leg(o, j), add(leg(foot, j), under)]),
+        sidesOf(ahead(top, -SIZES.bridgeInto), 1),
+        [0, 1].map((j): Pair => [tops[j], backs[j]]),
+        [0, 1].map((j): Pair => [leg(o, j), feet[j]]),
         sidesOf(ahead(b, SIZES.bridgeInto), 1),
       ] as [Pair, Pair][];
       // The leg stands at least as tall as the plates are thick.
-      if (dot(sub(corners[1][0][1], corners[2][0][1]), L.n) < d.plate) return undefined;
+      if (dot(sub(backs[0], feet[0]), L.n) < d.plate) return undefined;
       // Its stations, about bridgeProbe apart along each stretch.
       const stations = corners.slice(1).flatMap((q, i) => {
         const p = corners[i];
@@ -2403,15 +2418,21 @@ function bridges(
       if (!unfolded(...([0, 1].map((j) => corners.map((x) => x[j])) as [Pair[], Pair[]])))
         return undefined;
       if (!space.clear(samples(left, right))) continue;
-      const inside = filling(left, right);
-      if (!offPlates(inside, U, L) || !offWires(inside, a.p)) continue;
+      if (!offPlates(filling(left, right), U, L)) continue;
       return laneSolid(
         wasm,
-        corners.slice(1).map((q, i) => lineSpan(corners[i], q)),
+        // The leg meshed finer as it twists from U's section to L's (a step
+        // per 5°), so its faces shade as one.
+        corners
+          .slice(1)
+          .map((q, i) =>
+            i === 1
+              ? { ...lineSpan(corners[i], q), straight: false, steps: stepsOf(turnOf(U.n, L.n)) }
+              : lineSpan(corners[i], q),
+          ),
         'bridge',
       );
     }
-    return undefined;
   };
   // From the middle of the stretch lo to hi outward, either way in turn, the
   // first place a bridge fits: `make(m, room)`, room how wide it may be
@@ -2450,8 +2471,9 @@ function bridges(
           slab((half) => [at(P, sP, e, 1, m, half), at(Q, sQ, e, -1, m, half)], room, space, P, Q),
         ) ??
         // PROTOTYPE: else stepped, from the higher plate (the one whose edge
-        // stands above the other's plate) down to the lower: as wide as
-        // stepWidth, else bridgeWidth.
+        // stands above the other's plate) down to the lower, its leg at m
+        // along e: as wide as stepWidth, else bridgeWidth, its top on the
+        // stretch.
         [SIZES.stepWidth, SIZES.bridgeWidth].reduce<Manifold | undefined>(
           (found, width) =>
             found ??
@@ -2460,7 +2482,16 @@ function bridges(
               if (half < SIZES.bridgeWidth / 2) return undefined;
               const high = dot(sub(at(P, sP, e, 1, m, half).p, Q.o), Q.n) > 0;
               const [U, sU, L, sL] = high ? [P, sP, Q, sQ] : [Q, sQ, P, sP];
-              return stepped(at(U, sU, e, 1, m, half), at(L, sL, e, -1, m, half), U, L, space);
+              const fits = (x: V3) =>
+                dot(x, e) >= lo + SIZES.bridgeInset && dot(x, e) <= hi - SIZES.bridgeInset;
+              return stepped(
+                at(U, sU, e, 1, m, half),
+                at(L, sL, e, -1, m, half),
+                U,
+                L,
+                space,
+                fits,
+              );
             }),
           undefined,
         );
