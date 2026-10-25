@@ -1,6 +1,6 @@
 import { Matrix4 } from 'three';
 import { gluePosts, postAxes } from './chassis';
-import { controllerParts, padParts } from './wiring';
+import { padParts, proMicroParts } from './wiring';
 import {
   capSize,
   capTop,
@@ -27,12 +27,7 @@ export interface Part {
   /** A box's corners (along its z axis) are notched: a round of this radius centred on each is cut out. */
   notch?: number;
 }
-export function hardware(
-  project: Project,
-  nodes = componentFrames(project.config),
-  /** Where the ribbon leaves, in world x, from a build. */
-  panel?: number,
-): Part[] {
+export function hardware(project: Project, nodes = componentFrames(project.config)): Part[] {
   const cfg = project.config;
   const parts: Part[] = [];
   const tile = cfg.tile;
@@ -80,6 +75,6 @@ export function hardware(
       // between its edges and their legs.
       for (const b of glue[axes[name]]) add(name + ': glue', 'glue', b.size, b.center, m);
     }
-  parts.push(...controllerParts(cfg, nodes, panel), ...padParts(cfg, nodes));
+  parts.push(...proMicroParts(cfg, nodes), ...padParts(cfg, nodes));
   return parts;
 }

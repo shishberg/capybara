@@ -72,13 +72,12 @@
 // face's plane, so it is drawn there as one shape (trunk and legs) and stood
 // up the wall thick: the fork is a crisp crotch and a crisp kink each side.
 //
-// A limb in the main ribbon's way (WallKit.ribbon: it crosses the side
-// within S.widest of the web's middle) forks over it: its opening centred on the ribbon,
-// its legs' inner faces RIBBON_GAP clear of it each side, and each leg
-// standing upright to RIBBON_GAP over its top before it slants. Those are
-// placed first, since where their feet go is the ribbon's to say. On Swung
-// in the ribbon leaves under the inner column's web between its home and top
-// keys. On a Pro Micro the plugs are in its place.
+// A limb in a plug's way (WallKit.plugs: it crosses the side within
+// S.widest of the web's middle) forks over it: its opening centred on the plug,
+// its legs' inner faces PLUG_GAP clear of it each side, and each leg
+// standing upright to PLUG_GAP over its top before it slants. Those are
+// placed first, since where their feet go is the plug's to say. On Swung
+// in the TRRS plug comes in under the inner side's wishbone nearest the back.
 //
 // The limb comes straight down where its round puts it, at least the lip and
 // the round out from the web's edge, or further out if that clears the keys
@@ -86,7 +85,7 @@
 // nearest first, a wishbone's legs narrower there before it goes further.
 // Limbs are placed for every side at once, each clear of those before it, of
 // the sides' ends (lips, rounds, drops and webs carried on), of the faces
-// standing on the outline (drops), of the tie, and of the ribbon. They stand on the straightened outline: placed
+// standing on the outline (drops), of the tie, and of the plugs. They stand on the straightened outline: placed
 // first on the outline without them, each at least as far out as it runs
 // across its feet, they ask for their feet (capybaraReach in
 // capybara-walls.ts), which its hull takes in before it is
@@ -120,7 +119,7 @@ import type { Reach, WallKit, WallPoint, WallSide, WebEdge } from './capybara-wa
  * far past its feet (along the side: more than the rail is wide) and in from
  * the web's edge the floor round them runs, which keeps clear of the drops
  * and the tie; the least gap between neighbouring limbs; the
- * furthest a wishbone's foot is out from its trunk's middle (over the ribbon);
+ * furthest a wishbone's foot is out from its trunk's middle (over a plug);
  * and the furthest out the outline may be across a limb's feet (a web facing
  * in, over another rib, gets none).
  */
@@ -157,8 +156,8 @@ const SLANT = 45;
 const SPREAD = 9;
 /** The least spread: half a leg and half the gap past the trunk's middle. */
 const LEAST = HALF + S.gap / 2;
-/** How finely (mm) the ribbon's crossing of a limb's feet is found. */
-const RIBBON_STEP = 0.05;
+/** How finely (mm) a plug's crossing of a limb's feet is found. */
+const PLUG_STEP = 0.05;
 /**
  * A limb's root: how near (mm) its sides come to the edge's points, at
  * least; how far inside the rib's top and underside it starts (more than the
@@ -219,7 +218,7 @@ interface Limb {
   foot: { g: V3; c: V3; w: V3; E: number };
   /** How far out from its web's edge (plan) its outer face is. */
   X: number;
-  /** If it forks: the crotch's height over the rail, its legs' spreads, and whether it forks over the ribbon. */
+  /** If it forks: the crotch's height over the rail, its legs' spreads, and whether it forks over a plug. */
   fork?: { height: number; legs: [number, number]; kind: Kind };
 }
 
@@ -311,7 +310,7 @@ function lineOf(side: WallSide): Line {
   return { points, webs: [...before, ...between, ...after] };
 }
 
-/** What a limb keeps clear of besides the keys and the ribbon: in plan (`free`), and all of it (`clear`). */
+/** What a limb keeps clear of besides the keys and the plugs: in plan (`free`), and all of it (`clear`). */
 interface Avoid {
   free: (plan: [number, number][]) => boolean;
   clear: (limb: Limb) => boolean;
@@ -377,9 +376,9 @@ function place(kit: WallKit, rings: [number, number][][], span: Span_) {
       );
     return { free, clear };
   };
-  // A limb in the ribbon's way (within a wishbone's widest spread of its
+  // A limb in a plug's way (within a wishbone's widest spread of its
   // web's middle) forks over it. Those are placed first, since where their
-  // feet go is the ribbon's to say; then the rest, each web in order, clear
+  // feet go is the plug's to say; then the rest, each web in order, clear
   // of them: a wishbone forks where it can, and is a pillar where it can't.
   const within = S.widest;
   const webs = kit.sides.flatMap((side) => {
@@ -421,15 +420,15 @@ type Span_ = 'reach' | 'stand';
 
 /**
  * What a limb at a web is: a pillar; a fork, its legs SPREAD out each way or
- * as near that as clears; or a fork over the ribbon, its opening centred on it
- * (only where the ribbon crosses the side within `within` of the web's
+ * as near that as clears; or a fork over a plug, its opening centred on it
+ * (only where a plug crosses the side within `within` of the web's
  * middle, else none).
  */
 type Kind = 'pillar' | 'fork' | 'over';
 
 /**
  * The limb out of `web`'s middle, of `kind`: the first that clears (keys,
- * ribbon and `avoid`) coming down each of FURTHER out, of its legs' spreads
+ * plugs and `avoid`) coming down each of FURTHER out, of its legs' spreads
  * (if forked) widest first; or none.
  */
 function limbAt(
@@ -552,7 +551,7 @@ function limbAt(
     const [fa, fw] = turned(k);
     return add(add(g, scale(fa, u)), [-fw[0] * v, -fw[1] * v, rail]);
   };
-  // Whether a foot (a leg's, at u) is clear: in plan, and of the ribbon.
+  // Whether a foot (a leg's, at u) is clear: in plan, and of the plugs.
   const clearAt = (g: V3, u: number, k = 0) => {
     const corners = [
       [u - HALF, 0],
@@ -570,29 +569,29 @@ function limbAt(
           const q = feet(g, x, v, k);
           return [q[0], q[1]];
         }),
-      ) && kit.ribbon(edge)
+      ) && kit.plugs(edge)
     );
   };
-  // Over the ribbon: where along the side (from under the trunk's middle)
-  // it crosses the feet (grown by RIBBON_GAP, so its edges are where the
+  // Over a plug: where along the side (from under the trunk's middle)
+  // it crosses the feet (grown by PLUG_GAP, so its edges are where the
   // feet's inner faces may stand), and its top there; none if it doesn't
   // cross within `within`.
-  const ribbonAt = (g: V3, k: number) => {
+  const plugAt = (g: V3, k: number) => {
     const us: number[] = [];
     let top = -Infinity;
-    for (let u = -within - S.widest; u <= within + S.widest; u += RIBBON_STEP) {
-      const t = Math.max(...[0, wall].map((v) => kit.ribbonTop(feet(g, u, v, k))));
+    for (let u = -within - S.widest; u <= within + S.widest; u += PLUG_STEP) {
+      const t = Math.max(...[0, wall].map((v) => kit.plugTop(feet(g, u, v, k))));
       if (t > -Infinity) [us.push(u), (top = Math.max(top, t))];
     }
     if (!us.length) return undefined;
-    const [lo, hi] = [us[0] - RIBBON_STEP, us.at(-1)! + RIBBON_STEP];
+    const [lo, hi] = [us[0] - PLUG_STEP, us.at(-1)! + PLUG_STEP];
     return hi < -within || lo > within ? undefined : { lo, hi, top };
   };
-  // A fork over the ribbon: its opening centred on it, as wide as the
-  // ribbon and its gaps, or wider if the ribbon is off to one side of the
+  // A fork over a plug: its opening centred on it, as wide as the
+  // plug and its gaps, or wider if the plug is off to one side of the
   // trunk (so that each leg still leaves it at least LEAST out).
   const overAt = (g: V3, k = 0) => {
-    const r = ribbonAt(g, k);
+    const r = plugAt(g, k);
     if (!r) return undefined;
     const [rc, hw] = [(r.lo + r.hi) / 2, (r.hi - r.lo) / 2];
     const H = Math.max(hw, LEAST - HALF + Math.abs(rc));
@@ -646,16 +645,16 @@ function limbAt(
     const out = forked ? outlineOf(legs) : outline;
     if (!(out < Infinity)) continue;
     const X = Math.max(least, out) + more;
-    // (Over the ribbon, the legs as it crosses where they come down.)
+    // (Over a plug, the legs as it crosses where they come down.)
     let at = kind === 'over' ? overAt(under(X)) : { legs, stand };
     if (!at) continue;
-    // Standing on the run, turned along it (and over the ribbon, the legs
+    // Standing on the run, turned along it (and over a plug, the legs
     // as it crosses where they then come down).
     const k = more || X !== out ? 0 : (runAt(X, at.legs)?.k ?? 0);
     if (k && kind === 'over') at = overAt(under(X), k);
     if (!at) continue;
     const limb = build(X, at.legs, at.stand, k);
-    if (limb && kit.ribbon(limb.raw) && avoid.clear(limb.limb) && side.clear(limb.over))
+    if (limb && kit.plugs(limb.raw) && avoid.clear(limb.limb) && side.clear(limb.over))
       return limb.limb;
   }
   return undefined;

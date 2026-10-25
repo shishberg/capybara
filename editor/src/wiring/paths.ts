@@ -1,5 +1,5 @@
 // A wire's route: its legs off the tiles, the joins between legs, the way
-// through the wire port, and the feeds' run to the adapter.
+// through the wire port, and the feeds' run to the Pro Micro.
 import { isThumb, point, add, type V3 } from '../geometry';
 import { WIRING, distance, type Edge, type Env, type Lane, type Pad } from './common';
 import { edgeToward, ownEdge } from './port';
@@ -220,7 +220,7 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
 
   /**
    * A route for a wire of radius `keep` in `lane`, through the wire port at
-   * `place`. `a` is a pad, or for a feed the point at the adapter's hole.
+   * `place`. `a` is a pad, or for a feed the point at its net's pin.
    */
   const routeOf = (
     a: Pad | V3,

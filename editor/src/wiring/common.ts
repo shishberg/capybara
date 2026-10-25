@@ -4,6 +4,7 @@ import type { Config, V3 } from '../geometry';
 
 export interface NetSpec {
   name: string;
+  /** The Pro Micro pin its feeds land on (pro_micro.pins). */
   pin: number;
   group: string;
   /** The pad a wire arrives at on each key, and the pad the next wire leaves from. */
@@ -35,7 +36,7 @@ export interface Wire {
 export interface NetSummary {
   name: string;
   pin: number;
-  /** Where its feeds land, for the wiring panel: the ribbon pin, or the Pro Micro pin and its GPIO. */
+  /** Where its feeds land, for the wiring panel: the Pro Micro pin and its GPIO. */
   label: string;
   group: string;
   wires: number;
@@ -58,7 +59,7 @@ export interface Lane {
   /** Depths below the first and second tiles. */
   da: number;
   db: number;
-  /** Shift along the tile edge a wire crosses, or in plan for a feed's run to the adapter. */
+  /** Shift along the tile edge a wire crosses, or in plan for a feed's run to the Pro Micro. */
   aside: number;
   /** Between tiles: the shift along the second tile's edge. */
   asideB?: number;
@@ -154,13 +155,13 @@ export const WIRING = {
   climbUnder: 6,
   /** Spacing of the depths a run across under both legs' ends is tried at. */
   climbUnderStep: 1,
-  /** Feeds run to the adapter at their own levels in the loom, this far apart. */
+  /** Feeds run to the Pro Micro at their own levels in the loom, this far apart. */
   loomStep: 1,
   /** The levels, in loomStep from the loom's height, nearest first. */
   loomLevels: [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, 6, 7, 8],
   /** Feeds through the port try only this many of the first loomLevels. */
   portLoomLevels: 7,
-  /** Sideways shifts of a feed's run to the adapter, in plan, to get past other wires. */
+  /** Sideways shifts of a feed's run to the Pro Micro, in plan, to get past other wires. */
   asides: [0, 1, -1, 2, -2],
   /** Shifts along the tile edge a wire crosses to the next tile. */
   edgeAsides: [0, 0.9, -0.9, 1.6, -1.6, 0.45, -0.45],
@@ -196,7 +197,7 @@ export const WIRING = {
   touch: 0.02,
   /** Centre spacing of two wires on one pad, along it. */
   padShare: 0.9,
-  /** Centre spacing of two wires on one adapter hole, across the row. */
+  /** Centre spacing of two wires on one Pro Micro pin, along its row. */
   holeShare: 1,
   /** Centre spacing of the wires through the wire port. */
   portPitch: 1.02,
@@ -208,24 +209,12 @@ export const WIRING = {
   sample: 0.3,
   /** The obstacles are indexed in square cells in plan of this size. */
   gridCell: 6,
-  /** Ribbon segments per half turn of the slack loop. */
-  loopSteps: 8,
-  /** The ribbon's slack loop starts this far past the connector's mouth. */
-  loopGap: 2,
-  /** The landing stops this far short of the slack loop. */
-  landingGap: 3,
-  /** The ribbon leaves the landing's end this far on. */
-  landingLead: 0.5,
-  /** The ribbon lies this far above the landing. */
-  ribbonLift: 0.05,
   /** A Pro Micro's link wires to its TRRS jack run this far above the higher of its parts and the jack, */
   linkOver: 1,
   /** each this far above the one before. */
   linkStep: 1.2,
   /** A link wire comes onto a reset switch leg from this far behind it. */
   linkBehind: 2,
-  /** Before a build places where the ribbon leaves, it is this far past the landing. */
-  panelGap: 2,
   /** A pad's drawn box is this thick. */
   padThickness: 0.1,
   /** A pad's drawn box sits this far under the tile's underside. */
@@ -242,4 +231,13 @@ export const mid = (a: number[], b: number[]): V3 => [
   (a[2] + b[2]) / 2,
 ];
 
-export const nets = (cfg: Config) => cfg.wiring.nets as NetSpec[];
+/** The Pro Micro pin a net's feeds land on (pro_micro.pins). */
+export function pinOf(cfg: Config, net: string) {
+  const n = (cfg.pro_micro.pins as Record<string, number>)[net];
+  if (n === undefined) throw Error(`pro_micro.pins has no pin for ${net}`);
+  return n;
+}
+
+/** The hand's nets (wiring.nets), each with the pin its feeds land on. */
+export const nets = (cfg: Config): NetSpec[] =>
+  (cfg.wiring.nets as Omit<NetSpec, 'pin'>[]).map((n) => ({ ...n, pin: pinOf(cfg, n.name) }));

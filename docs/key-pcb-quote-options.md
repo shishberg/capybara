@@ -1,16 +1,13 @@
 # Individual key PCB quote options
 
 Quote/prototype revision A (2026-09-16), updated 2026-09-26. Files are in
-`output/key-quotes/`. This is the current construction for the first
-prototype and replaces the paused LED-free `output/seeded/` finger/thumb
-boards. Do not mix the old 11-way ribbons with this 24-way design.
+`output/key-quotes/`. Do not mix the old 11-way ribbons with this 24-way design.
 
-**The first prototype uses no custom PCBs:** a perfboard pod and generic
-24-way 0.5 mm FFC adapters at all four ribbon ends. The ribbon pinout, the
-handwiring and the pod circuit below still apply. The custom breakout and pod
-boards are kept for a later build once the pinout settles.
-[Design status](design-status.md) lists the decisions and open questions, and
-takes precedence over this document.
+**Paused:** the ribbons, the breakout and the pod below belong to the pod
+design, which the [Pro Micro](pro-micro.md) in each hand replaced. They are
+kept as reference. The bought tiles described here are still the
+construction. [Design status](design-status.md) lists the decisions and open
+questions, and takes precedence over this document.
 
 ## Purchased key tiles for all 36 keys
 

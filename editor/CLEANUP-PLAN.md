@@ -19,7 +19,7 @@ listed but not done.
 4. **The thumb-row solver** is three nested fixed-point and bisection layers.
    It could become one joint solve, but the presets would need refitting.
 5. **The bottom section is never checked for loose pieces.** A floating
-   adapter mount would pass every check. T4 added a test for the default and a
+   cradle would pass every check. T4 added a test for the default and a
    3 mm skin, but the report doesn't check it.
 6. **The tile pocket is 1.6 mm deeper than its own definition.**
     - chassis.ts measures `tile.components[].center_mm[2]` from the tile's

@@ -5,14 +5,13 @@
 // capybara.ts) into the frame. The walls ask for the outline to take in their
 // feet (capybaraReach): the frame is then built again with the outline's hull
 // taking them in, and the walls built on that. The kit also says where the
-// main ribbon runs out of the frame (WallKit.ribbon), for the walls to keep
-// clear of (on a Pro Micro, the USB-C and TRRS plugs, whose cables run out the
-// same way).
+// USB-C and TRRS plugs come into the frame (WallKit.plugs), for the walls to
+// keep clear of.
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import type { Config, V3 } from './geometry';
 import type { Pose, Span } from './capybara';
-import { componentFrames, controllerStyle, dot, sub } from './geometry';
-import { controllerParts, landingBox } from './wiring/adapter';
+import { componentFrames, dot, sub } from './geometry';
+import { proMicroParts } from './wiring/pro-micro';
 import { wishbone, wishboneReach } from './capybara-wishbone';
 
 /**
@@ -80,15 +79,13 @@ export interface WallKit {
   /** Every side the walls are built on in this build, in order (so walls on one can keep clear of another's). */
   sides: WallSide[];
   /**
-   * Whether points stay clear of the main ribbon: at least RIBBON_GAP from it
-   * (its width and thickness grown by that, along its whole path as the
-   * editor draws it: off the adapter, over the landing and out past the
-   * outline), and not under it, since a wall standing under the ribbon on the
-   * rail must pass through it.
+   * Whether points stay clear of the plugs: at least PLUG_GAP from each (its
+   * box grown by that, as the editor draws it), and not under one, since a
+   * wall standing under a plug on the rail must pass through it.
    */
-  ribbon: (points: V3[]) => boolean;
-  /** The top of that grown ribbon straight over p (world z), or -Infinity where it isn't over p: so a wall can stand either side of it and span it above that. */
-  ribbonTop: (p: V3) => number;
+  plugs: (points: V3[]) => boolean;
+  /** The top of the grown plugs straight over p (world z), or -Infinity where none is over p: so a wall can stand either side of a plug and span it above that. */
+  plugTop: (p: V3) => number;
 }
 
 /**
@@ -133,36 +130,28 @@ const wallKit = (wasm: ManifoldToplevel, cfg: Config, rib: RibKit, sides: WallSi
   cfg,
   rib,
   sides,
-  ...ribbonClear(cfg),
+  ...plugClear(cfg),
 });
 
-/** The clearance (mm) walls keep round the main ribbon (WallKit.ribbon). */
-export const RIBBON_GAP = 2;
+/** The clearance (mm) walls keep round the plugs (WallKit.plugs). */
+export const PLUG_GAP = 2;
 
 /**
- * WallKit.ribbon and ribbonTop: the ribbon's segments (controllerParts, the port
- * panel where the Capybara's chassis puts it: at the landing's outer end), or
- * on a Pro Micro the plugs, each a box grown by RIBBON_GAP; a point is in the ribbon's way if the box is
- * round it or anywhere straight over it, and the ribbon's top over it is the
- * highest such box's top there.
+ * WallKit.plugs and plugTop: the plugs (proMicroParts), each a box grown by
+ * PLUG_GAP; a point is in a plug's way if the box is round it or anywhere
+ * straight over it, and the plugs' top over it is the highest such box's top
+ * there.
  */
-function ribbonClear(cfg: Config) {
-  const frames = componentFrames(cfg);
-  let panel: number | undefined;
-  if (controllerStyle(cfg) === 'ffc') {
-    const land = landingBox(cfg);
-    const e = frames.adapter.elements;
-    panel = e[12] + e[0] * (land.end - land.length);
-  }
-  const boxes = controllerParts(cfg, frames, panel)
-    .filter((p) => p.group === 'ribbon' || p.group === 'cable')
+function plugClear(cfg: Config) {
+  const boxes = proMicroParts(cfg, componentFrames(cfg))
+    .filter((p) => p.group === 'cable')
     .map((p) => {
       const m = p.matrix;
       return {
         o: [m[12], m[13], m[14]] as V3,
         axes: [0, 4, 8].map((i): V3 => [m[i], m[i + 1], m[i + 2]]),
         c: p.center,
-        h: p.size.map((x) => x / 2 + RIBBON_GAP),
+        h: p.size.map((x) => x / 2 + PLUG_GAP),
       };
     });
   // How far up from p the line straight up from it is in box b: [from, to] (to < from where it misses).
@@ -184,8 +173,8 @@ function ribbonClear(cfg: Config) {
     return lo <= hi;
   };
   return {
-    ribbon: (points: V3[]) => points.every((p) => boxes.every((b) => !under(p, b))),
-    ribbonTop: (p: V3) =>
+    plugs: (points: V3[]) => points.every((p) => boxes.every((b) => !under(p, b))),
+    plugTop: (p: V3) =>
       Math.max(
         -Infinity,
         ...boxes.map((b) => {

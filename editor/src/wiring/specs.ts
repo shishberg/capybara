@@ -1,7 +1,7 @@
 // The wires' ends: which pads and holes each net's wires join, and where on a
 // shared pad or hole each sits.
 import { point, type V3 } from '../geometry';
-import { holeAlong } from './adapter';
+import { holeAlong } from './pro-micro';
 import { WIRING, distance, nets, type Env, type NetSpec, type Pad } from './common';
 
 export interface Spec {
@@ -76,14 +76,14 @@ export function specsOf(env: Env, keys: string[]) {
 
   // Two wires on one pad (on a tile with only one of its net's pads) sit side
   // by side along it, the one heading further along the pad on that side;
-  // two on one adapter hole sit side by side across the hole row.
+  // two on one pin sit side by side along the pin row.
   const otherEnd = (s: Spec, end: Pad | number): V3 => {
     const e = end === s.b ? s.a : s.b;
     return typeof e === 'number' ? hole[e] : e.at;
   };
   const users = new Map<Pad | number, Spec[]>();
   for (const s of specs) for (const e of [s.a, s.b]) users.set(e, [...(users.get(e) ?? []), s]);
-  const alongHoles = holeAlong(cfg, frames);
+  const alongHoles = holeAlong(frames);
   const alongOf = (end: Pad | number): V3 => {
     if (typeof end === 'number') return alongHoles;
     const e = frames[end.key].elements;

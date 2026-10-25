@@ -21,7 +21,7 @@ editor-test:
 
 .PHONY: editor editor-test
 
-# Pro Micro variant firmware (RMK); see firmware/README.md. uf2.py refuses an image that
+# Firmware (RMK); see firmware/README.md. uf2.py refuses an image that
 # would write outside the app window.
 FIRMWARE_ELF = firmware/target/thumbv7em-none-eabihf/release
 

@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaults } from '../src/geometry';
 import type { Report } from '../src/solid';
 import { reportLines } from '../src/report-lines';
-import { prototypeOverrides } from '../src/prototype-overrides';
 
 const clean: Report = {
   seats: [{ name: 'a', missing: 0, excess: 0, clipBlocked: 0, passed: true }],
@@ -74,11 +72,4 @@ test('a failing report lists every failure with the name that isolates it', () =
       ['Closest keycaps, c / d: touching', undefined],
     ],
   );
-});
-test('prototype overrides are applied to a copy and leave the project alone', () => {
-  const p = { ...structuredClone(defaults) };
-  const out = prototypeOverrides(p, '?controller=pro_micro');
-  assert.deepEqual(out.config.controller, { ...p.config.controller, style: 'pro_micro' });
-  assert.equal(p.config.controller.style, 'ffc');
-  assert.deepEqual(prototypeOverrides(p, '?hand&mark=1'), p);
 });

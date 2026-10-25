@@ -1,33 +1,23 @@
-// Hand wiring, adapter and ribbons, from the key frames: where each wire runs
-// under the tiles, through the wire port and to the adapter (or the Pro
-// Micro, controller.style "pro_micro", which also has the jack's link wires:
-// pro-micro.ts). Routing is a
-// search that takes a moment, so the editor runs it in a worker of its own.
+// Hand wiring, from the key frames: where each wire runs under the tiles,
+// through the wire port and to the Pro Micro, and the jack's and the reset
+// switch's link wires (pro-micro.ts). Routing is a search that takes a
+// moment, so the editor runs it in a worker of its own.
 //
 // Terms:
 //  pad      a solder pad on a tile's underside (tile.pads);
-//  hole     one of the adapter's 24 through holes; hole n carries ribbon pin n
-//           (on a Pro Micro, the pin pro_micro.pins gives the net);
+//  hole     one of the Pro Micro's 24 pin holes: a net's is the pin
+//           pro_micro.pins gives it;
 //  depth    how far below its tile's underside a wire leaves a pad; it runs
 //           straight from that point on one tile to that on the next;
 //  chain    keys joined one to the next by a net's wires (wiring.nets[].chains);
-//  feed     the wire from a chain's end to its adapter hole;
-//  loom     the height above the bottom section at which feeds run to the adapter;
+//  feed     the wire from a chain's end to its net's pin;
+//  loom     the height above the bottom section at which feeds run to the Pro Micro;
 //  wire port  where thumb wires pass from under the thumbs to under the
 //           finger columns: a straight round way in front of the gap between
-//           the inner and index columns' bottom keys;
-//  slack loop  the arch the ribbon makes between the connector and the landing,
-//           so a pull held by the ties never reaches the connector.
-import {
-  componentFrames,
-  controllerStyle,
-  isKey,
-  tileBottom,
-  tileUnderside,
-  type Config,
-} from '../geometry';
+//           the inner and index columns' bottom keys.
+import { componentFrames, isKey, tileBottom, tileUnderside, type Config } from '../geometry';
 import { tilePocketHalf } from '../plates';
-import { holes, holeAlong, padParts, controllerParts, landingBox } from './adapter';
+import { padParts } from './pads';
 import { assignPlaces, diameterOf, optionsOf } from './candidates';
 import {
   length,
@@ -43,11 +33,11 @@ import { negotiate } from './negotiate';
 import { obstaclesOf } from './obstacles';
 import { pathsIn } from './paths';
 import { portGrid, wirePort } from './port';
-import { linkWires, pinLabel, pinName, pinOf } from './pro-micro';
+import { holes, holeAlong, linkWires, pinName, proMicroParts } from './pro-micro';
 import { specsOf } from './specs';
 import { crossings } from './tubes';
 
-export { holes, holeAlong, padParts, controllerParts, landingBox, nets, crossings };
+export { holes, holeAlong, padParts, proMicroParts, nets, crossings };
 export type { NetSpec, Pad, Wire, NetSummary, Wiring };
 
 /** The wiring for a config: every wire's route, by negotiating them until none pass into another. */
@@ -115,39 +105,35 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       feed: isFeed,
     };
   });
-  // On a Pro Micro, its jack's and its reset switch's link wires too.
-  if (controllerStyle(cfg) === 'pro_micro') {
-    const fed = new Set(nets(cfg).map((n) => pinOf(cfg, n.name)));
-    wires.push(...linkWires(cfg, frames, fed));
-  }
+  // The jack's and the reset switch's link wires too.
+  wires.push(...linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin))));
   const summaries: NetSummary[] = nets(cfg).map((net) => {
     const own = wires.filter((x) => x.net === net.name);
     return {
       name: net.name,
       pin: net.pin,
-      label: pinLabel(cfg, net.name, net.pin),
+      label: pinName(cfg, net.pin),
       group: net.group,
       wires: own.length,
       joints: 2 * own.length,
       length: own.reduce((t, x) => t + x.length, 0),
     };
   });
-  if (controllerStyle(cfg) === 'pro_micro')
-    for (const x of [
-      ...cfg.trrs.wires.map((t) => ({ net: `TRRS ${t.name}`, pin: t.pin, to: t.lug })),
-      ...cfg.reset.wires.map((t) => ({ net: `Reset ${t.name}`, pin: t.pin, to: `leg ${t.leg}` })),
-    ]) {
-      const own = wires.filter((y) => y.net === x.net);
-      summaries.push({
-        name: x.net,
-        pin: x.pin,
-        label: `${pinName(cfg, x.pin)} to ${x.to}`,
-        group: 'link',
-        wires: own.length,
-        joints: 2 * own.length,
-        length: own.reduce((t, y) => t + y.length, 0),
-      });
-    }
+  for (const x of [
+    ...cfg.trrs.wires.map((t) => ({ net: `TRRS ${t.name}`, pin: t.pin, to: t.lug })),
+    ...cfg.reset.wires.map((t) => ({ net: `Reset ${t.name}`, pin: t.pin, to: `leg ${t.leg}` })),
+  ]) {
+    const own = wires.filter((y) => y.net === x.net);
+    summaries.push({
+      name: x.net,
+      pin: x.pin,
+      label: `${pinName(cfg, x.pin)} to ${x.to}`,
+      group: 'link',
+      wires: own.length,
+      joints: 2 * own.length,
+      length: own.reduce((t, y) => t + y.length, 0),
+    });
+  }
   const netFor = (key: string, group: string) =>
     nets(cfg).find((n) => n.group === group && (n.chains ?? []).some((c) => c.includes(key)))
       ?.name ?? '';

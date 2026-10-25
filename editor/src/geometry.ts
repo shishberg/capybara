@@ -194,36 +194,26 @@ export function componentFrames(cfg: Config) {
     if (c) clusterFrames(c).forEach((m, i) => (n['thumb_' + c.keys[i].name] = m));
   const tent = tentFrame(cfg);
   for (const key in n) n[key].premultiply(tent);
-  // The adapter, or the Pro Micro, its TRRS jack and its reset switch, stand
-  // on the bottom section, so they are placed in world coordinates.
+  // The Pro Micro, its TRRS jack and its reset switch stand on the bottom
+  // section, so they are placed in world coordinates.
   const onFloor = (p: { position_mm: number[]; rotation_deg: number; standoff_mm: number }) =>
     frame(
       [p.position_mm[0], p.position_mm[1], cfg.chassis.skin_mm + p.standoff_mm],
       [0, 0, p.rotation_deg],
     );
-  if (controllerStyle(cfg) === 'pro_micro') {
-    n.pro_micro = onFloor(cfg.pro_micro);
-    n.trrs = onFloor(cfg.trrs);
-    // The reset switch stands on edge, its frame's origin the middle of its
-    // plunger face: x up, z back from the face (the plunger along -z, which
-    // faces world -x at rotation 0) and y across.
-    const r = cfg.reset;
-    n.reset = onFloor(r)
-      .multiply(frame([0, 0, r.body_mm[0] / 2]))
-      .multiply(
-        new Matrix4().makeBasis(new Vector3(0, 0, 1), new Vector3(0, -1, 0), new Vector3(1, 0, 0)),
-      );
-  } else n.adapter = onFloor(cfg.adapter);
+  n.pro_micro = onFloor(cfg.pro_micro);
+  n.trrs = onFloor(cfg.trrs);
+  // The reset switch stands on edge, its frame's origin the middle of its
+  // plunger face: x up, z back from the face (the plunger along -z, which
+  // faces world -x at rotation 0) and y across.
+  const r = cfg.reset;
+  n.reset = onFloor(r)
+    .multiply(frame([0, 0, r.body_mm[0] / 2]))
+    .multiply(
+      new Matrix4().makeBasis(new Vector3(0, 0, 1), new Vector3(0, -1, 0), new Vector3(1, 0, 0)),
+    );
   return n;
 }
-/**
- * What the hand's wires run to: `ffc`, the FFC adapter, whose ribbon runs to
- * the pod, or `pro_micro`, a Pro Micro in the hand with a TRRS jack.
- */
-export const controllerStyle = (c: Config) =>
-  (c as { controller?: { style?: string } }).controller?.style === 'pro_micro'
-    ? 'pro_micro'
-    : 'ffc';
 /**
  * Bring a project saved by an earlier editor up to date: sections added since
  * are filled in from the defaults, and the adapter, which changed meaning in
@@ -242,7 +232,8 @@ export const controllerStyle = (c: Config) =>
  * suit. Schema 10 moves it under the wishbone nearest the back, its opening
  * filled round the barrel. Schema 11 stands the reset switch against the
  * back wall, its plunger out through it. Schema 12 makes it a low switch in a
- * pocket in the wall.
+ * pocket in the wall. Schema 13 drops the FFC adapter, its ribbon and the
+ * choice between them and the Pro Micro: every hand has the Pro Micro.
  */
 function migrate(c: Record<string, any>) {
   const d = defaultConfig as Record<string, any>;
@@ -253,23 +244,14 @@ function migrate(c: Record<string, any>) {
   const placed = (k: string) => c[k] && same(at(c[k]), at(d[k]));
   const gnd = () => c.trrs?.wires?.find((w: { name: string }) => w.name === 'GND');
   const gndPin = () => d.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin;
-  if (!(c.schema >= 2)) {
-    c.adapter = clone(d.adapter);
-    c.schema = 2;
-  }
+  if (!(c.schema >= 2)) c.schema = 2;
   if (!(c.schema >= 3)) {
     if (c.geometry) c.geometry.thumb_extra = clone(d.geometry.thumb_extra);
-    for (const k of ['adapter', 'ribbon', 'wiring', 'chassis']) c[k] = clone(d[k]);
+    for (const k of ['wiring', 'chassis']) c[k] = clone(d[k]);
     delete c.trackpad;
     c.schema = 3;
   }
-  if (!(c.schema >= 4)) {
-    // Schema 4: the landing is on the port panel's insert, so the adapter
-    // stands 4 mm further in to keep its loop clear of it (if not moved).
-    const p = c.adapter?.position_mm;
-    if (p && p[0] === -28 && p[1] === 16) c.adapter.position_mm = clone(d.adapter.position_mm);
-    c.schema = 4;
-  }
+  if (!(c.schema >= 4)) c.schema = 4;
   if (!(c.schema >= 5)) {
     const s = c.switch,
       same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -368,6 +350,16 @@ function migrate(c: Record<string, any>) {
     if (c.reset && same(at(c.reset), [[-5, 38.24], -87.65, 1])) c.reset = clone(d.reset);
     c.schema = 12;
   }
+  if (!(c.schema >= 13)) {
+    // Schema 13: no FFC adapter or ribbon, and no choice of controller. The
+    // nets' ribbon pins go too: their feeds land on the pins pro_micro.pins
+    // gives them.
+    for (const k of ['adapter', 'ribbon', 'controller']) delete c[k];
+    for (const n of c.wiring?.nets ?? []) delete n.pin;
+    if (c.wiring && /adapter/.test(c.wiring.description ?? ''))
+      c.wiring.description = d.wiring.description;
+    c.schema = 13;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;
@@ -392,17 +384,7 @@ function migrate(c: Record<string, any>) {
       )
         fill(to[k], v);
   };
-  for (const k of [
-    'tile',
-    'adapter',
-    'ribbon',
-    'controller',
-    'pro_micro',
-    'trrs',
-    'reset',
-    'wiring',
-    'chassis',
-  ])
+  for (const k of ['tile', 'pro_micro', 'trrs', 'reset', 'wiring', 'chassis'])
     if (!c[k]) c[k] = clone(d[k]);
     else fill(c[k], d[k]);
 }
@@ -418,7 +400,7 @@ export function validateProject(p: unknown): asserts p is Project {
   check(a.config);
   migrate(a.config);
   const c = a.config;
-  if (!c.geometry || !c.switch || !c.tile || !c.adapter)
+  if (!c.geometry || !c.switch || !c.tile || !c.pro_micro)
     throw Error('Missing component configuration');
   if (
     c.geometry.columns?.length !== 5 ||

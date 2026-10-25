@@ -1,5 +1,4 @@
-// The Pro Micro variant's hardware (controller.style "pro_micro"): an
-// nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
+// The hand's controller hardware: an nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
 // section, the board's USB-C port facing out of the hand's back end and the
 // jack's barrel out of its inner side, and a reset switch in a pocket in the
 // back wall, its plunger out through it. Their pins, the parts, the
@@ -7,7 +6,7 @@
 // the cradles that hold them.
 import type { CrossSection, Manifold, ManifoldToplevel, Mat4 } from 'manifold-3d';
 import { Matrix4 } from 'three';
-import { componentFrames, controllerStyle, point, type Config, type V3 } from '../geometry';
+import { componentFrames, point, type Config, type V3 } from '../geometry';
 import { box, place } from '../manifold-util';
 import type { Part } from '../parts';
 import { WIRING, length, nets, type Wire } from './common';
@@ -31,26 +30,23 @@ export function pinAt(cfg: Config, n: number): V3 {
   ];
 }
 
-/** The Pro Micro pin each net's feeds land on (pro_micro.pins). */
-export function pinOf(cfg: Config, net: string) {
-  const n = (cfg.pro_micro.pins as Record<string, number>)[net];
-  if (n === undefined) throw Error(`pro_micro.pins has no pin for ${net}`);
-  return n;
-}
-
-/** A net's pin for the wiring panel: its ribbon pin, or its Pro Micro pin and that pin's name (pro_micro.pinout). */
-export function pinLabel(cfg: Config, net: string, ribbonPin: number) {
-  return controllerStyle(cfg) === 'pro_micro' ? pinName(cfg, pinOf(cfg, net)) : `${ribbonPin}`;
-}
-/** Pro Micro pin n and its name, for the wiring panel. */
+/** Pro Micro pin n and its name (pro_micro.pinout), for the wiring panel. */
 export const pinName = (cfg: Config, n: number) => `${n}, ${cfg.pro_micro.pinout[n - 1]}`;
 
-/** Each net's hole on the Pro Micro, in world coordinates, keyed by the net's `pin` as the adapter's holes are. */
-export function proMicroHoles(cfg: Config, frames = componentFrames(cfg)) {
+/**
+ * Where each net's feeds land, in world coordinates on the board's top, keyed
+ * by the net's `pin`, the Pro Micro pin pro_micro.pins gives it.
+ */
+export function holes(cfg: Config, frames = componentFrames(cfg)) {
   const out: Record<number, V3> = {};
-  for (const net of nets(cfg))
-    out[net.pin] = point(frames.pro_micro, pinAt(cfg, pinOf(cfg, net.name)));
+  for (const net of nets(cfg)) out[net.pin] = point(frames.pro_micro, pinAt(cfg, net.pin));
   return out;
+}
+
+/** Two feeds on one pin sit side by side along this world direction: the board's x, along its pin rows. */
+export function holeAlong(frames: Record<string, Matrix4>): V3 {
+  const e = frames.pro_micro.elements;
+  return [e[0], e[1], e[2]];
 }
 
 /** The jack's lug `name` (trrs.lugs_mm), in world coordinates on the jack's top. */

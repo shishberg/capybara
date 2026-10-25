@@ -29,28 +29,19 @@
 // axis. "Plan" means the world XY plane.
 import type { Manifold, ManifoldToplevel, Mat4, Vec3 } from 'manifold-3d';
 import { Matrix4 } from 'three';
-import {
-  controllerStyle,
-  keycapEnvelope,
-  isKey,
-  tileTop,
-  tileUnderside,
-  type Config,
-} from './geometry';
+import { keycapEnvelope, isKey, tileTop, tileUnderside, type Config } from './geometry';
 import { clipBox, seatSettings } from './seats';
 import { plateHalfWidths } from './plates';
 import { freeAllBut, keycapSolid, place, slab } from './manifold-util';
 import { ribAxes, capybara, SIZES as RIB } from './capybara';
-import { landingBox, wiring, type Wiring } from './wiring';
-import { collar, cradles, mouths, plugWays, resetWay } from './wiring/pro-micro';
+import { wiring, type Wiring } from './wiring';
+import { collar, cradles, plugWays, resetWay } from './wiring/pro-micro';
 
 export interface ChassisResult {
   /** The frame, with the plates and glue posts. */
   body: Manifold;
-  /** The bottom section: the base plate, with the adapter's mount and the ribbon's landing (or the Pro Micro's and the jack's cradles). */
+  /** The bottom section: the base plate, with the Pro Micro's, the jack's and the reset switch's cradles. */
   base: Manifold;
-  /** Where the ribbon leaves, in world x: the landing's outer end (or the USB-C port's mouth). */
-  panel: number;
   /** For each key, the chassis its keycap's room (and the switch rim's) had to remove. */
   roomCuts: { name: string; cut: Manifold }[];
   /** For each key, how its glue posts were fitted to what stands round them (posts()). */
@@ -135,12 +126,7 @@ export const SIZES = {
    * the frame, which the leg's top meets at its edge instead of climbing it.
    */
   postUnder: 0.5,
-  /** The adapter's rests stand this far in from its hole edge. */
-  adapterRestIn: 7,
-  /** Tie tunnels across the ribbon's landing: centres this far in from the landing's ends, tops this far under its top. */
-  tieIn: 2.75,
-  tieBridge: 1,
-  /** The ribbon's notch (and the plugs' ways) reach this far out from the landing. */
+  /** The plugs' ways reach this far out from their mouths. */
   notchLength: 40,
   /**
    * The Capybara's base screws (screwSpots): one at each corner of the outline
@@ -835,10 +821,9 @@ function keycapRooms(
  * shape of its outline, skin_mm thick: the frame is cut off level with the
  * plate's top, so the two meet along one flat seam, the plate's edge flush
  * with the rail's outer face. Screws come up through the plate into bosses on
- * the rail's inside (screwSpots). The plate carries the adapter's mount and the ribbon's landing, which ends where
- * the ribbon leaves through a notch in the frame; or the Pro Micro's and the
+ * the rail's inside (screwSpots). The plate carries the Pro Micro's and the
  * jack's cradles, their plugs coming in through openings in the frame, and
- * the reset switch's, its plunger out through a bore in the back wall. The
+ * the reset switch's, its plunger out through a skin of the back wall. The
  * frame's bridges keep clear of the wires.
  */
 export function buildChassis(
@@ -898,85 +883,23 @@ export function buildChassis(
   const holes = column(SIZES.screwClear, -1, padTop + 1).add(
     column(SIZES.screwHead, -1, SIZES.screwHeadDepth),
   );
-  if (controllerStyle(cfg) === 'pro_micro') {
-    // The plugs come in through the frame and over notches in the plate's edge.
-    const ways = plugWays(wasm, cfg, frames, SIZES.notchLength, built.outline);
-    const wall = (cfg.chassis as { wall_mm?: number }).wall_mm ?? RIB.wall;
-    const uncarved = framed
-      .add(collar(wasm, cfg, frames, built.outline, RIB.railHeight, framed, wall))
-      .subtract(ways)
-      .subtract(resetWay(wasm, cfg, frames, built.outline));
-    const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
-    const e = frames.pro_micro.elements;
-    return {
-      body: uncarved,
-      base: footprint
-        .extrude(cfg.chassis.skin_mm)
-        .add(pads)
-        .add(cradles(wasm, cfg, frames))
-        .subtract(ways)
-        .subtract(holes),
-      panel: e[12] + e[0] * mouths(cfg).usb.x,
-      roomCuts,
-      postFits: held.fits,
-      screws: spots,
-    };
-  }
-  // The landing, in the adapter's frame, from `out` (where the ribbon leaves) in to its end.
-  const r = cfg.ribbon;
-  const land = landingBox(cfg);
-  const out = land.end - land.length;
-  const into = 0.5;
-  const adapter = frames.adapter;
-  const landing = place(
-    M.cube([land.length, land.width, land.top - land.bottom + into]).translate([
-      out,
-      -land.width / 2,
-      land.bottom - into,
-    ]),
-    adapter,
-  );
-  const [tw, th] = r.tie_slot_mm;
-  const tunnels = place(
-    M.union(
-      [out + SIZES.tieIn, land.end - SIZES.tieIn].map((x) =>
-        M.cube([tw, land.width + 2, th], true).translate([
-          x,
-          0,
-          land.top - SIZES.tieBridge - th / 2,
-        ]),
-      ),
-    ),
-    adapter,
-  );
-  const base = footprint
-    .extrude(cfg.chassis.skin_mm)
-    .add(pads)
-    .add(adapterMount(wasm, cfg, frames))
-    .add(landing)
-    .subtract(tunnels)
-    .subtract(holes);
-  // The ribbon's notch, from the landing out, low over the base plate.
-  const width = r.width_mm + 2 * r.notch_clearance_mm;
-  const top = land.top + r.thickness_mm + r.notch_clearance_mm;
-  const bottom = land.bottom - cfg.chassis.skin_mm - 1;
-  const notch = place(
-    M.cube([SIZES.notchLength, width, top - bottom]).translate([
-      out - SIZES.notchLength,
-      -width / 2,
-      bottom,
-    ]),
-    adapter,
-  );
-  const uncarved = framed.subtract(notch);
+  // The plugs come in through the frame and over notches in the plate's edge.
+  const ways = plugWays(wasm, cfg, frames, SIZES.notchLength, built.outline);
+  const wall = (cfg.chassis as { wall_mm?: number }).wall_mm ?? RIB.wall;
+  const uncarved = framed
+    .add(collar(wasm, cfg, frames, built.outline, RIB.railHeight, framed, wall))
+    .subtract(ways)
+    .subtract(resetWay(wasm, cfg, frames, built.outline));
   // The keycap rooms are only checked: the frame is built clear of them.
   const { roomCuts } = keycapRooms(M, cfg, frames, keyNames, uncarved);
-  const e = adapter.elements;
   return {
     body: uncarved,
-    base,
-    // The landing's outer end, in world x, for the ribbon's path.
-    panel: e[12] + e[0] * out,
+    base: footprint
+      .extrude(cfg.chassis.skin_mm)
+      .add(pads)
+      .add(cradles(wasm, cfg, frames))
+      .subtract(ways)
+      .subtract(holes),
     roomCuts,
     postFits: held.fits,
     screws: spots,
@@ -1063,34 +986,4 @@ export function screwSpots(
       }
     return spotAt(s);
   });
-}
-
-/**
- * The adapter's mount on the bottom section: a boss with a peg through each of
- * its mounting holes and two rests under its other end. Each reaches half a
- * millimetre into the floor.
- */
-function adapterMount(wasm: ManifoldToplevel, cfg: Config, frames: Record<string, Matrix4>) {
-  const M = wasm.Manifold;
-  const a = cfg.adapter;
-  const [bx, by, bz] = a.board_mm;
-  const into = 0.5;
-  const post = (x: number, y: number, d: number, top: number) =>
-    M.cylinder(top + a.standoff_mm + into, d / 2, d / 2, 32).translate([
-      x,
-      y,
-      -a.standoff_mm - into,
-    ]);
-  return place(
-    M.union([
-      ...a.mounting_holes_mm.flatMap(([x, y]) => [
-        post(x, y, a.boss_diameter_mm, 0),
-        post(x, y, a.peg_diameter_mm, bz + a.peg_above_mm),
-      ]),
-      ...[-1, 1].map((s) =>
-        post(bx / 2 - SIZES.adapterRestIn, s * (by / 2 - 2), a.rest_diameter_mm, 0),
-      ),
-    ]),
-    frames.adapter,
-  );
 }

@@ -15,8 +15,9 @@ generated from it. Earlier chassis variants are on the `legacy-variants` branch
 (see [design status](../docs/design-status.md)).
 
 How the case is built and wired is in [editor chassis and wiring](../docs/editor-chassis.md).
-The tile is measured. The wiring, the FFC adapter and the ribbon dimensions are
-**provisional**; each is marked `provisional` in the configuration.
+The tile is measured. The wiring and the [Pro Micro](../docs/pro-micro.md), its
+jack and its reset switch are **provisional**; each is marked `provisional` in
+the configuration.
 
 ## Run
 
@@ -60,7 +61,7 @@ pair tucked in front of it). The keys fan along an arc:
 
 `chassis` holds `plate_thickness_mm` (3), `plate_margin_mm` (0.9: a plate reaches this far
 past its switch seat, or to the edge of the tile pocket if that is further) and `skin_mm`, the base plate's thickness
-(the adapter and loom stand on it). `skin_mm` must exceed 1.5 mm.
+(the Pro Micro, its jack, its reset switch and the loom stand on it). `skin_mm` must exceed 1.5 mm.
 
 ## Use
 
@@ -87,14 +88,16 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
   **Export bottom section STL** exports the bottom section, a separate print.
 - **Wiring and pads** shows the wires as tubes coloured by net group, and the
   pads. The wires are routed with each chassis build, so while you edit they
-  stay as last built. **Adapter and ribbons** shows the adapter and both
-  ribbons; turn it off to see the wiring behind them. The **Wiring** panel
+  stay as last built. **Controller, jack and plugs** shows the Pro Micro, its
+  TRRS jack, its reset switch and both plugs; turn it off to see the wiring
+  behind them. The **Wiring** panel
   lists each key's row and column, and a cut list per net.
 - **Show bounding box** outlines the box around the case, bottom section and
   trim; the View panel gives its width (X), depth (Y) and height (Z) in mm,
   updated with each chassis build.
-- Projects saved before the wiring was added load with the default adapter,
-  ribbon, pads and wiring.
+- Projects saved before the wiring was added load with the default pads and
+  wiring. Projects saved with the FFC adapter load on the Pro Micro, without
+  the adapter and its ribbon.
 
 ## Clearance checks
 
@@ -114,9 +117,8 @@ runs against a fraction of the mesh:
 - Each opening is probed at nine points.
 - Tiles (with their corner notches, where the glue posts' rounds stand, 0.15 mm
   clear), tile
-  components, the FFC adapter with its connector and
-  latch room, and the main ribbon (or the Pro Micro, its TRRS jack, both
-  plugs and its reset switch) must not overlap the chassis or the bottom section.
+  components, and the Pro Micro, its TRRS jack, both plugs and its reset
+  switch must not overlap the chassis or the bottom section.
 - **Wires**: each wire, as a tube of its diameter, must miss every other wire
   (wires may touch).
   Wires that hit are listed and highlighted cyan.
@@ -159,11 +161,6 @@ of it the wire router (the browser routes the wires in a worker of their own). T
 checks cut each probe against the frame near its key, not the whole frame.
 
 ## Prototype flags and dev-only tools
-
-**URL flags** work in the built site too. `?controller=ffc|pro_micro` (`src/prototype-overrides.ts`)
-picks what the hand's wires run to without editing the project: the FFC adapter,
-or the [Pro Micro variant](../docs/pro-micro-variant.md). The dev editor's switcher bar
-(← →) cycles it.
 
 The dev server (`make editor`) has two things the built site (`dist/`) does not:
 

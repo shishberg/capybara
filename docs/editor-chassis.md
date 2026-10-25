@@ -3,10 +3,10 @@
 How the [editor](../editor/README.md) builds the right hand's chassis and wires it. The
 editor guide covers running it, the key layout parameters and the clearance
 checks. The tile, its parts, holes and pads are measured from the bought tiles
-(see [design status](design-status.md)). The wiring, the FFC adapter and the
-ribbon dimensions here are **provisional**: the adapter is a generic 24-way FFC
-breakout on perfboard. Each is marked `provisional` in the configuration. File
-paths are relative to `editor/`.
+(see [design status](design-status.md)). The wiring and the
+[Pro Micro](pro-micro.md), its TRRS jack and its reset switch are
+**provisional**, each marked `provisional` in the configuration. File paths are
+relative to `editor/`.
 
 ## Construction
 
@@ -160,13 +160,12 @@ front and back corners, the middle's back, the inner back corner and the
 middle of the inner side, about 55 to 80 mm apart, and beside the thumb
 row's tip: thumb_x2 hangs to z 3.7 over the tip itself, so that screw is
 10.6 mm along the outer edge, toward thumb_x1. The
-plate carries the adapter mount and the ribbon's landing. On Swung in the ribbon leaves on the inner side, along
-−x at y ≈ 16 under the web between the inner home and top keys. It lies on the
-landing at z ≈ 10, about 4 mm over the rail's top (z 6), so it passes over the
-rail, not through it. The chassis cuts a notch for it 40 mm back from the
-landing's out end, but that notch lies wholly outside the frame and cuts
-nothing. The landing block (x −57.5 to −47.5, z 2 to 10) reaches about 7.6 mm
-past the rail's outer edge (x −49.9 there) and overlaps the rail. The walls
+plate carries the cradles of the Pro Micro, its TRRS jack and its reset
+switch (`src/wiring/pro-micro.ts`). The USB-C receptacle is gripped in the back
+wall, the jack's plug comes in over the rail on the inner side under the
+wishbone nearest the back, whose opening is filled round the barrel (the
+collar), and the reset switch sits in a pocket in the back wall; the
+[Pro Micro](pro-micro.md) doc describes each. The walls
 are **wishbones** (`src/capybara-walls.ts`, `src/capybara-wishbone.ts`): limbs
 standing on the outer sides. Each leaves its rib
 at the middle of the web between two neighbouring keys, starting from the
@@ -181,14 +180,14 @@ trunk forks into two legs, each slanting at 45° and standing 9 mm
 from the trunk's middle (or as near as clears, and no further than halfway to
 the next web), so the fork is as high as that spread needs; where no fork fits
 under the trunk's round it is a pillar. A limb comes down as near its web as
-clears, its legs narrower there before it goes further out. A limb in the main ribbon's way forks
-over it: its opening centred on the ribbon, 2 mm clear each side
+clears, its legs narrower there before it goes further out. A limb in a plug's way forks
+over it: its opening centred on the plug, 2 mm clear each side
 and above. Every limb keeps clear of the keys, the drops, the tie and the
-ribbon. The outline's hull takes in the limbs' feet, so it runs
+plugs. The outline's hull takes in the limbs' feet, so it runs
 straight along them, and each foot is turned along its run (up to 5°) so it
 stands flush. On Swung in the inner column has a limb at both its webs: at the
-bottom–home web a wishbone forking 7.7 mm over the rail, legs 7 mm out, and at the home–top web a fork over the ribbon, 17.1 mm
-up, legs 9.1 and 11.3 mm out. Their rib rises 15° out of the column, so their
+bottom–home web a wishbone forking 9.7 mm over the rail, legs 8.8 and 9.0 mm out, and at the home–top web a fork over the TRRS plug, 18.1 mm
+up, legs 6.0 and 8.4 mm out. Their rib rises 15° out of the column, so their
 round turns 105°; they stand 4.9 to 5.0 mm out from their webs' edges (7.6 and
 8.3 mm with the ends' radius and a 1 mm lip), 2.6 to 2.7 mm past the outline
 without them, so the inner side runs that much further out (the footprint
@@ -277,15 +276,15 @@ tops shows under its size.
   in, out, V and G on both the socket and the LED edges, on the underside; and a
   spare C and R hole under the socket, which no wire uses. **One wire per hole or
   pad**: a 22 AWG wire fits a hole, two don't.
-- **Matrix**: each hand is 4 rows × 5 columns. The finger rows are RT, RH and RB
-  (ribbon pins 4–6); the five thumbs are row RX (pin 12). Columns C0–C4 (pins
-  7–11) run pinky to inner. Each thumb sits on a finger column: x2 on C0, near on
-  C1, x1 on C2, home on C3, far on C4. A thumb's column wire goes to its
-  column's adapter hole, so two wires share each column hole. Pins 14–19 are
-  spare.
-- **Ribbon pins**: 1, 3, 13, 20 and 24 GND; 2 LED data; 21–23 +5 V. The adapter
-  has 2 × 12 holes at 2.54 mm; pin n is in column ⌊(n − 1) / 2⌋, even pins on the
-  row nearest the board edge.
+- **Matrix**: each hand is 4 rows × 5 columns. The finger rows are RT, RH and RB;
+  the five thumbs are row RX. Columns C0–C4 run pinky to inner. Each thumb sits
+  on a finger column: x2 on C0, near on C1, x1 on C2, home on C3, far on C4. A
+  thumb's column wire goes to its column's pin, so two wires share each column
+  pin.
+- **Pins**: each net's feeds land on the Pro Micro pin `pro_micro.pins` gives it
+  (the [Pro Micro](pro-micro.md#pins) doc says which pins can do what). The
+  jack's three link wires and the reset switch's two run from their pins to the
+  jack's lugs and the switch's legs.
 - **Chains**: each finger column chains its C holes top → home → bottom; each row
   chains its R holes across the columns. A wire arrives at the tile's C (or R)
   hole nearer where it comes from, and the next leaves from the other. LED data
@@ -293,7 +292,7 @@ tops shows under its size.
   alternating directions). +5 V and GND daisy-chain every tile, arriving at the V
   (or G) hole or the LED-edge V (or G) pad, whichever is nearer, and leaving from
   the other. Each chain has one **feed**, a wire from its nearer end to its
-  adapter hole.
+  net's pin.
 - **Paths**: wires run close under the tiles. Each end leaves its tile by a
   **leg**, in the key's frame: 0.6 mm down from the pad, an optional shift
   sideways, down to the leg's depth, then straight out to the tile edge facing
@@ -314,7 +313,7 @@ tops shows under its size.
   suit the directions its two ends lie in. A thumb's wires gather just off its
   edge facing the port, each offset as its place, so they run to the port side
   by side. Feeds run down to a **loom** 10 mm above the bottom section, then
-  across to the adapter.
+  across to the Pro Micro, clear of the jack and the reset switch.
 - **Routing**: each wire has many candidate routes (depths, shifts, port places
   and loom levels). Routes
   that run into a tile, its parts or a plate, that shift out past the
@@ -329,11 +328,8 @@ tops shows under its size.
 - **Wire**: 30 AWG (0.6 mm) for signals, 26 AWG (0.9 mm) for power and ground.
 - **Cut length**: each wire's path plus 5 mm at each end. A feed also has a
   40 mm **service loop**: spare wire left slack so the bottom section, with the
-  adapter on it, can be lifted off and set beside the body without pulling on a
+  Pro Micro on it, can be lifted off and set beside the body without pulling on a
   solder joint.
 
-The default hand has 100 wires, 200 solder joints and about 6 m of wire.
-
-The **main ribbon** is a 24-way 0.5 mm FFC, 12.5 mm wide. From the adapter's
-connector it makes a half loop of radius 4 mm, lies on the landing where it is
-tied down, and leaves over the rail.
+The default hand has 105 wires (100 under the keys and five link wires),
+210 solder joints and about 6 m of wire.

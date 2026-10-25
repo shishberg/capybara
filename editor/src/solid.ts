@@ -116,8 +116,6 @@ export interface Highlight {
 export interface BuildResult {
   mesh: MeshData;
   base: MeshData;
-  /** Where the ribbon leaves, in world x. */
-  panel: number;
   report: Report;
   highlights: Highlight[];
   /** The routed wiring, which the editor draws with the chassis it was checked against. */
@@ -338,25 +336,22 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
   return { seats, highlights };
 }
 
-/** Hardware (the tiles, the adapter and ribbon, or the Pro Micro, its jack, their plugs and its reset switch) against the chassis and its bottom section. */
+/** Hardware (the tiles, the Pro Micro, its jack, their plugs and its reset switch) against the chassis and its bottom section. */
 function checkHardware(
   p: Probe,
   project: Project,
   nodes: ReturnType<typeof componentFrames>,
-  chassis: ReturnType<typeof buildChassis>,
   result: Manifold,
 ) {
   const against: Record<string, Manifold> = {
     pcb: result,
     components: result,
-    adapter: result,
-    ribbon: result,
     controller: result,
     cable: result,
   };
   const highlights: Highlight[] = [];
   const overlaps: Report['hardware'] = [];
-  for (const part of hardware(project, nodes, chassis.panel))
+  for (const part of hardware(project, nodes))
     if (against[part.group]) {
       let shape = part.cylinder
         ? p.M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
@@ -490,7 +485,7 @@ function build(
   // (and printed) separately.
   const result = cut.add(chassis.base);
   const seats = checkSeats(probe, cfg, keys, result);
-  const hw = checkHardware(probe, project, nodes, chassis, result);
+  const hw = checkHardware(probe, project, nodes, result);
   const wireChecks = checkWires(probe, wired);
   const caps = checkKeycaps(probe, cfg, keys, result);
   const capGaps = checkCapGaps(M, cfg, caps.rests);
@@ -509,7 +504,6 @@ function build(
   return {
     mesh,
     base: meshData(chassis.base),
-    panel: chassis.panel,
     highlights: [
       ...opened.highlights,
       ...loose.highlights,

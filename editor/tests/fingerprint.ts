@@ -161,7 +161,7 @@ for (const [name, change] of Object.entries(variants)) {
           ),
         ),
         '| hardware',
-        digest(rounded(hardware(project, undefined, solid.panel), 3)),
+        digest(rounded(hardware(project), 3)),
       );
       console.log(' '.repeat(9), failures(solid.report));
     });

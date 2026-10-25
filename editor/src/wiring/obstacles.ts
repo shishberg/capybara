@@ -1,6 +1,6 @@
 // What wires keep out of, and the test for a wire's segment against it.
 import type { Matrix4 } from 'three';
-import { controllerStyle, point, tilePartCentre, type V3 } from '../geometry';
+import { point, tilePartCentre, type V3 } from '../geometry';
 import { plateHalfWidths } from '../plates';
 import { WIRING, distance, type Env } from './common';
 
@@ -60,18 +60,15 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
       );
     }
   }
-  // On a Pro Micro the jack stands up into the loom (its plug comes in over
-  // the rail), so the feeds keep out of it too: its body and barrel; and out
-  // of the reset switch and its legs.
-  if (controllerStyle(cfg) === 'pro_micro') {
-    const [jx, jy, jz] = cfg.trrs.body_mm;
-    boxIn(frames.trrs, [-jx / 2 - cfg.trrs.barrel_mm[0], -jy / 2, 0], [jx / 2, jy / 2, jz]);
-    const r = cfg.reset;
-    const [rx, ry, rz] = r.body_mm;
-    const hx = Math.max(rx, r.leg_pitch_mm + 1) / 2;
-    const hy = Math.max(ry, r.leg_span_mm) / 2;
-    boxIn(frames.reset, [-hx, -hy, 0], [hx, hy, rz]);
-  }
+  // The jack stands up into the loom (its plug comes in over the rail), so
+  // the feeds keep out of it too: its body and barrel; and out of the reset
+  // switch and its legs.
+  const [jx, jy, jz] = cfg.trrs.body_mm;
+  boxIn(frames.trrs, [-jx / 2 - cfg.trrs.barrel_mm[0], -jy / 2, 0], [jx / 2, jy / 2, jz]);
+  const r = cfg.reset;
+  const [rx, ry, rz] = r.body_mm;
+  const rh = [Math.max(rx, r.leg_pitch_mm + 1) / 2, Math.max(ry, r.leg_span_mm) / 2];
+  boxIn(frames.reset, [-rh[0], -rh[1], 0], [rh[0], rh[1], rz]);
 
   // The obstacles in a grid of square cells in plan, each in every cell its
   // box overlaps, so a segment is only tested against those near it.

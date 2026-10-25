@@ -11,7 +11,7 @@ import {
   keycapEnvelope,
   keyGroups,
   tileUnderside,
-  controllerStyle,
+  isKey,
   point,
 } from '../src/geometry';
 import { hardware } from '../src/parts';
@@ -20,8 +20,8 @@ import { box, freeAfter, place } from '../src/manifold-util';
 import { buildSolid, buildSolidAsync } from '../src/solid';
 import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
-import { WIRING } from '../src/wiring/common';
-import { legAt, lugAt, mouths, pinAt, pinOf } from '../src/wiring/pro-micro';
+import { WIRING, pinOf } from '../src/wiring/common';
+import { legAt, lugAt, mouths, pinAt } from '../src/wiring/pro-micro';
 import { SIZES as CAPYBARA, capybara } from '../src/capybara';
 import { solidOf } from './helpers';
 
@@ -176,9 +176,7 @@ test('shared per-key helpers', () => {
   const g = keyGroups(c);
   assert.deepEqual(
     [...g.fingers, ...g.thumbs, ...g.extra].sort(),
-    Object.keys(componentFrames(c))
-      .filter((n) => n !== 'adapter')
-      .sort(),
+    Object.keys(componentFrames(c)).filter(isKey).sort(),
   );
 });
 test('thumb clusters fan on an arc and tilt into a well', () => {
@@ -226,7 +224,7 @@ const basePieces = (cfg: typeof defaults.config) =>
     pieces.forEach((p) => p.delete());
     return big;
   });
-test('a thicker skin builds the frame in one piece, the adapter mount reaching the floor', () => {
+test('a thicker skin builds the frame in one piece, the cradles reaching the floor', () => {
   // The chassis alone (the checks are the default's, pinned below).
   const p = clone(defaults);
   p.config.chassis.skin_mm = 3;
@@ -280,37 +278,11 @@ test('the default (Swung in) Capybara builds one piece and passes every check', 
   );
   assert.equal(r.passed, true);
 });
-test('the default bottom section is one piece, the adapter mount on its floor', () => {
+test('the default bottom section is one piece, the cradles on its floor', () => {
   assert.equal(basePieces(defaults.config), 1);
 });
-// The Pro Micro variant: an nRF52840 board and a TRRS jack in each hand, in
-// place of the FFC adapter and its ribbon to the pod.
-const proMicro = () => {
-  const p = clone(defaults);
-  p.config.controller.style = 'pro_micro';
-  return p;
-};
-test('the Capybara on a Pro Micro builds one piece and passes every check', () => {
-  // As the default: the board, the jack and both plugs clear the chassis,
-  // and no wire runs into another or into the chassis.
-  const r = buildSolid(wasm, proMicro()).report,
-    failing = (xs: { name: string; passed: boolean }[]) =>
-      xs.filter((x) => !x.passed).map((x) => x.name);
-  assert.equal(r.pieces.length, 1);
-  assert.equal(r.footprint.length, 1);
-  assert.deepEqual(failing(r.seats), []);
-  assert.deepEqual(failing(r.keycaps), []);
-  assert.deepEqual(r.roomCuts, []);
-  assert.deepEqual(failing(r.openings), []);
-  assert.deepEqual(r.hardware, []);
-  assert.deepEqual(r.crossings, []);
-  assert.equal(r.passed, true);
-});
-test('the Pro Micro bottom section is one piece, the cradles on its floor', () => {
-  assert.equal(basePieces(proMicro().config), 1);
-});
-test("on a Pro Micro the wiring lands each net on its pin, and the jack's links on theirs", () => {
-  const cfg = proMicro().config;
+test("the wiring lands each net on its pin, and the jack's links on theirs", () => {
+  const cfg = defaults.config;
   const frames = componentFrames(cfg);
   const w = wiring(cfg, frames);
   const hole = holes(cfg, frames);
@@ -360,7 +332,7 @@ test("on a Pro Micro the wiring lands each net on its pin, and the jack's links 
   // The wiring panel names each net's pin by its number and its GPIO.
   assert.equal(w.nets.find((n) => n.name === 'DATA')!.label, '5, P0.17');
 });
-test("on a Pro Micro the walls stand as on the default, clear of the jack's plug, over the rail", () => {
+test("the walls stand clear of the jack's plug, over the rail", () => {
   // The USB-C plug runs out the back, through the rail and the rib over it;
   // the jack's comes in under the wishbone nearest the back, which forks
   // over it (its collar fills the opening and grips the barrel there).
@@ -371,9 +343,8 @@ test("on a Pro Micro the walls stand as on the default, clear of the jack's plug
       .filter((x) => x.name.startsWith('wall '))
       .map((x) => x.solid);
   };
-  const cfg = proMicro().config;
+  const cfg = defaults.config;
   const mine = walls(cfg);
-  assert.equal(mine.length, walls(defaults.config).length);
   const frames = componentFrames(cfg);
   const m = mouths(cfg).trrs;
   const r = cfg.trrs.plug_mm[0] / 2 + cfg.trrs.clearance_mm;
@@ -388,12 +359,12 @@ test("on a Pro Micro the walls stand as on the default, clear of the jack's plug
   const mouth = point(frames.trrs, [m.x, 0, m.z]);
   assert(mouth[2] - r > CAPYBARA.railHeight, `${mouth[2] - r} over the rail`);
 });
-test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', () => {
+test('the wall grips the USB-C receptacle and the jack barrel', () => {
   // The chassis keeps out of each port's nose but closes round it: a ring a
   // millimetre thick round the nose, outside the grip, is in the wall for
   // over a millimetre of the receptacle's length and nearly all the barrel's.
   const M = wasm.Manifold;
-  const cfg = proMicro().config;
+  const cfg = defaults.config;
   const frames = componentFrames(cfg);
   const body = buildChassis(wasm, cfg, frames).body;
   const m = mouths(cfg);
@@ -432,14 +403,14 @@ test('on a Pro Micro the wall grips the USB-C receptacle and the jack barrel', (
   const filled = body.intersect(over).volume() / over.volume();
   assert(filled > 0.99, `the wall over the plug ${filled} filled`);
 });
-test('on a Pro Micro the reset switch sits in a pocket in the back wall, its plunger out through it', () => {
+test('the reset switch sits in a pocket in the back wall, its plunger out through it', () => {
   // The switch and its plunger clear the chassis, the body held in its pocket
   // by the wall over and under it and the skin in front, with a stop behind
   // it; its tip stands proud of everything round it, so a fingertip reaches
   // it. Its two link wires run from RST and the GND
   // beside it to two diagonal legs, coming onto them from behind.
   const M = wasm.Manifold;
-  const cfg = proMicro().config;
+  const cfg = defaults.config;
   const r = cfg.reset;
   const frames = componentFrames(cfg);
   const { body, base } = buildChassis(wasm, cfg, frames);
@@ -561,15 +532,26 @@ test('a project with the Pro Micro and jack placed as before schema 7 takes thei
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
 });
-test('a project saved before the Pro Micro variant loads on the FFC adapter', () => {
+test('a project saved before the Pro Micro loads on it', () => {
   const p = clone(defaults);
   const c = p.config as Record<string, any>;
-  delete c.controller;
   delete c.pro_micro;
   delete c.trrs;
+  delete c.reset;
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
-  assert.equal(controllerStyle(p.config), 'ffc');
+});
+test('a project saved on the FFC adapter loads on the Pro Micro, without the adapter, ribbon or ribbon pins', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 12;
+  c.adapter = { position_mm: [-24, 16], rotation_deg: 0, board_mm: [26, 36, 1.6] };
+  c.ribbon = { width_mm: 12.5 };
+  c.controller = { style: 'ffc' };
+  c.wiring.nets.forEach((n: { pin?: number }, i: number) => (n.pin = i + 1));
+  c.wiring.description = 'Hand wiring from the tile holes and pads to the adapter.';
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
 });
 test('the checker reports keycap collisions', () => {
   // Keycaps that press 2 mm into the plate must fail, with matching highlight geometry.
@@ -606,7 +588,7 @@ test('the checker reports chassis built where a keycap goes', () => {
     r.highlights.some((h) => h.kind === 'room' && h.name === 'matrix_middle_bottom keycap room'),
   );
 });
-test("the wiring joins each net's pads and adapter hole, for a 4 × 5 matrix", () => {
+test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
   const cfg = defaults.config;
   const frames = componentFrames(cfg);
   const w = wiring(cfg, frames);
@@ -635,7 +617,8 @@ test("the wiring joins each net's pads and adapter hole, for a 4 × 5 matrix", (
     assert.equal(wires.length, perKey.size, net.name);
     assert.equal(wires.filter((x) => x.feed).length, net.chains?.length ?? 1, net.name);
   }
-  assert.equal(w.wires.length, 100);
+  // 100 under the keys, and the jack's three link wires and the reset switch's two.
+  assert.equal(w.wires.length, 105);
   // One wire to a tile's hole or pad: two don't fit a hole.
   const ends = w.wires.flatMap((x) => [x.points[0], x.points.at(-1)!]);
   for (const p of w.pads)
@@ -657,14 +640,13 @@ test("the wiring joins each net's pads and adapter hole, for a 4 × 5 matrix", (
       );
   assert.equal(
     w.nets.reduce((s, n) => s + n.joints, 0),
-    200,
+    210,
   );
 });
-test('a project saved before the wiring loads with the default adapter, ribbon and wiring', () => {
+test('a project saved before the wiring loads with the default wiring', () => {
   const p = clone(defaults);
   const c = p.config as Record<string, any>;
   delete c.schema;
-  delete c.ribbon;
   delete c.wiring;
   delete c.tile.pads;
   c.adapter = { position_mm: [0, 0], rotation_deg: 0, board_mm: [30, 16, 1.6] };
@@ -694,7 +676,7 @@ test('a failed wire router rejects the build, and the next build still runs', as
     /router crashed/,
   );
   const r = await buildSolidAsync(wasm, clone(defaults), async (c) => wiring(c));
-  assert.equal(r.report.wiring.wires, 100);
+  assert.equal(r.report.wiring.wires, 105);
   assert.equal(r.report.pieces.length, 1);
 });
 

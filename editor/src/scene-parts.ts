@@ -3,7 +3,6 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hardware } from './parts';
-import { prototypeOverrides } from './prototype-overrides';
 import type { BuildResult } from './solid';
 import type { Wiring } from './wiring';
 import { disposeChildren } from './three-util';
@@ -92,8 +91,6 @@ const colors: Record<string, number> = {
   components: 0x303b43,
   switch: 0x667e86,
   keycaps: 0xd7d8bd,
-  adapter: 0x2f6f4f,
-  ribbon: 0xd9b45a,
   controller: 0x2b4c8c,
   cable: 0x3a3a3a,
   pads: 0xd8c27a,
@@ -108,9 +105,7 @@ const wireColors: Record<string, number> = {
   ground: 0x222222,
   link: 0xff9f40,
 };
-const ADAPTER_GROUPS = ['adapter', 'ribbon', 'controller', 'cable'];
-// Where the ribbon leaves, as last built: the ribbon is drawn out past it.
-let panel: number | undefined;
+const CONTROLLER_GROUPS = ['controller', 'cable'];
 // A box tapering from size (x, y at its bottom, z its height, centred) to a
 // top face of top (x, y).
 const taperedBox = (size: number[], top: number[]) => {
@@ -145,7 +140,7 @@ const notchedBox = (size: number[], r: number) => {
 };
 export function updateHardware() {
   disposeChildren(parts);
-  for (const p of hardware(prototypeOverrides(S.project, location.search), undefined, panel)) {
+  for (const p of hardware(S.project)) {
     const g = p.cylinder
         ? new T.CylinderGeometry(p.cylinder, p.cylinder, p.size[2], 48).rotateX(Math.PI / 2)
         : p.top
@@ -232,8 +227,8 @@ export function visibility() {
           ? false
           : o.userData.group === 'pads'
             ? $('wires').matches(':checked')
-            : ADAPTER_GROUPS.includes(o.userData.group)
-              ? $('adapter').matches(':checked')
+            : CONTROLLER_GROUPS.includes(o.userData.group)
+              ? $('controller').matches(':checked')
               : $('parts').matches(':checked');
   wires.visible = $('wires').matches(':checked');
   basePlate.visible = $('base').matches(':checked') && (!S.handCase || S.handCase());
@@ -251,10 +246,6 @@ export function setShell(r: BuildResult) {
   setMesh(basePlate, r.base);
   setEdges();
   measure();
-  if (panel !== r.panel) {
-    panel = r.panel;
-    updateHardware();
-  }
   captureFaceOrder();
   render();
 }

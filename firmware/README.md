@@ -1,6 +1,6 @@
 # Firmware
 
-PROTOTYPE [RMK](https://github.com/HaoboGu/rmk) firmware for the [Pro Micro variant](../docs/pro-micro-variant.md): a nice!nano v2 (nRF52840) in each hand, the hands joined by a TRRS serial link. The left hand is the central, on USB to the host. The right hand is the peripheral: it needs power, from USB or a battery, but doesn't talk to the host. It builds, but hasn't run on a board yet.
+PROTOTYPE [RMK](https://github.com/HaoboGu/rmk) firmware for the [Pro Micro](../docs/pro-micro.md): a nice!nano v2 (nRF52840) in each hand, the hands joined by a TRRS serial link. The left hand is the central, on USB to the host. The right hand is the peripheral: it needs power, from USB or a battery, but doesn't talk to the host. It builds, but hasn't run on a board yet.
 
 RMK's `keyboard.toml` can't describe a serial split on an nRF52840 (its code generator only does serial on the RP2040), so this uses RMK's Rust API. RMK's serial split runs over anything with async `Read` and `Write`, which embassy-nrf's `BufferedUarte` has. There's no Bluetooth.
 
@@ -19,7 +19,7 @@ This writes `output/firmware/capybara-central.uf2` (left hand) and `capybara-per
 1. Double-press the hand's reset button. The board mounts as a `NICENANO` drive.
 2. Copy the hand's UF2 onto the drive. The board restarts into it.
 
-Unplug the TRRS cable first; see [the link](../docs/pro-micro-variant.md#the-link).
+Unplug the TRRS cable first; see [the link](../docs/pro-micro.md#the-link).
 
 ## Flash layout
 
@@ -54,5 +54,5 @@ Because the SoftDevice is left alone, this firmware and ZMK can replace each oth
 | Question | Notes |
 |---|---|
 | First run on a board | The nRF52840 serial split has no example or user upstream. Check that keys reach the host from both hands. |
-| LEDs | An SK6812 driver on P0.17 using the nRF52840's PWM, with a brightness cap (see the variant's LED current). |
+| LEDs | An SK6812 driver on P0.17 using the nRF52840's PWM, with a brightness cap (see the [LED current](../docs/pro-micro.md#open)). |
 | x1 and x2 | What the extra thumb keys should do. |

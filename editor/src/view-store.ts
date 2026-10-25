@@ -6,7 +6,7 @@ import { camera, controls, material, render } from './viewer';
 import { visibility } from './scene-parts';
 
 const VIEW_STORAGE = 'rosebear-chassis-editor:view';
-const TOGGLES = ['edit', 'caps', 'parts', 'wires', 'adapter', 'base', 'bounds', 'edges'];
+const TOGGLES = ['edit', 'caps', 'parts', 'wires', 'controller', 'base', 'bounds', 'edges'];
 for (const id of TOGGLES)
   $(id).onchange = () => {
     visibility();

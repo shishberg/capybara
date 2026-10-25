@@ -1,6 +1,6 @@
-# Pro Micro variant
+# Pro Micro
 
-A PROTOTYPE alternative to the pod: an nRF52840 board in Pro Micro form factor in each hand, the two hands joined by a TRRS cable. It drops the pod, the ESP32-P4, the FFC adapters, the ribbons and the level shifter. In the editor, `?controller=pro_micro` or the controller bar (`←` and `→`) shows it; `controller.style` in `editor/src/default-config.json` stays `ffc` until this is decided.
+Each hand's controller: an nRF52840 board in Pro Micro form factor, the two hands joined by a TRRS cable. The editor builds it into every hand; its parts are `pro_micro`, `trrs` and `reset` in `editor/src/default-config.json`.
 
 ## Parts per hand
 

@@ -183,9 +183,9 @@ test('clearance overlays isolate collisions, toggle, and clear on edit', async (
 test('the wiring panel lists the matrix and cut list, and the wiring follows the keys', async ({
   page,
 }) => {
-  await expect(page.locator('#wiring-summary')).toContainText('100 wires, 200 solder joints');
+  await expect(page.locator('#wiring-summary')).toContainText('105 wires, 210 solder joints');
   await expect(page.locator('#matrix-table tr')).toHaveCount(21);
-  await expect(page.locator('#fit-list')).toContainText('All 100 wires are clear of the chassis.');
+  await expect(page.locator('#fit-list')).toContainText('All 105 wires are clear of the chassis.');
   const wiring = () => page.evaluate(() => (window as any).rosebearEditor.getWiring());
   const before = (await wiring()).pads.find((p: any) => p.key === 'matrix_middle_top').at;
   await page.locator('[data-view="Front"]').click();
@@ -196,7 +196,7 @@ test('the wiring panel lists the matrix and cut list, and the wiring follows the
   expect(after[2]).toBeGreaterThan(before[2] + 3);
   await page.locator('#wires').uncheck();
   await page.locator('#wires').check();
-  // The adapter and ribbons hide on their own, leaving the wiring and pads.
+  // The controller, the jack and the plugs hide on their own, leaving the wiring and pads.
   const shown = (group: string) =>
     page.evaluate(
       (group) =>
@@ -206,12 +206,12 @@ test('the wiring panel lists the matrix and cut list, and the wiring follows the
           .every((p: any) => p.visible),
       group,
     );
-  await page.locator('#adapter').uncheck();
-  expect(await shown('adapter')).toBe(false);
-  expect(await shown('ribbon')).toBe(false);
+  await page.locator('#controller').uncheck();
+  expect(await shown('controller')).toBe(false);
+  expect(await shown('cable')).toBe(false);
   expect(await shown('pads')).toBe(true);
-  await page.locator('#adapter').check();
-  expect(await shown('adapter')).toBe(true);
+  await page.locator('#controller').check();
+  expect(await shown('controller')).toBe(true);
   await rebuilt(page);
 });
 
@@ -345,15 +345,4 @@ test('failure highlights take their colour from their kind', async ({ page }) =>
     .evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
   const rgb = (n: number) => `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
   expect(swatches).toEqual([0xff303e, 0xffa124, 0xf16bd8, 0x40e0ff].map(rgb));
-});
-test('prototype URL overrides are built and recorded in the saved report', async ({ page }) => {
-  await page.goto('/?controller=pro_micro');
-  await rebuilt(page);
-  const saved = page.waitForEvent('download');
-  await page.locator('#report').click();
-  const fs = await import('node:fs/promises'),
-    json = JSON.parse(await fs.readFile((await (await saved).path())!, 'utf8'));
-  expect(json.evaluatedProject.config.controller.style).toBe('pro_micro');
-  // The editable project itself never carries them.
-  expect((await project(page)).config.controller.style).toBe('ffc');
 });
