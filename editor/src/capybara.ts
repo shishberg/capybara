@@ -203,10 +203,11 @@ export const SIZES = {
    * to the lower's edge as clears what the keys hold and every other key's
    * plate (endGap off; and the wires, wireGap off, in bridgeStyle `wired`),
    * stepSpare more, its corner over that cut back as little as clears the
-   * rest. Its top and underside are each a cubic curve in the step's leg, as
-   * smooth as leaves it bridgeLeast thick (or, where none fits that thick,
-   * the thickest down to bridgeThin), sharpened toward its inner corners a
-   * bridgeSharp step at a time; no two of its stations are closer than
+   * rest. Its top and underside are each a cubic curve across the step's
+   * leg, drawn apart where steep (the top toward the lower plate, the
+   * underside toward the higher) as little as leaves it bridgeLeast thick
+   * (or, where none fits that thick, the thickest down to bridgeThin), a
+   * bridgeShift of the leg's width at a time; no two of its stations are closer than
    * bridgeFine. It runs bridgeInto into each plate, bridgeSkin inside its top
    * and underside (bridges). A key's plate edge facing a joined web's side
    * within webReach is bridged to it as to a plate.
@@ -218,7 +219,7 @@ export const SIZES = {
   bridgeLeast: 1.3,
   bridgeThin: 0.4,
   bridgeFine: 0.05,
-  bridgeSharp: 0.125,
+  bridgeShift: 0.0625,
   bridgeSkin: 0.001,
   bridgeOut: 0.05,
   stepSpare: 0.01,
@@ -2434,19 +2435,23 @@ const apart = (p: V3[], q: V3[]) =>
  * top, as little as clears it, so the leg stays convex; if that leaves no
  * step, the near face goes out past all of it, or else stands square to U's
  * edge, as far out as the leg needs to be thick. The bridge's top and
- * underside each cross the leg as a cubic Bézier curve, leaving U along its
- * plane and reaching L along its own, its inner control points on those
- * planes: out along U's to the chamfer or the near face, and back along L's
- * to the far face (or each only as far as where the two planes cross). The
- * leg is the hull of both curves' control points, so it holds them, as a
- * convex hull holds its curve. The curves are as smooth as leaves the bridge
- * bridgeLeast thick, one inner control point drawn toward the other (turning
- * the curve's end at its inner corner off the plate's plane, so sharpening
- * that corner) only as far as that needs; where no step that thick fits
+ * underside each cross the leg as a cubic Bézier curve from the far face,
+ * leaving U along its plane, to the near face, reaching L along its own, its
+ * inner control points on those planes halfway across: the top's g/2 on
+ * toward L and the underside's g/2 back toward U, so that they are g apart
+ * where steep, and each bends round its outer corner more gently than round
+ * its inner, as a bent plate's faces do. Each control point is kept on its
+ * plane's reach in the leg (on U's out to the chamfer or the near face, on
+ * L's back to the far face, or each only as far as where the two planes
+ * cross), and the leg is the hull of those reaches, so it holds the curves,
+ * as a convex hull holds its curve. g is as little as leaves the bridge
+ * bridgeLeast thick (its inner corners as gentle as that allows), tried a
+ * bridgeShift of the leg's width at a time; where no step that thick fits
  * anywhere along the edges, the thickest that fits, down to bridgeThin. It is
- * meshed a station per 5° that it turns. Its ends run bridgeInto into each plate, bridgeSkin inside its
- * top and underside, so it overlaps them rather than meeting them on their
- * faces. One to a web lands between where its sides cross the web's edge.
+ * meshed a station per 5° that it turns. Its ends run bridgeInto into each
+ * plate, bridgeSkin inside its top and underside, so it overlaps them rather
+ * than meeting them on their faces. One to a web lands between where its
+ * sides cross the web's edge.
  */
 function bridges(
   wasm: ManifoldToplevel,
@@ -2525,17 +2530,13 @@ function bridges(
     // at 1): where its near face and the chamfer meet U's top, and the
     // chamfer's plane, facing out; the leg below L's top, before the chamfer
     // (`low`: L's top at the far face and the near, and the lower of U's and
-    // L's undersides at the near face and the far); the bridge's top and
-    // underside across the leg, each a cubic Bézier curve (ctrl) leaving U
-    // at the far face along its plane and reaching L at the near face along
-    // its own, its inner control points on those planes (out along U's to
-    // the chamfer or the near face, or where it crosses L's if sooner, and
-    // back along L's to the far face, or to that crossing); the leg is
-    // their hull, so holds them. One inner control point is `loose`: drawn
-    // toward the other, it turns the curve's end at its inner corner (the
-    // top's at L, the underside's at U, or at L if U's underside is the
-    // lower) off the plate's plane, so that corner sharpens. And where its
-    // ends are in U and L ([top, underside]).
+    // L's undersides at the near face and the far); how far the bridge's top
+    // and underside can reach across the leg on U's plane and on L's (each
+    // [from, to, from, to]: on U's from the far face out to the chamfer or
+    // the near face, or where it crosses L's if sooner, and on L's from the
+    // far face, or that crossing, to the near face), the leg being their
+    // hull, so holding any curve whose control points are on them. And where
+    // its ends are in U and L ([top, underside]).
     const step = (nearOf: (U: Joint, L: Joint) => Plane, cut: number) =>
       ends.map(([U, L], j) => {
         const at = (a: Plane, b: Plane) => meet(a, b, slice(j));
@@ -2556,11 +2557,11 @@ function bridges(
             ? { p: foot, n: scale(inward, dot(sub(Lfar, foot), inward) > 0 ? -1 : 1) }
             : undefined;
         // From `from` on U's plane at the far face toward `to` on it, as far
-        // as L's plane `by` if it crosses it there, then to `end` on that at
-        // the near face, along it from the far face if it didn't cross.
-        const curve = (from: V3, to: V3, by: Plane, end: V3, loose: number) => {
+        // as L's plane `by` if it crosses it there; and on that, from the far
+        // face (or that crossing) to `end` at the near face.
+        const reach = (from: V3, to: V3, by: Plane, end: V3) => {
           const crest = toward(from, to, by);
-          return { ctrl: [from, crest, crest === to ? at(by, far) : crest, end], loose };
+          return [from, crest, crest === to ? at(by, far) : crest, end];
         };
         return {
           U,
@@ -2569,14 +2570,8 @@ function bridges(
           corner,
           chamfer,
           low: [at(top(L), far), foot, ...(sunk ? [Unear, Ufar] : [Lnear, Lfar])],
-          top: curve(over, corner, top(L), foot, 2),
-          under: curve(
-            Ufar,
-            chamfer ? toward(Ufar, Unear, chamfer) : Unear,
-            under(L),
-            Lnear,
-            sunk ? 2 : 1,
-          ),
+          top: reach(over, corner, top(L), foot),
+          under: reach(Ufar, chamfer ? toward(Ufar, Unear, chamfer) : Unear, under(L), Lnear),
           ends: [into(U), into(L)],
         };
       });
@@ -2584,9 +2579,9 @@ function bridges(
     // and in L's slab.
     const pieces = (s: ReturnType<typeof step>) =>
       [
-        s.flatMap((x) => [...x.ends[0], x.top.ctrl[0], x.under.ctrl[0]]),
-        s.flatMap((x) => [...x.top.ctrl, ...x.under.ctrl]),
-        s.flatMap((x) => [x.top.ctrl[3], x.under.ctrl[3], ...x.ends[1]]),
+        s.flatMap((x) => [...x.ends[0], x.top[0], x.under[0]]),
+        s.flatMap((x) => [...x.top, ...x.under]),
+        s.flatMap((x) => [x.top[3], x.under[3], ...x.ends[1]]),
       ].map((points) => hull(points.map((p) => seenIn(f, p))));
     const broad = step((_, L) => face(L, SIZES.bridgeOut), 1);
     const widest = pieces(broad);
@@ -2664,28 +2659,44 @@ function bridges(
     const made = (s: ReturnType<typeof step>) => {
       const fits = s.every(
         ({ U, L, edge, corner, chamfer, low, top, under }) =>
-          dot(sub(edge, top.ctrl[0]), U.out) > 0 &&
+          dot(sub(edge, top[0]), U.out) > 0 &&
           dot(sub(low[2], low[3]), U.out) > 0 &&
-          dot(sub(top.ctrl[3], top.ctrl[0]), U.n) < 0 &&
+          dot(sub(top[3], top[0]), U.n) < 0 &&
           (!chamfer ||
-            (dot(sub(corner, top.ctrl[3]), L.n) > 0 &&
-              dot(sub(under.ctrl[0], chamfer.p), chamfer.n) < 0)),
+            (dot(sub(corner, top[3]), L.n) > 0 && dot(sub(under[0], chamfer.p), chamfer.n) < 0)),
       );
       if (!fits) return undefined;
-      // At each side, the top's and the underside's curves, each loose
-      // control point `sharp` of the way to the other (so in the leg, as is
-      // the curve, the leg being convex): their lines across the leg, finely;
-      // and how thick that leaves it where they come closest. The smoothest,
-      // a bridgeSharp step at a time, at least the first of `leasts` that
-      // any is as thick as.
+      // At each side, the top's and the underside's curves, their control
+      // points placed by how far out of the far face they are (along U.out),
+      // each on its plane's reach in the leg (so in the leg, as is the curve,
+      // the leg being convex; past its end, at it): from the far face to the
+      // near, on U's plane, U's, L's and L's, the inner two halfway across,
+      // the top's g/2 on toward L and the underside's g/2 back toward U. So
+      // they are g apart where they are steep, and each bends round its
+      // outer corner (the top's at U, the underside's at L) more gently
+      // than round its inner, as the faces of a bent plate do. Their lines
+      // across the leg, finely, and how thick that leaves it where they come
+      // closest.
       const fine = 64;
-      const linesAt = (sharp: number) =>
-        s.map(({ top, under }) =>
-          [top, under].map(({ ctrl, loose }) => {
-            const c = ctrl.map((x, i) => (i === loose ? lerp(x, ctrl[3 - loose], sharp) : x));
-            return [...Array(fine + 1).keys()].map((i) => bezier(c, i / fine));
-          }),
-        );
+      const linesAt = (g: number) =>
+        s.map(({ U, top, under }) => {
+          const out = (p: V3) => dot(sub(p, top[0]), U.out);
+          const on = (a: V3, b: V3, x: number) => {
+            const [xa, xb] = [out(a), out(b)];
+            return xb - xa > 1e-9 ? lerp(a, b, Math.max(0, Math.min(1, (x - xa) / (xb - xa)))) : a;
+          };
+          const along = (r: V3[], x: number[]) => [
+            on(r[0], r[1], x[0]),
+            on(r[0], r[1], x[1]),
+            on(r[2], r[3], x[2]),
+            on(r[2], r[3], x[3]),
+          ];
+          const near = out(top[3]);
+          const x = (by: number) => [0, (near + by) / 2, (near + by) / 2, near];
+          return [along(top, x(g)), along(under, x(-g))].map((c) =>
+            [...Array(fine + 1).keys()].map((i) => bezier(c, i / fine)),
+          );
+        });
       const thickOf = (lines: V3[][][]) =>
         Math.min(
           ...s.map((x, j) => {
@@ -2693,9 +2704,13 @@ function bridges(
             return apart(line(0), line(1));
           }),
         );
-      const steps = Math.round(1 / SIZES.bridgeSharp);
+      // The least g that leaves the bridge at least the first of `leasts`
+      // thick, so its inner corners as gentle as that allows, from none
+      // toward the leg's width, a bridgeShift of it at a time.
+      const most = Math.min(...s.map(({ U, top }) => dot(sub(top[3], top[0]), U.out)));
+      const steps = Math.round(1 / SIZES.bridgeShift);
       const tries = [...Array(steps + 1).keys()].map((i) => {
-        const lines = linesAt(i / steps);
+        const lines = linesAt((most * i) / steps);
         return { lines, thick: thickOf(lines) };
       });
       const lines = leasts

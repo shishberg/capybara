@@ -108,18 +108,19 @@ keycap room that overhangs it; failing that, out past all of it; failing
 that, square to the higher plate's edge, as far out as the leg needs to be
 thick. The bridge's top and underside are each one cubic curve across the
 leg, leaving the higher plate along its plane and reaching the lower along
-its own; the leg is the hull of the curves' control points, so it holds the
-curves. They are as smooth as leaves the bridge 1.3 mm thick where it is
-thinnest, turning off the plate at an inner corner (the top's at the lower
-plate, the underside's at the higher), so sharpening it, only as far as that
-needs. Where no step that thick fits anywhere along the edge, the thickest
-that fits, down to 0.4 mm.
+its own, the two curves' middles halfway across; the leg is the hull of the
+curves' control points, so it holds the curves. Where the bridge is steep
+the top is drawn toward the lower plate and the underside toward the higher,
+so each bends round its outer corner more gently than round its inner, as a
+bent plate's faces do, only as far as leaves the bridge 1.3 mm thick where
+it is thinnest. Where no step that thick fits anywhere along the edge, the
+thickest that fits, down to 0.4 mm.
 
 On Swung in there are fifteen: between every two neighbouring finger keys
 of the matrix (inner–index, index–middle, middle–ring and ring–pinky at every
 row), between the thumb rows (thumb_far–thumb_x2, thumb_home–thumb_x1), and
 thumb_near to thumb_x1's web. One is thinner, no step 1.3 mm thick fitting
-anywhere along its edge: ring_bottom–pinky_bottom (0.9 mm).
+anywhere along its edge: ring_bottom–pinky_bottom (0.8 mm).
 
 The editor's `?bridge=` bar (dev only, ← →) switches to `wired`, where bridges
 keep 0.5 mm off the routed wires too; on Swung in that loses none.
