@@ -2831,15 +2831,19 @@ function bridges(
       if (between.some((b) => b.keys.includes(P.name) && web.keys.some((k) => b.keys.includes(k)))) return [];
       const middle = web.poses[web.poses.length >> 1];
       const sP = Math.sign(dot(P.c, sub(middle.p, P.o)));
+      // The web's side facing P, at its middle.
+      const facing = Math.sign(dot(middle.c, sub(P.o, middle.p)));
       const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), P.a)).sort((x, y) => x - y);
       const space = keySpace(cfg, frames, [P.name]);
       // At m along P's edge, the bridge at least one of `least` thick.
       const at = (m: number, least: number[]): { solid: Manifold; land: Pose } | undefined => {
         const f = frameOn(P, sP, P.a, m);
         // The web's poses across the bridge's width, and the one either
-        // side, each with its side facing P: all of them facing it, and the
-        // middle one squarely, within reach.
-        const along = web.poses.map((q) => dot(sub(q.p, f.o), f.e));
+        // side, by where their side facing P is (not their middles: the web
+        // crosses P's edge aslant, and twists, so a pose's side is well along
+        // the edge from its middle): all of them facing P, and the middle one
+        // squarely, within reach.
+        const along = web.poses.map((q) => dot(sub(poseSide(q, facing)[0], f.o), f.e));
         const ahead = along[along.length - 1] > along[0] ? 1 : -1;
         const first = along.findIndex((t) => ahead * t > -w) - 1;
         const last = along.findIndex((t) => ahead * t > w);
