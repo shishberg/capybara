@@ -90,10 +90,10 @@ function classOf(s: Seam) {
  *    wishbone about 11 mm on from thumb_x1's corner; the outline's run from thumb_x2's corner goes to its
  *    foot, so the tie meets the rail at an angle and its fillet there leaves
  *    a sliver and a gap (rail).
- *  - bridges (PROTOTYPE): a straight slab between every facing pair of
- *    neighbouring keys, however wide the gap, else a stepped one, and from a
- *    key's edge to a web's side facing it (fourteen on Swung in); where one
- *    lands on a web, what is within landMeet is meant. The walls
+ *  - bridges (PROTOTYPE): a stepped bridge between facing neighbouring keys
+ *    where one fits, and from a key's edge to a web's side facing it (eight
+ *    on Swung in); where one lands on a web, what is within landMeet of its
+ *    landing is meant. The walls
  *    don't read the bridges, but the frame's one union re-meshes with them,
  *    and the walls' and rail's spots of no area or a few hundredths come and
  *    go with it. None of these spots touches a bridge.

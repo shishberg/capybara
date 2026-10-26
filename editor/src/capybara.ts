@@ -47,10 +47,9 @@
 // side into the other, so the union joins them along a line, and the rail
 // runs on under the pair, not in between them (fused). PROTOTYPE: bridges tie neighbouring ribs
 // together up at the plates: where two keys of different ribs face each other,
-// however wide the gap, a straight slab spans it from one plate's facing edge
-// to the other's, top edge to top edge and underside to underside, sloping
-// where the plates are at different heights, and wider as it slopes
-// (bridges).
+// a bridge crosses the gap between the two plates' facing edges inside a
+// step that fits it, clear of the keys, the other plates and the wires, its
+// top and underside curving from one plate's plane to the other's (bridges).
 // Nothing is cut out: chassis.ts adds the base, seats.ts the seats and sleeves, and the
 // checks report anything that runs into the tiles or the keycaps.
 // Walls stand under the outer sides, built by capybara-walls.ts from a
@@ -73,8 +72,8 @@
 //           outer face at each side;
 //  fused    PROTOTYPE: two drops of different ribs widened into each other
 //           on their facing sides, where they stand within fuseGap;
-//  bridge   PROTOTYPE: a straight slab across the gap between two ribs, from
-//           one key's plate edge to a facing key's, flush with both tops;
+//  bridge   PROTOTYPE: a tie across the gap between two ribs, from one
+//           key's plate edge to a facing key's, bridgeWidth wide;
 //  tie      a bar of the rail's section across the floor,
 //           rail to rail, that hanging ends drop onto;
 //  pose     where a rib passes and how it lies there: its top's middle, its
@@ -181,45 +180,33 @@ export const SIZES = {
   /** A rib's surface is meshed in triangles about this big (ribSolid). */
   ribMesh: 2,
   /**
-   * PROTOTYPE bridges: a bridge is a straight slab, bridgeWidth wide along the
-   * plates' edges where it is level and wider by one over the cosine of its
-   * slope where it slopes, the plates' section less bridgeSkin at its top and
-   * its underside; it reaches bridgeInto into each plate and runs straight on
-   * bridgeOut out of each before it turns to slope across (bridges). One
-   * spans the gap, however wide, between two keys of different ribs whose
-   * plates' facing edges face each other (turned at most bridgeTurn degrees
-   * from square on, in plan, their plates at most that from each other), at
-   * the middle of the stretch they share or the nearest place to it, tried
-   * every bridgeProbe, where it fits with bridgeInset to spare at each end,
-   * the gap in each plate's plane is at least bridgeLeast, it slopes out of
-   * the plates at most bridgeSteep degrees, and it keeps endGap from what the
-   * keys hold and from every other key's plate, and wireGap from the wires
-   * (tested at points about bridgeProbe apart through it).
+   * PROTOTYPE bridges: a bridge spans the gap between two keys of different
+   * ribs whose plates' facing edges face each other (turned at most
+   * bridgeTurn degrees from square on, in plan, their plates at most that from
+   * each other), bridgeWidth wide along the edges, with bridgeInset to spare
+   * at each end of the stretch they share: at its middle, or the nearest
+   * place to it where one fits, tried every bridgeProbe. It fits in a step:
+   * out of the higher plate's edge in its plane (from bridgeOut out of it),
+   * down a leg and into the lower in its plane, the leg's near face as close
+   * to the lower's edge as clears what the keys hold and every other key's
+   * plate (endGap off) and the wires (wireGap off), stepSpare more. Its top
+   * and underside cross the leg in cubic curves inside it, as round as leaves
+   * it at least bridgeLeast thick, and no tighter than bridgeRound in radius
+   * anywhere. It runs bridgeInto into each plate,
+   * bridgeSkin inside its top and underside (bridges). A key's plate edge
+   * facing a joined web's side within webReach is bridged to it as to a plate.
    */
   bridgeWidth: 4,
   bridgeInset: 1,
   bridgeInto: 0.5,
+  bridgeTurn: 35,
+  bridgeLeast: 1.3,
+  bridgeRound: 0.25,
   bridgeSkin: 0.001,
   bridgeOut: 0.05,
-  bridgeTurn: 35,
-  bridgeLeast: 0.5,
-  bridgeSteep: 60,
+  stepSpare: 0.01,
   wireGap: 0.5,
   bridgeProbe: 0.5,
-  /**
-   * PROTOTYPE: where no straight bridge fits between two keys, a stepped one:
-   * out of the higher plate in its plane, down a leg in the gap and in to the
-   * lower plate in its plane, stepWidth wide along the edges (else
-   * bridgeWidth), only where the higher plate's edge is within stepReach of
-   * the lower's. The leg is at least stepLeast thick, its far face the higher
-   * plate's edge face carried on down, its near face moved out stepProbe at a
-   * time until it clears the lower key's keycap. A key's plate edge facing a
-   * joined web's side within webReach is bridged to it as to a plate.
-   */
-  stepWidth: 8,
-  stepLeast: 0.9,
-  stepReach: 4,
-  stepProbe: 0.02,
   webReach: 15,
   /**
    * PROTOTYPE: two drops of different ribs whose facing sides stand within
@@ -1744,7 +1731,7 @@ function keySpace(cfg: Config, frames: Record<string, Matrix4>, pressed: string[
     }
     return last >= reach ? Infinity : last;
   };
-  return { clear, room };
+  return { boxes, clear, room };
 }
 
 /**
@@ -2198,12 +2185,132 @@ function unfolded(left: Pair[], right: Pair[]) {
   });
 }
 
+/**
+ * PROTOTYPE: where a bridge is worked: square to the edges it joins (e), x out
+ * of P's edge across the gap and y up out of P's plate (x × y = e), from o on
+ * P's top edge; its sides are w either side of o along e.
+ */
+interface BridgeFrame {
+  o: V3;
+  x: V3;
+  y: V3;
+  e: V3;
+  w: number;
+}
+type Seen = [number, number];
+/** PROTOTYPE: a box as keySpace has them: its centre c and half-widths h along its axes from o. */
+interface Box {
+  o: V3;
+  axes: V3[];
+  c: number[];
+  h: number[];
+}
+/** PROTOTYPE: the plane of the points X where dot(X - p, n) is 0. */
+interface Plane {
+  p: V3;
+  n: V3;
+}
+/** PROTOTYPE: what a bridge joins, as one of its sides meets it: its top edge's point p, its top's normal n, out of its edge face (square to it, in its plane) along `out`, `thick` thick. */
+interface Joint {
+  p: V3;
+  n: V3;
+  out: V3;
+  thick: number;
+}
+/** PROTOTYPE: a bridge's top or underside across its step's leg: from p to q, each one's handle reaching at most to its point of `reach`, and whether those are where the planes they leave meet. */
+interface Curve {
+  p: V3;
+  q: V3;
+  reach: [V3, V3];
+  meets: boolean;
+}
+
+/**
+ * PROTOTYPE: points from t0 to t1 along f.e seen along it ([x, y] in f): the
+ * box's corners there and where its edges cross t0 and t1, whose hull is all
+ * the box is there (a slice of it where t0 is t1).
+ */
+function boxSeen(f: BridgeFrame, b: Box, t0: number, t1: number): Seen[] {
+  const corners = [...Array(8).keys()].map((i) =>
+    b.axes.reduce(
+      (p, axis, j) => add(p, scale(axis, b.c[j] + ((i >> j) & 1 ? 1 : -1) * b.h[j])),
+      b.o,
+    ),
+  );
+  const edges = corners.flatMap((p, i) =>
+    [1, 2, 4].filter((bit) => !(i & bit)).map((bit) => [p, corners[i | bit]]),
+  );
+  const t = (p: V3) => dot(sub(p, f.o), f.e);
+  return [
+    ...corners.filter((p) => t(p) >= t0 && t(p) <= t1),
+    ...edges.flatMap(([p, q]) =>
+      [t0, t1].flatMap((at) => {
+        const [u, v] = [t(p) - at, t(q) - at];
+        return u * v < 0 ? [lerp(p, q, u / (u - v))] : [];
+      }),
+    ),
+  ].map((p) => seenIn(f, p));
+}
+const seenIn = (f: BridgeFrame, p: V3): Seen => [dot(sub(p, f.o), f.x), dot(sub(p, f.o), f.y)];
+/** PROTOTYPE: where three planes meet. */
+function meet(a: Plane, b: Plane, c: Plane): V3 {
+  const [bc, ca, ab] = [cross(b.n, c.n), cross(c.n, a.n), cross(a.n, b.n)];
+  const sum = add(
+    add(scale(bc, dot(a.p, a.n)), scale(ca, dot(b.p, b.n))),
+    scale(ab, dot(c.p, c.n)),
+  );
+  return scale(sum, 1 / dot(a.n, bc));
+}
+/** PROTOTYPE: the cubic Bézier curve with control points a, b, c, d at f (0 to 1). */
+const bezier = ([a, b, c, d]: V3[], f: number) => {
+  const g = 1 - f;
+  return add(
+    add(scale(a, g * g * g), scale(b, 3 * g * g * f)),
+    add(scale(c, 3 * g * f * f), scale(d, f * f * f)),
+  );
+};
+/** PROTOTYPE: how far a cubic Bézier curve turns at each of bendFine points along it (from the last point's chord to the next's; none at its ends), and how tightly at its tightest (1 over its least radius). */
+const bendFine = 256;
+function bendOf(c: V3[]) {
+  const p = [...Array(bendFine + 1).keys()].map((i) => bezier(c, i / bendFine));
+  const d = p.slice(1).map((q, i) => sub(q, p[i]));
+  const long = d.map((v) => Math.hypot(...v));
+  const turn = d.slice(1).map((v, i) => turnOf(unit(d[i]), unit(v)));
+  return {
+    turn: [0, ...turn, 0],
+    tight: Math.max(...turn.map((a, i) => a / ((long[i] + long[i + 1]) / 2))),
+  };
+}
+/** PROTOTYPE: where along curves bent as `bends` are (bendOf, each from f 0 to 1 together) to put stations, f from 0 to 1, evenly in how far whichever turns most turns, and none of them more than 5° between two. */
+function turnStations(bends: { turn: number[] }[]) {
+  const run = [0];
+  for (let i = 1; i <= bendFine; i++)
+    run.push(run[i - 1] + Math.max(...bends.map((b) => b.turn[i])));
+  const n = Math.max(1, stepsOf(run[bendFine]));
+  let after = 1;
+  return [...Array(n + 1).keys()].map((k) => {
+    const want = (run[bendFine] * k) / n;
+    while (after < bendFine && run[after] < want) after++;
+    const f = (want - run[after - 1]) / (run[after] - run[after - 1] || 1);
+    return (after - 1 + Math.min(1, Math.max(0, f))) / bendFine;
+  });
+}
 /** How far point p is from the segment a to b. */
 function fromSegment(p: V3, a: V3, b: V3) {
   const e = sub(b, a);
   const f = Math.max(0, Math.min(1, dot(sub(p, a), e) / (dot(e, e) || 1)));
   return Math.hypot(...sub(add(a, scale(e, f)), p));
 }
+/** PROTOTYPE: how close two lines of points come: the least distance from a point of either to the other. */
+const apart = (p: V3[], q: V3[]) =>
+  Math.min(
+    ...[
+      [p, q],
+      [q, p],
+    ].flatMap(([a, b]) =>
+      a.map((x) => Math.min(...b.slice(1).map((y, i) => fromSegment(x, b[i], y)))),
+    ),
+  );
 
 /**
  * PROTOTYPE: the bridges between neighbouring ribs, each with the two keys it
@@ -2211,29 +2318,35 @@ function fromSegment(p: V3, a: V3, b: V3) {
  * one's plate's side facing the other. Where those two sides face each other
  * (bridgeTurn) and run alongside each other (along their edges' mean
  * direction), one bridge goes at the middle of the stretch they share, or
- * the nearest place to it (every bridgeProbe either way) where it can: where
- * the gap between the edges, in each plate's own plane, is at least
- * bridgeLeast, and the bridge is no steeper than bridgeSteep, fits the stretch
- * with bridgeInset to spare at each end, and keeps clear of what the keys hold
- * and of the wires. However wide the gap: any key's plate in the way (another
- * column between them) stops it. A bridge is a straight slab from P's plate
- * edge to Q's: its top runs straight from one plate's top edge to the other's
- * and its underside from underside edge to underside edge, so its section
- * across the plates is the plates' own, the plate's thickness deep wherever
- * it rises or falls, and its sides stand square on the edges. Where the
- * plates are at different heights it slopes, and where it slopes it is
- * thinner square to itself (the plate's thickness times the slope's cosine),
- * so it is made wider by as much: bridgeWidth over that cosine, along the
- * edges. It meets each plate as one with it, not a seam: it runs on into the
- * plate bridgeInto, in the plate's own plane, wholly inside its slab
- * (bridgeSkin in from its top and its underside, far more than the mesh's
- * rounding), and straight on bridgeOut out of the plate before it turns to
- * slope across, so no point of its mesh is on the plate's edge. The union
- * then only crosses faces cleanly, rather than meeting them along an edge or
- * a plane, where it would leave slivers. Kept endGap from what the keys hold
- * (P's and Q's keycaps only as low as they are pressed: the bridge is beside
- * them, under their tops' room when pressed), from every other key's plate,
- * and wireGap from the wires.
+ * the nearest place to it (every bridgeProbe either way) where one fits.
+ * However wide the gap: any key's plate in the way (another column between
+ * them) stops it.
+ *
+ * A bridge is made to fit, not tried and tested. Its sides stand square to
+ * the edges (in a BridgeFrame), bridgeWidth apart, and at each side it meets
+ * what it joins as planes: their tops, undersides and edge faces (Joint).
+ * First, a step that fits the gap: out of the higher (U) in its own slab,
+ * down a leg and into the lower (L) in its slab. The leg's far face is U's
+ * edge face carried out bridgeOut, its near face L's edge face carried out as
+ * far as keeps the leg clear of what is over L there, stepSpare more. What
+ * the step keeps clear of (what the keys hold, P's and Q's keycaps only as
+ * low as they are pressed, and every other key's plate, all endGap off; the
+ * wires, wireGap off) is taken wherever it is across the bridge's width and
+ * seen along the edges, and so is the step, a convex piece at a time. Then the
+ * bridge, inside the step: its top and underside each run in its plate's
+ * plane to the leg and on in the other's from it, and across the leg in a
+ * cubic Bézier curve whose control points are all in it (its corners, and
+ * points on L's top and U's underside across it), so the curve is in it too.
+ * The leg is convex, so the solid swept between the two sides is in it. Each
+ * handle reaches along its plane across the leg, but no further than where
+ * the two planes meet. The roundest curve takes a third of that (two thirds
+ * where they meet); where that leaves the bridge under bridgeLeast thick, the
+ * handles at the leg's outer corners lengthen and those at its inner corners
+ * shorten, as little as makes it thick enough. Nowhere tighter than
+ * bridgeRound, it is meshed a station per 5° that it turns, closer where it
+ * turns more. Its ends run bridgeInto into each plate, bridgeSkin inside its
+ * top and underside, so it overlaps them rather than meeting them on their
+ * faces. One to a web lands between where its sides cross the web's edge.
  */
 function bridges(
   wasm: ManifoldToplevel,
@@ -2246,218 +2359,252 @@ function bridges(
 ): { keys: [string, string]; solid: Manifold; land?: Pose }[] {
   const keys = all.flatMap((rib) => rib.keys.map((k) => ({ k, run: rib.run })));
   const square = Math.cos((SIZES.bridgeTurn * Math.PI) / 180);
-  const steep = (SIZES.bridgeSteep * Math.PI) / 180;
   const probe = SIZES.bridgeProbe;
+  const w = SIZES.bridgeWidth / 2;
   const plan = (v: V3) => [...unitPlan(v), 0] as V3;
-  const segments = wires.flatMap((w) =>
-    w.points.slice(1).map((q, i) => ({ a: w.points[i], b: q, r: w.diameter / 2 })),
+  const segments = wires.flatMap((x) =>
+    x.points.slice(1).map((q, i) => ({ a: x.points[i], b: q, r: x.diameter / 2 })),
   );
-  // Each key's plate (but P's and Q's), as a box in its own frame grown by
-  // endGap: a bridge keeps out of every plate but the two it joins.
-  const offPlates = (points: V3[], P: RibKey, Q?: RibKey) =>
-    keys.every(({ k }) => {
-      if (k === P || k === Q) return true;
-      const h = [along(k, d.plateHalf), across(k, d.plateHalf), d.plate / 2];
-      return points.every((x) =>
-        [k.a, k.c, k.n].some(
-          (v, i) =>
-            Math.abs(dot(sub(x, k.o), v) + (i === 2 ? d.plate / 2 : 0)) > h[i] + SIZES.endGap,
-        ),
-      );
-    });
-  // Whether points through a bridge from `from` keep wireGap off the wires.
-  const offWires = (points: V3[], from: V3) => {
-    const reach = Math.max(...points.map((x) => Math.hypot(...sub(x, from))));
-    const near = segments.filter((w) => fromSegment(from, w.a, w.b) < reach + w.r + SIZES.wireGap);
-    return !near.some((w) => points.some((x) => fromSegment(x, w.a, w.b) < w.r + SIZES.wireGap));
+  const hull = (points: Seen[]) => wasm.CrossSection.hull([points]);
+  // A round's polygon outside its circle (its sides' middles on it), so a
+  // wire's keep-out is all of it.
+  const segs = SIZES.cornerSegments;
+  const round = (r: number) => wasm.CrossSection.circle(r / Math.cos(Math.PI / segs), segs);
+  // The frame on key k's edge facing s, at m along e.
+  const frameOn = (k: RibKey, s: number, e: V3, m: number): BridgeFrame => {
+    const edge = keyPoint(k, d.plateHalf, 0, s, 0);
+    const o = add(edge, scale(k.a, (m - dot(edge, e)) / dot(k.a, e)));
+    const out = scale(k.c, s);
+    const x = unit(sub(out, scale(e, dot(out, e))));
+    const up = dot(cross(e, x), k.n) > 0 ? e : scale(e, -1);
+    return { o, x, y: cross(up, x), e: up, w };
   };
-  // Points through the solid between sides left and right, at each station,
-  // about bridgeProbe apart across and down.
-  const filling = (left: Pair[], right: Pair[]) =>
-    left.flatMap((l, j) => {
-      const wide = Math.ceil(Math.hypot(...sub(right[j][0], l[0])) / probe);
-      const down = Math.ceil(
-        Math.max(...[l, right[j]].map((p) => Math.hypot(...sub(p[0], p[1])))) / probe,
-      );
-      return [...Array(wide + 1).keys()].flatMap((x) =>
-        [...Array(down + 1).keys()].map((z) =>
-          lerp(lerp(l[0], right[j][0], x / wide), lerp(l[1], right[j][1], x / wide), z / down),
-        ),
-      );
-    });
-  // The pose on key k's edge facing s, at m along e, `half` wide, heading out
-  // of it (head 1) or into it (-1); across along k.a, the way that makes its
-  // top face up out of the plate.
-  const at = (k: RibKey, s: number, e: V3, head: number, m: number, half: number): Pose => {
-    const edge = keyPoint(k, d.plateHalf, 0, s, -SIZES.bridgeSkin);
-    const t = scale(k.c, s * head);
-    return {
-      p: add(edge, scale(k.a, (m - dot(edge, e)) / dot(k.a, e))),
-      t,
-      c: dot(cross(t, k.a), k.n) > 0 ? k.a : scale(k.a, -1),
-      half,
-      thick: d.plate - 2 * SIZES.bridgeSkin,
-    };
-  };
-  // A straight slab from pose a (on P's edge, heading out of it) to pose b
-  // (heading into what it joins), as `poses(half)` has them, if it fits, at
-  // most `room` wide either side of its middle. Its section `dist` on along b
-  // is `end(b, dist)`'s (b's own unless what it joins twists).
-  const slab = (
-    poses: (half: number) => [Pose, Pose],
-    room: number,
+  // Key k's plate, grown by `grow` all round.
+  const plateBox = (k: RibKey, grow: number): Box => ({
+    o: k.o,
+    axes: [k.a, k.c, k.n],
+    c: [0, 0, -d.plate / 2],
+    h: [along(k, d.plateHalf) + grow, across(k, d.plateHalf) + grow, d.plate / 2 + grow],
+  });
+  // Key k's plate edge facing s, as a bridge meets it.
+  const keyJoint = (k: RibKey, s: number): Joint => ({
+    p: keyPoint(k, d.plateHalf, 0, s, 0),
+    n: k.n,
+    out: scale(k.c, s),
+    thick: d.plate,
+  });
+  // The bridge in frame f joining what its sides meet (each side's, at -w
+  // then w along f.e, [P's, the other's]), if one fits, keeping clear of what
+  // `space` holds and every key's plate but those `joined`; and where each
+  // side crosses the other's edge on its top (`lands`).
+  const stepped = (
+    f: BridgeFrame,
+    sides: [Joint, Joint][],
     space: ReturnType<typeof keySpace>,
-    P: RibKey,
-    Q?: RibKey,
-    end = (b: Pose, dist: number) => sidesOf(ahead(b, dist), 1),
-  ) => {
-    let [a, b] = poses(1);
-    if (dot(a.c, b.c) <= 0) return undefined;
-    if (dot(sub(b.p, a.p), a.t) < SIZES.bridgeLeast) return undefined;
-    if (dot(sub(b.p, a.p), b.t) < SIZES.bridgeLeast) return undefined;
-    // Straight on bridgeOut out of each plate's edge, then straight
-    // across: how steep that is, out of either plate's plane.
-    const way = unit(sub(ahead(b, -SIZES.bridgeOut).p, ahead(a, SIZES.bridgeOut).p));
-    const slope = Math.max(
-      ...[a, b].map((q) => Math.asin(Math.min(1, Math.abs(dot(way, normalOf(q)))))),
+    joined: RibKey[],
+  ): { solid: Manifold; lands: V3[] } | undefined => {
+    // Each side's [U, L], U the higher.
+    const higher = sides.reduce((h, [p, q]) => h + dot(sub(q.p, p.p), add(p.n, q.n)), 0) < 0;
+    const ends = sides.map(([p, q]) => (higher ? [p, q] : [q, p]));
+    const top = (J: Joint): Plane => ({ p: sub(J.p, scale(J.n, SIZES.bridgeSkin)), n: J.n });
+    const under = (J: Joint): Plane => ({
+      p: sub(J.p, scale(J.n, J.thick - SIZES.bridgeSkin)),
+      n: J.n,
+    });
+    const face = (J: Joint, by: number): Plane => ({ p: add(J.p, scale(J.out, by)), n: J.out });
+    const slice = (j: number): Plane => ({ p: add(f.o, scale(f.e, (2 * j - 1) * w)), n: f.e });
+    // The way from p to q, only as far as plane a if it crosses it, and
+    // whether it does.
+    const toward = (p: V3, q: V3, a: Plane): [V3, boolean] => {
+      const [hp, hq] = [p, q].map((x) => dot(sub(x, a.p), a.n));
+      return hp * hq < 0 ? [lerp(p, q, hp / (hp - hq)), true] : [q, false];
+    };
+    // A curve across the leg from p, in plane pa, to q, in plane qa: how far
+    // each end's handle can reach (along its plane across the leg, toward p1
+    // and q1, but no further than where the planes meet), and whether they
+    // meet there.
+    const across = (p: V3, p1: V3, pa: Plane, q: V3, q1: V3, qa: Plane): Curve => {
+      const [[pr, pm], [qr, qm]] = [toward(p, p1, qa), toward(q, q1, pa)];
+      return { p, q, reach: [pr, qr], meets: pm || qm };
+    };
+    // At each side, with the leg's near face o out of L's edge: the leg's
+    // corners (over its far face and its near, under its near and its far);
+    // the top's curve across it (from U's top at the far face to L's at the
+    // near) and the underside's (from U's underside at the far face to L's
+    // at the near); and where its ends are in U and L ([top, underside]).
+    const step = (o: number) =>
+      ends.map(([U, L], j) => {
+        const at = (a: Plane, b: Plane) => meet(a, b, slice(j));
+        const [far, near] = [face(U, SIZES.bridgeOut), face(L, o)];
+        const into = (J: Joint): Pair => {
+          const end = face(J, -SIZES.bridgeInto);
+          return [at(top(J), end), at(under(J), end)];
+        };
+        const leg = [at(top(U), far), at(top(U), near), at(under(L), near), at(under(L), far)];
+        const [q, r] = [at(top(L), near), at(under(U), far)];
+        return {
+          U,
+          L,
+          leg,
+          top: across(leg[0], leg[1], top(U), q, at(top(L), far), top(L)),
+          under: across(r, at(under(U), near), under(U), leg[2], leg[3], under(L)),
+          ends: [into(U), into(L)],
+        };
+      });
+    // The step's convex pieces, seen along the edges: in U's slab, the leg,
+    // and in L's slab.
+    const pieces = (s: ReturnType<typeof step>) =>
+      [
+        s.flatMap((x) => [...x.ends[0], x.top.p, x.under.p]),
+        s.flatMap((x) => x.leg),
+        s.flatMap((x) => [x.top.q, x.under.q, ...x.ends[1]]),
+      ].map((points) => hull(points.map((p) => seenIn(f, p))));
+    const widest = pieces(step(SIZES.bridgeOut));
+    const { min, max } = wasm.CrossSection.union(widest).bounds();
+    // Whether points seen in f, or anything within `by` of them, could
+    // reach the widest step.
+    const near = (points: Seen[], by = 0) =>
+      [0, 1].every(
+        (i) =>
+          Math.max(...points.map((p) => p[i])) + by > min[i] &&
+          Math.min(...points.map((p) => p[i])) - by < max[i],
+      );
+    const t = (p: V3) => dot(sub(p, f.o), f.e);
+    const wired = segments.flatMap(({ a, b, r }) => {
+      const R = r + SIZES.wireGap;
+      const [ta, tb] = [t(a), t(b)];
+      const [lo, hi] = [Math.max(-w - R, Math.min(ta, tb)), Math.min(w + R, Math.max(ta, tb))];
+      if (lo > hi) return [];
+      const at = (x: number) => seenIn(f, ta === tb ? a : lerp(a, b, (x - ta) / (tb - ta)));
+      const ends = [at(lo), at(hi)];
+      if (!near(ends, R)) return [];
+      return [wasm.CrossSection.hull(ends.map((p) => round(R).translate(p)))];
+    });
+    const plates = keys
+      .filter(({ k }) => !joined.includes(k))
+      .map(({ k }) => plateBox(k, SIZES.endGap));
+    const held = [...space.boxes, ...plates]
+      .map((b) => boxSeen(f, b, -w, w))
+      .filter((points) => points.length > 2 && near(points))
+      .map(hull);
+    const kept = wasm.CrossSection.union([...held, ...wired]);
+    // The near face as far out of L's edge as what is in the widest leg is,
+    // wherever across the bridge's width (each side's L meets its edge
+    // there).
+    const off = (p: Seen) =>
+      Math.max(
+        ...ends.map(([, L], j) => {
+          const x = add(
+            f.o,
+            add(scale(f.e, (2 * j - 1) * w), add(scale(f.x, p[0]), scale(f.y, p[1]))),
+          );
+          return dot(sub(x, L.p), L.out);
+        }),
+      );
+    const over = widest[1].intersect(kept).toPolygons().flat();
+    const s = step(
+      over.length ? Math.max(SIZES.bridgeOut, ...over.map(off)) + SIZES.stepSpare : SIZES.bridgeOut,
     );
-    if (slope > steep) return undefined;
-    const half = Math.min(SIZES.bridgeWidth / 2 / Math.cos(slope), room);
-    if (half < SIZES.bridgeWidth / 2) return undefined;
-    [a, b] = poses(half);
-    const [a1, b1] = [ahead(a, SIZES.bridgeOut), ahead(b, -SIZES.bridgeOut)];
-    // Its stations, about bridgeProbe apart across the gap.
-    const steps = Math.ceil(Math.hypot(...sub(b1.p, a1.p)) / probe);
-    const across = (f: number) =>
-      sidesOf(a1, 1).map((pair, j) =>
-        pair.map((x, z) => lerp(x, end(b, -SIZES.bridgeOut)[j][z], f)),
-      ) as [Pair, Pair];
-    const stations = [
-      sidesOf(a, 1),
-      ...[...Array(steps + 1).keys()].map((j) => across(j / steps)),
-      end(b, 0),
+    // A step, if the leg's near face is beyond its far, L's top under U's
+    // top at the near face and U's underside over L's underside at the far;
+    // clear.
+    const fits = s.every(
+      ({ U, L, leg, top, under }) =>
+        dot(sub(leg[1], leg[0]), U.out) > 0 &&
+        dot(sub(leg[2], leg[3]), U.out) > 0 &&
+        dot(sub(top.q, leg[0]), U.n) < 0 &&
+        dot(sub(under.p, leg[3]), L.n) > 0,
+    );
+    if (!fits || !wasm.CrossSection.union(pieces(s)).intersect(kept).isEmpty()) return undefined;
+    // At each side, the top's and the underside's cubics across the leg:
+    // for r 0, the roundest, their handles a third of as far as they reach
+    // (over a step between parallel plates, the smoothest step), or two
+    // thirds where their planes meet (the parabola tangent to both); for r
+    // up to 1, the handles at the leg's outer corners (the top's out of U,
+    // the underside's into L) further, all the way at 1, and the others
+    // shorter, none at 1; and how close the bridge's top and underside come
+    // there, curves sampled finely.
+    const cubic = (k: Curve, wp: number, wq: number) => [
+      k.p,
+      lerp(k.p, k.reach[0], wp),
+      lerp(k.q, k.reach[1], wq),
+      k.q,
     ];
-    const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
-    if (!unfolded(left, right)) return undefined;
-    if (!space.clear(samples(left, right))) return undefined;
-    // Points through it, about bridgeProbe apart: clear of the other
-    // keys' plates, and each wire kept wireGap off.
-    const inside = filling(left, right);
-    if (!offPlates(inside, P, Q) || !offWires(inside, a.p)) return undefined;
-    return laneSolid(
+    const curves = (r: number) =>
+      s.map(({ top, under }) => {
+        const [[to, ti], [uo, ui]] = [top, under].map((k) => {
+          const round = k.meets ? 2 / 3 : 1 / 3;
+          return [round + (1 - round) * r, round * (1 - r)];
+        });
+        return [cubic(top, to, ti), cubic(under, ui, uo)];
+      });
+    const fine = 64;
+    const thick = (r: number) =>
+      Math.min(
+        ...curves(r).map((c, j) => {
+          const line = (z: number) => [
+            s[j].ends[0][z],
+            ...[...Array(fine + 1).keys()].map((i) => bezier(c[z], i / fine)),
+            s[j].ends[1][z],
+          ];
+          return apart(line(0), line(1));
+        }),
+      );
+    // As round as leaves it bridgeLeast thick: the least r that does, to a
+    // 64th, short of 1 (where the inner handles are none and it has corners).
+    const enough = (r: number) => thick(r) >= SIZES.bridgeLeast;
+    let [r, thin] = [63 / 64, 0];
+    if (enough(0)) r = 0;
+    else if (!enough(r)) return undefined;
+    while (r - thin > 1 / 64) {
+      const mid = (r + thin) / 2;
+      if (enough(mid)) r = mid;
+      else thin = mid;
+    }
+    const c = curves(r);
+    // And no tighter anywhere than bridgeRound, so it is round, and meshed
+    // at most 5° a step (closer where it turns more) with no sliver.
+    const bends = c.flat().map(bendOf);
+    if (bends.some((b) => b.tight * SIZES.bridgeRound > 1)) return undefined;
+    // Its sides as laneSolid has them, heading out of U: side 1 along c,
+    // where its heading × c is up.
+    const [U] = ends[0];
+    const order = dot(cross(U.out, f.e), U.n) > 0 ? [0, 1] : [1, 0];
+    const sided = (pick: (j: number) => Pair) => order.map(pick) as [Pair, Pair];
+    const solid = laneSolid(
       wasm,
       [
-        lineSpan(sidesOf(ahead(a, -SIZES.bridgeInto), 1), sidesOf(a1, 1)),
-        // Straight, but meshed finer as it twists from one plate's
-        // section to the other's (a step per 5°), so its twisted faces
-        // shade as one rather than fold along a diagonal.
-        {
-          ...lineSpan(sidesOf(a1, 1), end(b, -SIZES.bridgeOut)),
-          straight: false,
-          steps: stepsOf(turnOf(normalOf(a1), normalOf(b1)) + turnOf(a1.c, b1.c)),
-        },
-        lineSpan(end(b, -SIZES.bridgeOut), end(b, SIZES.bridgeInto)),
+        lineSpan(
+          sided((j) => s[j].ends[0]),
+          sided((j) => [s[j].top.p, s[j].under.p]),
+        ),
+        ...turnStations(bends)
+          .slice(1)
+          .map((b, k, g): Span => {
+            const a = k ? g[k - 1] : 0;
+            return {
+              at: (f) => sided((j) => c[j].map((z) => bezier(z, a + (b - a) * f)) as Pair),
+              steps: 1,
+            };
+          }),
+        lineSpan(
+          sided((j) => [s[j].top.q, s[j].under.q]),
+          sided((j) => s[j].ends[1]),
+        ),
       ],
       'bridge',
     );
-  };
-  // PROTOTYPE: a stepped bridge from the higher plate, U (pose a on its edge,
-  // heading out, for its plane and edge), to the lower, L (pose b on its
-  // edge, heading in): straight out of U's edge in its plane, down a leg in
-  // the gap and in to L in its plane, under L's keycap's room as it is
-  // pressed. The leg's near face stands along L's normal, as close to L's edge
-  // as clears (from bridgeLeast out, every stepProbe); its far face is U's
-  // edge face carried on down, so the two are one face. The top is as wide as
-  // the leg comes up through U's plane, square out of U's edge, wherever along
-  // it that is, if `fits` it there. The leg is at least stepLeast thick.
-  const stepped = (
-    a: Pose,
-    b: Pose,
-    U: RibKey,
-    L: RibKey,
-    space: ReturnType<typeof keySpace>,
-    fits: (x: V3) => boolean,
-  ) => {
-    if (dot(a.c, b.c) <= 0) return undefined;
-    const out = scale(b.t, -1);
-    if (dot(sub(a.p, b.p), out) > SIZES.stepReach) return undefined;
-    // A point on L's top, o out from L's edge on side j; up along L's normal
-    // to U's top; onto U's edge face; down that face to L's underside.
-    const leg = (o: number, j: number) => add(sidesOf(b, 1)[j][0], scale(out, o));
-    const onU = (x: V3) => add(x, scale(L.n, -dot(sub(x, a.p), U.n) / dot(L.n, U.n)));
-    const toEdge = (x: V3) => sub(x, scale(a.t, dot(sub(x, a.p), a.t)));
-    const down = unit(sub(L.n, scale(a.t, dot(L.n, a.t))));
-    const toFoot = (x: V3) =>
-      add(x, scale(down, (-b.thick - dot(sub(x, b.p), L.n)) / dot(down, L.n)));
-    for (let o = SIZES.bridgeLeast; ; o += SIZES.stepProbe) {
-      const tops = [0, 1].map((j) => onU(leg(o, j)));
-      const backs = tops.map((x) => sub(toEdge(x), scale(U.n, a.thick)));
-      const feet = backs.map(toFoot);
-      const thin = Math.min(
-        ...[0, 1].flatMap((j) => [
-          dot(sub(backs[j], tops[j]), out),
-          dot(sub(feet[j], leg(o, j)), out),
-        ]),
-      );
-      if (thin < SIZES.stepLeast) return undefined;
-      if (!backs.every(fits)) return undefined;
-      const top: Pose = {
-        ...a,
-        p: toEdge(lerp(tops[0], tops[1], 0.5)),
-        half: Math.abs(dot(sub(tops[1], tops[0]), a.c)) / 2,
-      };
-      const corners = [
-        sidesOf(ahead(top, -SIZES.bridgeInto), 1),
-        [0, 1].map((j): Pair => [tops[j], backs[j]]),
-        [0, 1].map((j): Pair => [leg(o, j), feet[j]]),
-        sidesOf(ahead(b, SIZES.bridgeInto), 1),
-      ] as [Pair, Pair][];
-      // The leg stands at least as tall as the plates are thick.
-      if (dot(sub(backs[0], feet[0]), L.n) < d.plate) return undefined;
-      // Its stations, about bridgeProbe apart along each stretch.
-      const stations = corners.slice(1).flatMap((q, i) => {
-        const p = corners[i];
-        const n = Math.ceil(
-          Math.max(...[0, 1].map((j) => Math.hypot(...sub(q[j][0], p[j][0])))) / probe,
-        );
-        return [...Array(n + (i === 2 ? 1 : 0)).keys()].map(
-          (f) => p.map((pair, j) => pair.map((x, z) => lerp(x, q[j][z], f / n))) as [Pair, Pair],
-        );
-      });
-      const [left, right] = [0, 1].map((j) => stations.map((x) => x[j]));
-      if (!unfolded(...([0, 1].map((j) => corners.map((x) => x[j])) as [Pair[], Pair[]])))
-        return undefined;
-      if (!space.clear(samples(left, right))) continue;
-      if (!offPlates(filling(left, right), U, L)) continue;
-      return laneSolid(
-        wasm,
-        // The leg meshed finer as it twists from U's section to L's (a step
-        // per 5°), so its faces shade as one.
-        corners
-          .slice(1)
-          .map((q, i) =>
-            i === 1
-              ? { ...lineSpan(corners[i], q), straight: false, steps: stepsOf(turnOf(U.n, L.n)) }
-              : lineSpan(corners[i], q),
-          ),
-        'bridge',
-      );
-    }
+    const lands = sides.map(([, J], j) => meet({ p: J.p, n: J.n }, face(J, 0), slice(j)));
+    return { solid, lands };
   };
   // From the middle of the stretch lo to hi outward, either way in turn, the
-  // first place a bridge fits: `make(m, room)`, room how wide it may be
-  // either side of m.
-  const nearestMiddle = (
-    lo: number,
-    hi: number,
-    make: (m: number, room: number) => Manifold | undefined,
-  ) => {
-    const middle = (lo + hi) / 2;
-    const tries = Math.floor((hi - lo) / 2 / probe);
+  // first place a bridge fits: `make(m)`, its middle at m.
+  const nearestMiddle = <T>(lo: number, hi: number, make: (m: number) => T | undefined) => {
+    const [from, to] = [lo + w + SIZES.bridgeInset, hi - w - SIZES.bridgeInset];
+    const tries = Math.floor((to - from) / 2 / probe);
     for (let j = 0; j <= 2 * tries; j++) {
-      const m = middle + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * probe;
-      const solid = make(m, Math.min(m - lo, hi - m) - SIZES.bridgeInset);
-      if (solid) return solid;
+      const made = make((from + to) / 2 + (j % 2 ? 1 : -1) * Math.ceil(j / 2) * probe);
+      if (made) return made;
     }
     return undefined;
   };
@@ -2474,46 +2621,19 @@ function bridges(
         [-1, 1].map((u) => dot(corner(d, k, u, s, 0), e)).sort((x, y) => x - y);
       const [p, q] = [span(P, sP), span(Q, sQ)];
       const [lo, hi] = [Math.max(p[0], q[0]), Math.min(p[1], q[1])];
-      if (hi - lo < SIZES.bridgeWidth + 2 * SIZES.bridgeInset) return [];
       const space = keySpace(cfg, frames, [P.name, Q.name]);
-      const solid =
-        nearestMiddle(lo, hi, (m, room) =>
-          slab((half) => [at(P, sP, e, 1, m, half), at(Q, sQ, e, -1, m, half)], room, space, P, Q),
-        ) ??
-        // PROTOTYPE: else stepped, from the higher plate (the one whose edge
-        // stands above the other's plate) down to the lower, its leg at m
-        // along e: as wide as stepWidth, else bridgeWidth, its top on the
-        // stretch.
-        [SIZES.stepWidth, SIZES.bridgeWidth].reduce<Manifold | undefined>(
-          (found, width) =>
-            found ??
-            nearestMiddle(lo, hi, (m, room) => {
-              const half = Math.min(width / 2, room);
-              if (half < SIZES.bridgeWidth / 2) return undefined;
-              const high = dot(sub(at(P, sP, e, 1, m, half).p, Q.o), Q.n) > 0;
-              const [U, sU, L, sL] = high ? [P, sP, Q, sQ] : [Q, sQ, P, sP];
-              const fits = (x: V3) =>
-                dot(x, e) >= lo + SIZES.bridgeInset && dot(x, e) <= hi - SIZES.bridgeInset;
-              return stepped(
-                at(U, sU, e, 1, m, half),
-                at(L, sL, e, -1, m, half),
-                U,
-                L,
-                space,
-                fits,
-              );
-            }),
-          undefined,
-        );
-      return solid ? [{ keys: [P.name, Q.name] as [string, string], solid }] : [];
+      const sides: [Joint, Joint][] = [0, 1].map(() => [keyJoint(P, sP), keyJoint(Q, sQ)]);
+      const made = nearestMiddle(lo, hi, (m) =>
+        stepped(frameOn(P, sP, e, m), sides, space, [P, Q]),
+      );
+      return made ? [{ keys: [P.name, Q.name] as [string, string], solid: made.solid }] : [];
     }),
   );
   // PROTOTYPE: bridges from a key's plate edge to the side of a joined web
   // (a rib's end carried on from its key's plate to another's) that faces it
-  // within webReach, of another run and joining neither of the web's keys: a
-  // straight slab as between two plates, square on the key's edge, landing on
-  // the web's side as the web's section there (bridgeSkin in from its top and
-  // its underside, following its twist), and running bridgeInto on into it.
+  // within webReach, of another run and joining neither of the web's keys,
+  // as between two plates: each side of the bridge meets the web as its pose
+  // nearest that side (its poses a 64th of the web apart) has it.
   const webs = all.flatMap((rib, i) =>
     [0, 1].flatMap((end) => {
       const x = ends[i][end];
@@ -2526,7 +2646,6 @@ function bridges(
         {
           run: rib.run,
           name: `${k.name} web`,
-          go,
           keys: [k.name, x.join.key],
           poses: [...Array(fine + 1).keys()].map((j) => go(j / fine)),
         },
@@ -2536,89 +2655,60 @@ function bridges(
   const toWebs = webs.flatMap((web) =>
     keys.flatMap(({ k: P, run }) => {
       if (run === web.run || web.keys.includes(P.name)) return [];
-      // The web's side facing P, at each of its poses, and P's side facing it.
       const middle = web.poses[web.poses.length >> 1];
       const sP = Math.sign(dot(P.c, sub(middle.p, P.o)));
-      const sides = web.poses.map((q) => {
-        const s = Math.sign(dot(q.c, sub(P.o, q.p)));
-        return { q, s, top: poseSide(q, s)[0] };
-      });
-      const e = P.a;
-      const along = sides.map((x) => dot(x.top, e));
-      const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), e)).sort((x, y) => x - y);
-      // The web's pose whose side is m along e (between the two poses
-      // either side of it, the nearer), if it faces P, within reach.
-      const onWeb = (m: number) => {
-        const j = along.findIndex((x, i) => i > 0 && (x - m) * (along[i - 1] - m) <= 0);
-        if (j < 1) return undefined;
-        const near = Math.abs(along[j] - m) < Math.abs(along[j - 1] - m) ? j : j - 1;
-        const { q, s, top } = sides[near];
-        if (s !== sides[j].s || s !== sides[j - 1].s) return undefined;
+      const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), P.a)).sort((x, y) => x - y);
+      const space = keySpace(cfg, frames, [P.name]);
+      const found = nearestMiddle(lo, hi, (m) => {
+        const f = frameOn(P, sP, P.a, m);
+        // The web's poses across the bridge's width, and the one either
+        // side, each with its side facing P: all of them facing it, and the
+        // middle one squarely, within reach.
+        const along = web.poses.map((q) => dot(sub(q.p, f.o), f.e));
+        const ahead = along[along.length - 1] > along[0] ? 1 : -1;
+        const first = along.findIndex((t) => ahead * t > -w) - 1;
+        const last = along.findIndex((t) => ahead * t > w);
+        if (first < 0 || last < 0) return undefined;
+        const across = web.poses
+          .slice(first, last + 1)
+          .map((q, j) => ({ q, s: Math.sign(dot(q.c, sub(P.o, q.p))), t: along[first + j] }));
+        const { q, s } = across[across.length >> 1];
+        if (across.some((x) => x.s !== s)) return undefined;
         if (dot(plan(scale(P.c, sP)), plan(scale(q.c, s))) > -square) return undefined;
         if (dot(P.n, normalOf(q)) < square) return undefined;
-        const edge = at(P, sP, e, 1, m, 1).p;
-        if (Math.hypot(...sub(top, edge)) > SIZES.webReach) return undefined;
-        // How far along the web it has on either side.
-        const spare = Math.min(
-          ...[0, sides.length - 1].map((i) => Math.abs(dot(sub(sides[i].top, top), q.t))),
-        );
-        return { q, s, top, spare };
-      };
-      const space = keySpace(cfg, frames, [P.name]);
-      let landed: Pose | undefined;
-      const solid = nearestMiddle(lo, hi, (m, room) => {
-        const w = onWeb(m);
-        if (!w) return undefined;
-        const { q, s, top } = w;
-        const n = normalOf(q);
-        const t = scale(q.c, -s);
-        const pose = (half: number): Pose => ({
-          p: sub(top, scale(n, SIZES.bridgeSkin)),
-          t,
-          c: dot(cross(t, q.t), n) > 0 ? q.t : scale(q.t, -1),
-          half,
-          thick: q.thick - 2 * SIZES.bridgeSkin,
+        const top = poseSide(q, s)[0];
+        if (Math.hypot(...sub(top, f.o)) > SIZES.webReach) return undefined;
+        // The web as each side of the bridge meets it: its pose nearest.
+        const nearest = (t: number) =>
+          across.reduce((x, y) => (Math.abs(y.t - t) < Math.abs(x.t - t) ? y : x));
+        const sides = [-w, w].map((t): [Joint, Joint] => {
+          const x = nearest(t);
+          const joint = {
+            p: poseSide(x.q, s)[0],
+            n: normalOf(x.q),
+            out: scale(x.q.c, s),
+            thick: x.q.thick,
+          };
+          return [keyJoint(P, sP), joint];
         });
-        // Each of its sides lands on the web's side where the web's pose
-        // across from it is, as that pose's section, so it follows the
-        // web's twist.
-        const land = (b: Pose, dist: number) =>
-          [-1, 1].map((u): Pair => {
-            const x = add(b.p, scale(b.c, u * b.half));
-            let [f0, f1] = [0, 1];
-            const ahead0 = dot(sub(x, web.go(0).p), web.go(0).t) > 0;
-            for (let k = 0; k < 40; k++) {
-              const f = (f0 + f1) / 2;
-              const g = web.go(f);
-              if (dot(sub(x, g.p), g.t) > 0 === ahead0) f0 = f;
-              else f1 = f;
-            }
-            const g = web.go((f0 + f1) / 2);
-            const gn = normalOf(g);
-            const p = add(
-              sub(poseSide(g, s)[0], scale(gn, SIZES.bridgeSkin)),
-              scale(g.c, -s * dist),
-            );
-            return [p, sub(p, scale(gn, g.thick - 2 * SIZES.bridgeSkin))];
-          }) as [Pair, Pair];
-        return slab(
-          (half) => [at(P, sP, e, 1, m, half), (landed = pose(half))],
-          Math.min(room, w.spare - SIZES.bridgeInset),
-          space,
-          P,
-          undefined,
-          land,
-        );
+        const made = stepped(f, sides, space, [P]);
+        if (!made) return undefined;
+        // It lands on the web between where its sides cross the web's edge,
+        // heading into the web.
+        const [a, b] = made.lands;
+        const n = normalOf(q);
+        const c = unit(sub(b, a));
+        const t = scale(unit(cross(n, c)), dot(cross(n, c), q.c) * s > 0 ? -1 : 1);
+        const land: Pose = {
+          p: lerp(a, b, 0.5),
+          t,
+          c: dot(cross(t, c), n) > 0 ? c : scale(c, -1),
+          half: Math.hypot(...sub(b, a)) / 2,
+          thick: q.thick,
+        };
+        return { solid: made.solid, land };
       });
-      return solid
-        ? [
-            {
-              keys: [P.name, web.name] as [string, string],
-              solid,
-              land: landed as Pose | undefined,
-            },
-          ]
-        : [];
+      return found ? [{ keys: [P.name, web.name] as [string, string], ...found }] : [];
     }),
   );
   return [...between, ...toWebs];
