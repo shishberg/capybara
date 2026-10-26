@@ -2,8 +2,7 @@
 // on one footprint, every drop stands flush on the rail (but where a fused
 // neighbour overlaps it), and the seams found between each class of parts
 // (rib, bridge, rail or tie, wall) are no more than they were when pinned. A
-// class's count can only fall: if it falls, lower its pin. No class with a
-// bridge in it is pinned: bridges must meet the ribs cleanly. Two fused drops'
+// class's count can only fall: if it falls, lower its pin. Two fused drops'
 // ribs leave no gap or thin skin between them (no slit), and no more slivers
 // than FUSED_SLIVERS.
 import { test } from 'node:test';
@@ -96,7 +95,10 @@ function classOf(s: Seam) {
  *    landing is meant. The walls
  *    don't read the bridges, but the frame's one union re-meshes with them,
  *    and the walls' and rail's spots of no area or a few hundredths come and
- *    go with it. None of these spots touches a bridge.
+ *    go with it. bridge+rib 4: the middle–ring and ring–pinky bottom
+ *    bridges each leave two ledges where their curved sides meet the ring's
+ *    rib (a strip under a millimetre across, or a curl of the side past the
+ *    rib's face).
  *  - the base plate under the frame: the frame is cut off level with the
  *    plate's top (skin_mm), and a base screw's boss stands on the plate
  *    against the rail at each of six spots (screwSpots), mostly the outline's
@@ -136,6 +138,7 @@ function classOf(s: Seam) {
  *    there; the crease and shading each had move), rib by 1 down.
  */
 const PINS: Record<string, number> = {
+  'bridge+rib': 4,
   rail: 15,
   'rail+rib': 19,
   'rail+wall': 3,
