@@ -89,52 +89,40 @@ tie neighbouring ribs together up at the plates. Where two keys of different
 ribs face each other (their facing edges turned at most 35° from square on in
 plan, their plates at most 35° apart), a bridge spans the gap, however wide,
 at the middle of the stretch both plates' edges share, or the nearest place
-to it (tried every 0.5 mm either way) where it can go. It is a straight slab
-from one plate's edge to the other's: its top runs straight from top edge to
-top edge and its underside from underside edge to underside edge, its sides
-square on the edges, so where the plates are at different heights it slopes,
-still the plate's thickness deep. Square to itself it is then thinner (the
-plate's thickness times the slope's cosine), so it is made wider by as much:
-4 mm wide when level, 4 mm over the cosine where it slopes, as far as the
-shared stretch holds with 1 mm to spare at each end. It runs 0.5 mm into
-each plate in that plate's own plane and 0.05 mm straight on out of it
-before it turns. It is left out where it would be steeper than 60° (thinner
-than half the plate), where the gap in either plate's plane is under 0.5 mm,
-where another key's plate is in the way, or where it would come near what the
-keys hold (the two keys' keycaps only as low as they are pressed) or near a
-wire (the router doesn't route round the frame, so the bridges keep 0.5 mm
-off the routed wires). Where no straight slab goes, the bridge is
-**stepped**: square out of the higher plate's edge in its plane, down a leg,
-and in to the lower plate's edge in its plane, so it passes under the lower
-key's keycap room rather than through it. The leg's far face is the higher
-plate's edge face carried on down; its near face stands square to the lower
-plate, as close to its edge as clears that keycap room (from 0.5 mm, every
-0.02 mm), the leg at least 0.9 mm thick. The top comes out of the higher
-plate's edge wherever along it the leg comes up, as wide as the leg is
-there. It is 8 mm wide if that fits, else 4 mm, and it doesn't keep off the
-wires. A key's plate
-edge that faces the side of a web (a rib's end carried on from its key's
-plate to another key's) within 15 mm, of another rib and joining neither of
-the web's keys, is bridged to it as to a plate: the slab lands on the web's
-side and follows its twist. On Swung in there are fourteen:
+to it (tried every 0.5 mm either way) where it can go, 4 mm wide. A key's
+plate edge that faces the side of a web (a rib's end carried on from its
+key's plate to another key's) within 15 mm, of another rib and joining
+neither of the web's keys, is bridged to it as to a plate, landing on the
+web's side.
 
-- straight between every two neighbouring finger keys but ring and pinky at
-  the back and bottom rows (up to 6.2 mm across and 59° steep, middle and
-  ring at the back the widest, 6.8 mm wide);
-- straight between the thumb rows, thumb_far to thumb_x2 and thumb_home to
-  thumb_x1 (7.3 and 7.7 mm across);
-- stepped between ring and pinky at the back row, where the pinky's plate
-  stands 12.5 mm above the ring's (a straight slab would slope 76°): out
-  1.3 mm from the pinky's edge, down a 14.5 mm leg at least 1.2 mm thick, and
-  in 1.0 mm to the ring's edge, 8 mm wide (8.5 mm where it leaves the pinky:
-  the leg is square to the ring, which is 19° off square to the pinky);
-- from thumb_near's edge to the web from thumb_x1 to the middle column's
-  bottom key, 6.9 mm across and 3.8 mm down, 4.6 mm wide.
+Every bridge is a **step**: out of the higher plate's edge in its plane, down
+a leg and in to the lower plate in its plane, so it passes under the lower
+key's keycap room rather than through it. It keeps clear of what the keys
+hold (the two keys' keycaps only as low as they are pressed) and every other
+key's plate; for now it ignores the wires, which are very approximate. The
+leg's near face stands just out of the lower plate's edge, or out past what
+is under the lower plate's top there with its corner chamfered back past a
+keycap room that overhangs it; failing that, out past all of it; failing
+that, square to the higher plate's edge, as far out as the leg needs to be
+thick. The bridge's top and underside are each one cubic curve across the
+leg, leaving the higher plate along its plane and reaching the lower along
+its own; the leg is the hull of the curves' control points, so it holds the
+curves. They are as smooth as leaves the bridge 1.3 mm thick where it is
+thinnest, turning off the plate at an inner corner (the top's at the lower
+plate, the underside's at the higher), so sharpening it, only as far as that
+needs. Where no step that thick fits anywhere along the edge, the thickest
+that fits, down to 0.4 mm.
 
-Ring and pinky at the bottom row aren't bridged: the pinky's plate stands
-6.8 mm below the ring's with 1.3 mm between their edges, too steep for a
-straight slab (80°), and between the ring's tile and the pinky's keycap room
-as it is pressed there's no room for a stepped bridge's leg.
+On Swung in there are seventeen: between every two neighbouring finger keys
+of the matrix (inner–index, index–middle, middle–ring and ring–pinky at every
+row), between the thumb rows (thumb_far–thumb_x2, thumb_home–thumb_x1), and
+to webs: ring_bottom to thumb_near's web, and pinky_bottom and thumb_near to
+thumb_x1's. Three are thinner, no step 1.3 mm thick fitting anywhere along
+their edges: ring_bottom–pinky_bottom and pinky_bottom to thumb_x1's web
+(0.9 mm), and ring_bottom to thumb_near's web (0.7 mm).
+
+The editor's `?bridge=` bar (dev only, ← →) switches to `wired`, where bridges
+keep 0.5 mm off the routed wires too: pinky_bottom's bridge to its web goes.
 
 Where two keys are too steep or too far round to
 web, the rib is parted there, and each end is rounded if the round clears the

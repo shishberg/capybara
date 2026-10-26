@@ -91,8 +91,8 @@ function classOf(s: Seam) {
  *    foot, so the tie meets the rail at an angle and its fillet there leaves
  *    a sliver and a gap (rail).
  *  - bridges (PROTOTYPE): a stepped bridge between facing neighbouring keys
- *    where one fits, and from a key's edge to a web's side facing it (eight
- *    on Swung in); where one lands on a web, what is within landMeet of its
+ *    where one fits, and from a key's edge to a web's side facing it (those
+ *    on Swung in are in docs/editor-chassis.md); where one lands on a web, what is within landMeet of its
  *    landing is meant. The walls
  *    don't read the bridges, but the frame's one union re-meshes with them,
  *    and the walls' and rail's spots of no area or a few hundredths come and

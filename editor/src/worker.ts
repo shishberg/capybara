@@ -1,6 +1,7 @@
 import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
 import { buildSolidAsync } from './solid';
+import { setBridgeStyle } from './capybara';
 import { wiring, type Wiring } from './wiring';
 import type { Config, Project } from './geometry';
 const engine = Module({ locateFile: () => wasmUrl }).then((m) => {
@@ -40,8 +41,9 @@ const route = (cfg: Config): Promise<Wiring> => {
     r.postMessage({ id, cfg });
   });
 };
-self.onmessage = async (e: MessageEvent<{ id: number; project: Project }>) => {
+self.onmessage = async (e: MessageEvent<{ id: number; project: Project; bridge?: string }>) => {
   const { id, project } = e.data;
+  setBridgeStyle(e.data.bridge);
   try {
     const result = await buildSolidAsync(await engine, project, route);
     self.postMessage(

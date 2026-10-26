@@ -118,6 +118,18 @@ import {
 } from './capybara-walls';
 import type { Wire } from './wiring';
 
+/**
+ * PROTOTYPE, throwaway: which constraints a bridge keeps (?bridge= in the
+ * editor, bridge-prototype.ts): `loose` clear of what the keys hold and every
+ * other key's plate, but not the wires (wiring is very approximate for now);
+ * `wired` wireGap off the wires too.
+ */
+export const BRIDGE_STYLES = ['loose', 'wired'] as const;
+export let bridgeStyle: (typeof BRIDGE_STYLES)[number] = 'loose';
+export const setBridgeStyle = (style: string | undefined) => {
+  bridgeStyle = BRIDGE_STYLES.find((x) => x === style) ?? 'loose';
+};
+
 /** Construction sizes in mm. */
 export const SIZES = {
   /** The ends and the rail are this thick, unless chassis.wall_mm says. */
@@ -189,31 +201,24 @@ export const SIZES = {
    * out of the higher plate's edge in its plane (from bridgeOut out of it),
    * down a leg and into the lower in its plane, the leg's near face as close
    * to the lower's edge as clears what the keys hold and every other key's
-   * plate (endGap off) and the wires (wireGap off), stepSpare more, its corner
-   * over that cut back as little as clears the rest. It fills the step, at
-   * least bridgeLeast thick, its outer corners rounded and its inner ones
-   * sharp; a corner with a side shorter than bridgeFine is none, and no two
-   * of its stations are closer than that. It runs bridgeInto into each plate,
-   * bridgeSkin inside its top and underside (bridges). A key's plate edge
-   * facing a joined web's side within webReach is bridged to it as to a plate.
+   * plate (endGap off; and the wires, wireGap off, in bridgeStyle `wired`),
+   * stepSpare more, its corner over that cut back as little as clears the
+   * rest. Its top and underside are each a cubic curve in the step's leg, as
+   * smooth as leaves it bridgeLeast thick (or, where none fits that thick,
+   * the thickest down to bridgeThin), sharpened toward its inner corners a
+   * bridgeSharp step at a time; no two of its stations are closer than
+   * bridgeFine. It runs bridgeInto into each plate, bridgeSkin inside its top
+   * and underside (bridges). A key's plate edge facing a joined web's side
+   * within webReach is bridged to it as to a plate.
    */
   bridgeWidth: 4,
   bridgeInset: 1,
   bridgeInto: 0.5,
-  /**
-   * PROTOTYPE: where no step fits between two keys, a strut: a pillar down
-   * the higher plate's edge face, from strutIn into it (outside the tile
-   * under it) to as far out of it as clears, at most strutThick[1] and at
-   * least strutThick[0], keyed bridgeInto into the plate, to a slab under
-   * the lower plate's top by strutDrop that runs bridgeInto into it, so
-   * below every keycap's room.
-   */
-  strutIn: 0.04,
-  strutThick: [0.4, 1] as [number, number],
-  strutDrop: 1,
   bridgeTurn: 35,
   bridgeLeast: 1.3,
+  bridgeThin: 0.4,
   bridgeFine: 0.05,
+  bridgeSharp: 0.125,
   bridgeSkin: 0.001,
   bridgeOut: 0.05,
   stepSpare: 0.01,
@@ -2299,28 +2304,6 @@ const bezier = ([a, b, c, d]: V3[], f: number) => {
     add(scale(c, 3 * g * f * f), scale(d, f * f * f)),
   );
 };
-/**
- * PROTOTYPE: corner c between p and q rounded by the parabola tangent to both
- * its sides, from as far along each as the shorter is long: where it leaves
- * each side and the round from one to the other; or none if that is under
- * bridgeFine.
- */
-function roundOf(p: V3, c: V3, q: V3) {
-  const reach = Math.min(Math.hypot(...sub(c, p)), Math.hypot(...sub(q, c)));
-  if (reach < SIZES.bridgeFine) return undefined;
-  const [a, b] = [partway(c, p, reach), partway(c, q, reach)];
-  const curve = [a, lerp(a, c, 2 / 3), lerp(b, c, 2 / 3), b];
-  return { at: (f: number) => bezier(curve, f) };
-}
-/**
- * PROTOTYPE: the line from p round corner c to q (roundOf; straight from p to
- * q if no round), finely: points along it.
- */
-function outlineOf(p: V3, c: V3, q: V3) {
-  const round = roundOf(p, c, q);
-  const fine = 64;
-  return round ? [p, ...[...Array(fine + 1).keys()].map((i) => round.at(i / fine)), q] : [p, q];
-}
 /** The line through points, at f (0 to 1) of the way along it by length. */
 function byLength(points: V3[]) {
   const run = [0];
@@ -2332,12 +2315,6 @@ function byLength(points: V3[]) {
     const g = (f * total - run[i - 1]) / (run[i] - run[i - 1] || 1);
     return lerp(points[i - 1], points[i], Math.min(1, Math.max(0, g)));
   };
-}
-/** From p toward q, h along, but no further than q. */
-function partway(p: V3, q: V3, h: number) {
-  const v = sub(q, p);
-  const long = Math.hypot(...v);
-  return long > h ? add(p, scale(v, h / long)) : q;
 }
 /**
  * PROTOTYPE: where along a line at(f) (f from 0 to 1) to put stations: the
@@ -2449,19 +2426,25 @@ const apart = (p: V3[], q: V3[]) =>
  * far as keeps the leg clear of what is over L there, stepSpare more. What
  * the step keeps clear of (what the keys hold, P's and Q's keycaps only as
  * low as they are pressed, and every other key's plate, all endGap off; the
- * wires, wireGap off) is taken wherever it is across the bridge's width and
- * seen along the edges, and so is the step, a convex piece at a time. Where
- * the leg's near face clears what is below L's top but not what is over it
- * (a pressed keycap overhanging L's edge), its corner over that face is cut
- * back by a chamfer from L's top there to U's top, as little as clears it,
- * so the leg stays convex. Then the bridge fills the step: its top runs along
- * U's top, over the leg's corner and down its near face (or chamfer) to L's
- * top, and its underside along U's underside, down the leg's far face and
- * along L's underside. Its outer corners (the top's over the leg, the
- * underside's under it) are rounded, each by the parabola tangent to its
- * sides, which lies in the triangle of its corner and its ends on them, so
- * in the leg; its inner corners are sharp. It is meshed a station per 5° that
- * it turns. Its ends run bridgeInto into each plate, bridgeSkin inside its
+ * wires, wireGap off, if bridgeStyle is `wired`) is taken wherever it is
+ * across the bridge's width and seen along the edges, and so is the step, a
+ * convex piece at a time. Where the leg's near face clears what is below L's
+ * top but not what is over it (a pressed keycap overhanging L's edge), its
+ * corner over that face is cut back by a chamfer from L's top there to U's
+ * top, as little as clears it, so the leg stays convex; if that leaves no
+ * step, the near face goes out past all of it, or else stands square to U's
+ * edge, as far out as the leg needs to be thick. The bridge's top and
+ * underside each cross the leg as a cubic Bézier curve, leaving U along its
+ * plane and reaching L along its own, its inner control points on those
+ * planes: out along U's to the chamfer or the near face, and back along L's
+ * to the far face (or each only as far as where the two planes cross). The
+ * leg is the hull of both curves' control points, so it holds them, as a
+ * convex hull holds its curve. The curves are as smooth as leaves the bridge
+ * bridgeLeast thick, one inner control point drawn toward the other (turning
+ * the curve's end at its inner corner off the plate's plane, so sharpening
+ * that corner) only as far as that needs; where no step that thick fits
+ * anywhere along the edges, the thickest that fits, down to bridgeThin. It is
+ * meshed a station per 5° that it turns. Its ends run bridgeInto into each plate, bridgeSkin inside its
  * top and underside, so it overlaps them rather than meeting them on their
  * faces. One to a web lands between where its sides cross the web's edge.
  */
@@ -2519,6 +2502,7 @@ function bridges(
     sides: [Joint, Joint][],
     space: ReturnType<typeof keySpace>,
     joined: RibKey[],
+    leasts: number[],
   ): { solid: Manifold; lands: V3[] } | undefined => {
     // Each side's [U, L], U the higher.
     const higher = sides.reduce((h, [p, q]) => h + dot(sub(q.p, p.p), add(p.n, q.n)), 0) < 0;
@@ -2535,45 +2519,64 @@ function bridges(
       const [hp, hq] = [p, q].map((x) => dot(sub(x, a.p), a.n));
       return hp * hq < 0 ? lerp(p, q, hp / (hp - hq)) : q;
     };
-    // At each side, with the leg's near face o out of L's edge and its corner
-    // over that cut back by a chamfer, from L's top at the near face to U's
-    // top `cut` of the way across from the far face (none at 1): the leg's
-    // corners (over its far face, the chamfer's top and foot, under its near
-    // face and its far), where its near face meets U's top, and the
+    // At each side, with the leg's near face `near` (of that side's U and L)
+    // and its corner over that cut back by a chamfer, from L's top at the
+    // near face to U's top `cut` of the way across from the far face (none
+    // at 1): where its near face and the chamfer meet U's top, and the
     // chamfer's plane, facing out; the leg below L's top, before the chamfer
-    // (`low`: L's top at the far face and the near, the leg's corners under);
-    // the bridge's top and underside round the step's outline across it
-    // (the top from U's top at the far face, round where it meets the
-    // chamfer, or the near face, or L's top, if sooner, and down to L's top
-    // at the near face; the underside from U's underside at the far face,
-    // down it and round where it meets L's underside, to the near face:
-    // each [from, corner, to]); and where its ends are in U and L ([top,
-    // underside]).
-    const step = (o: number, cut: number) =>
+    // (`low`: L's top at the far face and the near, and the lower of U's and
+    // L's undersides at the near face and the far); the bridge's top and
+    // underside across the leg, each a cubic Bézier curve (ctrl) leaving U
+    // at the far face along its plane and reaching L at the near face along
+    // its own, its inner control points on those planes (out along U's to
+    // the chamfer or the near face, or where it crosses L's if sooner, and
+    // back along L's to the far face, or to that crossing); the leg is
+    // their hull, so holds them. One inner control point is `loose`: drawn
+    // toward the other, it turns the curve's end at its inner corner (the
+    // top's at L, the underside's at U, or at L if U's underside is the
+    // lower) off the plate's plane, so that corner sharpens. And where its
+    // ends are in U and L ([top, underside]).
+    const step = (nearOf: (U: Joint, L: Joint) => Plane, cut: number) =>
       ends.map(([U, L], j) => {
         const at = (a: Plane, b: Plane) => meet(a, b, slice(j));
-        const [far, near] = [face(U, SIZES.bridgeOut), face(L, o)];
+        const [far, near] = [face(U, SIZES.bridgeOut), nearOf(U, L)];
         const into = (J: Joint): Pair => {
           const end = face(J, -SIZES.bridgeInto);
           return [at(top(J), end), at(under(J), end)];
         };
         const [over, edge, foot] = [at(top(U), far), at(top(U), near), at(top(L), near)];
         const corner = lerp(over, edge, cut);
-        const leg = [over, corner, foot, at(under(L), near), at(under(L), far)];
+        const [Ufar, Unear, Lfar, Lnear] = [U, L].flatMap((J) =>
+          [far, near].map((x) => at(under(J), x)),
+        );
+        const sunk = dot(sub(Ufar, Lfar), L.n) < 0;
         const inward = unit(cross(sub(corner, foot), f.e));
         const chamfer =
           cut < 1
-            ? { p: foot, n: scale(inward, dot(sub(leg[4], foot), inward) > 0 ? -1 : 1) }
+            ? { p: foot, n: scale(inward, dot(sub(Lfar, foot), inward) > 0 ? -1 : 1) }
             : undefined;
+        // From `from` on U's plane at the far face toward `to` on it, as far
+        // as L's plane `by` if it crosses it there, then to `end` on that at
+        // the near face, along it from the far face if it didn't cross.
+        const curve = (from: V3, to: V3, by: Plane, end: V3, loose: number) => {
+          const crest = toward(from, to, by);
+          return { ctrl: [from, crest, crest === to ? at(by, far) : crest, end], loose };
+        };
         return {
           U,
           L,
-          leg,
           edge,
+          corner,
           chamfer,
-          low: [at(top(L), far), foot, leg[3], leg[4]],
-          top: [over, toward(over, corner, top(L)), foot],
-          under: [at(under(U), far), leg[4], leg[3]],
+          low: [at(top(L), far), foot, ...(sunk ? [Unear, Ufar] : [Lnear, Lfar])],
+          top: curve(over, corner, top(L), foot, 2),
+          under: curve(
+            Ufar,
+            chamfer ? toward(Ufar, Unear, chamfer) : Unear,
+            under(L),
+            Lnear,
+            sunk ? 2 : 1,
+          ),
           ends: [into(U), into(L)],
         };
       });
@@ -2581,11 +2584,11 @@ function bridges(
     // and in L's slab.
     const pieces = (s: ReturnType<typeof step>) =>
       [
-        s.flatMap((x) => [...x.ends[0], x.top[0], x.under[0]]),
-        s.flatMap((x) => x.leg),
-        s.flatMap((x) => [x.top[2], x.under[2], ...x.ends[1]]),
+        s.flatMap((x) => [...x.ends[0], x.top.ctrl[0], x.under.ctrl[0]]),
+        s.flatMap((x) => [...x.top.ctrl, ...x.under.ctrl]),
+        s.flatMap((x) => [x.top.ctrl[3], x.under.ctrl[3], ...x.ends[1]]),
       ].map((points) => hull(points.map((p) => seenIn(f, p))));
-    const broad = step(SIZES.bridgeOut, 1);
+    const broad = step((_, L) => face(L, SIZES.bridgeOut), 1);
     const widest = pieces(broad);
     const { min, max } = wasm.CrossSection.union(widest).bounds();
     // Whether points seen in f, or anything within `by` of them, could
@@ -2597,7 +2600,7 @@ function bridges(
           Math.min(...points.map((p) => p[i])) - by < max[i],
       );
     const t = (p: V3) => dot(sub(p, f.o), f.e);
-    const wired = segments.flatMap(({ a, b, r }) => {
+    const wired = (bridgeStyle === 'wired' ? segments : []).flatMap(({ a, b, r }) => {
       const R = r + SIZES.wireGap;
       const [ta, tb] = [t(a), t(b)];
       const [lo, hi] = [Math.max(-w - R, Math.min(ta, tb)), Math.min(w + R, Math.max(ta, tb))];
@@ -2615,9 +2618,8 @@ function bridges(
       .filter((points) => points.length > 2 && near(points))
       .map(hull);
     const kept = wasm.CrossSection.union([...held, ...wired]);
-    // The near face as far out of L's edge as what is in the widest leg below
-    // L's top is, wherever across the bridge's width (each side's L meets
-    // its edge there).
+    // How far out of L's edge a point is, the most of anywhere across the
+    // bridge's width (each side's L meets its edge there).
     const off = (p: Seen) =>
       Math.max(
         ...ends.map(([, L], j) => {
@@ -2628,56 +2630,91 @@ function bridges(
           return dot(sub(x, L.p), L.out);
         }),
       );
-    const low = hull(broad.flatMap((x) => x.low).map((p) => seenIn(f, p)));
-    const over = widest[1].intersect(low).intersect(kept).toPolygons().flat();
-    const o = over.length
-      ? Math.max(SIZES.bridgeOut, ...over.map(off)) + SIZES.stepSpare
-      : SIZES.bridgeOut;
-    // And the corner over it cut back as little as keeps the step clear of
-    // the rest, to a 64th of the way across (clear for less cut, clear for
-    // more).
-    const clear = (cut: number) =>
-      wasm.CrossSection.union(pieces(step(o, cut)))
-        .intersect(kept)
-        .isEmpty();
-    let [cut, tight] = [1, 0];
-    if (!clear(cut)) {
-      if (!clear(0)) return undefined;
-      [cut, tight] = [0, 1];
-      while (tight - cut > 1 / 64) {
-        const mid = (cut + tight) / 2;
-        if (clear(mid)) cut = mid;
-        else tight = mid;
+    // The near face as far out of L's edge as what is in `region` of the
+    // widest leg is.
+    const outOf = (region: CrossSection) => {
+      const over = widest[1].intersect(region).intersect(kept).toPolygons().flat();
+      return over.length
+        ? Math.max(SIZES.bridgeOut, ...over.map(off)) + SIZES.stepSpare
+        : SIZES.bridgeOut;
+    };
+    // The step with its near face nearOf and the corner over it cut back as
+    // little as keeps it clear of the rest, to a 64th of the way across
+    // (clear for less cut, clear for more), if one fits.
+    const fitted = (nearOf: (U: Joint, L: Joint) => Plane) => {
+      const clear = (cut: number) =>
+        wasm.CrossSection.union(pieces(step(nearOf, cut)))
+          .intersect(kept)
+          .isEmpty();
+      let [cut, tight] = [1, 0];
+      if (!clear(cut)) {
+        if (!clear(0)) return undefined;
+        [cut, tight] = [0, 1];
+        while (tight - cut > 1 / 64) {
+          const mid = (cut + tight) / 2;
+          if (clear(mid)) cut = mid;
+          else tight = mid;
+        }
       }
-    }
-    const s = step(o, cut);
-    // A step, if the leg's near face is beyond its far, L's top under U's
-    // top at the near face and the chamfer's top over it, and U's underside
-    // over L's underside at the far face and inside the chamfer.
-    const fits = s.every(
-      ({ U, L, leg, edge, chamfer, under }) =>
-        dot(sub(edge, leg[0]), U.out) > 0 &&
-        dot(sub(leg[3], leg[4]), U.out) > 0 &&
-        dot(sub(leg[2], leg[0]), U.n) < 0 &&
-        dot(sub(under[0], leg[4]), L.n) > 0 &&
-        (!chamfer ||
-          (dot(sub(leg[1], leg[2]), L.n) > 0 && dot(sub(under[0], chamfer.p), chamfer.n) < 0)),
-    );
-    if (!fits) return undefined;
-    // At each side, the top's and the underside's outer corners rounded (each
-    // round inside the triangle of its corner and its ends, on the leg's
-    // sides, so in it): its lines across the leg, finely; and at least
-    // bridgeLeast thick where they come closest.
-    const lines = s.map(({ top, under }) =>
-      [top, under].map((x) => outlineOf(...(x as [V3, V3, V3]))),
-    );
-    const thick = Math.min(
-      ...s.map((x, j) => {
-        const line = (z: number) => [x.ends[0][z], ...lines[j][z], x.ends[1][z]];
-        return apart(line(0), line(1));
-      }),
-    );
-    if (thick < SIZES.bridgeLeast) return undefined;
+      return made(step(nearOf, cut));
+    };
+    // The step s's bridge, if the leg's near face is beyond its far, L's top
+    // under U's top at the near face and the chamfer's top over it, U's
+    // underside inside the chamfer, and it is thick enough.
+    const made = (s: ReturnType<typeof step>) => {
+      const fits = s.every(
+        ({ U, L, edge, corner, chamfer, low, top, under }) =>
+          dot(sub(edge, top.ctrl[0]), U.out) > 0 &&
+          dot(sub(low[2], low[3]), U.out) > 0 &&
+          dot(sub(top.ctrl[3], top.ctrl[0]), U.n) < 0 &&
+          (!chamfer ||
+            (dot(sub(corner, top.ctrl[3]), L.n) > 0 &&
+              dot(sub(under.ctrl[0], chamfer.p), chamfer.n) < 0)),
+      );
+      if (!fits) return undefined;
+      // At each side, the top's and the underside's curves, each loose
+      // control point `sharp` of the way to the other (so in the leg, as is
+      // the curve, the leg being convex): their lines across the leg, finely;
+      // and how thick that leaves it where they come closest. The smoothest,
+      // a bridgeSharp step at a time, at least the first of `leasts` that
+      // any is as thick as.
+      const fine = 64;
+      const linesAt = (sharp: number) =>
+        s.map(({ top, under }) =>
+          [top, under].map(({ ctrl, loose }) => {
+            const c = ctrl.map((x, i) => (i === loose ? lerp(x, ctrl[3 - loose], sharp) : x));
+            return [...Array(fine + 1).keys()].map((i) => bezier(c, i / fine));
+          }),
+        );
+      const thickOf = (lines: V3[][][]) =>
+        Math.min(
+          ...s.map((x, j) => {
+            const line = (z: number) => [x.ends[0][z], ...lines[j][z], x.ends[1][z]];
+            return apart(line(0), line(1));
+          }),
+        );
+      const steps = Math.round(1 / SIZES.bridgeSharp);
+      const tries = [...Array(steps + 1).keys()].map((i) => {
+        const lines = linesAt(i / steps);
+        return { lines, thick: thickOf(lines) };
+      });
+      const lines = leasts
+        .map((least) => tries.find((x) => x.thick >= least)?.lines)
+        .find((x) => x);
+      return lines && { s, lines };
+    };
+    // The near face out of L's edge past what is in the widest leg below L's
+    // top, its corner cut back past what is above; or, if no such step fits,
+    // out past all of it; or else square to U's edge, as far out of it as a
+    // leg as thick as each of `leasts` needs (where L's edge faces U's
+    // askew, so a leg square to it narrows).
+    const low = hull(broad.flatMap((x) => x.low).map((p) => seenIn(f, p)));
+    const found = [
+      ...[outOf(low), outOf(widest[1])].map((o) => (_: Joint, L: Joint) => face(L, o)),
+      ...leasts.map((least) => (U: Joint) => face(U, SIZES.bridgeOut + least)),
+    ].reduce<ReturnType<typeof fitted>>((x, nearOf) => x ?? fitted(nearOf), undefined);
+    if (!found) return undefined;
+    const { s, lines } = found;
     // Its top and underside, each a sheet: straight from its ends in U to the
     // leg's far face, across the leg (each side's line by how far along it,
     // so the sheet is as smooth as its lines; inside the leg, as that is
@@ -2706,67 +2743,12 @@ function bridges(
     const lands = sides.map(([, J], j) => meet({ p: J.p, n: J.n }, face(J, 0), slice(j)));
     return { solid, lands };
   };
-  // The strut in frame f between what its sides meet (as stepped's), if it
-  // is clear of what `space` holds and every key's plate but those `joined`.
-  const strut = (
-    f: BridgeFrame,
-    sides: [Joint, Joint][],
-    space: ReturnType<typeof keySpace>,
-    joined: RibKey[],
-    thick: number,
-  ): Manifold | undefined => {
-    const higher = sides.reduce((h, [p, q]) => h + dot(sub(q.p, p.p), add(p.n, q.n)), 0) < 0;
-    const level = (J: Joint, by: number): Plane => ({ p: sub(J.p, scale(J.n, by)), n: J.n });
-    const face = (J: Joint, by: number): Plane => ({ p: add(J.p, scale(J.out, by)), n: J.out });
-    const [key, pillar, slab]: V3[][] = [[], [], []];
-    sides.forEach(([p, q], j) => {
-      const [U, L] = higher ? [p, q] : [q, p];
-      const slice: Plane = { p: add(f.o, scale(f.e, (2 * j - 1) * w)), n: f.e };
-      const at = (a: Plane, b: Plane) => meet(a, b, slice);
-      const [top, under] = [level(L, SIZES.strutDrop), level(L, L.thick)];
-      const outs = [-SIZES.strutIn, thick].map((by) => face(U, by));
-      const [Utop, Uunder] = [level(U, SIZES.bridgeSkin), level(U, U.thick)];
-      key.push(
-        ...[face(U, -SIZES.bridgeInto), outs[1]].flatMap((x) => [at(Utop, x), at(Uunder, x)]),
-      );
-      pillar.push(...outs.flatMap((x) => [at(Utop, x), at(top, x)]));
-      slab.push(
-        ...[...outs, face(L, -SIZES.bridgeInto)].flatMap((x) => [at(top, x), at(under, x)]),
-      );
-    });
-    const solid = wasm.Manifold.union([key, pillar, slab].map((x) => wasm.Manifold.hull(x)));
-    const corners = (b: Box) =>
-      [...Array(8).keys()].map((i) =>
-        b.axes.reduce(
-          (x, axis, j) => add(x, scale(axis, b.c[j] + ((i >> j) & 1 ? 1 : -1) * b.h[j])),
-          b.o,
-        ),
-      );
-    const held = [
-      ...space.boxes,
-      ...keys.filter(({ k }) => !joined.includes(k)).map(({ k }) => plateBox(k, SIZES.endGap)),
-    ]
-      .map(corners)
-      .filter((x) => x.some((c) => Math.hypot(...sub(c, f.o)) < 40))
-      .map((x) => wasm.Manifold.hull(x));
-    return solid.intersect(wasm.Manifold.union(held)).volume() > 1e-6 ? undefined : solid;
-  };
-  // A strut's pillar's thicknesses to try, thickest first, a tenth apart.
-  const [thinnest, thickest] = SIZES.strutThick;
-  const thicknesses = [...Array(Math.round((thickest - thinnest) * 10) + 1).keys()].map(
-    (i) => thickest - i / 10,
+  // The thicknesses a bridge may be at its thinnest: bridgeLeast, or where
+  // none fits, the thickest down to bridgeThin, a tenth apart.
+  const thinner = [...Array(Math.round((SIZES.bridgeLeast - SIZES.bridgeThin) * 10)).keys()].map(
+    (i) => SIZES.bridgeLeast - (i + 1) / 10,
   );
-  // The thickest strut that fits in frame f, if any.
-  const strutted = (
-    f: BridgeFrame,
-    sides: [Joint, Joint][],
-    space: ReturnType<typeof keySpace>,
-    joined: RibKey[],
-  ) =>
-    thicknesses.reduce<Manifold | undefined>(
-      (found, thick) => found ?? strut(f, sides, space, joined, thick),
-      undefined,
-    );
+  const leasts = [[SIZES.bridgeLeast], thinner];
   // From the middle of the stretch lo to hi outward, either way in turn, the
   // first place a bridge fits: `make(m)`, its middle at m.
   const nearestMiddle = <T>(lo: number, hi: number, make: (m: number) => T | undefined) => {
@@ -2793,9 +2775,13 @@ function bridges(
       const [lo, hi] = [Math.max(p[0], q[0]), Math.min(p[1], q[1])];
       const space = keySpace(cfg, frames, [P.name, Q.name]);
       const sides: [Joint, Joint][] = [0, 1].map(() => [keyJoint(P, sP), keyJoint(Q, sQ)]);
-      const made =
-        nearestMiddle(lo, hi, (m) => stepped(frameOn(P, sP, e, m), sides, space, [P, Q]))?.solid ??
-        nearestMiddle(lo, hi, (m) => strutted(frameOn(P, sP, e, m), sides, space, [P, Q]));
+      const made = leasts.reduce<Manifold | undefined>(
+        (found, least) =>
+          found ??
+          nearestMiddle(lo, hi, (m) => stepped(frameOn(P, sP, e, m), sides, space, [P, Q], least))
+            ?.solid,
+        undefined,
+      );
       return made ? [{ keys: [P.name, Q.name] as [string, string], solid: made }] : [];
     }),
   );
@@ -2829,8 +2815,8 @@ function bridges(
       const sP = Math.sign(dot(P.c, sub(middle.p, P.o)));
       const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), P.a)).sort((x, y) => x - y);
       const space = keySpace(cfg, frames, [P.name]);
-      // At m along P's edge, the bridge `strut` or not.
-      const at = (m: number, strut: boolean): { solid: Manifold; land?: Pose } | undefined => {
+      // At m along P's edge, the bridge at least one of `least` thick.
+      const at = (m: number, least: number[]): { solid: Manifold; land: Pose } | undefined => {
         const f = frameOn(P, sP, P.a, m);
         // The web's poses across the bridge's width, and the one either
         // side, each with its side facing P: all of them facing it, and the
@@ -2862,11 +2848,7 @@ function bridges(
           };
           return [keyJoint(P, sP), joint];
         });
-        if (strut) {
-          const solid = strutted(f, sides, space, [P]);
-          return solid && { solid };
-        }
-        const made = stepped(f, sides, space, [P]);
+        const made = stepped(f, sides, space, [P], least);
         if (!made) return undefined;
         // It lands on the web between where its sides cross the web's edge,
         // heading into the web.
@@ -2883,8 +2865,10 @@ function bridges(
         };
         return { solid: made.solid, land };
       };
-      const found =
-        nearestMiddle(lo, hi, (m) => at(m, false)) ?? nearestMiddle(lo, hi, (m) => at(m, true));
+      const found = leasts.reduce<{ solid: Manifold; land: Pose } | undefined>(
+        (made, least) => made ?? nearestMiddle(lo, hi, (m) => at(m, least)),
+        undefined,
+      );
       return found ? [{ keys: [P.name, web.name] as [string, string], ...found }] : [];
     }),
   );
