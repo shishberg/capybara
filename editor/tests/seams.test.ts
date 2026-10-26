@@ -79,19 +79,15 @@ function classOf(s: Seam) {
  *    (rail, rail+rib) are cut differently there; and where the run passes
  *    the pinky's pillar's foot and the inner home and top keys' fork's back
  *    leg's, the rail's inner edge has two points 0.01 mm and a few nm apart,
- *    a sliver each (rail). rib+wall: each limb's root stands on its web's own
- *    outer edge, its sides upright; where the web slopes (the pinky's, 28°,
- *    and the inner home and top keys', 24°) the sides meet its sloping face
- *    square, which the check counts as creases (it lets only square creases
- *    onto level or upright faces pass). Where the web slopes, each limb's
- *    section leans across its sweep's tight turn out of the rib; carried
- *    round it untwisted, and meshed finely enough down its sides, it leaves
- *    nothing there. rail+wall: a shading where the inner front fork's front
+ *    a sliver each (rail). rib+wall: none. Each limb's root stands on its
+ *    web's own outer edge, its section the lip's, so its sides meet the
+ *    web's edge face square however the web slopes, and run straight on
+ *    into the lip. Where the web slopes, each limb's section leans across
+ *    its sweep's tight turn out of the rib; carried round it untwisted, and
+ *    meshed finely enough down its sides, it leaves nothing there. rail+wall: a shading where the inner front fork's front
  *    leg's foot meets the rail's top. wall: a sliver where the pinky's back
  *    pillar's foot meets the rail. The thumb extra row's carried web has a
- *    wishbone about 11 mm on from thumb_x1's corner: its root's sides on the
- *    web's sloping face (rib+wall), a ledge of a few hundredths just under
- *    its root (wall); the outline's run from thumb_x2's corner goes to its
+ *    wishbone about 11 mm on from thumb_x1's corner; the outline's run from thumb_x2's corner goes to its
  *    foot, so the tie meets the rail at an angle and its fillet there leaves
  *    a sliver and a gap (rail).
  *  - glue posts: each leg goes 0.3 mm up into the web or the rib's end over
@@ -122,9 +118,8 @@ function classOf(s: Seam) {
  *    change to the geometry: rail by 4, rail+rib by 2, rail+wall by 1 (a
  *    ledge where the collar meets the rail, at x −49.9, y 21.4) and rib by 1
  *    over the counts with the adapter. The collar's fill meets the fork's
- *    legs and crotch face to face (wall: a sliver each side and the crease
- *    each leg's inner face makes with it; at the crotch a crease and a gap
- *    of a hundredth). Its back leg's foot stands exactly on the rail's top,
+ *    legs and crotch face to face (wall: a sliver each side; at the crotch a
+ *    crease and a gap of a hundredth). Its back leg's foot stands exactly on the rail's top,
  *    as every limb's does; with the fill over both, the union keeps the
  *    foot's underside and the rail's top there, a fold (a 180° crease) and a
  *    sliver beside it (rail+wall, by 1 up when the wishbones' sweeps moved
@@ -141,8 +136,7 @@ const PINS: Record<string, number> = {
   'rail+rib': 12,
   'rail+wall': 3,
   rib: 8,
-  'rib+wall': 6,
-  wall: 8,
+  wall: 5,
 };
 
 /** Each drop's outer face is checked this far in from its ends, and this far in or out of it. */

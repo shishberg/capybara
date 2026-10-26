@@ -24,12 +24,15 @@
 // It starts from the web's own outer edge, as the rib's mesh has it
 // (WallSide.webs): its top and underside there are the edge's own points
 // across its width, so it shares the rib's edges rather than cutting across
-// its triangles. Its sides there are upright (square to the edge in plan),
-// so they stand square on the web's face, and each stands SNAP clear of the
-// face's points; its corners, on the edge between two of its points, are
-// rounded to the nearest floats inside the rib, so the union leaves no
-// sliver there. It starts S.into back inside the rib, and blends into the
-// lip over BLEND steps, leaving the edge along its sides.
+// its triangles. Its section there is the lip's (the rib's own, square to
+// the edge), so its sides stand square on the web's edge face and run
+// straight on out along the lip, each SNAP clear of the face's points; its
+// corners, on the edge between two of its points, are rounded to the
+// nearest floats inside the rib, so the union leaves no sliver there. It
+// starts S.into back inside the rib and runs on straight to RISE past the
+// edge; from there to the lip's end its top and underside turn from the
+// web's (which curve along the edge, a tenth of a mm or so across its width)
+// to the lip's flat ones, over BLEND steps.
 //
 // Every limb, and every part of one (a pillar, a wishbone's trunk and its
 // legs), is one width, S.width (3.4 mm), from its root to its feet: it never
@@ -162,19 +165,19 @@ const PLUG_STEP = 0.05;
 /**
  * A limb's root: how near (mm) its sides come to the edge's points, at
  * least; how far inside the rib's top and underside it starts (more than the
- * mesh's chords stand off its surface there); how far out past the edge its
- * sides stay upright; and its lanes about this far apart down its sides
- * (half the ribs' SIZES.ribMesh: where the web's edge slopes, the limb's
- * section leans across its sweep's tight bend out of the rib, so its sides
- * twist there, and lanes as far apart as a rib's shade).
+ * mesh's chords stand off its surface there); how far out past the edge it
+ * runs on straight before turning to the lip's section (past where the
+ * face's lanes stand out of the edge's points, so that the union cuts it
+ * where it is the edge carried straight on); and its lanes about this far
+ * apart down its sides (half the ribs' SIZES.ribMesh: where the web's edge
+ * slopes, the limb's section leans across its sweep's tight bend out of the
+ * rib, so its sides twist there, and lanes as far apart as a rib's shade).
  */
 const SNAP = 0.15;
 const SINK = 0.05;
-const RISE = 0.3;
+const RISE = 0.1;
 /** The least steps from a limb's root to its lip's end. */
 const BLEND = 8;
-/** The steepest web edge (radians) a limb's root's sides stand upright on. */
-const UPRIGHT = (5 * Math.PI) / 180;
 const MESH = 1;
 /** How finely (mm) a root's corner is stepped into the rib, to the nearest floats inside it (rootOf). */
 const INSIDE = 1e-7;
@@ -468,18 +471,17 @@ function limbAt(
   let C = unit(cross(unit(e), N));
   if (dot(C, points[Math.round(m)].out) < 0) C = scale(C, -1);
   const c = cross(N, C);
-  // Its root's sides, settled first (measured level, as they are upright:
-  // rootOf), and its middle o between them, on the edge in the rib's plane
-  // there: the whole limb is built about o, S.width wide.
-  const level = sidesOf(c);
+  // Its root's sides, settled first, and its middle o between them, on the
+  // edge in the rib's plane there: the whole limb is built about o, S.width
+  // wide.
   const shift = settle(
     web.edge,
     [web.from, web.to].map((j) => points[j].top),
     mid,
-    level,
+    c,
   );
   if (shift === undefined) return undefined;
-  const o = add(mid, scale(c, shift / dot(c, level)));
+  const o = add(mid, scale(c, shift));
   const start = rootOf(web.edge, o, C, c);
   // The limb's outer face, where it stands upright, is upright through the
   // edge: w out of it (level), and along it level (a). (A web sloping more
@@ -1124,28 +1126,23 @@ function settle(edge: Web['edge'], corners: V3[], o: V3, h: V3) {
  * Where a limb starts: its web's outer edge's own points (as the rib's mesh
  * has them) across the limb's width, its top's and its underside's, each from
  * its side -1 to its side 1, and its sides' ends there. Its sides there are
- * upright (each in an upright plane square to the edge in plan), so that they
- * stand square on the web's edge face as on a flat one, HALF each side of its
- * middle o (where settle put it). The same points again S.into back inside
- * the rib, SINK inside its top and underside (where it starts), and RISE out
- * past the edge (its sides still upright, its top and underside still the
- * web's carried on), from where it turns to the lip's section.
+ * the lip's (square to the edge, c), HALF each side of its middle o (where
+ * settle put it), so they stand square on the web's edge face. The same
+ * points again S.into back inside the rib, SINK inside its top and underside
+ * (where it starts), and RISE out past the edge.
  */
 interface Root {
   top: V3[];
   under: V3[];
   rings: [V3[], V3[]][];
-  /** Which way it heads out of the web (level across the edge), and the lip's way (C). */
+  /** Out across the edge (C): the lip's way. */
   out: V3;
-  ahead: V3;
 }
 function rootOf(edge: { top: V3[]; under: V3[]; face: V3[][] }, o: V3, C: V3, c: V3): Root {
-  // Level along the edge, out square to that, and up square to both.
-  const h = sidesOf(c);
-  const out = unit(sub(C, scale(h, dot(C, h))));
-  const up = cross(out, h);
+  // Out across the edge (C), along it (c), and up square to both.
+  const up = cross(C, c);
   const lines = [edge.top, edge.under].map((line) =>
-    line.map((p) => ({ p, x: dot(sub(p, o), h) })).sort((a, b) => a.x - b.x),
+    line.map((p) => ({ p, x: dot(sub(p, o), c) })).sort((a, b) => a.x - b.x),
   );
   const [lo, hi] = [-HALF, HALF];
   const [top, under] = lines.map((pts, i) => {
@@ -1154,7 +1151,7 @@ function rootOf(edge: { top: V3[]; under: V3[]; face: V3[][] }, o: V3, C: V3, c:
     // over the top (or under the underside) or out past the face, the union
     // leaves a sliver a few millionths of a mm high there; so it is rounded
     // to the nearest floats just inside the rib (`k` out of its top or
-    // underside, `out` out of its face).
+    // underside, C out of its face).
     const k = scale(up, i ? -1 : 1);
     const at = (x: number): V3 => {
       const j = pts.findIndex((q) => q.x > x);
@@ -1162,22 +1159,20 @@ function rootOf(edge: { top: V3[]; under: V3[]; face: V3[][] }, o: V3, C: V3, c:
       const p = lerp(a, b, (x - pts[j - 1].x) / (pts[j].x - pts[j - 1].x));
       const ab = sub(b, a);
       const off = (q: V3) => sub(q, add(a, scale(ab, dot(sub(q, a), ab) / dot(ab, ab))));
-      const toward = add(k, out);
+      const toward = add(k, C);
       for (let n = 0; n < 200; n++) {
         const q = f32(sub(p, scale(toward, n * INSIDE)));
-        if (dot(off(q), k) < 0 && dot(off(q), out) < 0) return q;
+        if (dot(off(q), k) < 0 && dot(off(q), C) < 0) return q;
       }
       return p;
     };
     return [at(lo), ...pts.filter((q) => q.x > lo && q.x < hi).map((q) => q.p), at(hi)];
   });
-  const moved = (along: number, k: number) => (p: V3) =>
-    add(add(p, scale(out, along)), scale(up, k));
+  const moved = (out: number, k: number) => (p: V3) => add(add(p, scale(C, out)), scale(up, k));
   return {
     top,
     under,
-    out,
-    ahead: C,
+    out: C,
     rings: [
       [top.map(moved(-S.into, -SINK)), under.map(moved(-S.into, SINK))],
       [top, under],
@@ -1225,18 +1220,17 @@ function limbSolid(kit: WallKit, root: Root, spans: Span[]): Manifold {
   const rings = root.rings.map(([top, under]) => lanesOf({ top, under }));
   const lip = lanesOf(ringOf(spans[0].at(0)));
   const r = rings.length - 1;
-  // From the root's last ring to the lip's end, each lane on one smooth
-  // curve, leaving the root along its sides and arriving along the lip, so
-  // that the sides turn from upright to the lip's gradually.
+  // From RISE past the edge to the lip's end, each lane on one smooth curve leaving
+  // and arriving straight out (C): the edge's points follow the web's top
+  // and underside, which curve along it, and the lip's section is flat.
   const blend = (i: number) => {
     const [p, q] = [rings[r][i], lip[i]];
-    const D = len(sub(q, p));
-    const [m0, m1] = [scale(root.out, D), scale(root.ahead, D)];
+    const m = scale(root.out, len(sub(q, p)));
     return (f: number): V3 => {
       const [f2, f3] = [f * f, f * f * f];
       return add(
-        add(scale(p, 2 * f3 - 3 * f2 + 1), scale(m0, f3 - 2 * f2 + f)),
-        add(scale(q, -2 * f3 + 3 * f2), scale(m1, f3 - f2)),
+        add(scale(p, 2 * f3 - 3 * f2 + 1), scale(m, f3 - 2 * f2 + f)),
+        add(scale(q, -2 * f3 + 3 * f2), scale(m, f3 - f2)),
       );
     };
   };
@@ -1266,9 +1260,6 @@ function limbSolid(kit: WallKit, root: Root, spans: Span[]): Manifold {
     spans.at(-1)!.at(1),
   ]);
 }
-
-/** Square to a limb's root's sides: level along the edge if the edge is within UPRIGHT of level, else along it (c). */
-const sidesOf = (c: V3) => (Math.abs(c[2]) < Math.sin(UPRIGHT) ? unit([c[0], c[1], 0]) : c);
 
 /** A point on a path in a plane, and which way (unit) the path heads there. */
 interface Station {

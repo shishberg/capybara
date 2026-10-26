@@ -41,6 +41,9 @@ export const SEAMS = {
   crease: 30,
   /** A crease within this of 90° between a flat face and a part standing on it is square. */
   square: 10,
+  /** A part's face is flat round a point if, within flatReach of it, it turns no more than flatTurn (degrees). */
+  flatReach: 0.5,
+  flatTurn: 1,
   /** Faces facing each other closer than this are a gap (air) or thin (material). */
   gapDepth: 0.2,
   /** A sliver whose normal is this far or more from a face beside it (and under the crease angle) sways that face's drawn normal. */
@@ -172,6 +175,8 @@ class Surface {
   v: V3[];
   t: [number, number, number][];
   grid: Grid;
+  /** Its triangles' normals. */
+  n: V3[];
   /** Its own creases (edges over SEAMS.crease), as segments. */
   creases: [V3, V3][];
   creaseGrid: Grid;
@@ -185,7 +190,7 @@ class Surface {
       this.t.map((t) => box(t.map((i) => this.v[i]))),
     );
     const edges = edgeFaces(this.t);
-    const n = this.t.map((t) => normal(t.map((i) => this.v[i]) as [V3, V3, V3]));
+    const n = (this.n = this.t.map((t) => normal(t.map((i) => this.v[i]) as [V3, V3, V3])));
     const cos = Math.cos((SEAMS.crease * Math.PI) / 180);
     this.creases = [];
     for (const [key, fs] of edges) {
@@ -202,6 +207,24 @@ class Surface {
       if (len(sub(p, nearest(p, a, b, c))) <= r) return true;
     }
     return false;
+  }
+  /**
+   * Whether its face facing m is flat round p: on it there, and every
+   * triangle of that face (within the crease angle of m) within
+   * SEAMS.flatReach of p facing within SEAMS.flatTurn of m.
+   */
+  flat(p: V3, m: V3) {
+    const [crease, turn] = [SEAMS.crease, SEAMS.flatTurn].map((d) => Math.cos((d * Math.PI) / 180));
+    let on = false;
+    for (const i of this.grid.near(p, SEAMS.flatReach)) {
+      const c = dot(this.n[i], m);
+      if (c <= crease) continue;
+      const d = len(sub(p, nearest(p, ...(this.t[i].map((j) => this.v[j]) as [V3, V3, V3]))));
+      if (d > SEAMS.flatReach) continue;
+      if (c < turn) return false;
+      if (d <= SEAMS.on) on = true;
+    }
+    return on;
   }
   /** Whether p is within r of one of its own creases. */
   onCrease(p: V3, r = SEAMS.on) {
@@ -304,21 +327,21 @@ export function seams(
       found.push({ kind: 'sliver', p: middle(f), parts: partsAt(middle(f), 0.05), worst: high });
   });
 
-  // Creases: those no part has, that aren't square onto a flat face.
+  // Creases: those no part has, that aren't square onto a flat face (a face
+  // with no area has no normal, and makes none).
   const creaseList: { a: number; b: number; faces: number[] }[] = [];
-  const isFlat = (f: number) =>
-    // On a part's face that is flat round here: the rail's top or sides, a
-    // plate, a drop's foot: horizontal or vertical.
-    Math.abs(n[f][2]) > 0.999 || Math.abs(n[f][2]) < 0.001;
+  // On a part's face that is flat round here (the rail's top or sides, a
+  // plate, a drop's foot, a web's edge face), however it is tilted.
+  const isFlat = (f: number, p: V3) => P.some((x) => x.s.flat(p, n[f]));
   for (const [key, fs] of edges) {
     if (fs.length !== 2 || dot(n[fs[0]], n[fs[1]]) > cos) continue;
     const [a, b] = key.split(',').map(Number);
     creaseList.push({ a, b, faces: fs });
-    if (fs.some((f) => cut[f])) continue;
+    if (fs.some((f) => cut[f] || area[f] < 1e-9)) continue;
     const m = scale(add(v[a], v[b]), 0.5);
     if (P.some((x) => x.s.onCrease(m))) continue;
     const angle = deg(dot(n[fs[0]], n[fs[1]]));
-    if (Math.abs(angle - 90) < SEAMS.square && fs.some(isFlat)) continue;
+    if (Math.abs(angle - 90) < SEAMS.square && fs.some((f) => isFlat(f, m))) continue;
     found.push({ kind: 'crease', p: m, parts: partsAt(m, 0.05), worst: angle });
   }
 
