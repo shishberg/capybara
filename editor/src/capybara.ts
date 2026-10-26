@@ -2788,6 +2788,8 @@ function bridges(
   // PROTOTYPE: bridges from a key's plate edge to the side of a joined web
   // (a rib's end carried on from its key's plate to another's) that faces it
   // within webReach, of another run and joining neither of the web's keys,
+  // nor bridged to either of their plates (the web runs on past that plate,
+  // so a bridge to it would cross the same gap again, beside the first),
   // as between two plates: each side of the bridge meets the web as its pose
   // nearest that side (its poses a 64th of the web apart) has it.
   const webs = all.flatMap((rib, i) =>
@@ -2811,6 +2813,7 @@ function bridges(
   const toWebs = webs.flatMap((web) =>
     keys.flatMap(({ k: P, run }) => {
       if (run === web.run || web.keys.includes(P.name)) return [];
+      if (between.some((b) => b.keys.includes(P.name) && web.keys.some((k) => b.keys.includes(k)))) return [];
       const middle = web.poses[web.poses.length >> 1];
       const sP = Math.sign(dot(P.c, sub(middle.p, P.o)));
       const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), P.a)).sort((x, y) => x - y);

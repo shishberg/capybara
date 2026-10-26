@@ -92,8 +92,10 @@ at the middle of the stretch both plates' edges share, or the nearest place
 to it (tried every 0.5 mm either way) where it can go, 4 mm wide. A key's
 plate edge that faces the side of a web (a rib's end carried on from its
 key's plate to another key's) within 15 mm, of another rib and joining
-neither of the web's keys, is bridged to it as to a plate, landing on the
-web's side.
+neither of the web's keys nor bridged to either of their plates, is bridged
+to it as to a plate, landing on the web's side. (A web runs on past the plate
+it leaves, so a key bridged to that plate would otherwise be bridged again
+across the same gap, just past the first.)
 
 Every bridge is a **step**: out of the higher plate's edge in its plane, down
 a leg and in to the lower plate in its plane, so it passes under the lower
@@ -113,16 +115,14 @@ plate, the underside's at the higher), so sharpening it, only as far as that
 needs. Where no step that thick fits anywhere along the edge, the thickest
 that fits, down to 0.4 mm.
 
-On Swung in there are seventeen: between every two neighbouring finger keys
+On Swung in there are fifteen: between every two neighbouring finger keys
 of the matrix (inner–index, index–middle, middle–ring and ring–pinky at every
 row), between the thumb rows (thumb_far–thumb_x2, thumb_home–thumb_x1), and
-to webs: ring_bottom to thumb_near's web, and pinky_bottom and thumb_near to
-thumb_x1's. Three are thinner, no step 1.3 mm thick fitting anywhere along
-their edges: ring_bottom–pinky_bottom and pinky_bottom to thumb_x1's web
-(0.9 mm), and ring_bottom to thumb_near's web (0.7 mm).
+thumb_near to thumb_x1's web. One is thinner, no step 1.3 mm thick fitting
+anywhere along its edge: ring_bottom–pinky_bottom (0.9 mm).
 
 The editor's `?bridge=` bar (dev only, ← →) switches to `wired`, where bridges
-keep 0.5 mm off the routed wires too: pinky_bottom's bridge to its web goes.
+keep 0.5 mm off the routed wires too; on Swung in that loses none.
 
 Where two keys are too steep or too far round to
 web, the rib is parted there, and each end is rounded if the round clears the
