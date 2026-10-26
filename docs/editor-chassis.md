@@ -61,8 +61,8 @@ lower side, the lip, the plate's underside corner) is cut off level with the
 rail's top, so it meets the rail along one crisp line, with no fill and no
 fairing. On Swung in these are the fronts of the thumb row's far key and the
 second extra key; under the second extra key's front the rail stands in the
-band beside its plate's edge, over its tile pocket, and fuses into its glue
-posts there (the tile, its glue and the switch stay clear). Ends further from
+band beside its plate's edge, over its tile pocket (the tile and the switch
+stay clear). Ends further from
 the outline would hang, so they are carried on or tied down. First a thumb
 row's hanging end is carried on into a hanging column front as one rib (a
 sweep from the row's end plate edge to the front's, tangent to both), each row
@@ -143,8 +143,7 @@ are left out where they would hit another key. Nothing is cut out
 of the frame. The **base plate** is the bottom section, a separate print: the
 outline, `skin_mm` (2 mm) thick, with the frame standing on it. The frame is
 cut off level with the plate's top, so the two meet in one flat seam, the
-plate's edge flush with the rail's outer face; the glue posts stop 2 mm over
-it, so none hangs just over it. Six M2×4 pan-head machine screws come up
+plate's edge flush with the rail's outer face. Six M2×4 pan-head machine screws come up
 through the plate (2.3 mm holes) into M2×3 heat-set inserts (about 3.6 mm
 across), pressed up from the frame's underside into bosses on the rail's
 inside, 6 mm across, from the plate to the rail's top. Each head sits flush
@@ -218,7 +217,7 @@ assembly is soldered first and lifted in, so the frame has no wire ways and
 the checks don't test the wires against it. The board's height to the keycaps'
 tops shows under its size.
 
-`src/chassis.ts` adds what holds the keys:
+Under the plates:
 
 - **Tile**: the bought 1U key PCB under each switch (see [the v4 README](../README.md)),
   17 × 17 × 1.6 mm with notched corners, its top 5 mm below the plate top. Its
@@ -229,53 +228,15 @@ tops shows under its size.
 - **Plate**: the square a switch clips into, 3 mm thick. It reaches 0.9 mm
   past the 15.8 mm switch seat on each side, or to the edge of the tile pocket if
   that is further, so the plate always covers the tile.
-- **Glue posts**: each tile is held under its plate by posts, glued to them.
-  The glue holds it when a switch is pressed into its socket.
-  - In each corner a round post (1.35 mm radius) stands in the tile's corner
-    notch, concentric with it and 0.15 mm clear of it, from the tile's
-    underside up into the plate. It is the whole round wherever it is clear:
-    along the rib it runs on into the leg on that edge (one solid with it),
-    and across the rib it stops where the legs do, 0.15 mm inside the
-    plate's side, so it doesn't widen the rib. Above the tile it only has to
-    keep 0.1 mm off the switch body, which by default it clears (0.77 mm at
-    the body's corner), so it stays round up to 0.3 mm under the plate.
-    There the seat's trim, which thins the plate to the seat's 1.5 mm over
-    its 15.8 mm footprint, takes the corner of the round inside that
-    footprint off level: in the tile's corner notches the trim stops 0.3 mm
-    past the plate's underside (`SEAT.trimUnder`), so it leaves the round
-    below that.
-  - Along the two edges that face along the key's rib (north and south on a
-    finger key), a leg stands 0.15 mm
-    outside the tile. A leg is 1.6 mm thick (`postMin`: four 0.4 mm lines, two
-    perimeters a side). It runs down from the plate to the tile's underside
-    at each end of the edge, from the plate's side in to 6.25 mm from the
-    centre, which keeps it clear of the edge pads and their wires. Between
-    those ends it stops at the tile's top. There are no posts on the east and
-    west edges, which would widen the ribs.
-  - On each leg a shelf reaches in over the tile's top edge to the switch
-    seat. It sets the tile's height: 0.15 mm of glue over the tile's top. The
-    shelf keeps 0.5 mm off the ring of any hole near the edge, and is dropped
-    where less than 1 mm is left.
-  - The legs stand 1.4 mm out past the plate's edge. They go up into what is over them there, the web to the next key or the round of
-    the rib's end, 0.3 mm (`glueInto`, as the shelves and corner posts go
-    into the plate), so they join it on a surface rather than at a slit or a
-    near-coincident face. Their tops follow its underside, sampled from the
-    frame's mesh about every 0.25 mm (`postStep`) across the leg's
-    footprint. A face steeper than 60° from the horizontal (`postUnder`) is
-    a side of the frame, not an underside: where the frame is narrower than
-    the plate, or its side leans over the leg on a tilted key, the leg's top
-    stays at the underside's level instead of climbing it. Each sample
-    takes the highest of its own and its neighbours', so where the underside
-    steps down beside a leg's end (a wall or bone coming down) the leg runs
-    up to the higher level over the step rather than closing a hollow under
-    it. The legs, and with them the shelves and corner
-    posts, stop 0.15 mm (`postEdgeIn`) inside the plate's sides all the way
-    up. A leg
-    within 1.5 mm of the frame or another key's post beside it is grown out
-    into it, not leaving a slit too narrow to print (by default only on the
-    thumbs), but not into the tie it stands on.
-  - Everything clears the switch's clip reliefs, and the posts stay inside the
-    plate's sides.
+- **Sleeve**: under each plate the chassis fills down round the switch body,
+  over the tile's 17 mm footprint, to 0.4 mm over the tile's top (room for
+  solder left proud of its holes, and for the print). The switch hole (14.15
+  mm) and the clip reliefs are cut through it, so the switch body is held
+  over its whole 5 mm below the plate, not only at the 1.5 mm seat. Nothing
+  else holds the tile: it hangs from its switch, the hotswap socket's grip on
+  the pins holding it up to the sleeve; glue between the two is optional. The
+  sleeve is part of its rib, so a low end's cut level with the rail's top
+  takes it too.
 - Above each plate the chassis is kept clear of the switch housing's rim (the
   seat footprint, up to the keycap's lowest point) and of the keycap's travel.
 

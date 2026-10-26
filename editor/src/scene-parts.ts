@@ -94,7 +94,6 @@ const colors: Record<string, number> = {
   controller: 0x2b4c8c,
   cable: 0x3a3a3a,
   pads: 0xd8c27a,
-  glue: 0xf2e6a0,
 };
 /** Wire colours by net group. */
 const wireColors: Record<string, number> = {

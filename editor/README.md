@@ -107,17 +107,13 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
 runs against a fraction of the mesh:
 
 - Each switch has a crisp, planar 15.8 × 15.8 mm seat (`switch.seat_outer_mm`,
-  0.1 mm clear of a 15.6 mm switch housing rim), 1.5 mm thick (the plate is
-  trimmed from below over the seat's footprint, but in the tile's corner
-  notches only to 0.3 mm past its underside, which leaves the glue posts'
-  corner rounds there), with the
-  14.15 mm opening; two 5 mm-wide underside reliefs give the spring clips room.
-  Seats are checked for a complete plate ring, material outside their planes and
-  clip obstructions.
+  0.1 mm clear of a 15.6 mm switch housing rim), 1.5 mm of plate under the
+  housing's rim and the plate's sleeve below that, with the
+  14.15 mm opening; two 5 mm-wide reliefs give the spring clips room, down
+  through the sleeve. Seats are checked for a complete plate ring, material
+  above their planes and clip obstructions.
 - Each opening is probed at nine points.
-- Tiles (with their corner notches, where the glue posts' rounds stand, 0.15 mm
-  clear), tile
-  components, and the Pro Micro, its TRRS jack, both plugs and its reset
+- Tiles (with their corner notches), tile components, and the Pro Micro, its TRRS jack, both plugs and its reset
   switch must not overlap the chassis or the bottom section.
 - **Wires**: each wire, as a tube of its diameter, must miss every other wire
   (wires may touch).
@@ -207,9 +203,8 @@ thin skins, swayed shading), with the parts that meet there; `tests/seams.test.t
 pins its count per junction class (none for the bridges between ribs: they must
 meet the ribs cleanly), checks that fused drops leave no
 gap or slit between them, and checks that every drop stands flush on the rail.
-The glue posts under each plate are meant geometry (as the plates and seats
-are), so their own faces are not counted, nor what the frame's faces are
-split into within 0.5 mm (`postMeet`) of a leg that goes up into them.
+The plates, seats and sleeves are meant geometry, so their own faces are not
+counted.
 
 The decisions the editor's cleanup left to the owner are in
 [CLEANUP-PLAN.md](CLEANUP-PLAN.md).

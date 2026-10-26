@@ -1,5 +1,4 @@
 import { Matrix4 } from 'three';
-import { gluePosts, postAxes } from './chassis';
 import { padParts, proMicroParts } from './wiring';
 import {
   capSize,
@@ -34,8 +33,6 @@ export function hardware(project: Project, nodes = componentFrames(project.confi
   const sw = cfg.switch;
   // The tile's top, below the plate top.
   const tileTop = tileTopOf(cfg);
-  const axes = postAxes(cfg, nodes);
-  const glue = [0, 1].map((axis) => gluePosts(cfg, axis).glue);
   const add = (
     name: string,
     group: string,
@@ -71,9 +68,6 @@ export function hardware(project: Project, nodes = componentFrames(project.confi
         undefined,
         capTop(cfg, name),
       );
-      // The glue between the tile and its glue posts: under their shelves and
-      // between its edges and their legs.
-      for (const b of glue[axes[name]]) add(name + ': glue', 'glue', b.size, b.center, m);
     }
   parts.push(...proMicroParts(cfg, nodes), ...padParts(cfg, nodes));
   return parts;

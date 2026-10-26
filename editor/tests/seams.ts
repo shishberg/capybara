@@ -20,8 +20,8 @@
 import type { Manifold, ManifoldToplevel } from 'manifold-3d';
 import { componentFrames, isKey, type Config } from '../src/geometry';
 import { capybara, SIZES as RIB } from '../src/capybara';
-import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS, type PostFit } from '../src/chassis';
-import { openingSpan, seatSettings, seatSwitches } from '../src/seats';
+import { buildChassis, SIZES as CHASSIS } from '../src/chassis';
+import { openingSpan, seatSettings, seatSwitches, sleeveBottom } from '../src/seats';
 import { plateHalfWidths } from '../src/plates';
 import { wiring } from '../src/wiring';
 
@@ -53,13 +53,6 @@ export const SEAMS = {
   shadeArea: 0.05,
   /** Findings of a kind within this of each other are one spot. */
   spot: 3,
-  /**
-   * A glue post's leg goes up into the frame over it (the web, the rib's
-   * end); the union splits the frame's faces along where they meet, and the
-   * slivers, narrow strips and wedges that leaves within this of the leg are
-   * the join's, meant as the leg is.
-   */
-  postMeet: 0.5,
   /** Likewise a base screw's boss stands on the plate against the rail and whatever stands on it there: what is within this of the boss is its join. */
   bossMeet: 0.5,
   /** PROTOTYPE: and a bridge lands on a web's side as on a plate's edge: what is within this of where it goes in is its join. */
@@ -495,12 +488,12 @@ export function capybaraSeams(
   const parts = built.parts().map((p) => ({ name: p.name, mesh: meshOf(p.solid) }));
   // What is meant, in each key's own coordinates: its plate (its edges, the
   // seat's step under it), the seat's trims above and below it and the switch
-  // hole's opening (each in the seat's outer footprint), and the glue posts
-  // (as their rib runs: their legs, shelves and corner posts' squares; round
-  // a leg that goes up into the frame, postMeet).
+  // hole's opening (each in the seat's outer footprint), and the sleeve under
+  // it (over the tile's footprint).
   const plate = cfg.chassis.plate_thickness_mm;
   const half = plateHalfWidths(cfg);
   const outer = seatSettings(cfg).outer.map((x) => x / 2);
+  const tile = cfg.tile.size_mm.map((x) => x / 2);
   const { bottom, top } = openingSpan(cfg);
   const g = 0.1;
   const zones: [V3, V3][] = [
@@ -512,35 +505,18 @@ export function capybaraSeams(
       [-outer[0] - g, -outer[1] - g, Math.min(bottom, -7) - g],
       [outer[0] + g, outer[1] + g, Math.max(top, 7) + g],
     ],
+    [
+      [-tile[0] - g, -tile[1] - g, sleeveBottom(cfg) - g],
+      [tile[0] + g, tile[1] + g, g],
+    ],
   ];
-  const postZones = (axis: number, fit: PostFit) => {
-    const posts = gluePosts(cfg, axis, fit);
-    return [
-      ...posts.boxes.map((b): [V3, V3] => [
-        b.center.map((c, i) => c - b.size[i] / 2 - g) as V3,
-        b.center.map((c, i) => c + b.size[i] / 2 + g) as V3,
-      ]),
-      ...posts.legs.flat().map((b): [V3, V3] => {
-        const m = fit.over ? SEAMS.postMeet : g;
-        return [
-          b.center.map((c, i) => c - b.size[i] / 2 - m) as V3,
-          b.center.map((c, i) => c + b.size[i] / 2 + m) as V3,
-        ];
-      }),
-      ...posts.corners.map(([x, y]): [V3, V3] => [
-        [x - posts.radius - g, y - posts.radius - g, posts.bottom - g],
-        [x + posts.radius + g, y + posts.radius + g, posts.top + g],
-      ]),
-    ];
-  };
-  const axes = postAxes(cfg, frames);
-  const local = named.map(([n, m]) => {
+  const local = named.map(([, m]) => {
     const e = m.elements;
     const to = (p: V3) => {
       const q = [p[0] - e[12], p[1] - e[13], p[2] - e[14]];
       return [0, 4, 8].map((i) => q[0] * e[i] + q[1] * e[i + 1] + q[2] * e[i + 2]);
     };
-    return { to, zones: [...zones, ...postZones(axes[n], chassis.postFits[n])] };
+    return { to, zones };
   });
   // And the base screws' bosses, from the plate to the rail's top.
   const bosses = chassis.screws;

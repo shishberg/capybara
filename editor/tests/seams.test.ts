@@ -90,10 +90,6 @@ function classOf(s: Seam) {
  *    wishbone about 11 mm on from thumb_x1's corner; the outline's run from thumb_x2's corner goes to its
  *    foot, so the tie meets the rail at an angle and its fillet there leaves
  *    a sliver and a gap (rail).
- *  - glue posts: each leg goes 0.3 mm up into the web or the rib's end over
- *    it, its top following that underside, so the union splits the frame's
- *    faces along where they meet; what that leaves within postMeet of a leg
- *    is meant (as the leg is).
  *  - bridges (PROTOTYPE): a straight slab between every facing pair of
  *    neighbouring keys, however wide the gap, else a stepped one, and from a
  *    key's edge to a web's side facing it (fourteen on Swung in); where one
@@ -130,12 +126,20 @@ function classOf(s: Seam) {
  *    by 2 down (the shadings where the inner's and pinky's front rounds
  *    twisted); rail+rib by 1 down (a ledge where the pinky's front foot met
  *    the rail).
+ *  - the sleeve (seats.ts sleeveBox) replaces the glue posts: under each
+ *    plate it fills down round the switch body over the tile, part of its
+ *    rib (so a low end's cut takes it too). The posts' legs at the two low
+ *    ends filled the wedge where the plate's underside comes down onto the
+ *    rail's top beside its inner corner, and their zones were meant; without
+ *    them that wedge shows: rail+rib by 7 up (thumb_far and thumb_x2 each a
+ *    sliver, a gap of a tenth at its tip and a ledge, thumb_x2 a thin skin
+ *    there; the crease and shading each had move), rib by 1 down.
  */
 const PINS: Record<string, number> = {
   rail: 15,
-  'rail+rib': 12,
+  'rail+rib': 19,
   'rail+wall': 3,
-  rib: 8,
+  rib: 7,
   wall: 5,
 };
 

@@ -12,7 +12,7 @@ All 36 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](do
 
 The keyboard's key layout is **Swung in**, the layout the printed frame uses and the editor's default. It is the only layout kept: the earlier ones were removed on 19 Oct 2026 and stay in git history (509dbd1 is the last commit with them).
 
-Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capybara frame for the right hand from the key layout, with the tiles glued to posts under the key plates and the Pro Micro, its TRRS jack and its reset switch on the bottom section. The [editor guide](editor/README.md) covers the layout parameters and handles, autosave, project files and the clearance checks, and [editor chassis and wiring](docs/editor-chassis.md) how the case is built and wired. The Pro Micro's, the jack's and the switch's sizes are provisional until measured (see [Pro Micro](docs/pro-micro.md)).
+Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capybara frame for the right hand from the key layout, with the tiles hanging from their switches under the key plates and the Pro Micro, its TRRS jack and its reset switch on the bottom section. The [editor guide](editor/README.md) covers the layout parameters and handles, autosave, project files and the clearance checks, and [editor chassis and wiring](docs/editor-chassis.md) how the case is built and wired. The Pro Micro's, the jack's and the switch's sizes are provisional until measured (see [Pro Micro](docs/pro-micro.md)).
 
 ## Hand model
 

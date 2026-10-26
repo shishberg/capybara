@@ -51,7 +51,7 @@
 // to the other's, top edge to top edge and underside to underside, sloping
 // where the plates are at different heights, and wider as it slopes
 // (bridges).
-// Nothing is cut out: chassis.ts adds the glue posts and the base, and the
+// Nothing is cut out: chassis.ts adds the base, seats.ts the seats and sleeves, and the
 // checks report anything that runs into the tiles or the keycaps.
 // Walls stand under the outer sides, built by capybara-walls.ts from a
 // WallSide per side.
@@ -106,7 +106,8 @@ import {
   tilePocketHalf,
   type HalfWidths,
 } from './plates';
-import { switchHole } from './seats';
+import { sleeveBox, switchHole } from './seats';
+import { place } from './manifold-util';
 import { outline } from './hand/frame';
 import {
   capybaraReach,
@@ -1058,10 +1059,19 @@ function endSpans(d: Dims, k: RibKey, u: number, end: End): Span[] {
  * into it there (footKey, a solid of its own in the frame's union, so that
  * the rib's own mesh goes into it as it is). A low end, and what of its key
  * comes lower, is cut off level with the rail's top (lowCut), and stands on
- * it as a drop's foot does. Meshed in lanes (laneSolid).
+ * it as a drop's foot does. Meshed in lanes (laneSolid), with the sleeve
+ * under each plate (`sleeves`, seats.ts sleeveBox), which the cut takes too.
  */
-function ribSolid(wasm: ManifoldToplevel, d: Dims, rib: Rib, ends: End[]): Manifold {
-  const solid = laneSolid(wasm, ribSpans(d, rib, ends), 'ribSolid');
+function ribSolid(
+  wasm: ManifoldToplevel,
+  d: Dims,
+  rib: Rib,
+  ends: End[],
+  sleeves: Manifold[],
+): Manifold {
+  const solid = laneSolid(wasm, ribSpans(d, rib, ends), 'ribSolid').add(
+    wasm.Manifold.union(sleeves),
+  );
   const cuts = [0, 1].flatMap((e) => {
     const [k, u] = endKey(rib, e);
     return isDrop(ends[e]) && isLow(d, k, u) ? [lowCut(wasm, d, k, u)] : [];
@@ -2919,7 +2929,16 @@ export function capybara(
     const more = capybaraReach(wasm, cfg, wallSides, ribKit);
     if (more.feet.length) return capybara(wasm, cfg, frames, wires, more);
   }
-  const solids = all.map((rib, i) => ribSolid(wasm, d, rib, ends[i]));
+  const sleeve = sleeveBox(wasm.Manifold, cfg);
+  const solids = all.map((rib, i) =>
+    ribSolid(
+      wasm,
+      d,
+      rib,
+      ends[i],
+      rib.keys.map((k) => place(sleeve, frames[k.name])),
+    ),
+  );
   // Each drop keyed into the rail (or the tie) under it (footKey), by rib.
   const keyed = all.map((rib, i) =>
     ends[i].flatMap((end, e) => (isDrop(end) ? footKey(wasm, d, ...endKey(rib, e), end.land) : [])),

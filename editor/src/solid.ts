@@ -45,7 +45,7 @@ const CHECKS = {
   ringHoleHeight: 10,
   /** Seat checks test a shape this far inside the faces they must not touch, so those faces don't count. */
   faceSkip: 0.01,
-  /** The seat's outside is tested this far above and below its plane. */
+  /** The seat's outside is tested this far above its plane. */
   outsideReach: 1,
   /** Pieces smaller than this (mm³) are ignored when counting pieces: slivers left by boolean operations. */
   minPiece: 0.5,
@@ -297,7 +297,7 @@ function checkRooms(roomCuts: { name: string; cut: Manifold }[]) {
   return { roomCuts: rooms.map(({ name, volume }) => ({ name, volume })), highlights };
 }
 
-/** Each seat must be a complete ring around the hole, with nothing outside its plane or in its clip reliefs. */
+/** Each seat must be a complete ring around the hole, with nothing above its plane or in its clip reliefs (below it the sleeve fills round the switch body). */
 export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result: Manifold) {
   const hole = switchHole(cfg);
   const skip = CHECKS.faceSkip;
@@ -309,8 +309,14 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
     );
     const missingSolid = ring.subtract(p.regions.within(result, ring));
     const missing = Math.max(0, missingSolid.volume());
-    const outside = seatBox(p.M, cfg, m, { xy: -2 * skip, z: CHECKS.outsideReach }).subtract(
-      seatBox(p.M, cfg, m, { z: 2 * skip }),
+    const outer = seatSettings(cfg).outer;
+    const outside = place(
+      box(
+        p.M,
+        [outer[0] - 2 * skip, outer[1] - 2 * skip, CHECKS.outsideReach],
+        [0, 0, skip + CHECKS.outsideReach / 2],
+      ),
+      m,
     );
     const excess = p.collision(result, outside, name, 'seat', highlights);
     let clipBlocked = 0;

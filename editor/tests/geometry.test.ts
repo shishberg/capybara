@@ -18,7 +18,8 @@ import { hardware } from '../src/parts';
 import { tilePocketDepth } from '../src/plates';
 import { box, freeAfter, place } from '../src/manifold-util';
 import { buildSolid, buildSolidAsync } from '../src/solid';
-import { buildChassis, gluePosts, postAxes, SIZES as CHASSIS } from '../src/chassis';
+import { seatSwitches, sleeveBottom, switchHole } from '../src/seats';
+import { buildChassis, SIZES as CHASSIS } from '../src/chassis';
 import { crossings, holes, nets, wiring } from '../src/wiring';
 import { WIRING, pinOf } from '../src/wiring/common';
 import { legAt, lugAt, mouths, pinAt } from '../src/wiring/pro-micro';
@@ -78,83 +79,6 @@ test("the tile pocket and the drawn parts measure the tile's parts from the boar
   assert(Math.abs(lowest + depth) < 1e-9);
   // The measured tile: 5 mm to the board, 1.6 mm board, 1.9 mm socket, 0.3 mm clearance.
   assert(Math.abs(tilePocketDepth(defaults.config) - 8.8) < 1e-9);
-});
-test('the glue posts hold the tile from outside it, along its rib, and clear its pads and holes', () => {
-  const cfg = defaults.config;
-  const t = cfg.tile;
-  const half = t.size_mm.map((x) => x / 2);
-  const top = -t.plate_top_to_pcb_top_mm;
-  const keep = t.pads.ring_mm / 2;
-  const holes = t.pads.list.filter((h) => h.hole);
-  const edgePads = t.pads.list.filter((h) => !h.hole);
-  const e = 1e-9;
-  // Every finger key's posts face along y (north and south), along its column.
-  const axes = postAxes(cfg, componentFrames(cfg));
-  for (const [n, a] of Object.entries(axes)) if (n.startsWith('matrix_')) assert.equal(a, 1, n);
-  for (const axis of [0, 1]) {
-    const across = 1 - axis;
-    const g = gluePosts(cfg, axis);
-    // A corner post stands in its notch, postGap clear, and is at least postMin across.
-    assert(Math.abs(g.radius - (t.corner_notch_radius_mm - CHASSIS.postGap)) < e);
-    assert(2 * g.radius >= CHASSIS.postMin);
-    assert(g.reach[0] - (half[across] - g.radius) >= CHASSIS.postMin - e);
-    assert(g.boxes.length > 0 && g.glue.length > 0);
-    for (const b of [...g.boxes, ...g.legs.flat()]) {
-      const lo = [0, 1, 2].map((k) => b.center[k] - b.size[k] / 2);
-      const hi = [0, 1, 2].map((k) => b.center[k] + b.size[k] / 2);
-      const al = [Math.abs(lo[axis]), Math.abs(hi[axis])].sort((p, q) => p - q);
-      // No post past the plate's side, across the rib.
-      assert(Math.max(Math.abs(lo[across]), Math.abs(hi[across])) <= g.reach[0] + e);
-      if (lo[2] < top - e) {
-        // Below the tile's top: a leg, outside the tile's edge, postMin thick,
-        // and clear of the edge pads by more than a wire's width.
-        assert(al[0] >= half[axis] + CHASSIS.postGap - e && al[1] - al[0] >= CHASSIS.postMin - e);
-        const from = Math.min(Math.abs(lo[across]), Math.abs(hi[across]));
-        for (const pad of edgePads)
-          if (Math.abs(pad.at_mm[axis]) > half[axis] - 2)
-            assert(from - (Math.abs(pad.at_mm[across]) + t.pads.size_mm[0] / 2) >= 0.9, pad.name);
-      } else {
-        // Above it: a shelf, on its leg, over the tile's top edge, outside the
-        // switch seat and clear of every hole's ring.
-        assert(lo[2] > top);
-        assert(al[0] >= cfg.switch.seat_outer_mm[axis] / 2);
-        for (const h of holes) {
-          const nearest = [0, 1].map((k) => Math.min(Math.max(h.at_mm[k], lo[k]), hi[k]));
-          assert(Math.hypot(nearest[0] - h.at_mm[0], nearest[1] - h.at_mm[1]) > keep, h.name);
-        }
-      }
-    }
-    // The shelves go glueInto up into the plate, stopping postEdgeIn inside
-    // its edge; the legs, fitted to nothing, go as far up into it.
-    for (const b of g.boxes) {
-      assert(Math.abs(Math.abs(b.center[axis]) + b.size[axis] / 2) <= g.edge + e);
-      assert(Math.abs(b.center[2] + b.size[2] / 2 - g.top) < e);
-    }
-    for (const b of g.legs.flat()) assert(Math.abs(b.center[2] + b.size[2] / 2 - g.top) < e);
-    // A shelf on each edge.
-    for (const s of [-1, 1]) assert(g.boxes.some((b) => Math.sign(b.center[axis]) === s));
-    // Fitted to what is over them, each edge's legs reach up to its highest
-    // and glueInto into it, postEdgeIn inside the plate's sides; the rest is
-    // as it was.
-    const flat = (h: number) => ({
-      al: [g.inner, g.outer],
-      ac: [-1, 1],
-      z: [
-        [h, h],
-        [h, h],
-      ],
-    });
-    const fitted = gluePosts(cfg, axis, { grow: [0, 0], over: [flat(-3), flat(-2.5)] });
-    fitted.legs.forEach((legs, i) =>
-      legs.forEach((b) => {
-        assert(Math.abs(b.center[2] + b.size[2] / 2 - ([-3, -2.5][i] + CHASSIS.glueInto)) < e);
-        const out = Math.abs(b.center[across]) + b.size[across] / 2;
-        assert(Math.abs(out - (g.reach[0] - CHASSIS.postEdgeIn)) < e);
-      }),
-    );
-    assert.deepEqual(fitted.boxes, g.boxes);
-    assert.deepEqual(fitted.glue, g.glue);
-  }
 });
 test('a project on the provisional tile loads with the measured one, and its nets with its holes', () => {
   const p = clone(defaults) as any;
@@ -248,15 +172,32 @@ test('a thicker skin builds the frame in one piece, the cradles reaching the flo
     /skin_mm/,
   );
 });
-test("a plate margin past the glue posts' legs still builds", () => {
-  // The plate's edge then lies past a leg's outer face, or on it: the grid
-  // its top is shaped over must still run in order, with no cell of no width.
-  const p = clone(defaults);
-  p.config.chassis.plate_margin_mm = 2.5;
-  const body = freeAfter(wasm, () =>
-    buildChassis(wasm, p.config, componentFrames(p.config)).body.volume(),
-  );
-  assert(body > 0);
+test('under each plate the sleeve fills round the switch body, over the tile, to just above it', () => {
+  freeAfter(wasm, () => {
+    const cfg = clone(defaults).config;
+    const frames = componentFrames(cfg);
+    const m = frames.matrix_index_home;
+    const seated = seatSwitches(wasm.Manifold, cfg, buildChassis(wasm, cfg, frames).body, [m]);
+    const cut = seated.body.subtract(wasm.Manifold.union([...seated.reliefs, ...seated.openings]));
+    const filled = (x: number, y: number, z: number) =>
+      cut.intersect(place(box(wasm.Manifold, [0.05, 0.05, 0.05], [x, y, z]), m)).volume() > 1e-6;
+    const bottom = sleeveBottom(cfg);
+    const half = cfg.tile.size_mm[0] / 2;
+    const hole = switchHole(cfg)[0] / 2;
+    assert(Math.abs(bottom - (-cfg.tile.plate_top_to_pcb_top_mm + 0.4)) < 1e-9);
+    // Round the hole beside it, out to the tile's edge and in its corners, down to the sleeve's underside.
+    for (const [x, y] of [
+      [hole + 0.1, 0],
+      [-half + 0.1, 0],
+      [half - 0.1, half - 0.1],
+    ])
+      assert(filled(x, y, bottom + 0.05), `${x}, ${y}`);
+    // Not below it, nor in the hole or the clip reliefs.
+    assert(!filled(hole + 0.1, 0, bottom - 0.05));
+    assert(!filled(hole - 0.1, 0, bottom + 0.05));
+    assert(!filled(0, hole + 0.1, bottom + 0.05));
+    assert(!filled(0, hole + 0.1, -2));
+  });
 });
 test('the default (Swung in) Capybara builds one piece and passes every check', () => {
   const r = buildSolid(wasm, clone(defaults)).report,
