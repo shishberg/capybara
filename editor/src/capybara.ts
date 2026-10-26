@@ -2756,6 +2756,17 @@ function bridges(
   const thicknesses = [...Array(Math.round((thickest - thinnest) * 10) + 1).keys()].map(
     (i) => thickest - i / 10,
   );
+  // The thickest strut that fits in frame f, if any.
+  const strutted = (
+    f: BridgeFrame,
+    sides: [Joint, Joint][],
+    space: ReturnType<typeof keySpace>,
+    joined: RibKey[],
+  ) =>
+    thicknesses.reduce<Manifold | undefined>(
+      (found, thick) => found ?? strut(f, sides, space, joined, thick),
+      undefined,
+    );
   // From the middle of the stretch lo to hi outward, either way in turn, the
   // first place a bridge fits: `make(m)`, its middle at m.
   const nearestMiddle = <T>(lo: number, hi: number, make: (m: number) => T | undefined) => {
@@ -2784,12 +2795,7 @@ function bridges(
       const sides: [Joint, Joint][] = [0, 1].map(() => [keyJoint(P, sP), keyJoint(Q, sQ)]);
       const made =
         nearestMiddle(lo, hi, (m) => stepped(frameOn(P, sP, e, m), sides, space, [P, Q]))?.solid ??
-        thicknesses.reduce<Manifold | undefined>(
-          (found, thick) =>
-            found ??
-            nearestMiddle(lo, hi, (m) => strut(frameOn(P, sP, e, m), sides, space, [P, Q], thick)),
-          undefined,
-        );
+        nearestMiddle(lo, hi, (m) => strutted(frameOn(P, sP, e, m), sides, space, [P, Q]));
       return made ? [{ keys: [P.name, Q.name] as [string, string], solid: made }] : [];
     }),
   );
@@ -2823,7 +2829,8 @@ function bridges(
       const sP = Math.sign(dot(P.c, sub(middle.p, P.o)));
       const [lo, hi] = [-1, 1].map((u) => dot(corner(d, P, u, sP, 0), P.a)).sort((x, y) => x - y);
       const space = keySpace(cfg, frames, [P.name]);
-      const found = nearestMiddle(lo, hi, (m) => {
+      // At m along P's edge, the bridge `strut` or not.
+      const at = (m: number, strut: boolean): { solid: Manifold; land?: Pose } | undefined => {
         const f = frameOn(P, sP, P.a, m);
         // The web's poses across the bridge's width, and the one either
         // side, each with its side facing P: all of them facing it, and the
@@ -2855,6 +2862,10 @@ function bridges(
           };
           return [keyJoint(P, sP), joint];
         });
+        if (strut) {
+          const solid = strutted(f, sides, space, [P]);
+          return solid && { solid };
+        }
         const made = stepped(f, sides, space, [P]);
         if (!made) return undefined;
         // It lands on the web between where its sides cross the web's edge,
@@ -2871,7 +2882,9 @@ function bridges(
           thick: q.thick,
         };
         return { solid: made.solid, land };
-      });
+      };
+      const found =
+        nearestMiddle(lo, hi, (m) => at(m, false)) ?? nearestMiddle(lo, hi, (m) => at(m, true));
       return found ? [{ keys: [P.name, web.name] as [string, string], ...found }] : [];
     }),
   );
