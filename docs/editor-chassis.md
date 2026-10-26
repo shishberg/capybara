@@ -283,7 +283,8 @@ Under the plates:
   (`chassis.skin_mm` above z = 0) are dropped; a wire left with no route fails
   the routing. The wires then negotiate: each takes its cheapest
   route given the others, and routes that meet another wire cost more each
-  round until none meet. Pairs that still meet are repaired together with the
+  round until none meet. The link wires negotiate too, each with its one
+  route, so the others go round them. Pairs that still meet are repaired together with the
   wires most in their way. Routing runs in a worker of its own
   (`src/wiring-worker.ts`) while the build worker builds the chassis, so the wires
   follow an edit when the chassis rebuilds.

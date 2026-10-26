@@ -35,7 +35,7 @@ import { pathsIn } from './paths';
 import { portGrid, wirePort } from './port';
 import { holes, holeAlong, linkWires, pinName, proMicroParts } from './pro-micro';
 import { specsOf } from './specs';
-import { crossings } from './tubes';
+import { crossings, tubeOf } from './tubes';
 
 export { holes, holeAlong, padParts, proMicroParts, nets, crossings };
 export type { NetSpec, Pad, Wire, NetSummary, Wiring };
@@ -68,6 +68,10 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
   const { pads, specs, ends } = specsOf(env, keys);
   const paths = pathsIn(env, obstaclesOf(env, keys));
   const placeOf = assignPlaces(env, specs, ends, paths.leg);
+  // The jack's and the reset switch's link wires lie as they must, so they
+  // negotiate too, each with its one route, and the others go round them.
+  const links = linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin)));
+  const fixed = links.map((x) => [{ tube: tubeOf(x.points, x.diameter), rank: 0 }]);
 
   // Route with the usual choices first; if wires still meet, or some wire has
   // no route above the floor, again with every place in the port and every
@@ -83,8 +87,8 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
           none.map((s) => `${s.net.name} ${s.from}-${s.to}`).join(', '),
       );
     }
-    const { left, choice } = negotiate(options, wide);
-    return { left, paths: choice.map((k, i) => options[i][k].tube.points) };
+    const { left, choice } = negotiate([...options, ...fixed], wide);
+    return { left, paths: options.map((list, i) => list[choice[i]].tube.points) };
   };
   let solved = solve(false);
   if (solved.left) {
@@ -105,8 +109,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       feed: isFeed,
     };
   });
-  // The jack's and the reset switch's link wires too.
-  wires.push(...linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin))));
+  wires.push(...links);
   const summaries: NetSummary[] = nets(cfg).map((net) => {
     const own = wires.filter((x) => x.net === net.name);
     return {
