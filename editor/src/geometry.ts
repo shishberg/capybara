@@ -433,6 +433,9 @@ function migrate(c: Record<string, any>) {
         fill(to[k], v);
   };
   if (c.half === undefined) c.half = d.half;
+  // The link wires plug on now too.
+  if (/link wires are soldered/.test(c.pro_micro?.dupont?.description ?? ''))
+    c.pro_micro.dupont.description = d.pro_micro.dupont.description;
   for (const k of ['tile', 'pro_micro', 'trrs', 'reset', 'wiring', 'chassis'])
     if (!c[k]) c[k] = clone(d[k]);
     else fill(c[k], d[k]);

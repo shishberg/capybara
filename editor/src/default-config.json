@@ -314,7 +314,7 @@
     "plug_mm": [12.5, 7, 25],
     "clearance_mm": 0.2,
     "dupont": {
-      "description": "Each feed plugs onto its pin: a straight header pin soldered from below, its plastic spacer on the board's top, and a single Dupont housing pushed down onto it, the feed's wire out of the housing's top, with exit_mm above it to come out and turn. Only the feeds' pins take one; the jack's and the reset switch's link wires are soldered. Provisional until measured.",
+      "description": "Each wire off the Pro Micro, a feed or a link wire to the jack or the reset switch, plugs onto its pin: a straight header pin soldered from below, its plastic spacer on the board's top, and a single Dupont housing pushed down onto it, the wire out of the housing's top, with exit_mm above it to come out and turn. Provisional until measured.",
       "spacer_mm": 2.5,
       "housing_mm": [2.54, 2.54, 14],
       "exit_mm": 3

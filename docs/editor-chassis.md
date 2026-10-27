@@ -258,7 +258,11 @@ Under the plates:
   with its header's spacer under it and room over it for the wire to come out
   and turn, is checked against the chassis and against the tiles, their parts
   and pads over the board. The jack's three link wires and the reset switch's
-  two run from their pins to the jack's lugs and the switch's legs.
+  two run from their pins' housings to the jack's lugs and the switch's legs:
+  down beside the housing and across just over the board's parts and the jack
+  (or the switch), or, where the way across passes over other housings (on the
+  left half, whose pin rows swap, they are on the far row), over those
+  housings and the room over them for their wires.
 - **Chains**: each finger column chains its C holes top → home → bottom and on
   to its thumb; each row chains its R holes across the columns. A wire arrives
   at the tile's C (or R) hole nearer where it comes from, and the next leaves
@@ -308,4 +312,4 @@ Under the plates:
   says why).
 
 The default hand has 105 wires (100 under the keys and five link wires),
-198 solder joints, 12 plugs and about 5.5 m of wire.
+193 solder joints, 17 plugs and about 5.5 m of wire.

@@ -141,7 +141,8 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       label: `${pinName(cfg, x.pin)} to ${x.to}`,
       group: 'link',
       wires: own.length,
-      joints: 2 * own.length,
+      // Soldered at the jack or the switch; the Pro Micro end plugs on.
+      joints: own.length,
       length: own.reduce((t, y) => t + y.length, 0),
     });
   }

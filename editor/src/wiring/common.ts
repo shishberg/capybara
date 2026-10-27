@@ -202,7 +202,7 @@ export const WIRING = {
   padShare: 0.9,
   /** Centre spacing of two wires on one Pro Micro pin, along its row. */
   holeShare: 1,
-  /** A feed comes down past its Dupont housing's outer face this far off it. */
+  /** A wire comes down past its Dupont housing's face this far off it. */
   plugMargin: 0.2,
   /** Centre spacing of the wires through the wire port. */
   portPitch: 1.02,

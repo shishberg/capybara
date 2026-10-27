@@ -283,21 +283,25 @@ test("the wiring lands each net on its pin, and the jack's links on theirs", () 
     assert(feeds.length > 0, net.name);
     for (const f of feeds) assert(near(f.points.at(-1)!, at) || near(f.points[0], at), net.name);
   }
-  // Each of the jack's wires runs from its pin to its lug, no higher than
-  // its level over the jack's top (the jack stands up into the loom, so that
-  // its plug comes in over the rail). On a pin a net's feeds land on too, it
-  // starts beside them in the hole.
+  // Each of the jack's wires runs from the top of the Dupont housing on its
+  // pin to its lug, down beside the housing to no higher than its level over
+  // the jack's top (the jack stands up into the loom, so that its plug comes
+  // in over the rail). On a pin a net's feeds land on too, it starts beside
+  // them in the housing.
   const fed = new Set(Object.values(cfg.pro_micro.pins));
   const links = w.wires.filter((x) => x.group === 'link' && x.net.startsWith('TRRS '));
   assert.equal(links.length, cfg.trrs.wires.length);
   const top = point(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])[2];
   const highest = top + WIRING.linkOver + (links.length - 1) * WIRING.linkStep;
+  const { spacer_mm: spacer, housing_mm: housing } = cfg.pro_micro.dupont;
   for (const t of cfg.trrs.wires) {
     const l = links.find((x) => x.net === `TRRS ${t.name}`)!;
     const share = fed.has(t.pin) ? WIRING.holeShare : 0;
-    assert(near(l.points[0], point(frames.pro_micro, pinAt(cfg, t.pin)), share + 0.51), t.name);
+    const [px, py, pz] = pinAt(cfg, t.pin);
+    const plug = point(frames.pro_micro, [px, py, pz + spacer + housing[2]]);
+    assert(near(l.points[0], plug, share + 0.51), t.name);
     assert(near(l.points.at(-1)!, lugAt(cfg, frames, t.lug)), t.name);
-    assert(Math.max(...l.points.map((p) => p[2])) <= highest + 1e-9, t.name);
+    assert(Math.max(...l.points.slice(2).map((p) => p[2])) <= highest + 1e-9, t.name);
   }
   // The feeds keep out of the jack: none comes within its radius of the body.
   const [jx, jy, jz] = cfg.trrs.body_mm;
@@ -436,7 +440,9 @@ test('the reset switch sits in a pocket in the back wall, its plunger out throug
   for (const x of r.wires) {
     const l = w.wires.find((y) => y.net === `Reset ${x.name}`)!;
     assert.equal(cfg.pro_micro.pinout[x.pin - 1], x.name);
-    assert.deepEqual(l.points[0], point(frames.pro_micro, pinAt(cfg, x.pin)));
+    const [px, py, pz] = pinAt(cfg, x.pin);
+    const { spacer_mm: spacer, housing_mm: housing } = cfg.pro_micro.dupont;
+    assert.deepEqual(l.points[0], point(frames.pro_micro, [px, py, pz + spacer + housing[2]]));
     const leg = legAt(cfg, frames, x.leg);
     assert.deepEqual(l.points.at(-1), leg);
     const behind = l.points.at(-2)!;
@@ -649,10 +655,11 @@ test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
         p[2] >= cfg.chassis.skin_mm + x.diameter / 2 - 1e-9,
         `${x.net} ${x.from}-${x.to} at z ${p[2].toFixed(3)}`,
       );
-  // Both ends of every wire but the 12 feeds' plugged ones.
+  // Both ends of every wire but the 17 plugged onto the Pro Micro: the 12
+  // feeds' and the five link wires'.
   assert.equal(
     w.nets.reduce((s, n) => s + n.joints, 0),
-    198,
+    193,
   );
 });
 test('a project saved before the wiring loads with the default wiring', () => {

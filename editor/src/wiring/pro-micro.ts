@@ -33,9 +33,23 @@ export function pinAt(cfg: Config, n: number): V3 {
 /** Pro Micro pin n and its name (pro_micro.pinout), for the wiring panel. */
 export const pinName = (cfg: Config, n: number) => `${n}, ${cfg.pro_micro.pinout[n - 1]}`;
 
-/** The top of a feed's Dupont housing over the board's top (pro_micro.dupont): its header's spacer and the housing on it. */
+/** The top of a Dupont housing over the board's top (pro_micro.dupont): its header's spacer and the housing on it. */
 const plugHeight = (cfg: Config) =>
   cfg.pro_micro.dupont.spacer_mm + cfg.pro_micro.dupont.housing_mm[2];
+
+/** Pin n's Dupont housing's top, in world coordinates, where its wire comes out. */
+const plugTop = (cfg: Config, frames: Record<string, Matrix4>, n: number) => {
+  const [x, y, z] = pinAt(cfg, n);
+  return point(frames.pro_micro, [x, y, z + plugHeight(cfg)]);
+};
+
+/** The pins that take a Dupont housing: every net's, the jack's and the reset switch's. */
+const plugPins = (cfg: Config) =>
+  new Set([
+    ...nets(cfg).map((n) => n.pin),
+    ...cfg.trrs.wires.map((x) => x.pin),
+    ...cfg.reset.wires.map((x) => x.pin),
+  ]);
 
 /**
  * Where each net's feeds land, in world coordinates, keyed by the net's
@@ -44,15 +58,12 @@ const plugHeight = (cfg: Config) =>
  */
 export function holes(cfg: Config, frames = componentFrames(cfg)) {
   const out: Record<number, V3> = {};
-  for (const net of nets(cfg)) {
-    const [x, y, z] = pinAt(cfg, net.pin);
-    out[net.pin] = point(frames.pro_micro, [x, y, z + plugHeight(cfg)]);
-  }
+  for (const net of nets(cfg)) out[net.pin] = plugTop(cfg, frames, net.pin);
   return out;
 }
 
 /**
- * Where a feed of radius r, out of its housing's top at `top`, comes down
+ * Where a wire of radius r, out of its housing's top at `top`, comes down
  * past it: at that height, just off the housing's outer face, away from the
  * board's middle, or (`inside`) its inner face, between the pin rows.
  */
@@ -121,7 +132,7 @@ const LEG = [0.8, 0.3];
 /** A part `size` about `center` in frame f, turned so its z axis (a cylinder's) runs along f's x. */
 const alongX = (f: Matrix4) => f.clone().multiply(new Matrix4().makeRotationY(Math.PI / 2));
 
-/** The Pro Micro, the feeds' Dupont housings, the jack, both plugs and the reset switch, as parts for display and the checks. */
+/** The Pro Micro, its pins' Dupont housings, the jack, both plugs and the reset switch, as parts for display and the checks. */
 export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[] {
   const b = cfg.pro_micro;
   const j = cfg.trrs;
@@ -138,10 +149,10 @@ export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[
   // Its parts on top, between the pin rows, behind the port.
   const [px, py, pz] = b.parts_mm;
   add('Pro Micro parts', 'controller', [px, py, pz], [m.usb.x + ux + px / 2, 0, bz + pz / 2], fb);
-  // On each feed's pin, its header's spacer, the Dupont housing on it and the
-  // room over that for the feed's wire to come out and turn.
+  // On each wired pin, its header's spacer, the Dupont housing on it and the
+  // room over that for its wire to come out and turn.
   const { spacer_mm: spacer, housing_mm: housing, exit_mm: exit } = b.dupont;
-  for (const pin of new Set(nets(cfg).map((n) => n.pin))) {
+  for (const pin of plugPins(cfg)) {
     const [x, y] = pinAt(cfg, pin);
     const [hx, hy, hz] = housing;
     add(`Pin ${pin} header`, 'dupont', [hx, hy, spacer], [x, y, bz + spacer / 2], fb);
@@ -515,20 +526,26 @@ export function cradles(
 
 /**
  * The link wires: the jack's (trrs.wires) and the reset switch's
- * (reset.wires), each in the order listed, from its Pro Micro pin straight up
- * to a level, across to over its lug and down onto it, or over a point
- * linkBehind behind its leg, down to it and onto the leg. The jack's
+ * (reset.wires), each in the order listed, out of the top of the Dupont
+ * housing on its Pro Micro pin, over the housing's face toward its end (as a
+ * feed's, besideHousing) and down beside it to a level, across to over its
+ * lug and down onto it, or over a point linkBehind behind its leg, down to it
+ * and onto the leg. The jack's
  * lowest level is linkOver above the board's parts or the jack's top,
  * whichever is higher, and the switch's above the board's parts or its top;
- * the next is linkStep above it, and so on. Placed in turn, the jack's and
+ * a wire whose way across passes over another pin's housing (the left half's
+ * jack's, its pins on the far row) goes straight up out of its own and its
+ * lowest level is linkOver above the housings' tops and the room over them
+ * for their wires (exit_mm). The next is linkStep above it, and so on. Placed in turn, the jack's and
  * the switch's together, each wire takes the lowest that keeps it out of
  * those before, so they stay as low as the board and the jack (or the
  * switch) let them; in the first order (the listed one first) that leaves
  * none touching, since a wire coming down onto its lug can pass through one
  * placed lower. A leg is come at from behind
  * since the other leg on its side stands over it.
- * On a pin a feed also lands on (`fed`), the link wire's end is holeShare
- * along the pin row toward the port, so the two sit side by side in the hole.
+ * On a pin a feed also lands on (`fed`), the link wire comes out holeShare
+ * along the pin row toward the port, so the two sit side by side in the
+ * housing.
  */
 export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set<number>): Wire[] {
   const b = cfg.pro_micro;
@@ -581,23 +598,52 @@ function links(
   const w = cfg.wiring;
   const f = frames.pro_micro;
   const toPort = point(f, [-WIRING.holeShare, 0, 0]).map((x, i) => x - f.elements[12 + i]);
+  // Whether a wire of radius r, straight across in plan from a to b, passes
+  // over another pin's housing than `pin`'s.
+  const { housing_mm: housing, exit_mm: exit } = cfg.pro_micro.dupont;
+  const inv = f.clone().invert();
+  const passes = (a: V3, b: V3, pin: number, r: number) => {
+    const [p, q] = [point(inv, a), point(inv, b)];
+    const steps = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / WIRING.sample));
+    const reach = housing.map((s) => s / 2 + r + WIRING.plugMargin);
+    return [...plugPins(cfg)].some((n) => {
+      if (n === pin) return false;
+      const [x, y] = pinAt(cfg, n);
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const [u, v] = [p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])];
+        if (Math.abs(u - x) < reach[0] && Math.abs(v - y) < reach[1]) return true;
+      }
+      return false;
+    });
+  };
+  // The housings' tops and the room over them for their wires to come out.
+  const overPlugs = point(f, [0, 0, pinAt(cfg, 1)[2] + plugHeight(cfg) + exit])[2];
   const runs = list.map((x) => {
     const power = x.name === 'VCC' || x.name === 'GND';
     const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
-    const at = point(f, pinAt(cfg, x.pin));
+    const at = plugTop(cfg, frames, x.pin);
     const from: V3 = fed.has(x.pin)
       ? [at[0] + toPort[0], at[1] + toPort[1], at[2] + toPort[2]]
       : at;
     const to = x.end;
     const over = x.behind ?? to;
+    // Down past whichever of the housing's faces is nearer its end.
+    const plan = (p: V3) => Math.hypot(p[0] - over[0], p[1] - over[1]);
+    const by = [false, true]
+      .map((inside) => besideHousing(cfg, frames, from, diameter / 2, inside))
+      .reduce((p, q) => (plan(q) < plan(p) ? q : p));
+    // Across over the other housings where its way passes over one, so
+    // straight up out of its own.
+    const floor = passes(by, over, x.pin, diameter / 2) ? Math.max(x.floor, overPlugs) : x.floor;
     const run = (z: number): V3[] => [
       from,
-      [from[0], from[1], z],
+      ...(z < from[2] ? [by, [by[0], by[1], z] as V3] : [[from[0], from[1], z] as V3]),
       [over[0], over[1], z],
       ...(x.behind ? [x.behind] : []),
       to,
     ];
-    return { x, diameter, run };
+    return { x, diameter, floor, run };
   });
   // Each wire's points, placed in `order`, and whether none touches another.
   const layOut = (order: number[]) => {
@@ -605,11 +651,11 @@ function links(
     const out: V3[][] = [];
     let clear = true;
     for (const i of order) {
-      const { x, diameter, run } = runs[i];
-      let points = run(x.floor + WIRING.linkOver);
+      const { diameter, floor, run } = runs[i];
+      let points = run(floor + WIRING.linkOver);
       let hit = true;
       for (let k = 0; k < runs.length && hit; k++) {
-        points = run(x.floor + WIRING.linkOver + k * WIRING.linkStep);
+        points = run(floor + WIRING.linkOver + k * WIRING.linkStep);
         hit = placed.some((t) => touches(t, tubeOf(points, diameter)));
       }
       clear &&= !hit;
