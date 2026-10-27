@@ -1,6 +1,6 @@
 > Superseded by [separate rigid thumb PCBs](rigid-thumb-construction.md). The flex construction below is historical and must not be manufactured for the current design.
 
-> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for all 36 keys; see [design status](design-status.md). This document describes the paused thumb PCB design and is kept as reference.
+> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for every key; see [design status](design-status.md). This document describes the paused thumb PCB design and is kept as reference.
 
 # Connected thumb construction
 

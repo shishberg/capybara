@@ -9,8 +9,7 @@ import { Matrix4 } from 'three';
 import { componentFrames, point, type Config, type V3 } from '../geometry';
 import { box, place } from '../manifold-util';
 import type { Part } from '../parts';
-import { WIRING, length, nets, type Wire } from './common';
-import { touches, tubeOf } from './tubes';
+import { WIRING, nets, type Wire } from './common';
 
 /**
  * Pro Micro pin n's centre on the board's top, in its frame. The port faces
@@ -536,18 +535,16 @@ export function cradles(
  * a wire whose way across passes over another pin's housing (the left half's
  * jack's, its pins on the far row) goes straight up out of its own and its
  * lowest level is linkOver above the housings' tops and the room over them
- * for their wires (exit_mm). The next is linkStep above it, and so on. Placed in turn, the jack's and
- * the switch's together, each wire takes the lowest that keeps it out of
- * those before, so they stay as low as the board and the jack (or the
- * switch) let them; in the first order (the listed one first) that leaves
- * none touching, since a wire coming down onto its lug can pass through one
- * placed lower. A leg is come at from behind
- * since the other leg on its side stands over it.
+ * for their wires (exit_mm). The next is linkStep above it, and so on, a
+ * level for each link wire. Each wire's routes at its levels, lowest first,
+ * are its options when the wiring negotiates (wiring), so the link wires take
+ * the lowest that keep them out of each other and the tiles' wires. A leg is
+ * come at from behind since the other leg on its side stands over it.
  * On a pin a feed also lands on (`fed`), the link wire comes out holeShare
  * along the pin row toward the port, so the two sit side by side in the
  * housing.
  */
-export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set<number>): Wire[] {
+export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set<number>): Link[] {
   const b = cfg.pro_micro;
   const f = frames.pro_micro;
   const parts = point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2];
@@ -580,6 +577,9 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
   return links(cfg, frames, fed, [...trrs, ...reset]);
 }
 
+/** A link wire, all but its route, and its route at each level it may take, lowest first (linkWires). */
+export type Link = Omit<Wire, 'points' | 'length'> & { levels: V3[][] };
+
 /** Link wires from Pro Micro pins to `end`s, each's lowest level linkOver above its `floor` (linkWires). */
 function links(
   cfg: Config,
@@ -594,7 +594,7 @@ function links(
     behind?: V3;
     floor: number;
   }[],
-): Wire[] {
+): Link[] {
   const w = cfg.wiring;
   const f = frames.pro_micro;
   const toPort = point(f, [-WIRING.holeShare, 0, 0]).map((x, i) => x - f.elements[12 + i]);
@@ -619,7 +619,7 @@ function links(
   };
   // The housings' tops and the room over them for their wires to come out.
   const overPlugs = point(f, [0, 0, pinAt(cfg, 1)[2] + plugHeight(cfg) + exit])[2];
-  const runs = list.map((x) => {
+  return list.map((x) => {
     const power = x.name === 'VCC' || x.name === 'GND';
     const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
     const at = plugTop(cfg, frames, x.pin);
@@ -643,41 +643,14 @@ function links(
       ...(x.behind ? [x.behind] : []),
       to,
     ];
-    return { x, diameter, floor, run };
+    return {
+      net: x.net,
+      group: 'link',
+      from: `pin ${x.pin}`,
+      to: x.to,
+      diameter,
+      feed: false,
+      levels: list.map((_, k) => run(floor + WIRING.linkOver + k * WIRING.linkStep)),
+    };
   });
-  // Each wire's points, placed in `order`, and whether none touches another.
-  const layOut = (order: number[]) => {
-    const placed: ReturnType<typeof tubeOf>[] = [];
-    const out: V3[][] = [];
-    let clear = true;
-    for (const i of order) {
-      const { diameter, floor, run } = runs[i];
-      let points = run(floor + WIRING.linkOver);
-      let hit = true;
-      for (let k = 0; k < runs.length && hit; k++) {
-        points = run(floor + WIRING.linkOver + k * WIRING.linkStep);
-        hit = placed.some((t) => touches(t, tubeOf(points, diameter)));
-      }
-      clear &&= !hit;
-      placed.push(tubeOf(points, diameter));
-      out[i] = points;
-    }
-    return { out, clear };
-  };
-  const orders = (left: number[]): number[][] =>
-    left.length
-      ? left.flatMap((i) => orders(left.filter((j) => j !== i)).map((o) => [i, ...o]))
-      : [[]];
-  const all = orders(runs.map((_, i) => i));
-  const { out } = all.map(layOut).find((l) => l.clear) ?? layOut(all[0]);
-  return runs.map(({ x, diameter }, i) => ({
-    net: x.net,
-    group: 'link',
-    from: `pin ${x.pin}`,
-    to: x.to,
-    points: out[i],
-    diameter,
-    length: length(out[i]) + 2 * w.end_allowance_mm,
-    feed: false,
-  }));
 }

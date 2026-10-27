@@ -1,6 +1,6 @@
 # Reference PCB review and revised mechanical brief
 
-> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for all 36 keys; see [design status](design-status.md). This document describes the paused flex finger and flat thumb PCB design and is kept as reference.
+> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for every key; see [design status](design-status.md). This document describes the paused flex finger and flat thumb PCB design and is kept as reference.
 >
 > It predates Swung in, the keyboard's layout (see the [editor guide](../editor/README.md)). The comparison preset of the imported Dactyl geometry it recommends was not kept.
 

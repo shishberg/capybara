@@ -1,6 +1,6 @@
 # Flat three-key thumb PCB
 
-> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for all 36 keys; see [design status](design-status.md). This document describes the paused flat thumb PCB design and is kept as reference.
+> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for every key; see [design status](design-status.md). This document describes the paused flat thumb PCB design and is kept as reference.
 
 Current layout is defined by `flat_thumb.json`. The whole cluster has one adjustable 3D pose; each key has an in-plane position and fan angle. All three switch normals remain parallel. The default outer keys fan by -10/+10 degrees around the middle key. Left and right boards preserve proper hotswap land patterns rather than mirroring a socket footprint.
 

@@ -6,7 +6,7 @@ A split keyboard that grew out of [Rosebear](https://github.com/shishberg/rosebe
 
 ## Current construction: key tiles
 
-All 36 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](docs/pro-micro.md) (nRF52840) in that half, the two halves joined by a TRRS cable. The first prototype needs no custom PCBs.
+All 40 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](docs/pro-micro.md) (nRF52840) in that half, the two halves joined by a TRRS cable. The first prototype needs no custom PCBs.
 
 ## Browser chassis editor
 

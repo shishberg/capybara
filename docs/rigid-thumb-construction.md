@@ -1,6 +1,6 @@
 > Superseded by [flat thumb construction](flat-thumb-construction.md). Historical separate-tile design.
 
-> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for all 36 keys; see [design status](design-status.md). This document describes the paused thumb PCB design and is kept as reference.
+> **Paused (2026-09-26).** The first prototype uses bought RGB key tiles for every key; see [design status](design-status.md). This document describes the paused thumb PCB design and is kept as reference.
 
 # Rigid thumb key PCBs
 

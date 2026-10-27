@@ -1,5 +1,5 @@
 {
-  "schema": 15,
+  "schema": 16,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "half": "right",
   "geometry": {
@@ -351,7 +351,7 @@
       "VCC",
       "RST",
       "GND",
-      "B+"
+      "RAW"
     ],
     "pins": {
       "RT": 7,
@@ -370,7 +370,7 @@
   },
   "trrs": {
     "provisional": true,
-    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side under the wishbone nearest the back, which forks over its plug; the opening between that wishbone's legs is filled round the barrel, gripping it, and its plug is clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame; wires joins each to a Pro Micro pin.",
+    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side under the wishbone nearest the back, which forks over its plug; the opening between that wishbone's legs is filled round the barrel, gripping it, and its plug is clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame, from Keebio's PJ-320A footprint mirrored to stand lugs up: R2, R1 and T back from the barrel along one side, S alone at the back on the other. wires joins each to a Pro Micro pin, named by its lug: each hand transmits on a different one.",
     "position_mm": [-45.54, 15.32],
     "rotation_deg": -6.15,
     "standoff_mm": 6,
@@ -379,19 +379,19 @@
     "plug_mm": [7, 25],
     "clearance_mm": 0.4,
     "lugs_mm": {
-      "S": [-4.5, -2.2],
-      "R2": [-1, 2.2],
-      "R1": [2, 2.2],
-      "T": [4.5, 2.2]
+      "S": [5.25, 2.3],
+      "R2": [-2.85, -2.3],
+      "R1": [0.15, -2.3],
+      "T": [4.15, -2.3]
     },
     "wires": [
       {
-        "name": "TX",
+        "name": "S",
         "lug": "S",
         "pin": 1
       },
       {
-        "name": "RX",
+        "name": "R2",
         "lug": "R2",
         "pin": 2
       },

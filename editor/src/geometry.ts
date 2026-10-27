@@ -408,6 +408,25 @@ function migrate(c: Record<string, any>) {
       w.description = d.wiring.description;
     c.schema = 15;
   }
+  if (!(c.schema >= 16)) {
+    // Schema 16: the jack's lugs follow the PJ-320A footprint, which puts S
+    // at the back and R2, R1 and T on the other side (they had S at the
+    // barrel, on the side the others now take); its link wires are named by
+    // lug, as each hand transmits on a different one; and pin 24 is RAW, as
+    // silkscreened. Each part a project still has as schema 15 left it takes
+    // the new one.
+    const t = c.trrs;
+    const was = { S: [-4.5, -2.2], R2: [-1, 2.2], R1: [2, 2.2], T: [4.5, 2.2] };
+    if (t && same(t.lugs_mm, was)) {
+      t.lugs_mm = clone(d.trrs.lugs_mm);
+      t.description = d.trrs.description;
+    }
+    for (const x of t?.wires ?? [])
+      if ((x.name === 'TX' && x.lug === 'S') || (x.name === 'RX' && x.lug === 'R2')) x.name = x.lug;
+    const pinout = c.pro_micro?.pinout;
+    if (pinout?.[23] === 'B+') pinout[23] = 'RAW';
+    c.schema = 16;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;

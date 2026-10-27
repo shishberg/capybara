@@ -76,10 +76,12 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
   const { pads, specs, ends } = specsOf(env, keys);
   const paths = pathsIn(env, obstaclesOf(env, keys));
   const placeOf = assignPlaces(env, specs, ends, paths.leg);
-  // The jack's and the reset switch's link wires lie as they must, so they
-  // negotiate too, each with its one route, and the others go round them.
+  // The jack's and the reset switch's link wires negotiate too, each with its
+  // route at each of its levels, lowest first.
   const links = linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin)));
-  const fixed = links.map((x) => [{ tube: tubeOf(x.points, x.diameter), rank: 0 }]);
+  const linkOptions = links.map((x) =>
+    x.levels.map((points, rank) => ({ tube: tubeOf(points, x.diameter), rank })),
+  );
 
   // Route with the usual choices first; if wires still meet, or some wire has
   // no route above the floor, again with every place in the port and every
@@ -95,8 +97,11 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
           none.map((s) => `${s.net.name} ${s.from}-${s.to}`).join(', '),
       );
     }
-    const { left, choice } = negotiate([...options, ...fixed], wide);
-    return { left, paths: options.map((list, i) => list[choice[i]].tube.points) };
+    const { left, choice } = negotiate([...options, ...linkOptions], wide);
+    return {
+      left,
+      paths: [...options, ...linkOptions].map((list, i) => list[choice[i]].tube.points),
+    };
   };
   let solved = solve(false);
   if (solved.left) {
@@ -117,7 +122,12 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       feed: isFeed,
     };
   });
-  wires.push(...links);
+  wires.push(
+    ...links.map(({ levels, ...x }, i) => {
+      const points = solved.paths[specs.length + i];
+      return { ...x, points, length: length(points) + 2 * w.end_allowance_mm };
+    }),
+  );
   const summaries: NetSummary[] = nets(cfg).map((net) => {
     const own = wires.filter((x) => x.net === net.name);
     return {
