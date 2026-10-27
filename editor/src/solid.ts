@@ -473,7 +473,7 @@ function build(
   const nodes = componentFrames(cfg);
   const keys: Keys = Object.entries(nodes).filter(([name]) => isKey(name));
   const wired = given.wired ?? wiring(cfg, nodes);
-  const chassis = buildChassis(wasm, cfg, nodes, wired);
+  const chassis = buildChassis(wasm, cfg, nodes);
   if (chassis.body.status() !== 'NoError') throw Error('Invalid chassis: ' + chassis.body.status());
   const M = wasm.Manifold;
   const probe = makeProbe(

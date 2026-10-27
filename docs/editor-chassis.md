@@ -115,8 +115,8 @@ Every bridge is a **step**: out of the higher plate's edge in its plane, down
 a leg and in to the lower plate in its plane, so it passes under the lower
 key's keycap room rather than through it. It keeps clear of what the keys
 hold (the two keys' keycaps only as low as they are pressed) and every other
-key's plate; for now it ignores the wires, which are very approximate. The
-leg's near face stands just out of the lower plate's edge, or out past what
+key's plate. It ignores the wires: their routes are approximate, and real
+wires bend round it. The leg's near face stands just out of the lower plate's edge, or out past what
 is under the lower plate's top there with its corner chamfered back past a
 keycap room that overhangs it; failing that, out past all of it; failing
 that, square to the higher plate's edge, as far out as the leg needs to be
@@ -135,9 +135,6 @@ of the matrix (inner–index, index–middle, middle–ring and ring–pinky at 
 row), between the thumb rows (thumb_far–thumb_x2, thumb_home–thumb_x1), and
 thumb_near to thumb_x1's web. One is thinner, no step 1.3 mm thick fitting
 anywhere along its edge: ring_bottom–pinky_bottom (0.8 mm).
-
-The editor's `?bridge=` bar (dev only, ← →) switches to `wired`, where bridges
-keep 0.5 mm off the routed wires too; on Swung in that loses none.
 
 Where two keys are too steep or too far round to
 web, the rib is parted there, and each end is rounded if the round clears the

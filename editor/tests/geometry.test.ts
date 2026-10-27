@@ -325,7 +325,7 @@ test("the walls stand clear of the jack's plug, over the rail", () => {
   // over it (its collar fills the opening and grips the barrel there).
   const walls = (cfg: typeof defaults.config) => {
     const frames = componentFrames(cfg);
-    return capybara(wasm, cfg, frames, wiring(cfg, frames).wires)
+    return capybara(wasm, cfg, frames)
       .parts()
       .filter((x) => x.name.startsWith('wall '))
       .map((x) => x.solid);

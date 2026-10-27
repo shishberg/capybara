@@ -22,7 +22,6 @@ import {
 } from './viewer';
 import { snapshot, historyButtons, refreshInputs, preview, edited } from './project-store';
 import { startWorker, requestBuild } from './build-client';
-import { setupBridgePrototype } from './bridge-prototype';
 import { restoreView } from './view-store';
 import { marksHook, screen } from './interaction';
 import { handles } from './handles';
@@ -106,6 +105,5 @@ historyButtons();
 refreshInputs();
 preview();
 startWorker();
-if (import.meta.env.DEV) setupBridgePrototype();
 requestBuild();
 resize();

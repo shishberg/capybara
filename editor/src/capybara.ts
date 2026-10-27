@@ -48,7 +48,7 @@
 // runs on under the pair, not in between them (fused). PROTOTYPE: bridges tie neighbouring ribs
 // together up at the plates: where two keys of different ribs face each other,
 // a bridge crosses the gap between the two plates' facing edges inside a
-// step that fits it, clear of the keys, the other plates and the wires, its
+// step that fits it, clear of the keys and the other plates, its
 // top and underside curving from one plate's plane to the other's (bridges).
 // Nothing is cut out: chassis.ts adds the base, seats.ts the seats and sleeves, and the
 // checks report anything that runs into the tiles or the keycaps.
@@ -116,19 +116,6 @@ import {
   type WallPoint,
   type WallSide,
 } from './capybara-walls';
-import type { Wire } from './wiring';
-
-/**
- * PROTOTYPE, throwaway: which constraints a bridge keeps (?bridge= in the
- * editor, bridge-prototype.ts): `loose` clear of what the keys hold and every
- * other key's plate, but not the wires (wiring is very approximate for now);
- * `wired` wireGap off the wires too.
- */
-export const BRIDGE_STYLES = ['loose', 'wired'] as const;
-export let bridgeStyle: (typeof BRIDGE_STYLES)[number] = 'loose';
-export const setBridgeStyle = (style: string | undefined) => {
-  bridgeStyle = BRIDGE_STYLES.find((x) => x === style) ?? 'loose';
-};
 
 /** Construction sizes in mm. */
 export const SIZES = {
@@ -201,7 +188,7 @@ export const SIZES = {
    * out of the higher plate's edge in its plane (from bridgeOut out of it),
    * down a leg and into the lower in its plane, the leg's near face as close
    * to the lower's edge as clears what the keys hold and every other key's
-   * plate (endGap off; and the wires, wireGap off, in bridgeStyle `wired`),
+   * plate (endGap off),
    * stepSpare more, its corner over that cut back as little as clears the
    * rest. Its top and underside are each a cubic curve across the step's
    * leg, drawn apart where steep (the top toward the lower plate, the
@@ -223,7 +210,6 @@ export const SIZES = {
   bridgeSkin: 0.001,
   bridgeOut: 0.05,
   stepSpare: 0.01,
-  wireGap: 0.5,
   bridgeProbe: 0.5,
   webReach: 15,
   /**
@@ -2426,8 +2412,8 @@ const apart = (p: V3[], q: V3[]) =>
  * edge face carried out bridgeOut, its near face L's edge face carried out as
  * far as keeps the leg clear of what is over L there, stepSpare more. What
  * the step keeps clear of (what the keys hold, P's and Q's keycaps only as
- * low as they are pressed, and every other key's plate, all endGap off; the
- * wires, wireGap off, if bridgeStyle is `wired`) is taken wherever it is
+ * low as they are pressed, and every other key's plate, all endGap off) is
+ * taken wherever it is
  * across the bridge's width and seen along the edges, and so is the step, a
  * convex piece at a time. Where the leg's near face clears what is below L's
  * top but not what is over it (a pressed keycap overhanging L's edge), its
@@ -2460,21 +2446,13 @@ function bridges(
   frames: Record<string, Matrix4>,
   all: Rib[],
   ends: End[][],
-  wires: Wire[],
 ): { keys: [string, string]; solid: Manifold; land?: Pose }[] {
   const keys = all.flatMap((rib) => rib.keys.map((k) => ({ k, run: rib.run })));
   const square = Math.cos((SIZES.bridgeTurn * Math.PI) / 180);
   const probe = SIZES.bridgeProbe;
   const w = SIZES.bridgeWidth / 2;
   const plan = (v: V3) => [...unitPlan(v), 0] as V3;
-  const segments = wires.flatMap((x) =>
-    x.points.slice(1).map((q, i) => ({ a: x.points[i], b: q, r: x.diameter / 2 })),
-  );
   const hull = (points: Seen[]) => wasm.CrossSection.hull([points]);
-  // A round's polygon outside its circle (its sides' middles on it), so a
-  // wire's keep-out is all of it.
-  const segs = SIZES.cornerSegments;
-  const round = (r: number) => wasm.CrossSection.circle(r / Math.cos(Math.PI / segs), segs);
   // The frame on key k's edge facing s, at m along e.
   const frameOn = (k: RibKey, s: number, e: V3, m: number): BridgeFrame => {
     const edge = keyPoint(k, d.plateHalf, 0, s, 0);
@@ -2586,25 +2564,13 @@ function bridges(
     const broad = step((_, L) => face(L, SIZES.bridgeOut), 1);
     const widest = pieces(broad);
     const { min, max } = wasm.CrossSection.union(widest).bounds();
-    // Whether points seen in f, or anything within `by` of them, could
-    // reach the widest step.
-    const near = (points: Seen[], by = 0) =>
+    // Whether points seen in f could reach the widest step.
+    const near = (points: Seen[]) =>
       [0, 1].every(
         (i) =>
-          Math.max(...points.map((p) => p[i])) + by > min[i] &&
-          Math.min(...points.map((p) => p[i])) - by < max[i],
+          Math.max(...points.map((p) => p[i])) > min[i] &&
+          Math.min(...points.map((p) => p[i])) < max[i],
       );
-    const t = (p: V3) => dot(sub(p, f.o), f.e);
-    const wired = (bridgeStyle === 'wired' ? segments : []).flatMap(({ a, b, r }) => {
-      const R = r + SIZES.wireGap;
-      const [ta, tb] = [t(a), t(b)];
-      const [lo, hi] = [Math.max(-w - R, Math.min(ta, tb)), Math.min(w + R, Math.max(ta, tb))];
-      if (lo > hi) return [];
-      const at = (x: number) => seenIn(f, ta === tb ? a : lerp(a, b, (x - ta) / (tb - ta)));
-      const ends = [at(lo), at(hi)];
-      if (!near(ends, R)) return [];
-      return [wasm.CrossSection.hull(ends.map((p) => round(R).translate(p)))];
-    });
     const plates = keys
       .filter(({ k }) => !joined.includes(k))
       .map(({ k }) => plateBox(k, SIZES.endGap));
@@ -2612,7 +2578,7 @@ function bridges(
       .map((b) => boxSeen(f, b, -w, w))
       .filter((points) => points.length > 2 && near(points))
       .map(hull);
-    const kept = wasm.CrossSection.union([...held, ...wired]);
+    const kept = wasm.CrossSection.union(held);
     // How far out of L's edge a point is, the most of anywhere across the
     // bridge's width (each side's L meets its edge there).
     const off = (p: Seen) =>
@@ -2981,8 +2947,8 @@ function fusions(d: Dims, all: Rib[], ends: End[][]): Fusion[] {
 
 /**
  * The frame: the ribs, the rail round the outline that the ends standing on
- * it drop to, and (PROTOTYPE) the bridges between neighbouring ribs, which
- * keep clear of `wires`. It stands on z = 0. The outline also takes in
+ * it drop to, and (PROTOTYPE) the bridges between neighbouring ribs. It
+ * stands on z = 0. The outline also takes in
  * `reach`, what the walls ask of it, and is cut back to the faces they stand
  * on it with (the frame is built twice: first to ask, on the outline
  * without).
@@ -2991,7 +2957,6 @@ export function capybara(
   wasm: ManifoldToplevel,
   cfg: Config,
   frames: Record<string, Matrix4>,
-  wires: Wire[],
   reach: Reach = { feet: [] },
 ): {
   frame: Manifold;
@@ -3200,7 +3165,7 @@ export function capybara(
   };
   if (!reach.feet.length) {
     const more = capybaraReach(wasm, cfg, wallSides, ribKit);
-    if (more.feet.length) return capybara(wasm, cfg, frames, wires, more);
+    if (more.feet.length) return capybara(wasm, cfg, frames, more);
   }
   const sleeve = sleeveBox(wasm.Manifold, cfg);
   const solids = all.map((rib, i) =>
@@ -3217,7 +3182,7 @@ export function capybara(
     ends[i].flatMap((end, e) => (isDrop(end) ? footKey(wasm, d, ...endKey(rib, e), end.land) : [])),
   );
   // PROTOTYPE: the bridges between neighbouring ribs' keys.
-  const bridged = bridges(wasm, cfg, d, frames, all, ends, wires);
+  const bridged = bridges(wasm, cfg, d, frames, all, ends);
   const loop = area.subtract(inside);
   // The tie is part of the rail, filleted into it where they meet (and round
   // its bends), inside the outline (where the tie meets the rail by one of the

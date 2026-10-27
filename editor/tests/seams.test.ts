@@ -11,7 +11,6 @@ import Module from 'manifold-3d';
 import type { CrossSection, Manifold } from 'manifold-3d';
 import { clone, componentFrames, defaults } from '../src/geometry';
 import { SIZES, capybara } from '../src/capybara';
-import { wiring } from '../src/wiring';
 import { capybaraSeams, type Seam } from './seams';
 
 const wasm = await Module();
@@ -212,7 +211,7 @@ test('Capybara: the seams by junction class are no more than pinned', () => {
 
 test("Capybara: every drop's outer face is flush with the rail over its whole height", () => {
   const frames = componentFrames(p.config);
-  const built = capybara(wasm, p.config, frames, wiring(p.config, frames).wires);
+  const built = capybara(wasm, p.config, frames);
   const parts = built.parts();
   const under: Manifold = wasm.Manifold.union(
     parts.filter((q) => q.name === 'rail' || q.name === 'tie').map((q) => q.solid),

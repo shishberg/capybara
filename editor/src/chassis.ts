@@ -25,7 +25,6 @@ import { keycapEnvelope, isKey, tileTop, type Config } from './geometry';
 import { seatSettings } from './seats';
 import { keycapSolid, place, slab } from './manifold-util';
 import { capybara, SIZES as RIB } from './capybara';
-import { wiring, type Wiring } from './wiring';
 import { collar, cradles, plugWays, resetWay } from './wiring/pro-micro';
 
 export interface ChassisResult {
@@ -142,20 +141,17 @@ function keycapRooms(
  * with the rail's outer face. Screws come up through the plate into bosses on
  * the rail's inside (screwSpots). The plate carries the Pro Micro's and the
  * jack's cradles, their plugs coming in through openings in the frame, and
- * the reset switch's, its plunger out through a skin of the back wall. The
- * frame's bridges keep clear of the wires.
+ * the reset switch's, its plunger out through a skin of the back wall.
  */
 export function buildChassis(
   wasm: ManifoldToplevel,
   cfg: Config,
   frames: Record<string, Matrix4>,
-  // The wires, when the caller has routed them already.
-  wired: Wiring = wiring(cfg, frames),
 ): ChassisResult {
   const M = wasm.Manifold;
   const CS = wasm.CrossSection;
   const keyNames = Object.keys(frames).filter(isKey);
-  const built = capybara(wasm, cfg, frames, wired.wires);
+  const built = capybara(wasm, cfg, frames);
   // The base plate: the outline the frame stands on.
   const footprint = new CS([built.outline], 'NonZero');
   const floor = cfg.chassis.skin_mm;

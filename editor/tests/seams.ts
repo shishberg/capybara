@@ -23,7 +23,6 @@ import { capybara, SIZES as RIB } from '../src/capybara';
 import { buildChassis, SIZES as CHASSIS } from '../src/chassis';
 import { openingSpan, seatSettings, seatSwitches, sleeveBottom } from '../src/seats';
 import { plateHalfWidths } from '../src/plates';
-import { wiring } from '../src/wiring';
 
 type V3 = [number, number, number];
 
@@ -477,9 +476,8 @@ export function capybaraSeams(
   raw?: Parameters<typeof seams>[4],
 ) {
   const frames = componentFrames(cfg);
-  const wired = wiring(cfg, frames);
-  const built = capybara(wasm, cfg, frames, wired.wires);
-  const chassis = buildChassis(wasm, cfg, frames, wired);
+  const built = capybara(wasm, cfg, frames);
+  const chassis = buildChassis(wasm, cfg, frames);
   const M = wasm.Manifold;
   const named = Object.entries(frames).filter(([n]) => isKey(n));
   const keys = named.map(([, m]) => m);
