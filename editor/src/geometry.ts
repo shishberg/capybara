@@ -454,6 +454,8 @@ function migrate(c: Record<string, any>) {
   // designs and end supports, and the C64's plate and deck settings.
   for (const k of ['style', 'walls', 'ends', 'plate_style', 'plate_slope', 'deck_lift'])
     delete c.chassis?.[k];
+  // The wire port, since dropped: the chassis is open from the thumbs to the fingers.
+  for (const k of ['port_diameter_mm', 'port_length_mm']) delete c.wiring?.[k];
   // Switch fields every build reads. Not the whole section: its override tables
   // may be emptied on purpose.
   if (c.switch)

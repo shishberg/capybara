@@ -285,23 +285,17 @@ Under the plates:
   inside the pocket and run along it 0.6 mm below the tile (the **rim**), which
   keeps it shallow where a low edge would take the run under the pads below the
   floor; one across the tile runs just under its parts. A wire between
-  two tiles joins its two legs with a straight run. Where that would run into a
-  plate, it steps back under the higher tile and drops, or turns a
-  corner in plan, or runs under both ends.
-- **Wire port**: thumb wires reach the fingers through the wire port, a round
-  way (`wiring.port_diameter_mm`, 5 mm) in front of the gap between the inner
-  and index columns' bottom keys. Each takes
-  its own place in a hexagonal grid across the port, 1.02 mm apart, chosen to
-  suit the directions its two ends lie in. A thumb's wires gather just off its
-  edge facing the port, each offset as its place, so they run to the port side
-  by side. Feeds run down to a **loom** 10 mm above the bottom section, then
-  across to the Pro Micro, clear of the jack and the reset switch, and up
-  beside their housing, past its outer face or its inner, onto its top; from
+  two tiles, thumb or finger, joins its two legs with a straight run. Where
+  that would run into a plate, it steps back under the higher tile and drops,
+  or turns a corner in plan, or runs under both ends.
+- **Feeds**: each feed runs down to a **loom** 10 mm above the bottom section,
+  then across to the Pro Micro, clear of the jack and the reset switch, and up
+  beside its housing, past its outer face or its inner, onto its top; from
   its inner face a feed may run between the pin rows from past their end away
-  from the port. Last, a feed may instead cross over the housings, high enough
-  to clear the room over them for their wires, and drop straight onto its
-  own.
-- **Routing**: each wire has many candidate routes (depths, shifts, port places,
+  from the USB port. Last, a feed may instead cross over the housings, high
+  enough to clear the room over them for their wires, and drop straight onto
+  its own.
+- **Routing**: each wire has many candidate routes (depths, shifts,
   loom levels and, for a feed, its way onto its housing). Routes
   that run into a tile, its parts or a plate, the jack, the reset switch or a
   Dupont housing and the room over it, that shift out past the
@@ -322,4 +316,4 @@ Under the plates:
   says why).
 
 The default hand has 106 wires (100 under the keys and six link wires),
-194 solder joints, 17 plugs and about 5.6 m of wire.
+194 solder joints, 17 plugs and about 5.2 m of wire.

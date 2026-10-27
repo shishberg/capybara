@@ -437,8 +437,6 @@
     "signal_wire_mm": 0.6,
     "power_wire_mm": 0.9,
     "loom_height_mm": 10,
-    "port_diameter_mm": 5,
-    "port_length_mm": 20,
     "service_loop_mm": 30,
     "end_allowance_mm": 5,
     "solder_access_mm": [2, 8],

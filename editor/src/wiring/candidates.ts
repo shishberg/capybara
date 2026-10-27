@@ -1,8 +1,8 @@
-// Each wire's candidate routes, nearest the tiles first, and its place in the wire port.
-import { isThumb, point, type V3 } from '../geometry';
-import { WIRING, distance, type Edge, type Env, type Lane, type Pad } from './common';
+// Each wire's candidate routes, nearest the tiles first.
+import { point, type V3 } from '../geometry';
+import { WIRING, type Edge, type Env, type Lane, type Pad } from './common';
 import type { Spec } from './specs';
-import { edgeToward, ownEdge } from './port';
+import { edgeToward, ownEdge } from './edges';
 import type { pathsIn } from './paths';
 import { tubeOf } from './tubes';
 import type { Option } from './negotiate';
@@ -13,9 +13,6 @@ export const diameterOf = (env: Env, s: Spec) =>
   ['power', 'ground'].includes(s.net.group)
     ? env.cfg.wiring.power_wire_mm
     : env.cfg.wiring.signal_wire_mm;
-
-const crossesPort = (s: Spec) =>
-  typeof s.a === 'number' ? isThumb(s.b.key) : isThumb(s.a.key) !== isThumb(s.b.key);
 
 /**
  * The depths a wire may run at below a tile, nearest first, by what its leg
@@ -43,219 +40,70 @@ const legDepths = (env: Env, p: Pad, [axis, sign]: Edge, d: number) => {
   );
 };
 
-/** The edge a spec's end `a` or `b` leaves its tile by, by default. */
+/** The edge a wire between two keys leaves the tile of its end `a` or `b` by: the one facing the other key. */
 const edgeOf = (env: Env, s: Spec, end: 'a' | 'b'): Edge => {
-  const { frames, port } = env;
-  const p = (end === 'a' ? s.a : s.b) as Pad;
-  const other = end === 'a' ? s.b : s.a;
-  if (typeof other === 'number')
-    return isThumb(p.key) ? edgeToward(frames, p.key, port.outside) : ownEdge(p, env.half);
-  if (isThumb(p.key) !== isThumb(other.key))
-    return edgeToward(frames, p.key, isThumb(p.key) ? port.outside : port.inside);
-  return edgeToward(frames, p.key, point(frames[other.key], [0, 0, 0]));
+  const [p, other] = (end === 'a' ? [s.a, s.b] : [s.b, s.a]) as [Pad, Pad];
+  return edgeToward(env.frames, p.key, point(env.frames[other.key], [0, 0, 0]));
 };
 
-/**
- * A place in the wire port for each wire through it, on the side its two ends
- * lie, so the wires through it do not cross there. Returns each such spec's
- * index in `specs` and its place's index in the grid.
- */
-export function assignPlaces(
-  env: Env,
-  specs: Spec[],
-  ends: { a: Pad | V3; b: Pad }[],
-  leg: Paths['leg'],
-) {
-  const { port, frames } = env;
-  const { side, places } = env.grid;
-  const placeUV = (p: V3) => [p[0] * side[0] + p[1] * side[1], p[2]];
-  const toward2 = (from: V3, to: V3) => {
-    const u = (to[0] - from[0]) * side[0] + (to[1] - from[1]) * side[1];
-    const v = to[2] - from[2];
-    const l = Math.hypot(u, v) || 1;
-    return [u / l, v / l];
-  };
-  const throughs = specs.map((_, i) => i).filter((i) => crossesPort(specs[i]));
-  const prefer = new Map(
-    throughs.map((i) => {
-      const s = specs[i];
-      // Where each end's leg leaves its tile, at its nearest depth.
-      const exit = (p: Pad, to: V3) => {
-        const edge = edgeToward(frames, p.key, to);
-        return leg(p, edge, legDepths(env, p, edge, diameterOf(env, s))[0]).points.at(-1)!;
-      };
-      const t = (isThumb(s.b.key) ? ends[i].b : ends[i].a) as Pad;
-      const f =
-        typeof s.a === 'number'
-          ? (ends[i].a as V3)
-          : exit((isThumb(s.b.key) ? ends[i].a : ends[i].b) as Pad, port.inside);
-      const a = toward2(port.outside, exit(t, port.outside));
-      const b = toward2(port.inside, f);
-      return [i, [a[0] + b[0], a[1] + b[1]]];
-    }),
-  );
-  const fit = (i: number, p: V3) => {
-    const [u, v] = placeUV(p);
-    const [a, b] = prefer.get(i)!;
-    return u * a + v * b;
-  };
-  const placeOf = new Map<number, number>();
-  const taken = new Set<number>();
-  const strength = (i: number) => Math.hypot(...prefer.get(i)!);
-  for (const i of [...throughs].sort((x, y) => strength(y) - strength(x))) {
-    let best = -1;
-    places.forEach((p, k) => {
-      if (!taken.has(k) && (best < 0 || fit(i, p) > fit(i, places[best]))) best = k;
-    });
-    if (best < 0) break;
-    taken.add(best);
-    placeOf.set(i, best);
-  }
-  // Swap places between two wires while that suits them better.
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const i of placeOf.keys())
-      for (const j of placeOf.keys()) {
-        const [pi, pj] = [places[placeOf.get(i)!], places[placeOf.get(j)!]];
-        if (fit(i, pj) + fit(j, pi) > fit(i, pi) + fit(j, pj) + 1e-9) {
-          const k = placeOf.get(i)!;
-          placeOf.set(i, placeOf.get(j)!);
-          placeOf.set(j, k);
-          changed = true;
-        }
-      }
-  }
-  return placeOf;
-}
-
-interface Candidate {
-  lane: Lane;
-  place: V3;
-  rank: number;
-}
-
-/**
- * A spec's lanes, nearest the tiles first. `own` is its place in the port;
- * `wide` tries every place and depth.
- */
-function candidates(env: Env, s: Spec, own: number | undefined, wide: boolean) {
-  const { frames, port, hole } = env;
-  const portPlaces = env.grid.places;
+/** A spec's lanes, nearest the tiles first. `wide` tries every depth. */
+function candidates(env: Env, s: Spec, wide: boolean) {
+  const { frames, hole } = env;
   const d = diameterOf(env, s);
-  const isFeed = typeof s.a === 'number';
-  const through = crossesPort(s);
-  const db = legDepths(env, s.b, edgeOf(env, s, 'b'), d);
-  const da = isFeed ? db : legDepths(env, s.a as Pad, edgeOf(env, s, 'a'), d);
-  const out: Candidate[] = [];
-  // Its own place in the port first, then the places next to it.
-  const tries: V3[] =
-    own === undefined
-      ? [[0, 0, 0]]
-      : [...portPlaces]
-          .sort((x, y) => distance(x, portPlaces[own]) - distance(y, portPlaces[own]))
-          .slice(0, wide ? portPlaces.length : WIRING.placeChoices);
-  const sides = WIRING.edgeAsides.slice(0, WIRING.portAsides);
-  const depthTries = wide ? WIRING.depthChoices : WIRING.longDepths;
-  // A feed leaves by its pad's own edge or by the edge facing its hole, and
-  // comes down past its housing's outer face or, next, its inner, from which
-  // it may run between the pin rows and out past their end; or, last, runs
-  // across over the housings.
-  const home = ownEdge(s.b, env.half);
-  const toward = isFeed ? edgeToward(frames, s.b.key, hole[s.a as number]) : home;
-  const edges = toward[0] === home[0] && toward[1] === home[1] ? [home] : [home, toward];
-  const faces = [false, true];
-  const faceWays = [{ inside: false }, { inside: true }, { inside: true, round: true }];
-  if (isFeed && !through)
-    for (const [e, edge] of edges.entries()) {
-      const depths = legDepths(env, s.b, edge, d);
-      for (let i = 0; i < depthTries; i++) {
-        for (const level of WIRING.loomLevels)
-          for (const aside of WIRING.asides)
-            for (const [k, way] of faceWays.entries())
-              out.push({
-                lane: { da: depths[i], db: depths[i], aside, level, edge, ...way },
-                place: [0, 0, 0],
-                rank: i + 2 * e + k,
-              });
-        for (const over of WIRING.overLevels)
-          for (const level of WIRING.loomLevels.slice(0, WIRING.portLoomLevels))
-            for (const aside of WIRING.asides)
-              out.push({
-                lane: { da: depths[i], db: depths[i], aside, level, edge, over },
-                place: [0, 0, 0],
-                rank: i + 2 * e + faceWays.length,
-              });
-      }
-    }
-  // Through the port, the thumb's leg leaves by the edge facing the port or
-  // by its pad's own edge.
-  const t = (isFeed || isThumb(s.b.key) ? s.b : s.a) as Pad;
-  const facingPort = edgeToward(frames, t.key, port.outside);
-  const thumbEdges = [facingPort, ownEdge(t, env.half)].filter(
-    (e, k, all) => !k || e[0] !== all[0][0] || e[1] !== all[0][1],
-  );
-  if (isFeed)
-    for (const [e, edge] of thumbEdges.entries()) {
-      const depths = legDepths(env, t, edge, d);
-      for (let i = 0; i < depthTries; i++)
-        for (const level of WIRING.loomLevels.slice(0, WIRING.portLoomLevels))
-          for (let y = 0; y < sides.length; y++)
-            for (const [n, place] of tries.entries())
-              for (const [k, inside] of faces.entries())
-                out.push({
-                  lane: {
-                    da: depths[i],
-                    db: depths[i],
-                    aside: 0,
-                    asideB: sides[y],
-                    level,
-                    edge,
-                    inside,
-                  },
-                  place,
-                  rank: i + (y ? 1 : 0) + (n ? 1 : 0) + 2 * e + k,
-                });
-    }
-  else if (through)
-    for (const [e, edge] of thumbEdges.entries()) {
-      const dt = legDepths(env, t, edge, d);
-      const [d1, d2] = t === s.a ? [dt, db] : [da, dt];
-      for (let i = 0; i < d1.length; i++)
-        for (let j = 0; j < d2.length; j++)
-          for (let x = 0; x < sides.length; x++)
-            for (let y = 0; y < sides.length; y++)
-              for (const [n, place] of tries.entries())
-                out.push({
-                  lane: { da: d1[i], db: d2[j], aside: sides[x], asideB: sides[y], edge },
-                  place,
-                  rank: i + j + (x ? 1 : 0) + (y ? 1 : 0) + (n ? 1 : 0) + 2 * e,
-                });
-    }
-  else {
-    const wa = legWays(env, s.a as Pad, edgeOf(env, s, 'a'), da, d);
-    const wb = legWays(env, s.b, edgeOf(env, s, 'b'), db, d);
+  const out: { lane: Lane; rank: number }[] = [];
+  if (typeof s.a !== 'number') {
+    const wa = legWays(env, s.a, edgeOf(env, s, 'a'), d);
+    const wb = legWays(env, s.b, edgeOf(env, s, 'b'), d);
     for (const a of wa)
       for (const b of wb)
         out.push({
           lane: { da: a.depth, db: b.depth, aside: a.aside, asideB: b.aside },
-          place: [0, 0, 0],
           rank: a.rank + b.rank,
         });
+    return out.sort((x, y) => x.rank - y.rank);
+  }
+  // A feed leaves by its pad's own edge or by the edge facing its hole, and
+  // comes down past its housing's outer face or, next, its inner, from which
+  // it may run between the pin rows and out past their end; or, last, runs
+  // across over the housings.
+  const depthTries = wide ? WIRING.depthChoices : WIRING.feedDepths;
+  const home = ownEdge(s.b, env.half);
+  const toward = edgeToward(frames, s.b.key, hole[s.a]);
+  const edges = toward[0] === home[0] && toward[1] === home[1] ? [home] : [home, toward];
+  const faceWays = [{ inside: false }, { inside: true }, { inside: true, round: true }];
+  for (const [e, edge] of edges.entries()) {
+    const depths = legDepths(env, s.b, edge, d);
+    for (let i = 0; i < depthTries; i++) {
+      for (const level of WIRING.loomLevels)
+        for (const aside of WIRING.asides)
+          for (const [k, way] of faceWays.entries())
+            out.push({
+              lane: { da: depths[i], db: depths[i], aside, level, edge, ...way },
+              rank: i + 2 * e + k,
+            });
+      for (const over of WIRING.overLevels)
+        for (const level of WIRING.loomLevels.slice(0, WIRING.overLoomLevels))
+          for (const aside of WIRING.asides)
+            out.push({
+              lane: { da: depths[i], db: depths[i], aside, level, edge, over },
+              rank: i + 2 * e + faceWays.length,
+            });
+    }
   }
   return out.sort((x, y) => x.rank - y.rank);
 }
 
 /**
  * The ways a leg between two keys may leave its tile by `edge`: each of its
- * `depths` with each of the edge asides, and, where the edge is not the pad's
+ * depths with each of the edge asides, and, where the edge is not the pad's
  * own, along the rim: shifted out to its own edge just inside the pocket,
  * outside the other pads on that edge, and run along it just under the tile.
  * Last of the choices, it keeps a leg shallow where a low edge would take the
  * run under the strip below the floor.
  */
-const legWays = (env: Env, p: Pad, edge: Edge, depths: number[], d: number) => {
-  const ways: { depth: number; aside: number; rank: number }[] = depths.flatMap((depth, i) =>
-    WIRING.edgeAsides.map((aside, x) => ({ depth, aside, rank: i + (x ? 1 : 0) })),
+const legWays = (env: Env, p: Pad, edge: Edge, d: number) => {
+  const ways: { depth: number; aside: number; rank: number }[] = legDepths(env, p, edge, d).flatMap(
+    (depth, i) => WIRING.edgeAsides.map((aside, x) => ({ depth, aside, rank: i + (x ? 1 : 0) })),
   );
   const [own, sign] = ownEdge(p, env.half);
   if (own !== edge[0]) {
@@ -276,13 +124,12 @@ export function optionsOf(
   paths: Paths,
   specs: Spec[],
   ends: { a: Pad | V3; b: Pad }[],
-  placeOf: Map<number, number>,
   wide: boolean,
 ): Option[][] {
   return specs.map((s, i) => {
     const d = diameterOf(env, s);
-    const all = candidates(env, s, placeOf.get(i), wide).flatMap(({ lane, place, rank }) => {
-      const { points, strayed, stuck, low } = paths.route(ends[i].a, ends[i].b, lane, place, d / 2);
+    const all = candidates(env, s, wide).flatMap(({ lane, rank }) => {
+      const { points, strayed, stuck, low } = paths.route(ends[i].a, ends[i].b, lane, d / 2);
       if (strayed || low) return [];
       return {
         tube: tubeOf(points, d),

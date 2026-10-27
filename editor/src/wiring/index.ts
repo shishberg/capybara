@@ -1,7 +1,7 @@
-// Hand wiring, from the key frames: where each wire runs under the tiles,
-// through the wire port and to the Pro Micro, and the jack's and the reset
-// switch's link wires (pro-micro.ts). Routing is a search that takes a
-// moment, so the editor runs it in a worker of its own.
+// Hand wiring, from the key frames: where each wire runs under the tiles
+// and to the Pro Micro, and the jack's and the reset switch's link wires
+// (pro-micro.ts). Routing is a search that takes a moment, so the editor runs
+// it in a worker of its own.
 //
 // Terms:
 //  pad      a solder pad on a tile's underside (tile.pads);
@@ -12,10 +12,7 @@
 //  chain    keys joined one to the next by a net's wires (wiring.nets[].chains);
 //  feed     the wire from a chain's end to its net's pin;
 //  loom     the height above the bottom section at which feeds run to the
-//           Pro Micro, before each climbs beside its housing to its top;
-//  wire port  where thumb wires pass from under the thumbs to under the
-//           finger columns: a straight round way in front of the gap between
-//           the inner and index columns' bottom keys.
+//           Pro Micro, before each climbs beside its housing to its top.
 import {
   componentFrames,
   isKey,
@@ -26,7 +23,7 @@ import {
 } from '../geometry';
 import { tilePocketHalf } from '../plates';
 import { padParts } from './pads';
-import { asOptions, assignPlaces, diameterOf, optionsOf } from './candidates';
+import { asOptions, diameterOf, optionsOf } from './candidates';
 import {
   length,
   nets,
@@ -40,7 +37,6 @@ import {
 import { negotiate } from './negotiate';
 import { obstaclesOf } from './obstacles';
 import { pathsIn } from './paths';
-import { portGrid, wirePort } from './port';
 import { holes, holeAlong, linkWires, pinName, proMicroParts } from './pro-micro';
 import { specsOf } from './specs';
 import { crossings, tubeOf } from './tubes';
@@ -55,8 +51,6 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
   const padZ = tileUnderside(cfg);
   const keys = Object.keys(frames).filter(isKey);
   const hole = holes(cfg, frames);
-  const port = wirePort(cfg, frames);
-  const grid = portGrid(port, port.diameter / 2 - w.power_wire_mm / 2);
   const componentDepth = padZ - tileBottom(cfg) + tile.component_clearance_mm;
   const env: Env = {
     cfg,
@@ -70,12 +64,9 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       .filter((p) => nets(cfg).some((n) => n.pads.includes(p.name)))
       .map((p) => [p.at_mm[0], p.at_mm[1]]),
     hole,
-    port,
-    grid,
   };
   const { pads, specs, ends } = specsOf(env, keys);
   const paths = pathsIn(env, obstaclesOf(env, keys));
-  const placeOf = assignPlaces(env, specs, ends, paths.leg);
   // The jack's and the reset switch's link wires negotiate too, each with
   // its routes.
   const links = linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin)));
@@ -90,11 +81,10 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
   );
 
   // Route with the usual choices first; if wires still meet, or some wire has
-  // no route above the floor, again with every place in the port and every
-  // depth, and keep the better. A wire with no route above the floor even
+  // no route above the floor, again with every depth, and keep the better. A wire with no route above the floor even
   // then fails the routing.
   const solve = (wide: boolean) => {
-    const options = optionsOf(env, paths, specs, ends, placeOf, wide);
+    const options = optionsOf(env, paths, specs, ends, wide);
     const none = specs.filter((_, i) => !options[i].length);
     if (none.length) {
       if (!wide) return { left: Infinity, paths: [] };

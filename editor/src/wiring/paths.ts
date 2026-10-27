@@ -1,8 +1,8 @@
-// A wire's route: its legs off the tiles, the joins between legs, the way
-// through the wire port, and the feeds' run to the Pro Micro.
-import { isThumb, point, add, type V3 } from '../geometry';
+// A wire's route: its legs off the tiles, the joins between legs, and the
+// feeds' run to the Pro Micro.
+import { point, type V3 } from '../geometry';
 import { WIRING, distance, type Edge, type Env, type Lane, type Pad } from './common';
-import { edgeToward, ownEdge } from './port';
+import { edgeToward, ownEdge } from './edges';
 import { besideHousing, overPlugs, pastPlugs, pastRows } from './pro-micro';
 import type { Obstacles } from './obstacles';
 
@@ -26,11 +26,6 @@ interface Leg {
   points: V3[];
   stray: boolean;
 }
-/** A run through the wire port: its points, and whether its leg strayed. */
-interface PortRun {
-  points: V3[];
-  stray: boolean;
-}
 /**
  * A route, whether a leg strayed, whether a join between two keys' legs found
  * no way past the plates, and whether it runs lower than the floor allows.
@@ -44,9 +39,7 @@ interface Route {
 
 /** The ways a wire can be routed in `env`, with the legs and joins they share cached. */
 export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
-  const { cfg, frames, padZ, loomZ, floorZ, half, port, grid } = env;
-  const { side, axis, axisLength, places } = grid;
-  const pitch = WIRING.portPitch;
+  const { cfg, frames, padZ, loomZ, floorZ, half } = env;
   const toward = (key: string, to: V3) => edgeToward(frames, key, to);
 
   /**
@@ -85,45 +78,6 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
     let made = mine.get(key);
     if (!made) mine.set(key, (made = makeLeg(p, edge, depth, aside, keep)));
     return made;
-  };
-
-  /** A thumb pad's way out through the wire port, ending inside the finger columns. */
-  const throughPort = (p: Pad, lane: Lane, place: V3, keep: number, aside = 0): PortRun => {
-    const out = leg(p, lane.edge ?? toward(p.key, port.outside), lane.da, aside, keep);
-    // The thumb's wires gather just off its edge facing the port, each at its
-    // place's offset, so they run to the port side by side.
-    const [axis, sign] = toward(p.key, port.outside);
-    const centre: V3 = [0, 0, padZ - WIRING.gatherDepth];
-    centre[axis] = sign * (half[axis] + WIRING.gatherOut);
-    // Turn the place's offset to lie across the run from the port, the same
-    // way round.
-    const at = point(frames[p.key], centre);
-    const run = [at[0] - port.outside[0], at[1] - port.outside[1]];
-    const l = Math.hypot(run[0], run[1]);
-    let across2 = [-run[1] / l, run[0] / l];
-    if (across2[0] * side[0] + across2[1] * side[1] < 0) across2 = [-across2[0], -across2[1]];
-    const u = place[0] * side[0] + place[1] * side[1];
-    const gather: V3 = [at[0] + across2[0] * u, at[1] + across2[1] * u, at[2] + place[2]];
-    return {
-      points: [...out.points, gather, add(port.outside, place), add(port.inside, place)],
-      stray: out.stray,
-    };
-  };
-  /**
-   * Where a wire turns after the port, on the finger side: a wire turning down
-   * goes further on from a higher place, so it passes over the lower places'
-   * turns, and a wire turning up goes further on from a lower place.
-   */
-  const lowest = Math.min(...places.map((p) => p[2]));
-  const highest = Math.max(...places.map((p) => p[2]));
-  const beyondPort = (place: V3, up = false): V3 => {
-    const rise = up ? highest - place[2] : place[2] - lowest;
-    const on = WIRING.beyondStep * Math.round(rise / (pitch * Math.sqrt(0.75)));
-    return add(port.inside, [
-      place[0] + (axis[0] / axisLength) * on,
-      place[1] + (axis[1] / axisLength) * on,
-      place[2],
-    ]);
   };
 
   const CLEAR = 1;
@@ -220,26 +174,18 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
   };
 
   /**
-   * A route for a wire of radius `keep` in `lane`, through the wire port at
-   * `place`. `a` is a pad, or for a feed the point at its net's pin.
+   * A route for a wire of radius `keep` in `lane`. `a` is a pad, or for a
+   * feed the point at its net's pin.
    */
-  const routeOf = (
-    a: Pad | V3,
-    b: Pad,
-    lane: Lane,
-    place: V3,
-    keep: number,
-  ): Omit<Route, 'low'> => {
+  const routeOf = (a: Pad | V3, b: Pad, lane: Lane, keep: number): Omit<Route, 'low'> => {
     if (Array.isArray(a)) {
-      let strayed: boolean;
-      let path: V3[];
-      if (isThumb(b.key)) {
-        const t = throughPort(b, lane, place, keep, lane.asideB);
-        [path, strayed] = [[...t.points, beyondPort(place)], t.stray];
-      } else {
-        const l = leg(b, lane.edge ?? ownEdge(b, half), lane.da, lane.aside, keep);
-        [path, strayed] = [l.points, l.stray];
-      }
+      const { points: path, stray: strayed } = leg(
+        b,
+        lane.edge ?? ownEdge(b, half),
+        lane.da,
+        lane.aside,
+        keep,
+      );
       // Out of its housing's top (a), over one face and down beside it to
       // the loom, from its inner face perhaps along between the pin rows and
       // out past their far end; or straight up, across over the housings to
@@ -258,35 +204,22 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
       const by = besideHousing(cfg, frames, a, keep, lane.inside);
       const low: V3 = [by[0], by[1], Math.min(z, end[2])];
       const points = lane.round
-        ? clean([...path, ...across(end, pastRows(cfg, frames, low, keep), low[2], lane.aside), low, by, a])
+        ? clean([
+            ...path,
+            ...across(end, pastRows(cfg, frames, low, keep), low[2], lane.aside),
+            low,
+            by,
+            a,
+          ])
         : clean([...path, ...across(end, by, low[2], lane.aside), by, a]);
       return { points: points.reverse(), strayed, stuck: false };
     }
-    if (isThumb(a.key) === isThumb(b.key)) {
-      const ca = point(frames[b.key], [0, 0, 0]);
-      const cb = point(frames[a.key], [0, 0, 0]);
-      const p = leg(a, toward(a.key, ca), lane.da, lane.aside, keep);
-      const q = leg(b, toward(b.key, cb), lane.db, lane.asideB ?? lane.aside, keep);
-      const j = joined(p.points, q.points, ca, cb);
-      return { points: j.points, strayed: p.stray || q.stray, stuck: j.stuck };
-    }
-    // The lane's first depth and aside are for a's leg, the second for b's.
-    const [t, f] = isThumb(a.key) ? [a, b] : [b, a];
-    const [dt, df] = t === a ? [lane.da, lane.db] : [lane.db, lane.da];
-    const [st, sf] = t === a ? [lane.aside, lane.asideB] : [lane.asideB, lane.aside];
-    const path = throughPort(t, { ...lane, da: dt }, place, keep, st);
-    const fl = leg(f, toward(f.key, port.inside), df, sf, keep);
-    const q = [...fl.points].reverse();
-    const points = clean([
-      ...path.points,
-      beyondPort(place, q[0][2] > place[2] + port.inside[2]),
-      ...q,
-    ]);
-    return {
-      points: isThumb(a.key) ? points : points.reverse(),
-      strayed: path.stray || fl.stray,
-      stuck: false,
-    };
+    const ca = point(frames[b.key], [0, 0, 0]);
+    const cb = point(frames[a.key], [0, 0, 0]);
+    const p = leg(a, toward(a.key, ca), lane.da, lane.aside, keep);
+    const q = leg(b, toward(b.key, cb), lane.db, lane.asideB ?? lane.aside, keep);
+    const j = joined(p.points, q.points, ca, cb);
+    return { points: j.points, strayed: p.stray || q.stray, stuck: j.stuck };
   };
 
   /**
@@ -294,8 +227,8 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
    * low: its underside below the floor's top anywhere. Its segments are
    * straight, so its points are its lowest.
    */
-  const route = (a: Pad | V3, b: Pad, lane: Lane, place: V3, keep: number): Route => {
-    const r = routeOf(a, b, lane, place, keep);
+  const route = (a: Pad | V3, b: Pad, lane: Lane, keep: number): Route => {
+    const r = routeOf(a, b, lane, keep);
     return { ...r, low: r.points.some((p) => p[2] - keep < floorZ - 1e-9) };
   };
 
@@ -315,5 +248,5 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
     }
     return false;
   };
-  return { leg, route, hitsTiles };
+  return { route, hitsTiles };
 }

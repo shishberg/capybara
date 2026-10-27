@@ -65,15 +65,15 @@ export interface Lane {
   /** Between tiles: the shift along the second tile's edge. */
   asideB?: number;
   /**
-   * The edge a leg leaves its tile by, if not the usual one: for a feed, its
-   * finger pad's leg; through the port, its thumb pad's leg.
+   * For a feed: the edge its pad's leg leaves its tile by, if not the pad's
+   * own.
    */
   edge?: Edge;
   /** For a feed: its level in the loom, in steps of loomStep from loom_height_mm. */
   level?: number;
   /** For a feed: it comes down past its housing's inner face, between the pin rows, not its outer. */
   inside?: boolean;
-  /** For a feed down past its inner face: it runs between the pin rows and out past their far end, away from the port. */
+  /** For a feed down past its inner face: it runs between the pin rows and out past their far end, away from the USB port. */
   round?: boolean;
   /**
    * For a feed: it leaves its housing straight up, runs across over the
@@ -82,28 +82,6 @@ export interface Lane {
    * face: the way from the far pin row across the near one.
    */
   over?: number;
-}
-
-/** The wire port: a straight round way from under the thumb tiles to inside the finger columns. */
-export interface Port {
-  /** Where it crosses the line between the two keys' plate corners. */
-  centre: V3;
-  /** Its end under the thumb tiles. */
-  outside: V3;
-  /** Its end inside the finger columns. */
-  inside: V3;
-  diameter: number;
-}
-
-/** The port's cross-section: the places a wire can take, and the directions across it. */
-export interface PortGrid {
-  /** The port's direction in plan, and its length. */
-  axis: number[];
-  axisLength: number;
-  /** The horizontal direction across the port, in plan. */
-  side: number[];
-  /** Offsets from the port's axis (along `side` in plan, then up), nearest the axis first. */
-  places: V3[];
 }
 
 /** What the routing modules share about the build. */
@@ -123,26 +101,10 @@ export interface Env {
   /** Where on a tile (x, y) the pads and holes are that some net's wires end on. */
   wiredPads: [number, number][];
   hole: Record<number, V3>;
-  port: Port;
-  grid: PortGrid;
 }
 
 /** Extra sizes for the wiring, in mm unless noted, that are not in the config. */
 export const WIRING = {
-  /** The wire port's inside end is this far inside the plate corners. */
-  slotInside: 3,
-  /** The wire port runs halfway down from this far under the lower of its two plate corners to the base. */
-  portBelow: 9,
-  /** The wire port is at least this wide in half-width, whatever the gap between its keys. */
-  portMinHalfWidth: 1.5,
-  /** The wire port's floor is this high above the bottom section. */
-  portFoot: 1,
-  /** A thumb's wires through the port gather this far out from its edge facing the port. */
-  gatherOut: 2,
-  /** A thumb's wires through the port gather this far below the tile, each offset as its place in the port. */
-  gatherDepth: 4,
-  /** On the finger side, wires turn this much further on from the port per row of places. */
-  beyondStep: 1,
   /** A hop over the pad's own edge runs this far below the tile's underside, at the shallowest. */
   hopDepth: 0.6,
   /** A run along the pads' strip (under the other pads' drops) starts this far below the tile. */
@@ -171,16 +133,14 @@ export const WIRING = {
   loomStep: 1,
   /** The levels, in loomStep from the loom's height, nearest first. */
   loomLevels: [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, 6, 7, 8],
-  /** Feeds through the port, and over the housings, try only this many of the first loomLevels. */
-  portLoomLevels: 7,
+  /** Feeds over the housings try only this many of the first loomLevels. */
+  overLoomLevels: 7,
   /** The heights a feed over the housings tries, in loomStep over the lowest, nearest first. */
   overLevels: [0, 1, 2, 3, 4, 5, 6],
   /** Sideways shifts of a feed's run to the Pro Micro, in plan, to get past other wires. */
   asides: [0, 1, -1, 2, -2],
   /** Shifts along the tile edge a wire crosses to the next tile. */
   edgeAsides: [0, 0.9, -0.9, 1.6, -1.6, 0.45, -0.45],
-  /** Shifts of a leg through the port: the first of edgeAsides. */
-  portAsides: 3,
   /** The most rounds of negotiating the routes. */
   rounds: 150,
   /** Negotiating stops when the number of wires meeting has not fallen for this many rounds. */
@@ -215,12 +175,8 @@ export const WIRING = {
   holeShare: 1,
   /** A wire comes down past its Dupont housing's face this far off it. */
   plugMargin: 0.2,
-  /** Centre spacing of the wires through the wire port. */
-  portPitch: 1.02,
-  /** How many places nearest its own a wire through the port tries. */
-  placeChoices: 13,
-  /** Feeds and wires through the port try only this many of the depths. */
-  longDepths: 2,
+  /** Feeds try only this many of the depths, until routing with every choice. */
+  feedDepths: 2,
   /** Wires are checked against the tiles and their parts every this many mm along. */
   sample: 0.3,
   /** The obstacles are indexed in square cells in plan of this size. */
