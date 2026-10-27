@@ -6,7 +6,7 @@ A split keyboard that grew out of [Rosebear](https://github.com/shishberg/rosebe
 
 ## Current construction: key tiles
 
-All 40 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](docs/pro-micro.md) (nRF52840) in that half, the two halves joined by a TRRS cable. The first prototype needs no custom PCBs.
+All 40 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](docs/pro-micro.md) (RP2040) in that half, the two halves joined by a TRRS cable. The first prototype needs no custom PCBs.
 
 ## Browser chassis editor
 
@@ -20,7 +20,7 @@ Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capy
 
 ## Firmware
 
-[`firmware/`](firmware/README.md) is RMK firmware for the [Pro Micro](docs/pro-micro.md): one nRF52840 board per hand, the hands joined by a TRRS serial link. `make firmware` builds the two UF2s into `output/firmware/`.
+[`firmware/`](firmware/README.md) is RMK firmware for the [Pro Micro](docs/pro-micro.md): one RP2040 board per hand, the hands joined by a TRRS serial link that also powers the right hand. `make firmware` builds the two UF2s into `output/firmware/`.
 
 ## Paused: the pod
 

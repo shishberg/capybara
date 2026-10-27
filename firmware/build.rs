@@ -12,5 +12,6 @@ fn main() {
     // memory.x's regions don't start on a 64 KiB boundary.
     println!("cargo:rustc-link-arg=--nmagic");
     println!("cargo:rustc-link-arg=-Tlink.x");
+    println!("cargo:rustc-link-arg=-Tlink-rp.x");
     println!("cargo:rustc-link-arg=-Tdefmt.x");
 }

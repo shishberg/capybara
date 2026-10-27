@@ -427,6 +427,26 @@ function migrate(c: Record<string, any>) {
     if (pinout?.[23] === 'B+') pinout[23] = 'RAW';
     c.schema = 16;
   }
+  if (!(c.schema >= 17)) {
+    // Schema 17: the controller is an RP2040 Pro Micro, where it was a
+    // nice!nano; the jack's tip carries 3.3 V from pin 21, so the hand on USB
+    // powers the other; and the Dupont housings may be row housings. Each part
+    // a project still has as schema 16 left it takes the new one.
+    const b = c.pro_micro;
+    const t = c.trrs;
+    if (b && /nice!nano/.test(b.description ?? '')) b.description = d.pro_micro.description;
+    if (b?.dupont && /a single Dupont housing/.test(b.dupont.description ?? ''))
+      b.dupont.description = d.pro_micro.dupont.description;
+    const nrf = ['P0.06', 'P0.08', 'GND', 'GND', 'P0.17', 'P0.20', 'P0.22', 'P0.24', 'P1.00'];
+    if (b && same(b.pinout?.slice(0, 9), nrf)) b.pinout = clone(d.pro_micro.pinout);
+    if (t && same(t.wires, d.trrs.wires.slice(0, 3))) t.wires = clone(d.trrs.wires);
+    if (
+      t &&
+      /named by its lug: each hand transmits on a different one\.$/.test(t.description ?? '')
+    )
+      t.description = d.trrs.description;
+    c.schema = 17;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;

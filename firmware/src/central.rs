@@ -11,16 +11,16 @@ mod keymap;
 use defmt::info;
 use defmt_rtt as _;
 use embassy_executor::Spawner;
-use embassy_nrf::interrupt::{InterruptExt, Priority};
-use embassy_nrf::nvmc::Nvmc;
-use embassy_nrf::usb::vbus_detect::HardwareVbusDetect;
-use embassy_nrf::usb::{self, Driver};
-use embassy_nrf::{bind_interrupts, buffered_uarte, peripherals};
+use embassy_rp::flash::{Async, Flash};
+use embassy_rp::dma;
+use embassy_rp::peripherals::{DMA_CH0, PIO0, USB};
+use embassy_rp::usb::{self, Driver};
+use embassy_rp::bind_interrupts;
 use embassy_time::Duration;
 use panic_probe as _;
 use rmk::config::{BehaviorConfig, DeviceConfig, MorsesConfig, PositionalConfig, RmkConfig, StorageConfig};
 use rmk::debounce::default_debouncer::DefaultDebouncer;
-use rmk::futures::future::join;
+use rmk::futures::future::join3;
 use rmk::keyboard::Keyboard;
 use rmk::matrix::Matrix;
 use rmk::split::PeripheralMatrixConfig;
@@ -31,41 +31,33 @@ use rmk::usb::UsbTransport;
 use rmk::{KeymapData, initialize_keymap_and_storage, run_all};
 
 bind_interrupts!(struct Irqs {
-    USBD => usb::InterruptHandler<peripherals::USBD>;
-    CLOCK_POWER => usb::vbus_detect::InterruptHandler;
-    UARTE0 => buffered_uarte::InterruptHandler<peripherals::UARTE0>;
+    USBCTRL_IRQ => usb::InterruptHandler<USB>;
+    DMA_IRQ_0 => dma::InterruptHandler<DMA_CH0>;
+    PIO0_IRQ_0 => rmk::split::rp::uart::UartInterruptHandler<PIO0>;
 });
 
-/// Storage: 8 sectors of 4 KB from 0xEC000, up to the bootloader at 0xF4000 (`memory.x`).
-/// RMK's default, the end of flash, is the Adafruit bootloader's own pages.
+/// Flash, taken as 2 MB, the smallest these boards come with (`memory.x`).
+const FLASH_SIZE: usize = 2 * 1024 * 1024;
+
+/// Storage: RMK's default, the last 8 sectors of flash, which `memory.x` keeps the firmware out of.
 const STORAGE: StorageConfig = StorageConfig {
-    start_addr: 0xEC000,
+    start_addr: 0,
     num_sectors: 8,
     clear_storage: false,
     clear_layout: false,
 };
-const _: () = assert!(
-    STORAGE.start_addr >= 0xEC000 && STORAGE.start_addr + STORAGE.num_sectors as usize * 4096 <= 0xF4000,
-    "storage must stay between the app and the bootloader"
-);
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     info!("Capybara central");
-    let mut config = embassy_nrf::config::Config::default();
-    config.gpiote_interrupt_priority = Priority::P3;
-    config.time_interrupt_priority = Priority::P3;
-    embassy_nrf::interrupt::USBD.set_priority(Priority::P2);
-    embassy_nrf::interrupt::CLOCK_POWER.set_priority(Priority::P2);
-    let p = embassy_nrf::init(config);
-    hand::start_hfxo();
-    let _led_power = led_power_off!(p);
+    let double_reset = hand::double_reset();
+    let p = embassy_rp::init(Default::default());
 
-    let driver = Driver::new(p.USBD, Irqs, HardwareVbusDetect::new(Irqs));
+    let driver = Driver::new(p.USB, Irqs);
     let (rows, cols) = matrix_pins!(p);
-    // The left hand transmits on P0.06 and listens on P0.08.
-    let link = link!(p, Irqs, rx: P0_08, tx: P0_06);
-    let flash = async_flash_wrapper(Nvmc::new(p.NVMC));
+    // The right hand takes the link's pins the other way round.
+    let link = link!(p, Irqs, tx: PIN_0, rx: PIN_1);
+    let flash = async_flash_wrapper(Flash::<_, Async, FLASH_SIZE>::new(p.FLASH, p.DMA_CH0, Irqs));
 
     let rmk_config = RmkConfig {
         device_config: DeviceConfig {
@@ -114,7 +106,8 @@ async fn main(_spawner: Spawner) {
     let mut keyboard = Keyboard::new(&keymap);
     let mut usb_transport = UsbTransport::new(driver, rmk_config.device_config);
 
-    join(
+    join3(
+        double_reset,
         run_all!(matrix, storage, usb_transport, keyboard),
         run_peripheral_manager(
             0,

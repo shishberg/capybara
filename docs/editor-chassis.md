@@ -312,5 +312,5 @@ Under the plates:
   **service loop** (`wiring.service_loop_mm`; [design status](design-status.md)
   says why).
 
-The default hand has 105 wires (100 under the keys and five link wires),
-193 solder joints, 17 plugs and about 5.5 m of wire.
+The default hand has 106 wires (100 under the keys and six link wires),
+194 solder joints, 17 plugs and about 5.6 m of wire.

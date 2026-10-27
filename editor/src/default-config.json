@@ -1,5 +1,5 @@
 {
-  "schema": 16,
+  "schema": 17,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "half": "right",
   "geometry": {
@@ -300,7 +300,7 @@
   },
   "pro_micro": {
     "provisional": true,
-    "description": "nice!nano v2 or a board with its pinout (nRF52840, Pro Micro form factor), components up, on a cradle on the bottom section, its USB-C receptacle gripped in the back wall. Its position is in world coordinates (it is not tented): the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires, the reset switch's reset.wires.",
+    "description": "RP2040 board in Pro Micro form factor with the SparkFun Pro Micro RP2040's pinout, as the generic ProMicro RP2040 boards have, components up, on a cradle on the bottom section, its USB-C receptacle gripped in the back wall. Its position is in world coordinates (it is not tented): the board centre in plan, and its turn about the vertical; at 0 its USB-C port faces -x. Pin n counts as on a DIP, seen from above with the port away from you: 1 to 12 down the left edge from the port end, 13 to 24 back up the right. pinout names pins 1 to 24; pins gives each net's pin. The TRRS jack's wires are trrs.wires, the reset switch's reset.wires.",
     "position_mm": [-22.5, 22.7],
     "rotation_deg": -90,
     "board_mm": [33.3, 18, 1.6],
@@ -314,7 +314,7 @@
     "plug_mm": [12.5, 7, 25],
     "clearance_mm": 0.2,
     "dupont": {
-      "description": "Each wire off the Pro Micro, a feed or a link wire to the jack or the reset switch, plugs onto its pin: a straight header pin soldered from below, its plastic spacer on the board's top, and a single Dupont housing pushed down onto it, the wire out of the housing's top, with exit_mm above it to come out and turn. Provisional until measured.",
+      "description": "Each wire off the Pro Micro, a feed or a link wire to the jack or the reset switch, plugs onto its pin: a straight header pin soldered from below, its plastic spacer on the board's top, and a Dupont housing pushed down onto it, the wire out of the housing's top, with exit_mm above it to come out and turn. housing_mm is one cell: a single housing, or a cell of a row housing, which takes the same room. Provisional until measured.",
       "spacer_mm": 2.5,
       "housing_mm": [2.54, 2.54, 14],
       "exit_mm": 3
@@ -328,26 +328,26 @@
       "jack_walls": 0.6
     },
     "pinout": [
-      "P0.06",
-      "P0.08",
+      "GP0",
+      "GP1",
       "GND",
       "GND",
-      "P0.17",
-      "P0.20",
-      "P0.22",
-      "P0.24",
-      "P1.00",
-      "P0.11",
-      "P1.04",
-      "P1.06",
-      "P0.09",
-      "P0.10",
-      "P1.11",
-      "P1.13",
-      "P1.15",
-      "P0.02",
-      "P0.29",
-      "P0.31",
+      "GP2",
+      "GP3",
+      "GP4",
+      "GP5",
+      "GP6",
+      "GP7",
+      "GP8",
+      "GP9",
+      "GP21",
+      "GP23",
+      "GP20",
+      "GP22",
+      "GP26",
+      "GP27",
+      "GP28",
+      "GP29",
       "VCC",
       "RST",
       "GND",
@@ -370,7 +370,7 @@
   },
   "trrs": {
     "provisional": true,
-    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side under the wishbone nearest the back, which forks over its plug; the opening between that wishbone's legs is filled round the barrel, gripping it, and its plug is clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame, from Keebio's PJ-320A footprint mirrored to stand lugs up: R2, R1 and T back from the barrel along one side, S alone at the back on the other. wires joins each to a Pro Micro pin, named by its lug: each hand transmits on a different one.",
+    "description": "PJ-320A 3.5 mm TRRS jack, lugs up, on a pedestal on the bottom section, its barrel facing out of the hand's inner side under the wishbone nearest the back, which forks over its plug; the opening between that wishbone's legs is filled round the barrel, gripping it, and its plug is clear over the rail. Its position is in world coordinates, like the Pro Micro's: the body's centre in plan and its turn about the vertical; at 0 the barrel faces -x. lugs_mm places each contact's lug on the body's top, in its frame, from Keebio's PJ-320A footprint mirrored to stand lugs up: R2, R1 and T back from the barrel along one side, S alone at the back on the other. wires joins each to a Pro Micro pin: the two data lines, named by their lugs as each hand transmits on a different one; GND; and VCC, the 3.3 V supply, which the hand on USB feeds to the other.",
     "position_mm": [-45.54, 15.32],
     "rotation_deg": -6.15,
     "standoff_mm": 6,
@@ -399,6 +399,11 @@
         "name": "GND",
         "lug": "R1",
         "pin": 3
+      },
+      {
+        "name": "VCC",
+        "lug": "T",
+        "pin": 21
       }
     ]
   },

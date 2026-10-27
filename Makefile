@@ -21,9 +21,8 @@ editor-test:
 
 .PHONY: editor editor-test
 
-# Firmware (RMK); see firmware/README.md. uf2.py refuses an image that
-# would write outside the app window.
-FIRMWARE_ELF = firmware/target/thumbv7em-none-eabihf/release
+# Firmware (RMK); see firmware/README.md.
+FIRMWARE_ELF = firmware/target/thumbv6m-none-eabi/release
 
 firmware:
 	cd firmware && cargo build --release

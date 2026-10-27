@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Turn a firmware ELF into a UF2 for the nice!nano's Adafruit bootloader, refusing any
-byte outside the app window.
-
-The bootloader writes whatever addresses a UF2 names. A UF2 that reaches below 0x26000
-overwrites the SoftDevice, which the bootloader needs to start any app; one that reaches
-0xF4000 or above overwrites the bootloader. Either needs the recovery in README.md. The
-window ends at 0xEC000, where RMK's storage starts.
+"""Turn a firmware ELF into a UF2 for the RP2040's ROM bootloader.
 
     uf2.py <elf> <uf2>
 """
@@ -13,9 +7,9 @@ window ends at 0xEC000, where RMK's storage starts.
 import struct
 import sys
 
-APP_START = 0x26000
-APP_END = 0xEC000
-FAMILY_NRF52840 = 0xADA52840
+FLASH_START = 0x10000000
+FLASH_END = 0x11000000
+FAMILY_RP2040 = 0xE48BFF56
 BLOCK = 256
 
 
@@ -34,11 +28,8 @@ def segments(elf):
 def main(elf_path, uf2_path):
     image = {}
     for addr, data in segments(open(elf_path, "rb").read()):
-        if addr < APP_START or addr + len(data) > APP_END:
-            sys.exit(
-                f"{elf_path}: refusing to write 0x{addr:05X}-0x{addr + len(data):05X}, "
-                f"outside the app window 0x{APP_START:05X}-0x{APP_END:05X}"
-            )
+        if addr < FLASH_START or addr + len(data) > FLASH_END:
+            sys.exit(f"{elf_path}: 0x{addr:08X}-0x{addr + len(data):08X} is outside flash")
         for i, b in enumerate(data):
             image[addr + i] = b
 
@@ -47,11 +38,11 @@ def main(elf_path, uf2_path):
     for n, base in enumerate(blocks):
         payload = bytes(image.get(base + i, 0xFF) for i in range(BLOCK))
         header = struct.pack(
-            "<8I", 0x0A324655, 0x9E5D5157, 0x2000, base, BLOCK, n, len(blocks), FAMILY_NRF52840
+            "<8I", 0x0A324655, 0x9E5D5157, 0x2000, base, BLOCK, n, len(blocks), FAMILY_RP2040
         )
         out += header + payload + bytes(476 - BLOCK) + struct.pack("<I", 0x0AB16F30)
     open(uf2_path, "wb").write(out)
-    print(f"{uf2_path}: 0x{blocks[0]:05X}-0x{blocks[-1] + BLOCK:05X}, {len(blocks)} blocks")
+    print(f"{uf2_path}: 0x{blocks[0]:08X}-0x{blocks[-1] + BLOCK:08X}, {len(blocks)} blocks")
 
 
 if __name__ == "__main__":

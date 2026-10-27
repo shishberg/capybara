@@ -1,4 +1,4 @@
-// The hand's controller hardware: an nRF52840 board in Pro Micro form factor and a TRRS jack on the bottom
+// The hand's controller hardware: an RP2040 board in Pro Micro form factor and a TRRS jack on the bottom
 // section, the board's USB-C port facing out of the hand's back end and the
 // jack's barrel out of its inner side, and a reset switch in a pocket in the
 // back wall, its plunger out through it. Their pins, the parts, the
