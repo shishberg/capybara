@@ -18,6 +18,8 @@ type Mark = {
   time: string;
   commit: string;
   note: string;
+  /** The half it was painted on (marks from before there were two are on the right). */
+  half?: string;
   camera: { position: number[]; target: number[]; up: number[]; fov?: number; zoom?: number };
   strokes: Stroke[];
 };
@@ -30,6 +32,11 @@ const SAVED = 0xffd21a,
 
 export function setupMarks(o: {
   scene: T.Scene;
+  // What the strokes are drawn in, and their hits given in: the model, which
+  // shows the left half mirrored.
+  model: T.Object3D;
+  // The half on show.
+  half: () => string;
   camera: T.PerspectiveCamera | T.OrthographicCamera;
   controls: OrbitControls;
   renderer: T.WebGLRenderer;
@@ -39,11 +46,11 @@ export function setupMarks(o: {
   render?: () => void;
 }) {
   const render = o.render ?? (() => {});
-  const { scene, camera, controls, renderer } = o;
+  const { scene, model, camera, controls, renderer } = o;
   const canvas = renderer.domElement;
   const current = new T.Group(),
     saved = new T.Group();
-  scene.add(current, saved);
+  model.add(current, saved);
   let strokes: Stroke[] = [],
     marks: Mark[] = [],
     painting = false,
@@ -126,8 +133,16 @@ export function setupMarks(o: {
     if (!marks.some((m) => m.id === picked)) picked = undefined;
     showSaved();
   }
+  // The camera as it was, mirrored with the model if the mark is on the other half.
   function go(m: Mark) {
-    placeCamera(camera, controls, m.camera);
+    const flip = (m.half ?? 'right') === o.half() ? 1 : -1,
+      x = (v: number[]) => [flip * v[0], v[1], v[2]];
+    placeCamera(camera, controls, {
+      ...m.camera,
+      position: x(m.camera.position),
+      target: x(m.camera.target),
+      up: x(m.camera.up),
+    });
     render();
   }
 
@@ -185,6 +200,7 @@ export function setupMarks(o: {
       thumbs: 'editor',
       query: location.search,
       note: $<HTMLTextAreaElement>('mk-note').value.trim(),
+      half: o.half(),
       camera: {
         position: camera.position.toArray().map(r1),
         target: controls.target.toArray().map(r1),
@@ -192,7 +208,8 @@ export function setupMarks(o: {
         ...('fov' in camera ? { fov: camera.fov } : { zoom: camera.zoom }),
       },
       viewport: { width: canvas.clientWidth, height: canvas.clientHeight },
-      // Where the hits are, world mm: a quick handle on the place.
+      // Where the hits are, in the model (the right half's coordinates, where
+      // both halves are built), mm: a quick handle on the place.
       hits: hits.length
         ? {
             count: hits.length,
@@ -229,8 +246,9 @@ export function setupMarks(o: {
     if (hit) {
       const n = hit.face!.normal.clone().transformDirection(hit.object.matrixWorld);
       if (n.dot(ray.ray.direction) > 0) n.negate();
+      n.transformDirection(model.matrixWorld.clone().invert());
       h = {
-        p: hit.point.toArray().map(r1),
+        p: model.worldToLocal(hit.point.clone()).toArray().map(r1),
         n: n.toArray().map((q) => Math.round(q * 1000) / 1000),
         on: targets.find(([obj]) => obj === hit.object)![1],
       };

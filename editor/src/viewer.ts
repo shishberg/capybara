@@ -3,7 +3,7 @@
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { MeshData, V3 } from './geometry';
+import type { Config, MeshData, V3 } from './geometry';
 import { placeCamera } from './three-util';
 import { $ } from './state';
 
@@ -25,20 +25,26 @@ scene.add(new T.HemisphereLight(0xc7e8ed, 0x45585f, 2));
 const light = new T.DirectionalLight(0xffffff, 2.5);
 light.position.set(-60, -100, 180);
 scene.add(light);
+/**
+ * Everything built from the project, in the right half's coordinates, where
+ * every half is built: the left half shows mirrored in x (see isLeft).
+ */
+export const model = new T.Group();
+scene.add(model);
 export const material = new T.MeshStandardMaterial({
   color: 0xb1cfca,
   roughness: 0.8,
   side: T.FrontSide,
 });
 export const shell = new T.Mesh(new T.BufferGeometry(), material);
-scene.add(shell);
+model.add(shell);
 // The case's edges: wherever its faces meet at more than a degree.
 export const edges = new T.LineSegments(
   new T.BufferGeometry(),
   new T.LineBasicMaterial({ color: 0x24343a }),
 );
 edges.visible = false;
-scene.add(edges);
+model.add(edges);
 export function setEdges() {
   edges.geometry.dispose();
   // Until the first chassis arrives the case has no geometry to draw edges of.
@@ -51,7 +57,7 @@ export const basePlate = new T.Mesh(
   new T.BufferGeometry(),
   new T.MeshStandardMaterial({ color: 0x7f9a96, roughness: 0.8 }),
 );
-scene.add(basePlate);
+model.add(basePlate);
 // The box the size readout measures: frame and bottom section.
 export const bounds = new T.Box3Helper(new T.Box3(), 0xffd36b);
 bounds.visible = false;
@@ -76,13 +82,35 @@ export function measure() {
   bounds.visible = $('bounds').matches(':checked') && !box.isEmpty();
 }
 export const parts = new T.Group();
-scene.add(parts);
+model.add(parts);
 export const wires = new T.Group();
-scene.add(wires);
+model.add(wires);
 export const failures = new T.Group();
-scene.add(failures);
+model.add(failures);
 export const handleGroup = new T.Group();
-scene.add(handleGroup);
+model.add(handleGroup);
+/** -1 while the left half shows: world x is this times the model's. */
+export const side = () => model.scale.x;
+/**
+ * Shows the half the config is for. Switching halves mirrors the camera and
+ * the light with the model, so the view looks at the same place on it.
+ */
+export function showHalf(cfg: Config) {
+  const s = cfg.half === 'left' ? -1 : 1;
+  if (s === side()) return;
+  model.scale.x = s;
+  model.updateMatrixWorld(true);
+  light.position.x *= -1;
+  placeCamera(camera, controls, {
+    position: mirrorX(camera.position),
+    target: mirrorX(controls.target),
+    up: mirrorX(camera.up),
+    zoom: camera.zoom,
+  });
+  measure();
+  render();
+}
+const mirrorX = (v: T.Vector3) => [-v.x, v.y, v.z];
 let originalIndices = new Uint32Array(),
   scheduled = false;
 /** Keeps the case's triangle order, which transparency re-sorts by depth. */
@@ -120,7 +148,7 @@ export function render() {
     if (material.opacity < 1 && originalIndices.length) {
       camera.updateMatrixWorld();
       const pos = shell.geometry.getAttribute('position'),
-        m = camera.matrixWorldInverse.elements,
+        m = camera.matrixWorldInverse.clone().multiply(shell.matrixWorld).elements,
         depth = new Float64Array(originalIndices.length / 3);
       for (let i = 0; i < depth.length; i++)
         for (let j = 0; j < 3; j++) {
@@ -174,10 +202,11 @@ function preset(name: string) {
     ],
   };
   const [offset, up] = offsets[name] ?? offsets['3D'];
+  // The left half's inner side faces +x.
   placeCamera(camera, controls, {
     position: controls.target
       .clone()
-      .add(new T.Vector3(...offset))
+      .add(new T.Vector3(...offset).setX(side() * offset[0]))
       .toArray(),
     target: controls.target.toArray(),
     up,

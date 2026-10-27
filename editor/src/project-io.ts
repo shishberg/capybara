@@ -23,17 +23,31 @@ $('report').onclick = () => {
       'application/json',
     );
 };
+/** A mesh as shown: the left half mirrored, its triangles turned back the right way out. */
+function asShown(mesh: T.Mesh) {
+  const g = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld),
+    index = g.getIndex()!;
+  if (mesh.matrixWorld.determinant() < 0)
+    for (let i = 0; i < index.count; i += 3) {
+      const b = index.getX(i + 1);
+      index.setX(i + 1, index.getX(i + 2));
+      index.setX(i + 2, b);
+    }
+  return new T.Mesh(g);
+}
 const exportStl = (id: string, name: string, mesh: T.Mesh) =>
   ($(id).onclick = () => {
     if (S.solidRevision !== S.revision) return;
+    const shown = asShown(mesh);
     download(
-      name,
-      new STLExporter().parse(mesh, { binary: true }) as DataView<ArrayBuffer>,
+      `rosebear-${S.evaluated!.config.half}-${name}.stl`,
+      new STLExporter().parse(shown, { binary: true }) as DataView<ArrayBuffer>,
       'application/octet-stream',
     );
+    shown.geometry.dispose();
   });
-exportStl('stl', 'rosebear-right-review.stl', shell);
-exportStl('stl-base', 'rosebear-right-bottom.stl', basePlate);
+exportStl('stl', 'review', shell);
+exportStl('stl-base', 'bottom', basePlate);
 $('import').onclick = () => $<HTMLInputElement>('file').click();
 $('file').onchange = async () => {
   const input = $<HTMLInputElement>('file'),

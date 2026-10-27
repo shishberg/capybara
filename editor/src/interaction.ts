@@ -3,7 +3,7 @@ import * as T from 'three';
 import { clone, validateProject, type Project } from './geometry';
 import { clientToNdc, worldToClient } from './three-util';
 import { $, S } from './state';
-import { camera, controls, render, renderer } from './viewer';
+import { camera, controls, model, render, renderer } from './viewer';
 import { updateHandles } from './scene-parts';
 import { handles, dragTo } from './handles';
 import { requestBuild } from './build-client';
@@ -24,7 +24,11 @@ const ray = new T.Raycaster(),
 function cursor(e: PointerEvent) {
   ray.setFromCamera(clientToNdc(renderer.domElement, e.clientX, e.clientY, pointer), camera);
 }
-export const screen = (p: T.Vector3) => worldToClient(renderer.domElement, camera, p);
+/** Where on screen point p (in the model, as handles are) is. */
+export const screen = (p: T.Vector3) =>
+  worldToClient(renderer.domElement, camera, model.localToWorld(p.clone()));
+/** A world direction in the model. */
+const inModel = (v: T.Vector3) => v.transformDirection(model.matrixWorld.clone().invert());
 renderer.domElement.addEventListener(
   'pointerdown',
   (e) => {
@@ -49,7 +53,7 @@ renderer.domElement.addEventListener(
     cursor(e);
     const plane = new T.Plane().setFromNormalAndCoplanarPoint(
         camera.getWorldDirection(new T.Vector3()),
-        hit.at,
+        model.localToWorld(hit.at.clone()),
       ),
       start = ray.ray.intersectPlane(plane, new T.Vector3());
     if (!start) return;
@@ -75,7 +79,7 @@ renderer.domElement.addEventListener(
     cursor(e);
     const hit = ray.ray.intersectPlane(S.drag.plane, new T.Vector3());
     if (!hit) return;
-    const delta = hit.sub(S.drag.start);
+    const delta = model.worldToLocal(hit).sub(model.worldToLocal(S.drag.start.clone()));
     if (
       S.drag.point
         .clone()
@@ -91,7 +95,7 @@ renderer.domElement.addEventListener(
         S.drag.id,
         delta,
         S.drag.point,
-        camera.getWorldDirection(new T.Vector3()),
+        inModel(camera.getWorldDirection(new T.Vector3())),
       );
       validateProject(next);
     } catch {

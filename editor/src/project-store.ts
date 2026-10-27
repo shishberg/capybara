@@ -2,7 +2,7 @@
 // inputs that edit it (selected-handle fields, clearance, config JSON).
 import { defaults, clone, validateProject, componentFrames, type Project } from './geometry';
 import { $, S } from './state';
-import { render, parts } from './viewer';
+import { render, parts, showHalf } from './viewer';
 import { updateHardware, updateHandles } from './scene-parts';
 import { setBadge, clearFailures } from './report-view';
 import { requestBuild } from './build-client';
@@ -98,6 +98,7 @@ export function preview() {
   try {
     S.handLayout?.();
     componentFrames(S.project.config);
+    showHalf(S.project.config);
     updateHardware();
     updateHandles();
     S.handUpdate?.();
@@ -116,6 +117,9 @@ export function edited() {
   S.timer = setTimeout(requestBuild, 250);
 }
 export function refreshInputs() {
+  $<HTMLSelectElement>('half').value = S.project.config.half;
+  $('subtitle').textContent =
+    `${S.project.config.half === 'left' ? 'Left' : 'Right'} hand · Capybara chassis`;
   $<HTMLInputElement>('bottom-out').value = String(
     S.project.config.switch.keycap_bottom_above_plate_mm - S.project.config.switch.travel_mm,
   );
@@ -142,6 +146,11 @@ $('bottom-out').onchange = () => {
   }
   const next = clone(S.project);
   next.config.switch.keycap_bottom_above_plate_mm = next.config.switch.travel_mm + n;
+  commit(next);
+};
+$('half').onchange = () => {
+  const next = clone(S.project);
+  next.config.half = $<HTMLSelectElement>('half').value;
   commit(next);
 };
 $('apply-config').onclick = () => {

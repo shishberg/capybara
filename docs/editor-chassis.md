@@ -1,12 +1,26 @@
 # Editor chassis and wiring
 
-How the [editor](../editor/README.md) builds the right hand's chassis and wires it. The
+How the [editor](../editor/README.md) builds each hand's chassis and wires it. The
 editor guide covers running it, the key layout parameters and the clearance
 checks. The tile, its parts, holes and pads are measured from the bought tiles
 (see [design status](design-status.md)). The wiring and the
 [Pro Micro](pro-micro.md), its TRRS jack and its reset switch are
 **provisional**, each marked `provisional` in the configuration. File paths are
 relative to `editor/`.
+
+## Left half
+
+The left half is the right one mirrored in x (`half` in the configuration). It
+is built in the right half's coordinates, where everything below is described,
+and mirrored only where it is shown and exported. Its parts are the same
+bought parts as the right's, so in those coordinates each stands mirrored in
+its own frame, and the mirror that shows the half makes them real again: each
+tile across its key (its x), so its socket edge faces the same way as the
+right's; and the Pro Micro, the jack and the reset switch across their frames
+(y), so each stays the right way up with its port facing out. Its pin rows,
+the jack's lugs and the switch's legs therefore swap sides, and the wires are
+routed for that: the left half's wiring is its own, not the right's mirrored,
+on the same pins as the right's ([Pro Micro](pro-micro.md)).
 
 ## Construction
 

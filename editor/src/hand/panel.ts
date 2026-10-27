@@ -44,6 +44,8 @@ const manifold = () =>
 
 type Host = {
   scene: T.Scene;
+  /** What the hand and its frame are drawn in: the model, which shows the left half mirrored. */
+  model: T.Object3D;
   camera: T.Camera;
   /** The canvas, for the rotation handle. */
   dom: HTMLElement;
@@ -61,7 +63,7 @@ export function setupHand(host: Host) {
   group.matrixAutoUpdate = false;
   handGroup.matrixAutoUpdate = false;
   group.add(handGroup);
-  host.scene.add(group);
+  host.model.add(group);
   const cfg = () => host.project().config,
     /** The state (layout() puts it in the project). */
     s = () => host.project().hand as HandState,
@@ -82,7 +84,10 @@ export function setupHand(host: Host) {
   const toLayout = () => layoutOf(anchor, s());
 
   // The rotation handle, on the middle home key, turns the hand on the
-  // board (roll, pitch, bend; the tent stays).
+  // board (roll, pitch, bend; the tent stays). It turns in the world, so its
+  // pose is the model's mirrored as the model shows (a rigid pose either way).
+  const asShown = (m: T.Matrix4) =>
+    host.model.matrix.clone().multiply(m).multiply(host.model.matrix);
   const pivot = new T.Object3D(),
     gizmo = new TransformControls(host.camera, host.dom);
   gizmo.setMode('rotate');
@@ -96,7 +101,7 @@ export function setupHand(host: Host) {
   });
   const rotation = (m: T.Matrix4) => new T.Matrix4().extractRotation(m);
   gizmo.addEventListener('objectChange', () => {
-    const R = new T.Matrix4().makeRotationFromQuaternion(pivot.quaternion),
+    const R = asShown(new T.Matrix4().makeRotationFromQuaternion(pivot.quaternion)),
       tent = rotation(tentFrame(cfg()));
     // turnOf: Rz(−bend) Rx(−pitch) Ry(roll).
     const [x, y, z] = nearest(
@@ -114,7 +119,7 @@ export function setupHand(host: Host) {
     if (gizmo.dragging) return;
     gizmo.attach(pivot);
     const m = tentFrame(c).multiply(new T.Matrix4().makeTranslation(anchor)).multiply(turnOf(s()));
-    m.decompose(pivot.position, pivot.quaternion, pivot.scale);
+    asShown(m).decompose(pivot.position, pivot.quaternion, pivot.scale);
     pivot.updateMatrixWorld();
   }
 
@@ -269,7 +274,7 @@ export function setupHand(host: Host) {
         opacity: 0.85,
       }),
     );
-  host.scene.add(frameView);
+  host.model.add(frameView);
   render(basic, BASIC, { share, frame: frameBox }, ctl);
   let shownFrame: FrameResult | undefined;
   function showFrame(r = shownFrame) {

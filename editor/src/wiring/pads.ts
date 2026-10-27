@@ -1,5 +1,5 @@
 // The tile pads, as parts.
-import { componentFrames, isKey, tileUnderside, type Config, type V3 } from '../geometry';
+import { componentFrames, isKey, tilePads, tileUnderside, type Config, type V3 } from '../geometry';
 import type { Part } from '../parts';
 import { WIRING } from './common';
 
@@ -10,7 +10,7 @@ export function padParts(cfg: Config, frames = componentFrames(cfg)): Part[] {
   return Object.keys(frames)
     .filter(isKey)
     .flatMap((key) =>
-      tile.pads.list.map((p) => ({
+      tilePads(cfg).map((p) => ({
         name: `${key}: ${p.name} ${p.hole ? 'hole' : 'pad'}`,
         group: 'pads',
         size: (p.hole

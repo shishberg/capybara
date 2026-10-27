@@ -16,7 +16,14 @@
 //  wire port  where thumb wires pass from under the thumbs to under the
 //           finger columns: a straight round way in front of the gap between
 //           the inner and index columns' bottom keys.
-import { componentFrames, isKey, tileBottom, tileUnderside, type Config } from '../geometry';
+import {
+  componentFrames,
+  isKey,
+  tileBottom,
+  tilePads,
+  tileUnderside,
+  type Config,
+} from '../geometry';
 import { tilePocketHalf } from '../plates';
 import { padParts } from './pads';
 import { assignPlaces, diameterOf, optionsOf } from './candidates';
@@ -59,7 +66,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
     floorZ: cfg.chassis.skin_mm,
     half: tilePocketHalf(cfg),
     componentDepth,
-    wiredPads: tile.pads.list
+    wiredPads: tilePads(cfg)
       .filter((p) => nets(cfg).some((n) => n.pads.includes(p.name)))
       .map((p) => [p.at_mm[0], p.at_mm[1]]),
     hole,

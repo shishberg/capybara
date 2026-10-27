@@ -1,6 +1,6 @@
 # Rosebear chassis editor
 
-The right-hand chassis editing loop runs entirely in the browser, in TypeScript with
+The chassis editing loop runs entirely in the browser, in TypeScript with
 Three.js and Manifold WebAssembly. KiCad/PCB generation stays in the offline v4
 pipeline.
 
@@ -65,6 +65,11 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
 
 ## Use
 
+- **Half** (in View) picks the hand. Both halves share one key layout, set in
+  the right half's axes (+X pinky), so a handle drag on the left half makes the
+  edit the mirrored drag makes on the right. The half is part of the project:
+  undoable, autosaved and saved with it. [Editor chassis](../docs/editor-chassis.md#left-half)
+  says how the left half is built.
 - Drag a handle **parallel to the current view**. The layout axis nearest the view
   direction is left unchanged, so the Top view moves things in plan and the Front
   and Inner views change heights.
@@ -86,6 +91,7 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
 - **Export review STL** exports the case without the bottom section. It is a
   review export, not a claim that the model is mechanically qualified.
   **Export bottom section STL** exports the bottom section, a separate print.
+  Each is named for its half (`rosebear-left-review.stl`).
 - **Wiring and pads** shows the wires as tubes coloured by net group, and the
   pads. The wires are routed with each chassis build, so while you edit they
   stay as last built. **Controller, jack and plugs** shows the Pro Micro, the

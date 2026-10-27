@@ -17,6 +17,8 @@ import {
   failures,
   render,
   resize,
+  showHalf,
+  model,
 } from './viewer';
 import { snapshot, historyButtons, refreshInputs, preview, edited } from './project-store';
 import { startWorker, requestBuild } from './build-client';
@@ -65,6 +67,8 @@ const marks = !import.meta.env.DEV
   ? { painting: () => false, shown: () => [] }
   : setupMarks({
       scene,
+      model,
+      half: () => S.project.config.half,
       camera,
       controls,
       renderer,
@@ -85,6 +89,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('hand'))
     targets: handTargets,
   } = setupHand({
     scene,
+    model,
     camera,
     dom: renderer.domElement,
     orbit: controls,
@@ -94,6 +99,8 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('hand'))
     render,
   }));
 marksHook.painting = () => marks.painting();
+// The stored camera is the one the project's half was last seen from.
+showHalf(S.project.config);
 restoreView();
 historyButtons();
 refreshInputs();

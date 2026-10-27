@@ -52,6 +52,15 @@ export const isKey = (name: string) => isThumb(name) || name.startsWith('matrix_
 export const capClearance = (c: Config, n: string) =>
   (c.switch.keycap_clearance_overrides_mm as Record<string, number>)[n] ??
   c.switch.keycap_clearance_mm;
+/**
+ * Whether this is the left half: the right one mirrored in x. It is built in
+ * the right half's coordinates and mirrored only where it is shown and
+ * exported. Its parts are the same parts as the right's, so there they stand
+ * mirrored in their own frames: each tile across its key (its x), and the
+ * Pro Micro, the jack and the reset switch across their frames (y), which
+ * keeps each the right way up and its port facing out.
+ */
+export const isLeft = (c: Config) => c.half === 'left';
 // The tile in key coordinates. Its parts' center_mm[2] is measured from the
 // board's top (its switch side), so every use goes through these.
 /** The z of the tile's top, its switch side. */
@@ -61,10 +70,16 @@ export const tileUnderside = (c: Config) => tileTop(c) - c.tile.size_mm[2];
 type TilePart = Config['tile']['components'][number];
 /** A tile part's centre (the hotswap socket, LED or diode under the board). */
 export const tilePartCentre = (c: Config, p: TilePart): V3 => [
-  p.center_mm[0],
+  (isLeft(c) ? -1 : 1) * p.center_mm[0],
   p.center_mm[1],
   tileTop(c) + p.center_mm[2],
 ];
+/** The tile's pads and holes, each at_mm in its key's frame. */
+export const tilePads = (c: Config) =>
+  c.tile.pads.list.map((p) => ({
+    ...p,
+    at_mm: [(isLeft(c) ? -1 : 1) * p.at_mm[0], p.at_mm[1]],
+  }));
 /** The z of the tile's lowest point: its underside, or the bottom of its lowest part. */
 export const tileBottom = (c: Config) =>
   Math.min(
@@ -212,6 +227,8 @@ export function componentFrames(cfg: Config) {
     .multiply(
       new Matrix4().makeBasis(new Vector3(0, 0, 1), new Vector3(0, -1, 0), new Vector3(1, 0, 0)),
     );
+  if (isLeft(cfg))
+    for (const k of ['pro_micro', 'trrs', 'reset']) n[k].scale(new Vector3(1, -1, 1));
   return n;
 }
 /**
@@ -415,6 +432,7 @@ function migrate(c: Record<string, any>) {
       )
         fill(to[k], v);
   };
+  if (c.half === undefined) c.half = d.half;
   for (const k of ['tile', 'pro_micro', 'trrs', 'reset', 'wiring', 'chassis'])
     if (!c[k]) c[k] = clone(d[k]);
     else fill(c[k], d[k]);
@@ -459,5 +477,6 @@ export function validateProject(p: unknown): asserts p is Project {
         throw Error('Invalid thumb cluster');
     }
   if (!(c.chassis.skin_mm > 1.5)) throw Error('chassis.skin_mm must exceed 1.5 mm.');
+  if (c.half !== 'right' && c.half !== 'left') throw Error('half must be "right" or "left".');
   componentFrames(c);
 }

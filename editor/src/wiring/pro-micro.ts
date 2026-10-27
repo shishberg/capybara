@@ -520,11 +520,12 @@ export function cradles(
  * linkBehind behind its leg, down to it and onto the leg. The jack's
  * lowest level is linkOver above the board's parts or the jack's top,
  * whichever is higher, and the switch's above the board's parts or its top;
- * the next is linkStep above it, and so on. Placed in turn, each wire takes
- * the lowest that keeps it out of those before, so they stay as low as the
- * board and the jack (or the switch) let them; in the first order (the
- * listed one first) that leaves none touching, since a wire coming down onto
- * its lug can pass through one placed lower. A leg is come at from behind
+ * the next is linkStep above it, and so on. Placed in turn, the jack's and
+ * the switch's together, each wire takes the lowest that keeps it out of
+ * those before, so they stay as low as the board and the jack (or the
+ * switch) let them; in the first order (the listed one first) that leaves
+ * none touching, since a wire coming down onto its lug can pass through one
+ * placed lower. A leg is come at from behind
  * since the other leg on its side stands over it.
  * On a pin a feed also lands on (`fed`), the link wire's end is holeShare
  * along the pin row toward the port, so the two sit side by side in the hole.
@@ -533,14 +534,18 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
   const b = cfg.pro_micro;
   const f = frames.pro_micro;
   const parts = point(f, [0, 0, b.board_mm[2] + b.parts_mm[2]])[2];
+  const top = (frame: Matrix4, p: V3) => Math.max(parts, point(frame, p)[2]);
+  const r = cfg.reset;
+  const trrsTop = top(frames.trrs, [0, 0, cfg.trrs.body_mm[2]]);
+  const resetTop = top(frames.reset, [r.body_mm[0] / 2, 0, 0]);
   const trrs = cfg.trrs.wires.map((x) => ({
     name: x.name,
     net: `TRRS ${x.name}`,
     pin: x.pin,
     to: `TRRS ${x.lug}`,
     end: lugAt(cfg, frames, x.lug),
+    floor: trrsTop,
   }));
-  const r = cfg.reset;
   const reset = r.wires.map((x) => {
     const end = legAt(cfg, frames, x.leg);
     const back = point(frames.reset, [0, 0, WIRING.linkBehind]);
@@ -552,22 +557,26 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
       to: `reset leg ${x.leg}`,
       end,
       behind: end.map((v, i) => v + back[i] - o[12 + i]) as V3,
+      floor: resetTop,
     };
   });
-  const top = (frame: Matrix4, p: V3) => Math.max(parts, point(frame, p)[2]);
-  return [
-    ...links(cfg, frames, fed, trrs, top(frames.trrs, [0, 0, cfg.trrs.body_mm[2]])),
-    ...links(cfg, frames, fed, reset, top(frames.reset, [r.body_mm[0] / 2, 0, 0])),
-  ];
+  return links(cfg, frames, fed, [...trrs, ...reset]);
 }
 
-/** Link wires from Pro Micro pins to `end`s, their lowest level linkOver above `over` (linkWires). */
+/** Link wires from Pro Micro pins to `end`s, each's lowest level linkOver above its `floor` (linkWires). */
 function links(
   cfg: Config,
   frames: Record<string, Matrix4>,
   fed: Set<number>,
-  list: { name: string; net: string; pin: number; to: string; end: V3; behind?: V3 }[],
-  over: number,
+  list: {
+    name: string;
+    net: string;
+    pin: number;
+    to: string;
+    end: V3;
+    behind?: V3;
+    floor: number;
+  }[],
 ): Wire[] {
   const w = cfg.wiring;
   const f = frames.pro_micro;
@@ -596,11 +605,11 @@ function links(
     const out: V3[][] = [];
     let clear = true;
     for (const i of order) {
-      const { diameter, run } = runs[i];
-      let points = run(over + WIRING.linkOver);
+      const { x, diameter, run } = runs[i];
+      let points = run(x.floor + WIRING.linkOver);
       let hit = true;
       for (let k = 0; k < runs.length && hit; k++) {
-        points = run(over + WIRING.linkOver + k * WIRING.linkStep);
+        points = run(x.floor + WIRING.linkOver + k * WIRING.linkStep);
         hit = placed.some((t) => touches(t, tubeOf(points, diameter)));
       }
       clear &&= !hit;

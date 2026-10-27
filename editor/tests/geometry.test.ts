@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Module, { type Manifold } from 'manifold-3d';
-import { Vector3 } from 'three';
+import { Matrix4, Vector3 } from 'three';
 import {
   defaults,
   clone,
@@ -13,6 +13,8 @@ import {
   tileUnderside,
   isKey,
   point,
+  tilePads,
+  tilePartCentre,
 } from '../src/geometry';
 import { hardware } from '../src/parts';
 import { tilePocketDepth } from '../src/plates';
@@ -217,6 +219,47 @@ test('the default (Swung in) Capybara builds one piece and passes every check', 
     r.capGaps.filter((g) => !(g.gap > 0)).map((g) => g.between),
     [],
   );
+  assert.equal(r.passed, true);
+});
+test('the left half is built with the same parts as the right, mirrored in their frames, and passes every check', () => {
+  const right = defaults.config,
+    left = clone(defaults);
+  left.config.half = 'left';
+  validateProject(left);
+  const fr = componentFrames(right),
+    fl = componentFrames(left.config),
+    mirror = new Matrix4().makeScale(-1, 1, 1),
+    near = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i])) < 1e-9;
+  // Mirrored as shown, each part on the floor stands rigid, the right way up,
+  // where the right's stands, its port the same way out.
+  const m = mouths(right);
+  for (const k of ['pro_micro', 'trrs', 'reset']) {
+    const shown = mirror.clone().multiply(fl[k]);
+    assert(Math.abs(shown.determinant() - 1) < 1e-9, k);
+    assert(near(pos(fl[k]).toArray(), pos(fr[k]).toArray()), k);
+  }
+  for (const [k, x, z] of [
+    ['pro_micro', m.usb.x, m.usb.z],
+    ['trrs', m.trrs.x, m.trrs.z],
+  ] as const)
+    assert(near(point(fl[k], [x, 0, z]), point(fr[k], [x, 0, z])), k);
+  // Its pin rows swap: pin n is where the right's 25 - n is.
+  for (let n = 1; n <= 24; n++)
+    assert(near(point(fl.pro_micro, pinAt(right, n)), point(fr.pro_micro, pinAt(right, 25 - n))));
+  // Each tile's pads and parts are mirrored across its key; the switch's socket edge (+y) stays.
+  tilePads(left.config).forEach((p, i) =>
+    assert.deepEqual(p.at_mm, [
+      -right.tile.pads.list[i].at_mm[0],
+      right.tile.pads.list[i].at_mm[1],
+    ]),
+  );
+  for (const c of right.tile.components) {
+    const [x, y, z] = tilePartCentre(left.config, c);
+    assert.deepEqual([-x, y, z], tilePartCentre(right, c));
+  }
+  const r = buildSolid(wasm, left).report;
+  assert.deepEqual(r.crossings, []);
+  assert.deepEqual(r.hardware, []);
   assert.equal(r.passed, true);
 });
 test('the default bottom section is one piece, the cradles on its floor', () => {

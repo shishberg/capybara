@@ -1,6 +1,7 @@
 {
   "schema": 15,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
+  "half": "right",
   "geometry": {
     "row_pitch_mm": 24.5,
     "column_pitch_mm": 23,

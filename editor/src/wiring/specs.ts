@@ -1,6 +1,6 @@
 // The wires' ends: which pads and holes each net's wires join, and where on a
 // shared pad or hole each sits.
-import { point, type V3 } from '../geometry';
+import { point, tilePads, type V3 } from '../geometry';
 import { holeAlong } from './pro-micro';
 import { WIRING, distance, nets, type Env, type NetSpec, type Pad } from './common';
 
@@ -16,13 +16,12 @@ export interface Spec {
 /** The tiles' pads, the wires' specs, and each spec's ends shifted to share their pads and holes. */
 export function specsOf(env: Env, keys: string[]) {
   const { cfg, frames, hole, padZ } = env;
-  const tile = cfg.tile;
   const downOf = (key: string): V3 => {
     const e = frames[key].elements;
     return [-e[8], -e[9], -e[10]];
   };
   const pads: Pad[] = keys.flatMap((key) =>
-    tile.pads.list.map((p) => ({
+    tilePads(cfg).map((p) => ({
       key,
       name: p.name,
       at: point(frames[key], [p.at_mm[0], p.at_mm[1], padZ]),

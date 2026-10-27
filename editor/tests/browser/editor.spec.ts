@@ -92,6 +92,78 @@ test('thumb clusters move and turn, and fields edit the same values', async ({ p
   await rebuilt(page);
   await page.screenshot({ path: 'test-results/thumbs.png', fullPage: true });
 });
+test('the left half shows and exports mirrored, and its handles follow the pointer', async ({
+  page,
+}) => {
+  const fs = await import('node:fs/promises');
+  // A binary STL's volume (positive when its triangles face out) and the middle of its x span.
+  const stl = async (id: string) => {
+    const download = page.waitForEvent('download');
+    await page.locator(id).click();
+    const file = await download,
+      b = await fs.readFile((await file.path())!);
+    let volume = 0,
+      lo = Infinity,
+      hi = -Infinity;
+    for (let t = 0; t < b.readUInt32LE(80); t++) {
+      const v = [0, 1, 2].map((k) =>
+        [0, 1, 2].map((i) => b.readFloatLE(84 + t * 50 + 12 + k * 12 + i * 4)),
+      );
+      for (const p of v) [lo, hi] = [Math.min(lo, p[0]), Math.max(hi, p[0])];
+      const [a, c, d] = v;
+      volume +=
+        (a[0] * (c[1] * d[2] - c[2] * d[1]) -
+          a[1] * (c[0] * d[2] - c[2] * d[0]) +
+          a[2] * (c[0] * d[1] - c[1] * d[0])) /
+        6;
+    }
+    return { name: file.suggestedFilename(), volume, middle: (lo + hi) / 2 };
+  };
+  // Seen from above, a drag of the thumb cluster's handle: how far it moved on
+  // screen, and the cluster in the model.
+  const drag = async (dx: number) => {
+    const before = (await project(page)).config.geometry.thumb.position_mm,
+      at = () => page.evaluate(() => (window as any).rosebearEditor.handleScreen('cluster:thumb')),
+      start = await at();
+    await dragHandle(page, 'cluster:thumb', dx, 0);
+    const end = await at(),
+      after = (await project(page)).config.geometry.thumb.position_mm;
+    return {
+      x: end.x - start.x,
+      y: end.y - start.y,
+      moved: after.map((v: number, i: number) => v - before[i]),
+    };
+  };
+  await page.locator('[data-view="Top"]').click();
+  const pulled = await drag(12);
+  expect(pulled.moved[0]).toBeGreaterThan(2);
+  await page.locator('#undo').click();
+  await rebuilt(page);
+  const right = await stl('#stl');
+  expect(right.name).toBe('rosebear-right-review.stl');
+  expect(right.volume).toBeGreaterThan(1000);
+  await page.locator('#half').selectOption('left');
+  await rebuilt(page);
+  expect((await project(page)).config.half).toBe('left');
+  await expect(page.locator('#fit-badge')).not.toHaveClass(/fail/);
+  const left = await stl('#stl');
+  expect(left.name).toBe('rosebear-left-review.stl');
+  expect(left.volume).toBeCloseTo(right.volume, 0);
+  expect(left.middle).toBeCloseTo(-right.middle, 1);
+  expect((await stl('#stl-base')).name).toBe('rosebear-left-bottom.stl');
+  // The left half's +x is to the left: the mirrored drag moves the handle the
+  // mirrored way and makes the same edit.
+  await page.locator('[data-view="Top"]').click();
+  const pushed = await drag(-12);
+  expect(pushed.x).toBeCloseTo(-pulled.x, 1);
+  expect(pushed.y).toBeCloseTo(pulled.y, 1);
+  pushed.moved.forEach((v: number, i: number) => expect(v).toBeCloseTo(pulled.moved[i], 2));
+  await rebuilt(page);
+  await page.screenshot({ path: 'test-results/left-half.png' });
+  await page.reload();
+  await rebuilt(page);
+  await expect(page.locator('#half')).toHaveValue('left');
+});
 test('a newer edit supersedes an in-flight build; invalid imports leave the project intact', async ({
   page,
 }) => {
