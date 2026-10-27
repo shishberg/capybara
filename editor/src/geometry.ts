@@ -369,6 +369,28 @@ function migrate(c: Record<string, any>) {
       for (const f of fields) c.trrs[f] = clone(d.trrs[f]);
     c.schema = 14;
   }
+  if (!(c.schema >= 15)) {
+    // Schema 15: the feeds plug onto the Pro Micro's pins with Dupont
+    // housings. RB, RX and C4 move off the pins under the index home key,
+    // where a housing doesn't fit; each thumb's column wire chains on from its
+    // column's bottom key, so each pin takes one wire; LED data starts at
+    // pinky top; and the service loop is only what reaching the plugs takes.
+    // Each part a project still has as schema 14 left it takes the new one.
+    const w = c.wiring;
+    if (same(c.pro_micro?.pins, { ...d.pro_micro.pins, RB: 12, RX: 15, C4: 11 }))
+      c.pro_micro.pins = clone(d.pro_micro.pins);
+    if (w && same(w.led_order, [...d.wiring.led_order].reverse()))
+      w.led_order = clone(d.wiring.led_order);
+    for (const n of w?.nets ?? []) {
+      const now = d.wiring.nets.find((x: { name: string }) => x.name === n.name)?.chains;
+      if (n.group === 'column' && now && same(n.chains, [now[0].slice(0, -1), now[0].slice(-1)]))
+        n.chains = clone(now);
+    }
+    if (w?.service_loop_mm === 40) w.service_loop_mm = d.wiring.service_loop_mm;
+    if (w && /has its own wire to that column's pin/.test(w.description ?? ''))
+      w.description = d.wiring.description;
+    c.schema = 15;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;

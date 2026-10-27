@@ -33,14 +33,40 @@ export function pinAt(cfg: Config, n: number): V3 {
 /** Pro Micro pin n and its name (pro_micro.pinout), for the wiring panel. */
 export const pinName = (cfg: Config, n: number) => `${n}, ${cfg.pro_micro.pinout[n - 1]}`;
 
+/** The top of a feed's Dupont housing over the board's top (pro_micro.dupont): its header's spacer and the housing on it. */
+const plugHeight = (cfg: Config) =>
+  cfg.pro_micro.dupont.spacer_mm + cfg.pro_micro.dupont.housing_mm[2];
+
 /**
- * Where each net's feeds land, in world coordinates on the board's top, keyed
- * by the net's `pin`, the Pro Micro pin pro_micro.pins gives it.
+ * Where each net's feeds land, in world coordinates, keyed by the net's
+ * `pin`, the Pro Micro pin pro_micro.pins gives it: the top of the Dupont
+ * housing plugged onto that pin, where the feed's wire comes out.
  */
 export function holes(cfg: Config, frames = componentFrames(cfg)) {
   const out: Record<number, V3> = {};
-  for (const net of nets(cfg)) out[net.pin] = point(frames.pro_micro, pinAt(cfg, net.pin));
+  for (const net of nets(cfg)) {
+    const [x, y, z] = pinAt(cfg, net.pin);
+    out[net.pin] = point(frames.pro_micro, [x, y, z + plugHeight(cfg)]);
+  }
   return out;
+}
+
+/**
+ * Where a feed of radius r, out of its housing's top at `top`, comes down
+ * past it: at that height, just off the housing's outer face, away from the
+ * board's middle, or (`inside`) its inner face, between the pin rows.
+ */
+export function besideHousing(
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+  top: V3,
+  r: number,
+  inside = false,
+) {
+  const f = frames.pro_micro;
+  const [x, y, z] = point(f.clone().invert(), top);
+  const off = (inside ? -1 : 1) * (cfg.pro_micro.dupont.housing_mm[1] / 2 + r + WIRING.plugMargin);
+  return point(f, [x, Math.sign(y) * (cfg.pro_micro.row_spacing_mm / 2 + off), z]);
 }
 
 /** Two feeds on one pin sit side by side along this world direction: the board's x, along its pin rows. */
@@ -95,7 +121,7 @@ const LEG = [0.8, 0.3];
 /** A part `size` about `center` in frame f, turned so its z axis (a cylinder's) runs along f's x. */
 const alongX = (f: Matrix4) => f.clone().multiply(new Matrix4().makeRotationY(Math.PI / 2));
 
-/** The Pro Micro, the jack, both plugs and the reset switch, as parts for display and the checks. */
+/** The Pro Micro, the feeds' Dupont housings, the jack, both plugs and the reset switch, as parts for display and the checks. */
 export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[] {
   const b = cfg.pro_micro;
   const j = cfg.trrs;
@@ -112,6 +138,16 @@ export function proMicroParts(cfg: Config, frames = componentFrames(cfg)): Part[
   // Its parts on top, between the pin rows, behind the port.
   const [px, py, pz] = b.parts_mm;
   add('Pro Micro parts', 'controller', [px, py, pz], [m.usb.x + ux + px / 2, 0, bz + pz / 2], fb);
+  // On each feed's pin, its header's spacer, the Dupont housing on it and the
+  // room over that for the feed's wire to come out and turn.
+  const { spacer_mm: spacer, housing_mm: housing, exit_mm: exit } = b.dupont;
+  for (const pin of new Set(nets(cfg).map((n) => n.pin))) {
+    const [x, y] = pinAt(cfg, pin);
+    const [hx, hy, hz] = housing;
+    add(`Pin ${pin} header`, 'dupont', [hx, hy, spacer], [x, y, bz + spacer / 2], fb);
+    add(`Pin ${pin} Dupont housing`, 'dupont', [hx, hy, hz], [x, y, bz + spacer + hz / 2], fb);
+    add(`Pin ${pin} wire exit`, 'dupont', [hx, hy, exit], [x, y, bz + spacer + hz + exit / 2], fb);
+  }
   const [jx, jy, jz] = j.body_mm;
   add('TRRS jack', 'controller', [jx, jy, jz], [0, 0, jz / 2], fj);
   const [bl, bd] = j.barrel_mm;

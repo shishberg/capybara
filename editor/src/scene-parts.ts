@@ -92,6 +92,7 @@ const colors: Record<string, number> = {
   switch: 0x667e86,
   keycaps: 0xd7d8bd,
   controller: 0x2b4c8c,
+  dupont: 0x1a1a1a,
   cable: 0x3a3a3a,
   pads: 0xd8c27a,
 };
@@ -104,7 +105,7 @@ const wireColors: Record<string, number> = {
   ground: 0x222222,
   link: 0xff9f40,
 };
-const CONTROLLER_GROUPS = ['controller', 'cable'];
+const CONTROLLER_GROUPS = ['controller', 'dupont', 'cable'];
 // A box tapering from size (x, y at its bottom, z its height, centred) to a
 // top face of top (x, y).
 const taperedBox = (size: number[], top: number[]) => {

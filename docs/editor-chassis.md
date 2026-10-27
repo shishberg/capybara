@@ -240,18 +240,20 @@ Under the plates:
   pad**: a 22 AWG wire fits a hole, two don't.
 - **Matrix**: each hand is 4 rows × 5 columns. The finger rows are RT, RH and RB;
   the five thumbs are row RX. Columns C0–C4 run pinky to inner. Each thumb sits
-  on a finger column: x2 on C0, near on C1, x1 on C2, home on C3, far on C4. A
-  thumb's column wire goes to its column's pin, so two wires share each column
-  pin.
-- **Pins**: each net's feeds land on the Pro Micro pin `pro_micro.pins` gives it
-  (the [Pro Micro](pro-micro.md#pins) doc says which pins can do what). The
-  jack's three link wires and the reset switch's two run from their pins to the
-  jack's lugs and the switch's legs.
-- **Chains**: each finger column chains its C holes top → home → bottom; each row
-  chains its R holes across the columns. A wire arrives at the tile's C (or R)
-  hole nearer where it comes from, and the next leaves from the other. LED data
-  runs out → in through `wiring.led_order` (the thumbs, then the columns in
-  alternating directions). +5 V and GND daisy-chain every tile, arriving at the V
+  on a finger column: x2 on C0, near on C1, x1 on C2, home on C3, far on C4.
+- **Pins**: each net's feed lands on the top of the Dupont housing
+  (`pro_micro.dupont`) on the Pro Micro pin `pro_micro.pins` gives it (the
+  [Pro Micro](pro-micro.md#pins) doc says which pins can do what). Each housing,
+  with its header's spacer under it and room over it for the wire to come out
+  and turn, is checked against the chassis and against the tiles, their parts
+  and pads over the board. The jack's three link wires and the reset switch's
+  two run from their pins to the jack's lugs and the switch's legs.
+- **Chains**: each finger column chains its C holes top → home → bottom and on
+  to its thumb; each row chains its R holes across the columns. A wire arrives
+  at the tile's C (or R) hole nearer where it comes from, and the next leaves
+  from the other. LED data runs out → in through `wiring.led_order` (the columns
+  in alternating directions from pinky top, then the thumbs). +5 V and GND
+  daisy-chain every tile, arriving at the V
   (or G) hole or the LED-edge V (or G) pad, whichever is nearer, and leaving from
   the other. Each chain has one **feed**, a wire from its nearer end to its
   net's pin.
@@ -275,9 +277,10 @@ Under the plates:
   suit the directions its two ends lie in. A thumb's wires gather just off its
   edge facing the port, each offset as its place, so they run to the port side
   by side. Feeds run down to a **loom** 10 mm above the bottom section, then
-  across to the Pro Micro, clear of the jack and the reset switch.
-- **Routing**: each wire has many candidate routes (depths, shifts, port places
-  and loom levels). Routes
+  across to the Pro Micro, clear of the jack and the reset switch, and up
+  beside their housing, past its outer face or its inner, onto its top.
+- **Routing**: each wire has many candidate routes (depths, shifts, port places,
+  loom levels and, for a feed, its housing's face). Routes
   that run into a tile, its parts or a plate, that shift out past the
   tile's pocket, or whose underside runs below the base plate's top
   (`chassis.skin_mm` above z = 0) are dropped; a wire left with no route fails
@@ -289,10 +292,9 @@ Under the plates:
   (`src/wiring-worker.ts`) while the build worker builds the chassis, so the wires
   follow an edit when the chassis rebuilds.
 - **Wire**: 30 AWG (0.6 mm) for signals, 26 AWG (0.9 mm) for power and ground.
-- **Cut length**: each wire's path plus 5 mm at each end. A feed also has a
-  40 mm **service loop**: spare wire left slack so the bottom section, with the
-  Pro Micro on it, can be lifted off and set beside the body without pulling on a
-  solder joint.
+- **Cut length**: each wire's path plus 5 mm at each end. A feed also has its
+  **service loop** (`wiring.service_loop_mm`; [design status](design-status.md)
+  says why).
 
 The default hand has 105 wires (100 under the keys and five link wires),
-210 solder joints and about 6 m of wire.
+198 solder joints, 12 plugs and about 5.5 m of wire.

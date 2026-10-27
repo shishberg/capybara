@@ -3,7 +3,7 @@ import { Matrix4 } from 'three';
 import { openingSpan, seatBox, seatSettings, seatSwitches, clipBox, switchHole } from './seats';
 import { RegionIndex, type Region } from './regions';
 import { buildChassis } from './chassis';
-import { hardware } from './parts';
+import { hardware, type Part } from './parts';
 import {
   box,
   capsule,
@@ -342,51 +342,58 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
   return { seats, highlights };
 }
 
-/** Hardware (the tiles, the Pro Micro, its jack, their plugs and its reset switch) against the chassis and its bottom section. */
+/**
+ * Hardware (the tiles, the Pro Micro, its jack, their plugs and its reset
+ * switch) against the chassis and its bottom section; the feeds' Dupont
+ * housings, which stand up under the keys, against the tiles, their parts
+ * and pads too.
+ */
 function checkHardware(
   p: Probe,
   project: Project,
   nodes: ReturnType<typeof componentFrames>,
   result: Manifold,
 ) {
+  const parts = hardware(project, nodes);
+  const shapeOf = (part: Part) => {
+    let shape = part.cylinder
+      ? p.M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
+      : box(p.M, part.size, part.center);
+    if (part.notch)
+      for (const x of [-1, 1])
+        for (const y of [-1, 1])
+          shape = shape.subtract(
+            p.M.cylinder(part.size[2] + 2, part.notch, part.notch, 32, true).translate([
+              part.center[0] + (x * part.size[0]) / 2,
+              part.center[1] + (y * part.size[1]) / 2,
+              part.center[2],
+            ]),
+          );
+    for (const h of part.holes ?? [])
+      shape = shape.subtract(
+        p.M.cylinder(part.size[2] + 2, h.diameter / 2, h.diameter / 2, 32, true).translate([
+          h.at[0],
+          h.at[1],
+          part.center[2],
+        ]),
+      );
+    return place(shape, new Matrix4().fromArray(part.matrix));
+  };
+  const tiles = p.M.union(
+    parts.filter((x) => ['pcb', 'components', 'pads'].includes(x.group)).map(shapeOf),
+  );
   const against: Record<string, Manifold> = {
     pcb: result,
     components: result,
     controller: result,
     cable: result,
+    dupont: result.add(tiles),
   };
   const highlights: Highlight[] = [];
   const overlaps: Report['hardware'] = [];
-  for (const part of hardware(project, nodes))
+  for (const part of parts)
     if (against[part.group]) {
-      let shape = part.cylinder
-        ? p.M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
-        : box(p.M, part.size, part.center);
-      if (part.notch)
-        for (const x of [-1, 1])
-          for (const y of [-1, 1])
-            shape = shape.subtract(
-              p.M.cylinder(part.size[2] + 2, part.notch, part.notch, 32, true).translate([
-                part.center[0] + (x * part.size[0]) / 2,
-                part.center[1] + (y * part.size[1]) / 2,
-                part.center[2],
-              ]),
-            );
-      for (const h of part.holes ?? [])
-        shape = shape.subtract(
-          p.M.cylinder(part.size[2] + 2, h.diameter / 2, h.diameter / 2, 32, true).translate([
-            h.at[0],
-            h.at[1],
-            part.center[2],
-          ]),
-        );
-      const v = p.collision(
-        against[part.group],
-        place(shape, new Matrix4().fromArray(part.matrix)),
-        part.name,
-        'hardware',
-        highlights,
-      );
+      const v = p.collision(against[part.group], shapeOf(part), part.name, 'hardware', highlights);
       if (v > CHECKS.overlap) overlaps.push({ name: part.name, group: part.group, volume: v });
     }
   return { hardware: overlaps, highlights };

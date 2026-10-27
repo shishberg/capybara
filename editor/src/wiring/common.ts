@@ -40,6 +40,7 @@ export interface NetSummary {
   label: string;
   group: string;
   wires: number;
+  /** Solder joints: both ends of each wire but a feed's, which plugs onto its pin. */
   joints: number;
   length: number;
 }
@@ -70,6 +71,8 @@ export interface Lane {
   edge?: Edge;
   /** For a feed: its level in the loom, in steps of loomStep from loom_height_mm. */
   level?: number;
+  /** For a feed: it comes down past its housing's inner face, between the pin rows, not its outer. */
+  inside?: boolean;
 }
 
 /** The wire port: a straight round way from under the thumb tiles to inside the finger columns. */
@@ -199,6 +202,8 @@ export const WIRING = {
   padShare: 0.9,
   /** Centre spacing of two wires on one Pro Micro pin, along its row. */
   holeShare: 1,
+  /** A feed comes down past its Dupont housing's outer face this far off it. */
+  plugMargin: 0.2,
   /** Centre spacing of the wires through the wire port. */
   portPitch: 1.02,
   /** How many places nearest its own a wire through the port tries. */

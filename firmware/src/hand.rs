@@ -10,23 +10,23 @@ pub const COL: usize = 5;
 /// (`row2col`).
 pub const COL2ROW: bool = false;
 
-/// The matrix's pins: rows RT P0.22 (pin 7), RH P1.00 (9), RB P1.06 (12), RX P1.11 (15);
-/// columns C0 P0.31 (20), C1 P0.29 (19), C2 P1.15 (17), C3 P0.20 (6), C4 P1.04 (11).
+/// The matrix's pins: rows RT P0.22 (pin 7), RH P1.00 (9), RB P0.24 (8), RX P1.13 (16);
+/// columns C0 P0.31 (20), C1 P0.29 (19), C2 P1.15 (17), C3 P0.20 (6), C4 P0.02 (18).
 macro_rules! matrix_pins {
     ($p:ident) => {{
         use embassy_nrf::gpio::{Input, Level, Output, OutputDrive, Pull};
         let rows = [
             Output::new($p.P0_22, Level::Low, OutputDrive::Standard),
             Output::new($p.P1_00, Level::Low, OutputDrive::Standard),
-            Output::new($p.P1_06, Level::Low, OutputDrive::Standard),
-            Output::new($p.P1_11, Level::Low, OutputDrive::Standard),
+            Output::new($p.P0_24, Level::Low, OutputDrive::Standard),
+            Output::new($p.P1_13, Level::Low, OutputDrive::Standard),
         ];
         let cols = [
             Input::new($p.P0_31, Pull::Down),
             Input::new($p.P0_29, Pull::Down),
             Input::new($p.P1_15, Pull::Down),
             Input::new($p.P0_20, Pull::Down),
-            Input::new($p.P1_04, Pull::Down),
+            Input::new($p.P0_02, Pull::Down),
         ];
         (rows, cols)
     }};

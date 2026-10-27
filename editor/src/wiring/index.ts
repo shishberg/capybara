@@ -5,13 +5,14 @@
 //
 // Terms:
 //  pad      a solder pad on a tile's underside (tile.pads);
-//  hole     one of the Pro Micro's 24 pin holes: a net's is the pin
-//           pro_micro.pins gives it;
+//  hole     where a net's feeds land: the top of the Dupont housing on the
+//           Pro Micro pin pro_micro.pins gives it;
 //  depth    how far below its tile's underside a wire leaves a pad; it runs
 //           straight from that point on one tile to that on the next;
 //  chain    keys joined one to the next by a net's wires (wiring.nets[].chains);
 //  feed     the wire from a chain's end to its net's pin;
-//  loom     the height above the bottom section at which feeds run to the Pro Micro;
+//  loom     the height above the bottom section at which feeds run to the
+//           Pro Micro, before each climbs beside its housing to its top;
 //  wire port  where thumb wires pass from under the thumbs to under the
 //           finger columns: a straight round way in front of the gap between
 //           the inner and index columns' bottom keys.
@@ -118,7 +119,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       label: pinName(cfg, net.pin),
       group: net.group,
       wires: own.length,
-      joints: 2 * own.length,
+      joints: 2 * own.length - own.filter((x) => x.feed).length,
       length: own.reduce((t, x) => t + x.length, 0),
     };
   });

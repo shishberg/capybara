@@ -1,5 +1,5 @@
 {
-  "schema": 14,
+  "schema": 15,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "geometry": {
     "row_pitch_mm": 24.5,
@@ -312,6 +312,12 @@
     "parts_mm": [22, 12, 1.2],
     "plug_mm": [12.5, 7, 25],
     "clearance_mm": 0.2,
+    "dupont": {
+      "description": "Each feed plugs onto its pin: a straight header pin soldered from below, its plastic spacer on the board's top, and a single Dupont housing pushed down onto it, the feed's wire out of the housing's top, with exit_mm above it to come out and turn. Only the feeds' pins take one; the jack's and the reset switch's link wires are soldered. Provisional until measured.",
+      "spacer_mm": 2.5,
+      "housing_mm": [2.54, 2.54, 14],
+      "exit_mm": 3
+    },
     "cradle": {
       "wall_mm": 1.2,
       "above_mm": 0.5,
@@ -349,13 +355,13 @@
     "pins": {
       "RT": 7,
       "RH": 9,
-      "RB": 12,
-      "RX": 15,
+      "RB": 8,
+      "RX": 16,
       "C0": 20,
       "C1": 19,
       "C2": 17,
       "C3": 6,
-      "C4": 11,
+      "C4": 18,
       "DATA": 5,
       "+5V": 21,
       "GND": 4
@@ -421,36 +427,36 @@
   },
   "wiring": {
     "provisional": true,
-    "description": "Hand wiring from the tile holes and pads to the Pro Micro's pins, as a 4 x 5 matrix: rows RT, RH, RB and RX (the thumbs), columns C0 (pinky) to C4 (inner). Each thumb shares a finger column but has its own wire to that column's pin. One wire per tile hole or pad: each row and column wire arrives at one of the tile's two R (or C) holes and the next leaves from the other; +5 V and GND use the V (or G) hole and the LED-edge pad. LED data follows led_order, in to out. Each net's feeds land on the Pro Micro pin pro_micro.pins gives it.",
+    "description": "Hand wiring from the tile holes and pads to the Pro Micro's pins, as a 4 x 5 matrix: rows RT, RH, RB and RX (the thumbs), columns C0 (pinky) to C4 (inner). Each thumb shares a finger column: its column wire chains on from that column's bottom key. One wire per tile hole or pad: each row and column wire arrives at one of the tile's two R (or C) holes and the next leaves from the other; +5 V and GND use the V (or G) hole and the LED-edge pad. LED data follows led_order, in to out. Each net's feeds land on the Pro Micro pin pro_micro.pins gives it.",
     "signal_wire_mm": 0.6,
     "power_wire_mm": 0.9,
     "loom_height_mm": 10,
     "port_diameter_mm": 5,
     "port_length_mm": 20,
-    "service_loop_mm": 40,
+    "service_loop_mm": 30,
     "end_allowance_mm": 5,
     "solder_access_mm": [2, 8],
     "led_order": [
-      "thumb_x2",
-      "thumb_x1",
-      "thumb_near",
-      "thumb_home",
-      "thumb_far",
-      "matrix_inner_bottom",
-      "matrix_inner_home",
-      "matrix_inner_top",
-      "matrix_index_top",
-      "matrix_index_home",
-      "matrix_index_bottom",
-      "matrix_middle_bottom",
-      "matrix_middle_home",
-      "matrix_middle_top",
-      "matrix_ring_top",
-      "matrix_ring_home",
-      "matrix_ring_bottom",
-      "matrix_pinky_bottom",
+      "matrix_pinky_top",
       "matrix_pinky_home",
-      "matrix_pinky_top"
+      "matrix_pinky_bottom",
+      "matrix_ring_bottom",
+      "matrix_ring_home",
+      "matrix_ring_top",
+      "matrix_middle_top",
+      "matrix_middle_home",
+      "matrix_middle_bottom",
+      "matrix_index_bottom",
+      "matrix_index_home",
+      "matrix_index_top",
+      "matrix_inner_top",
+      "matrix_inner_home",
+      "matrix_inner_bottom",
+      "thumb_far",
+      "thumb_home",
+      "thumb_near",
+      "thumb_x1",
+      "thumb_x2"
     ],
     "nets": [
       {
@@ -505,34 +511,31 @@
         "name": "C0",
         "group": "column",
         "pads": ["C", "C"],
-        "chains": [["matrix_pinky_top", "matrix_pinky_home", "matrix_pinky_bottom"], ["thumb_x2"]]
+        "chains": [["matrix_pinky_top", "matrix_pinky_home", "matrix_pinky_bottom", "thumb_x2"]]
       },
       {
         "name": "C1",
         "group": "column",
         "pads": ["C", "C"],
-        "chains": [["matrix_ring_top", "matrix_ring_home", "matrix_ring_bottom"], ["thumb_near"]]
+        "chains": [["matrix_ring_top", "matrix_ring_home", "matrix_ring_bottom", "thumb_near"]]
       },
       {
         "name": "C2",
         "group": "column",
         "pads": ["C", "C"],
-        "chains": [
-          ["matrix_middle_top", "matrix_middle_home", "matrix_middle_bottom"],
-          ["thumb_x1"]
-        ]
+        "chains": [["matrix_middle_top", "matrix_middle_home", "matrix_middle_bottom", "thumb_x1"]]
       },
       {
         "name": "C3",
         "group": "column",
         "pads": ["C", "C"],
-        "chains": [["matrix_index_top", "matrix_index_home", "matrix_index_bottom"], ["thumb_home"]]
+        "chains": [["matrix_index_top", "matrix_index_home", "matrix_index_bottom", "thumb_home"]]
       },
       {
         "name": "C4",
         "group": "column",
         "pads": ["C", "C"],
-        "chains": [["matrix_inner_top", "matrix_inner_home", "matrix_inner_bottom"], ["thumb_far"]]
+        "chains": [["matrix_inner_top", "matrix_inner_home", "matrix_inner_bottom", "thumb_far"]]
       },
       {
         "name": "DATA",

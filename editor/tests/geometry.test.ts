@@ -229,9 +229,12 @@ test("the wiring lands each net on its pin, and the jack's links on theirs", () 
   const hole = holes(cfg, frames);
   const near = (a: number[], b: number[], by = 0.51) =>
     Math.hypot(...a.map((x, i) => x - b[i])) < by;
-  // Every net's feeds end on the Pro Micro pin pro_micro.pins gives it.
+  // Every net's feeds end on the top of the Dupont housing on the Pro Micro
+  // pin pro_micro.pins gives it.
+  const { spacer_mm, housing_mm } = cfg.pro_micro.dupont;
   for (const net of nets(cfg)) {
-    const at = point(frames.pro_micro, pinAt(cfg, pinOf(cfg, net.name)));
+    const [x, y, z] = pinAt(cfg, pinOf(cfg, net.name));
+    const at = point(frames.pro_micro, [x, y, z + spacer_mm + housing_mm[2]]);
     assert.deepEqual(hole[net.pin], at, net.name);
     const feeds = w.wires.filter((x) => x.net === net.name && x.feed);
     assert(feeds.length > 0, net.name);
@@ -442,6 +445,22 @@ test('a project with the jack placed as before schema 14 takes its new place', (
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
 });
+test('a project wired as before schema 15 takes the Dupont feeds’ pins, chains, LED order and loop', () => {
+  const p = clone(defaults);
+  const c = p.config as Record<string, any>;
+  c.schema = 14;
+  Object.assign(c.pro_micro.pins, { RB: 12, RX: 15, C4: 11 });
+  c.wiring.led_order.reverse();
+  for (const n of c.wiring.nets)
+    if (n.group === 'column') n.chains = [n.chains[0].slice(0, -1), n.chains[0].slice(-1)];
+  c.wiring.service_loop_mm = 40;
+  c.wiring.description = c.wiring.description.replace(
+    "its column wire chains on from that column's bottom key.",
+    "but has its own wire to that column's pin.",
+  );
+  validateProject(p);
+  assert.deepEqual(p.config, defaults.config);
+});
 test('a project with the jack placed as before schema 10 takes its new place', () => {
   const p = clone(defaults);
   const c = p.config as Record<string, any>;
@@ -455,7 +474,7 @@ test('a project with the jack placed as before schema 9 takes its new place and 
   const c = p.config as Record<string, any>;
   c.schema = 8;
   Object.assign(c.trrs, { position_mm: [-45.05, -7.7], rotation_deg: 0 });
-  c.pro_micro.pins.C3 = 16;
+  Object.assign(c.pro_micro.pins, { RB: 12, RX: 15, C3: 16, C4: 11 });
   c.trrs.wires.find((w: { name: string }) => w.name === 'GND').pin = 4;
   validateProject(p);
   assert.deepEqual(p.config, defaults.config);
@@ -587,9 +606,10 @@ test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
         p[2] >= cfg.chassis.skin_mm + x.diameter / 2 - 1e-9,
         `${x.net} ${x.from}-${x.to} at z ${p[2].toFixed(3)}`,
       );
+  // Both ends of every wire but the 12 feeds' plugged ones.
   assert.equal(
     w.nets.reduce((s, n) => s + n.joints, 0),
-    210,
+    198,
   );
 });
 test('a project saved before the wiring loads with the default wiring', () => {

@@ -32,3 +32,14 @@ test('the middle column pushed 8 mm into the ring column fails seats, openings a
   assert(hw.some((h) => h.name === 'matrix_ring_top' && h.group === 'pcb'));
   assert(hw.every((h) => pushed(h.name)));
 });
+
+test('a feed on a pin under the index home key fails hardware: no room over its Dupont housing', () => {
+  const p = clone(defaults);
+  p.config.pro_micro.pins.RB = 15;
+  const r = buildSolid(wasm, p).report;
+  assert.equal(r.passed, false);
+  assert.deepEqual(
+    r.hardware.map((h) => `${h.group} ${h.name}`),
+    ['dupont Pin 15 wire exit'],
+  );
+});

@@ -156,21 +156,24 @@ function candidates(env: Env, s: Spec, own: number | undefined, wide: boolean) {
           .slice(0, wide ? portPlaces.length : WIRING.placeChoices);
   const sides = WIRING.edgeAsides.slice(0, WIRING.portAsides);
   const depthTries = wide ? WIRING.depthChoices : WIRING.longDepths;
-  // A feed leaves by its pad's own edge or by the edge facing its hole.
+  // A feed leaves by its pad's own edge or by the edge facing its hole, and
+  // comes down past its housing's outer face or, next, its inner.
   const home = ownEdge(s.b, env.half);
   const toward = isFeed ? edgeToward(frames, s.b.key, hole[s.a as number]) : home;
   const edges = toward[0] === home[0] && toward[1] === home[1] ? [home] : [home, toward];
+  const faces = [false, true];
   if (isFeed && !through)
     for (const [e, edge] of edges.entries()) {
       const depths = legDepths(env, s.b, edge, d);
       for (let i = 0; i < depthTries; i++)
         for (const level of WIRING.loomLevels)
           for (const aside of WIRING.asides)
-            out.push({
-              lane: { da: depths[i], db: depths[i], aside, level, edge },
-              place: [0, 0, 0],
-              rank: i + 2 * e,
-            });
+            for (const [k, inside] of faces.entries())
+              out.push({
+                lane: { da: depths[i], db: depths[i], aside, level, edge, inside },
+                place: [0, 0, 0],
+                rank: i + 2 * e + k,
+              });
     }
   // Through the port, the thumb's leg leaves by the edge facing the port or
   // by its pad's own edge.
@@ -186,11 +189,20 @@ function candidates(env: Env, s: Spec, own: number | undefined, wide: boolean) {
         for (const level of WIRING.loomLevels.slice(0, WIRING.portLoomLevels))
           for (let y = 0; y < sides.length; y++)
             for (const [n, place] of tries.entries())
-              out.push({
-                lane: { da: depths[i], db: depths[i], aside: 0, asideB: sides[y], level, edge },
-                place,
-                rank: i + (y ? 1 : 0) + (n ? 1 : 0) + 2 * e,
-              });
+              for (const [k, inside] of faces.entries())
+                out.push({
+                  lane: {
+                    da: depths[i],
+                    db: depths[i],
+                    aside: 0,
+                    asideB: sides[y],
+                    level,
+                    edge,
+                    inside,
+                  },
+                  place,
+                  rank: i + (y ? 1 : 0) + (n ? 1 : 0) + 2 * e + k,
+                });
     }
   else if (through)
     for (const [e, edge] of thumbEdges.entries()) {

@@ -88,9 +88,9 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
   **Export bottom section STL** exports the bottom section, a separate print.
 - **Wiring and pads** shows the wires as tubes coloured by net group, and the
   pads. The wires are routed with each chassis build, so while you edit they
-  stay as last built. **Controller, jack and plugs** shows the Pro Micro, its
-  TRRS jack, its reset switch and both plugs; turn it off to see the wiring
-  behind them. The **Wiring** panel
+  stay as last built. **Controller, jack and plugs** shows the Pro Micro, the
+  feeds' Dupont housings, its TRRS jack, its reset switch and both plugs; turn
+  it off to see the wiring behind them. The **Wiring** panel
   lists each key's row and column, and a cut list per net.
 - **Show bounding box** outlines the box around the case, bottom section and
   trim; the View panel gives its width (X), depth (Y) and height (Z) in mm,
@@ -114,7 +114,8 @@ runs against a fraction of the mesh:
   above their planes and clip obstructions.
 - Each opening is probed at nine points.
 - Tiles (with their corner notches), tile components, and the Pro Micro, its TRRS jack, both plugs and its reset
-  switch must not overlap the chassis or the bottom section.
+  switch must not overlap the chassis or the bottom section. The feeds' Dupont housings, each with
+  room over it for its wire to come out and turn, must miss the tiles, their parts and pads too.
 - **Wires**: each wire, as a tube of its diameter, must miss every other wire
   (wires may touch).
   Wires that hit are listed and highlighted cyan.

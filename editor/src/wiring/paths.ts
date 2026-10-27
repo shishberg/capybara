@@ -3,6 +3,7 @@
 import { isThumb, point, add, type V3 } from '../geometry';
 import { WIRING, distance, type Edge, type Env, type Lane, type Pad } from './common';
 import { edgeToward, ownEdge } from './port';
+import { besideHousing } from './pro-micro';
 import type { Obstacles } from './obstacles';
 
 const clean = (points: V3[]) => points.filter((x, i) => !i || distance(x, points[i - 1]) > 1e-6);
@@ -239,9 +240,12 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
         const l = leg(b, lane.edge ?? ownEdge(b, half), lane.da, lane.aside, keep);
         [path, strayed] = [l.points, l.stray];
       }
+      // Out of its housing's top (a), over one face and down beside it to
+      // the loom.
       const end = path.at(-1)!;
       const z = loomZ + (lane.level ?? 0) * WIRING.loomStep;
-      const points = clean([...path, ...across(end, a, Math.min(z, end[2]), lane.aside), a]);
+      const by = besideHousing(cfg, frames, a, keep, lane.inside);
+      const points = clean([...path, ...across(end, by, Math.min(z, end[2]), lane.aside), by, a]);
       return { points: points.reverse(), strayed, stuck: false };
     }
     if (isThumb(a.key) === isThumb(b.key)) {
