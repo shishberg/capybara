@@ -42,8 +42,38 @@ const plugTop = (cfg: Config, frames: Record<string, Matrix4>, n: number) => {
   return point(frames.pro_micro, [x, y, z + plugHeight(cfg)]);
 };
 
+/** World z over the Pro Micro's Dupont housings: their tops and the room over them for their wires to come out and turn (exit_mm). */
+export const overPlugs = (cfg: Config, frames: Record<string, Matrix4>) =>
+  point(frames.pro_micro, [0, 0, cfg.pro_micro.board_mm[2] + plugHeight(cfg) + cfg.pro_micro.dupont.exit_mm])[2];
+
+/**
+ * How far along (0 to 1) the straight way in plan from a to b a wire of
+ * radius r is past the last Dupont housing it passes over, plugMargin off it,
+ * leaving out pin `except`'s: 0 if it passes over none.
+ */
+export function pastPlugs(
+  cfg: Config,
+  frames: Record<string, Matrix4>,
+  a: V3,
+  b: V3,
+  r: number,
+  except?: number,
+) {
+  const inv = frames.pro_micro.clone().invert();
+  const [p, q] = [point(inv, a), point(inv, b)];
+  const steps = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / WIRING.sample));
+  const reach = cfg.pro_micro.dupont.housing_mm.map((s) => s / 2 + r + WIRING.plugMargin);
+  const at = [...plugPins(cfg)].filter((n) => n !== except).map((n) => pinAt(cfg, n));
+  for (let i = steps; i >= 0; i--) {
+    const [u, v] = [p[0] + (i / steps) * (q[0] - p[0]), p[1] + (i / steps) * (q[1] - p[1])];
+    if (at.some(([x, y]) => Math.abs(u - x) < reach[0] && Math.abs(v - y) < reach[1]))
+      return Math.min(1, (i + 1) / steps);
+  }
+  return 0;
+}
+
 /** The pins that take a Dupont housing: every net's, the jack's and the reset switch's. */
-const plugPins = (cfg: Config) =>
+export const plugPins = (cfg: Config) =>
   new Set([
     ...nets(cfg).map((n) => n.pin),
     ...cfg.trrs.wires.map((x) => x.pin),
@@ -77,6 +107,18 @@ export function besideHousing(
   const [x, y, z] = point(f.clone().invert(), top);
   const off = (inside ? -1 : 1) * (cfg.pro_micro.dupont.housing_mm[1] / 2 + r + WIRING.plugMargin);
   return point(f, [x, Math.sign(y) * (cfg.pro_micro.row_spacing_mm / 2 + off), z]);
+}
+
+/**
+ * Where a wire of radius r between the pin rows at p comes out past their far
+ * end, away from the port: at p's height, as far across the rows as p, just
+ * past the last pins' housings.
+ */
+export function pastRows(cfg: Config, frames: Record<string, Matrix4>, p: V3, r: number) {
+  const f = frames.pro_micro;
+  const [, y, z] = point(f.clone().invert(), p);
+  const x = pinAt(cfg, 12)[0] + cfg.pro_micro.dupont.housing_mm[0] / 2 + r + WIRING.plugMargin;
+  return point(f, [x, y, z]);
 }
 
 /** Two feeds on one pin sit side by side along this world direction: the board's x, along its pin rows. */
@@ -531,15 +573,19 @@ export function cradles(
  * lug and down onto it, or over a point linkBehind behind its leg, down to it
  * and onto the leg. The jack's
  * lowest level is linkOver above the board's parts or the jack's top,
- * whichever is higher, and the switch's above the board's parts or its top;
- * a wire whose way across passes over another pin's housing (the left half's
- * jack's, its pins on the far row) goes straight up out of its own and its
- * lowest level is linkOver above the housings' tops and the room over them
- * for their wires (exit_mm). The next is linkStep above it, and so on, a
- * level for each link wire. Each wire's routes at its levels, lowest first,
- * are its options when the wiring negotiates (wiring), so the link wires take
- * the lowest that keep them out of each other and the tiles' wires. A leg is
- * come at from behind since the other leg on its side stands over it.
+ * whichever is higher, and the switch's above the board's parts or its top.
+ * The next is linkStep above it, and so on, a level for each link wire.
+ * A wire whose way across passes over another pin's housing (the left half's
+ * jack's, its pins on the far row) may go over them, straight up out of its
+ * own, its lowest level linkOver above the housings' tops and the room over
+ * them for their wires (exit_mm); or, ranked after, under them: down past its
+ * housing's inner face to a level linkOver above the board's parts and USB-C
+ * receptacle, along between the pin rows and out across the far row past
+ * either end or at a pin with no housing, then up if it must to its lowest
+ * level over its end. Each wire's routes are its options when the wiring
+ * negotiates (wiring), so the link wires take the lowest that keep them out
+ * of each other and the tiles' wires. A leg is come at from behind since the
+ * other leg on its side stands over it.
  * On a pin a feed also lands on (`fed`), the link wire comes out holeShare
  * along the pin row toward the port, so the two sit side by side in the
  * housing.
@@ -577,8 +623,8 @@ export function linkWires(cfg: Config, frames: Record<string, Matrix4>, fed: Set
   return links(cfg, frames, fed, [...trrs, ...reset]);
 }
 
-/** A link wire, all but its route, and its route at each level it may take, lowest first (linkWires). */
-export type Link = Omit<Wire, 'points' | 'length'> & { levels: V3[][] };
+/** A link wire, all but its route, and the routes it may take, each ranked, lower first (linkWires). */
+export type Link = Omit<Wire, 'points' | 'length'> & { routes: { points: V3[]; rank: number }[] };
 
 /** Link wires from Pro Micro pins to `end`s, each's lowest level linkOver above its `floor` (linkWires). */
 function links(
@@ -595,30 +641,13 @@ function links(
     floor: number;
   }[],
 ): Link[] {
+  const b = cfg.pro_micro;
   const w = cfg.wiring;
   const f = frames.pro_micro;
   const toPort = point(f, [-WIRING.holeShare, 0, 0]).map((x, i) => x - f.elements[12 + i]);
-  // Whether a wire of radius r, straight across in plan from a to b, passes
-  // over another pin's housing than `pin`'s.
-  const { housing_mm: housing, exit_mm: exit } = cfg.pro_micro.dupont;
   const inv = f.clone().invert();
-  const passes = (a: V3, b: V3, pin: number, r: number) => {
-    const [p, q] = [point(inv, a), point(inv, b)];
-    const steps = Math.max(1, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / WIRING.sample));
-    const reach = housing.map((s) => s / 2 + r + WIRING.plugMargin);
-    return [...plugPins(cfg)].some((n) => {
-      if (n === pin) return false;
-      const [x, y] = pinAt(cfg, n);
-      for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        const [u, v] = [p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])];
-        if (Math.abs(u - x) < reach[0] && Math.abs(v - y) < reach[1]) return true;
-      }
-      return false;
-    });
-  };
-  // The housings' tops and the room over them for their wires to come out.
-  const overPlugs = point(f, [0, 0, pinAt(cfg, 1)[2] + plugHeight(cfg) + exit])[2];
+  const plugs = plugPins(cfg);
+  const levels = list.map((_, k) => k);
   return list.map((x) => {
     const power = x.name === 'VCC' || x.name === 'GND';
     const diameter = power ? w.power_wire_mm : w.signal_wire_mm;
@@ -635,7 +664,8 @@ function links(
       .reduce((p, q) => (plan(q) < plan(p) ? q : p));
     // Across over the other housings where its way passes over one, so
     // straight up out of its own.
-    const floor = passes(by, over, x.pin, diameter / 2) ? Math.max(x.floor, overPlugs) : x.floor;
+    const passes = pastPlugs(cfg, frames, by, over, diameter / 2, x.pin) > 0;
+    const floor = passes ? Math.max(x.floor, overPlugs(cfg, frames)) : x.floor;
     const run = (z: number): V3[] => [
       from,
       ...(z < from[2] ? [by, [by[0], by[1], z] as V3] : [[from[0], from[1], z] as V3]),
@@ -643,14 +673,51 @@ function links(
       ...(x.behind ? [x.behind] : []),
       to,
     ];
-    return {
-      net: x.net,
-      group: 'link',
-      from: `pin ${x.pin}`,
-      to: x.to,
-      diameter,
-      feed: false,
-      levels: list.map((_, k) => run(floor + WIRING.linkOver + k * WIRING.linkStep)),
+    const routes = levels.map((k) => ({
+      points: run(floor + WIRING.linkOver + k * WIRING.linkStep),
+      rank: k,
+    }));
+    const link = { net: x.net, group: 'link', from: `pin ${x.pin}`, to: x.to, diameter, feed: false };
+    if (!passes) return { ...link, routes };
+    // Or under them, out across the far row past an end or at a pin with no
+    // housing, nearest its end first.
+    const inside = besideHousing(cfg, frames, from, diameter / 2, true);
+    const [ix, iy] = point(inv, inside);
+    const off = b.dupont.housing_mm[0] / 2 + diameter / 2 + WIRING.plugMargin;
+    const out = -Math.sign(iy) * (b.row_spacing_mm / 2 + off);
+    const far = Array.from({ length: 12 }, (_, i) => (x.pin <= 12 ? 13 + i : 1 + i));
+    const ways = [
+      pinAt(cfg, 1)[0] - off,
+      pinAt(cfg, 12)[0] + off,
+      ...far.filter((n) => !plugs.has(n)).map((n) => pinAt(cfg, n)[0]),
+    ].sort((p, q) => plan(point(f, [p, out, 0])) - plan(point(f, [q, out, 0])));
+    const rise = x.floor + WIRING.linkOver;
+    const under = (gx: number, z: number): V3[] => {
+      const [p, q, s] = [
+        [ix, iy, z],
+        [gx, iy, z],
+        [gx, out, z],
+      ].map((v) => point(f, v as V3));
+      const zo = Math.max(s[2], rise);
+      return [
+        from,
+        inside,
+        p,
+        q,
+        s,
+        ...(zo > s[2] ? [[s[0], s[1], zo] as V3] : []),
+        [over[0], over[1], zo],
+        ...(x.behind ? [x.behind] : []),
+        to,
+      ];
     };
+    const low = b.board_mm[2] + Math.max(b.parts_mm[2], b.usb_mm[2]) + WIRING.linkOver;
+    for (const [j, gx] of ways.entries())
+      for (const k of levels)
+        routes.push({
+          points: under(gx, low + k * WIRING.linkStep),
+          rank: levels.length + j + k,
+        });
+    return { ...link, routes };
   });
 }

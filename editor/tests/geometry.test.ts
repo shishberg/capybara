@@ -215,6 +215,7 @@ test('the default (Swung in) Capybara builds one piece and passes every check', 
   assert.deepEqual(failing(r.openings), []);
   assert.deepEqual(r.hardware, []);
   assert.deepEqual(r.crossings, []);
+  assert.deepEqual(r.wireHits, []);
   assert.deepEqual(
     r.capGaps.filter((g) => !(g.gap > 0)).map((g) => g.between),
     [],
@@ -259,6 +260,7 @@ test('the left half is built with the same parts as the right, mirrored in their
   }
   const r = buildSolid(wasm, left).report;
   assert.deepEqual(r.crossings, []);
+  assert.deepEqual(r.wireHits, []);
   assert.deepEqual(r.hardware, []);
   assert.equal(r.passed, true);
 });

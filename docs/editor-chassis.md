@@ -257,12 +257,15 @@ Under the plates:
   [Pro Micro](pro-micro.md#pins) doc says which pins can do what). Each housing,
   with its header's spacer under it and room over it for the wire to come out
   and turn, is checked against the chassis and against the tiles, their parts
-  and pads over the board. The jack's three link wires and the reset switch's
+  and pads over the board. The jack's four link wires and the reset switch's
   two run from their pins' housings to the jack's lugs and the switch's legs:
   down beside the housing and across just over the board's parts and the jack
-  (or the switch), or, where the way across passes over other housings (on the
-  left half, whose pin rows swap, they are on the far row), over those
-  housings and the room over them for their wires.
+  (or the switch). Where the way across passes over other housings (on the
+  left half, whose pin rows swap, they are on the far row), a link wire goes
+  either over those housings and the room over them for their wires, or under
+  them: down past its housing's inner face to just over the board's parts and
+  USB-C receptacle, along between the pin rows and out across the far row past
+  either end or at a pin with no housing.
 - **Chains**: each finger column chains its C holes top → home → bottom and on
   to its thumb; each row chains its R holes across the columns. A wire arrives
   at the tile's C (or R) hole nearer where it comes from, and the next leaves
@@ -293,17 +296,23 @@ Under the plates:
   edge facing the port, each offset as its place, so they run to the port side
   by side. Feeds run down to a **loom** 10 mm above the bottom section, then
   across to the Pro Micro, clear of the jack and the reset switch, and up
-  beside their housing, past its outer face or its inner, onto its top.
+  beside their housing, past its outer face or its inner, onto its top; from
+  its inner face a feed may run between the pin rows from past their end away
+  from the port. Last, a feed may instead cross over the housings, high enough
+  to clear the room over them for their wires, and drop straight onto its
+  own.
 - **Routing**: each wire has many candidate routes (depths, shifts, port places,
-  loom levels and, for a feed, its housing's face). Routes
-  that run into a tile, its parts or a plate, that shift out past the
+  loom levels and, for a feed, its way onto its housing). Routes
+  that run into a tile, its parts or a plate, the jack, the reset switch or a
+  Dupont housing and the room over it, that shift out past the
   tile's pocket, or whose underside runs below the base plate's top
   (`chassis.skin_mm` above z = 0) are dropped; a wire left with no route fails
   the routing. The wires then negotiate: each takes its cheapest
   route given the others, and routes that meet another wire cost more each
   round until none meet. The link wires negotiate too, each choosing
-  the level of its run across, from its lowest up in 1.2 mm steps, so they
-  pass over each other and the tiles' wires. Pairs that still meet are repaired together with the
+  the level of its run across, from its lowest up in 1.2 mm steps, or, where
+  it has one, a way under the housings, so they pass the other links and the
+  tiles' wires. Pairs that still meet are repaired together with the
   wires most in their way. Routing runs in a worker of its own
   (`src/wiring-worker.ts`) while the build worker builds the chassis, so the wires
   follow an edit when the chassis rebuilds.

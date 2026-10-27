@@ -3,7 +3,7 @@
 import { isThumb, point, add, type V3 } from '../geometry';
 import { WIRING, distance, type Edge, type Env, type Lane, type Pad } from './common';
 import { edgeToward, ownEdge } from './port';
-import { besideHousing } from './pro-micro';
+import { besideHousing, overPlugs, pastPlugs, pastRows } from './pro-micro';
 import type { Obstacles } from './obstacles';
 
 const clean = (points: V3[]) => points.filter((x, i) => !i || distance(x, points[i - 1]) > 1e-6);
@@ -241,11 +241,25 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
         [path, strayed] = [l.points, l.stray];
       }
       // Out of its housing's top (a), over one face and down beside it to
-      // the loom.
+      // the loom, from its inner face perhaps along between the pin rows and
+      // out past their far end; or straight up, across over the housings to
+      // just past them and down to the loom, or where its leg ends over them,
+      // across to under the leg's end.
       const end = path.at(-1)!;
       const z = loomZ + (lane.level ?? 0) * WIRING.loomStep;
+      if (lane.over !== undefined) {
+        const zo = overPlugs(cfg, frames) + keep + WIRING.plugMargin + lane.over * WIRING.loomStep;
+        const t = pastPlugs(cfg, frames, a, end, keep);
+        const c: V3 = [a[0] + t * (end[0] - a[0]), a[1] + t * (end[1] - a[1]), zo];
+        const down = t < 1 ? [...across(end, c, Math.min(z, end[2]), lane.aside), c] : [c];
+        const points = clean([...path, ...down, [a[0], a[1], zo], a]);
+        return { points: points.reverse(), strayed, stuck: false };
+      }
       const by = besideHousing(cfg, frames, a, keep, lane.inside);
-      const points = clean([...path, ...across(end, by, Math.min(z, end[2]), lane.aside), by, a]);
+      const low: V3 = [by[0], by[1], Math.min(z, end[2])];
+      const points = lane.round
+        ? clean([...path, ...across(end, pastRows(cfg, frames, low, keep), low[2], lane.aside), low, by, a])
+        : clean([...path, ...across(end, by, low[2], lane.aside), by, a]);
       return { points: points.reverse(), strayed, stuck: false };
     }
     if (isThumb(a.key) === isThumb(b.key)) {
@@ -287,7 +301,7 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
 
   // Many routes share segments (their legs), so each segment is tested once.
   const tested = new Map<number, Map<V3, Map<V3, boolean>>>();
-  /** Whether a route runs into a tile or its parts (its drops at the pads excepted). */
+  /** Whether a route runs into a tile or its parts, the jack, the reset switch or a Dupont housing (its drops onto its ends excepted). */
   const hitsTiles = (points: V3[], r: number) => {
     let byR = tested.get(r);
     if (!byR) tested.set(r, (byR = new Map()));

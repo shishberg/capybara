@@ -157,23 +157,35 @@ function candidates(env: Env, s: Spec, own: number | undefined, wide: boolean) {
   const sides = WIRING.edgeAsides.slice(0, WIRING.portAsides);
   const depthTries = wide ? WIRING.depthChoices : WIRING.longDepths;
   // A feed leaves by its pad's own edge or by the edge facing its hole, and
-  // comes down past its housing's outer face or, next, its inner.
+  // comes down past its housing's outer face or, next, its inner, from which
+  // it may run between the pin rows and out past their end; or, last, runs
+  // across over the housings.
   const home = ownEdge(s.b, env.half);
   const toward = isFeed ? edgeToward(frames, s.b.key, hole[s.a as number]) : home;
   const edges = toward[0] === home[0] && toward[1] === home[1] ? [home] : [home, toward];
   const faces = [false, true];
+  const faceWays = [{ inside: false }, { inside: true }, { inside: true, round: true }];
   if (isFeed && !through)
     for (const [e, edge] of edges.entries()) {
       const depths = legDepths(env, s.b, edge, d);
-      for (let i = 0; i < depthTries; i++)
+      for (let i = 0; i < depthTries; i++) {
         for (const level of WIRING.loomLevels)
           for (const aside of WIRING.asides)
-            for (const [k, inside] of faces.entries())
+            for (const [k, way] of faceWays.entries())
               out.push({
-                lane: { da: depths[i], db: depths[i], aside, level, edge, inside },
+                lane: { da: depths[i], db: depths[i], aside, level, edge, ...way },
                 place: [0, 0, 0],
                 rank: i + 2 * e + k,
               });
+        for (const over of WIRING.overLevels)
+          for (const level of WIRING.loomLevels.slice(0, WIRING.portLoomLevels))
+            for (const aside of WIRING.asides)
+              out.push({
+                lane: { da: depths[i], db: depths[i], aside, level, edge, over },
+                place: [0, 0, 0],
+                rank: i + 2 * e + faceWays.length,
+              });
+      }
     }
   // Through the port, the thumb's leg leaves by the edge facing the port or
   // by its pad's own edge.
@@ -278,9 +290,14 @@ export function optionsOf(
         blocked: stuck || paths.hitsTiles(points, d / 2),
       };
     });
-    const clear = all.filter((o) => !o.blocked);
-    return (clear.length ? clear : all.map((o) => ({ ...o, rank: o.rank + WIRING.blockedRank })))
-      .sort((x, y) => x.rank - y.rank)
-      .slice(0, WIRING.optionLimit);
+    return asOptions(all);
   });
+}
+
+/** A wire's routes as its options: those that run into nothing, or if every one does, all of them, ranked after. */
+export function asOptions(all: (Option & { blocked: boolean })[]): Option[] {
+  const clear = all.filter((o) => !o.blocked);
+  return (clear.length ? clear : all.map((o) => ({ ...o, rank: o.rank + WIRING.blockedRank })))
+    .sort((x, y) => x.rank - y.rank)
+    .slice(0, WIRING.optionLimit);
 }

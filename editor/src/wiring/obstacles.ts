@@ -3,8 +3,9 @@ import type { Matrix4 } from 'three';
 import { point, tilePartCentre, type V3 } from '../geometry';
 import { plateHalfWidths } from '../plates';
 import { WIRING, distance, type Env } from './common';
+import { pinAt, plugPins } from './pro-micro';
 
-/** A box in a key's frame (or the jack's) that wires must keep out of. */
+/** A box in a key's frame (or the jack's, the reset switch's or the Pro Micro's) that wires must keep out of. */
 interface Obstacle {
   inverse: Matrix4;
   lo: V3;
@@ -17,7 +18,7 @@ interface Obstacle {
 }
 
 export interface Obstacles {
-  /** Each tile from its underside up, and its parts with their clearance; on a Pro Micro, the jack. */
+  /** Each tile from its underside up, and its parts with their clearance; the jack, the reset switch and the Pro Micro's Dupont housings. */
   tiles: Obstacle[];
   /** Where a wire climbs between keys at different heights: the plates. */
   plates: Obstacle[];
@@ -69,6 +70,19 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
   const [rx, ry, rz] = r.body_mm;
   const rh = [Math.max(rx, r.leg_pitch_mm + 1) / 2, Math.max(ry, r.leg_span_mm) / 2];
   boxIn(frames.reset, [-rh[0], -rh[1], 0], [rh[0], rh[1], rz]);
+  // And out of each Dupont housing on the Pro Micro, from the board's top up
+  // through its header's spacer, the housing and the room over it for its
+  // wire to come out and turn: a wire's own too, but for the step onto its
+  // top, its end, which a route is not tested over.
+  const { spacer_mm: spacer, housing_mm: housing, exit_mm: exit } = cfg.pro_micro.dupont;
+  for (const pin of plugPins(cfg)) {
+    const [x, y, z] = pinAt(cfg, pin);
+    boxIn(
+      frames.pro_micro,
+      [x - housing[0] / 2, y - housing[1] / 2, z],
+      [x + housing[0] / 2, y + housing[1] / 2, z + spacer + housing[2] + exit],
+    );
+  }
 
   // The obstacles in a grid of square cells in plan, each in every cell its
   // box overlaps, so a segment is only tested against those near it.

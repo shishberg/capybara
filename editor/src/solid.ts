@@ -97,6 +97,8 @@ export interface Report {
   wiring: { wires: number; joints: number; length: number };
   /** Pairs of wires that run into each other, named together. */
   crossings: string[];
+  /** Wires that run into hardware (a tile or its parts, the Pro Micro or its housings, the jack, the switch, a plug), each named with the part. */
+  wireHits: string[];
   openings: {
     name: string;
     removed: number;
@@ -342,43 +344,40 @@ export function checkSeats(p: Probe, cfg: Project['config'], keys: Keys, result:
   return { seats, highlights };
 }
 
+/** A hardware part's solid, where it stands. */
+function shapeOfPart(M: Factory, part: Part) {
+  let shape = part.cylinder
+    ? M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
+    : box(M, part.size, part.center);
+  if (part.notch)
+    for (const x of [-1, 1])
+      for (const y of [-1, 1])
+        shape = shape.subtract(
+          M.cylinder(part.size[2] + 2, part.notch, part.notch, 32, true).translate([
+            part.center[0] + (x * part.size[0]) / 2,
+            part.center[1] + (y * part.size[1]) / 2,
+            part.center[2],
+          ]),
+        );
+  for (const h of part.holes ?? [])
+    shape = shape.subtract(
+      M.cylinder(part.size[2] + 2, h.diameter / 2, h.diameter / 2, 32, true).translate([
+        h.at[0],
+        h.at[1],
+        part.center[2],
+      ]),
+    );
+  return place(shape, new Matrix4().fromArray(part.matrix));
+}
+
 /**
  * Hardware (the tiles, the Pro Micro, its jack, their plugs and its reset
- * switch) against the chassis and its bottom section; the feeds' Dupont
+ * switch) against the chassis and its bottom section; the Pro Micro's Dupont
  * housings, which stand up under the keys, against the tiles, their parts
  * and pads too.
  */
-function checkHardware(
-  p: Probe,
-  project: Project,
-  nodes: ReturnType<typeof componentFrames>,
-  result: Manifold,
-) {
-  const parts = hardware(project, nodes);
-  const shapeOf = (part: Part) => {
-    let shape = part.cylinder
-      ? p.M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
-      : box(p.M, part.size, part.center);
-    if (part.notch)
-      for (const x of [-1, 1])
-        for (const y of [-1, 1])
-          shape = shape.subtract(
-            p.M.cylinder(part.size[2] + 2, part.notch, part.notch, 32, true).translate([
-              part.center[0] + (x * part.size[0]) / 2,
-              part.center[1] + (y * part.size[1]) / 2,
-              part.center[2],
-            ]),
-          );
-    for (const h of part.holes ?? [])
-      shape = shape.subtract(
-        p.M.cylinder(part.size[2] + 2, h.diameter / 2, h.diameter / 2, 32, true).translate([
-          h.at[0],
-          h.at[1],
-          part.center[2],
-        ]),
-      );
-    return place(shape, new Matrix4().fromArray(part.matrix));
-  };
+function checkHardware(p: Probe, parts: Part[], result: Manifold) {
+  const shapeOf = (part: Part) => shapeOfPart(p.M, part);
   const tiles = p.M.union(
     parts.filter((x) => ['pcb', 'components', 'pads'].includes(x.group)).map(shapeOf),
   );
@@ -399,8 +398,11 @@ function checkHardware(
   return { hardware: overlaps, highlights };
 }
 
-/** Every wire, as a tube of its diameter, must miss every other wire. */
-function checkWires(p: Probe, wired: Wiring) {
+/**
+ * Every wire, as a tube of its diameter, must miss every other wire, and, but
+ * for the drops onto its ends, the hardware.
+ */
+function checkWires(p: Probe, wired: Wiring, parts: Part[]) {
   const tube = (points: number[][], d: number) =>
     p.M.union(points.slice(1).map((q, i) => capsule(p.M, points[i], q, d / 2, CHECKS.wireSides)));
   const wireName = (w: Wiring['wires'][number]) =>
@@ -412,7 +414,20 @@ function checkWires(p: Probe, wired: Wiring) {
     p.collision(tube(x.points, x.diameter), tube(y.points, y.diameter), name, 'wire', highlights);
     return name;
   });
-  return { crossings: crossed, highlights };
+  const shapes = parts.map((x) => ({ name: x.name, shape: shapeOfPart(p.M, x) }));
+  const all = p.M.union(shapes.map((x) => x.shape));
+  const wireHits: string[] = [];
+  for (const w of wired.wires) {
+    const inner = w.points.slice(1, -1);
+    if (inner.length < 2) continue;
+    const t = tube(inner, w.diameter);
+    if (p.volume(all, t) <= CHECKS.overlap) continue;
+    for (const s of shapes) {
+      const name = `${wireName(w)} and ${s.name}`;
+      if (p.collision(s.shape, t, name, 'wire', highlights) > CHECKS.overlap) wireHits.push(name);
+    }
+  }
+  return { crossings: crossed, wireHits, highlights };
 }
 
 /** Each keycap, at rest and over its full travel grown by its clearance, must miss the chassis. */
@@ -498,8 +513,9 @@ function build(
   // (and printed) separately.
   const result = cut.add(chassis.base);
   const seats = checkSeats(probe, cfg, keys, result);
-  const hw = checkHardware(probe, project, nodes, result);
-  const wireChecks = checkWires(probe, wired);
+  const parts = hardware(project, nodes);
+  const hw = checkHardware(probe, parts, result);
+  const wireChecks = checkWires(probe, wired, parts);
   const caps = checkKeycaps(probe, cfg, keys, result);
   const capGaps = checkCapGaps(M, cfg, caps.rests);
 
@@ -513,7 +529,8 @@ function build(
     rooms.roomCuts.length === 0 &&
     capGaps.every((c) => c.gap > 0) &&
     opened.openings.every((o) => o.passed) &&
-    wireChecks.crossings.length === 0;
+    wireChecks.crossings.length === 0 &&
+    wireChecks.wireHits.length === 0;
   return {
     mesh,
     base: meshData(chassis.base),
@@ -543,6 +560,7 @@ function build(
         length: wired.nets.reduce((t, n) => t + n.length, 0),
       },
       crossings: wireChecks.crossings,
+      wireHits: wireChecks.wireHits,
       openings: opened.openings,
       volume: result.volume(),
       triangles: mesh.indices.length / 3,

@@ -59,6 +59,12 @@ export function reportLines(r: Report): ReportLine[] {
       : 'No wire runs into another.',
   );
   for (const c of r.crossings) add(`${c} run into each other`, c);
+  add(
+    r.wireHits.length
+      ? `${r.wireHits.length} wire–part pairs run into each other.`
+      : 'No wire runs into hardware.',
+  );
+  for (const c of r.wireHits) add(`${c} run into each other`, c);
   for (const o of r.openings)
     if (!o.passed)
       add(`${o.name}: incomplete opening (${o.covered}/9 probes, ${o.blocked} blocked)`, o.name);

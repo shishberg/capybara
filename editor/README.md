@@ -120,10 +120,12 @@ runs against a fraction of the mesh:
   above their planes and clip obstructions.
 - Each opening is probed at nine points.
 - Tiles (with their corner notches), tile components, and the Pro Micro, its TRRS jack, both plugs and its reset
-  switch must not overlap the chassis or the bottom section. The feeds' Dupont housings, each with
+  switch must not overlap the chassis or the bottom section. The Dupont housings on the Pro Micro, each with
   room over it for its wire to come out and turn, must miss the tiles, their parts and pads too.
 - **Wires**: each wire, as a tube of its diameter, must miss every other wire
-  (wires may touch).
+  (wires may touch), and, but for its steps onto its two ends, all of that
+  hardware: the tiles and their parts, the Pro Micro, its Dupont housings and
+  the room over them, the jack, both plugs and the reset switch.
   Wires that hit are listed and highlighted cyan.
 - **Solder access**: with the bottom section off, a 2 mm round iron's way 8 mm
   straight down from each pad, along the key's normal, must miss the chassis.

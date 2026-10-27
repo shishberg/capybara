@@ -73,6 +73,15 @@ export interface Lane {
   level?: number;
   /** For a feed: it comes down past its housing's inner face, between the pin rows, not its outer. */
   inside?: boolean;
+  /** For a feed down past its inner face: it runs between the pin rows and out past their far end, away from the port. */
+  round?: boolean;
+  /**
+   * For a feed: it leaves its housing straight up, runs across over the
+   * housings (pro_micro.dupont's exit_mm over their tops), this many
+   * loomStep higher, to just past them and down to the loom, not down past a
+   * face: the way from the far pin row across the near one.
+   */
+  over?: number;
 }
 
 /** The wire port: a straight round way from under the thumb tiles to inside the finger columns. */
@@ -162,8 +171,10 @@ export const WIRING = {
   loomStep: 1,
   /** The levels, in loomStep from the loom's height, nearest first. */
   loomLevels: [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, 6, 7, 8],
-  /** Feeds through the port try only this many of the first loomLevels. */
+  /** Feeds through the port, and over the housings, try only this many of the first loomLevels. */
   portLoomLevels: 7,
+  /** The heights a feed over the housings tries, in loomStep over the lowest, nearest first. */
+  overLevels: [0, 1, 2, 3, 4, 5, 6],
   /** Sideways shifts of a feed's run to the Pro Micro, in plan, to get past other wires. */
   asides: [0, 1, -1, 2, -2],
   /** Shifts along the tile edge a wire crosses to the next tile. */

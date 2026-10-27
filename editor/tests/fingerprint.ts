@@ -112,6 +112,7 @@ const failures = (r: Report) =>
     ['room', r.roomCuts.map((x) => `${x.name}:${r2(x.volume)}`)],
     ['hw', r.hardware.map((x) => `${x.name}:${r2(x.volume)}`)],
     ['cross', r.crossings],
+    ['wirehw', r.wireHits],
   ]
     .map(([k, v]) => `${k} ${listed((v as string[]).slice().sort())}`)
     .concat(

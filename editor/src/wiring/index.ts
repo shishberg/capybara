@@ -26,7 +26,7 @@ import {
 } from '../geometry';
 import { tilePocketHalf } from '../plates';
 import { padParts } from './pads';
-import { assignPlaces, diameterOf, optionsOf } from './candidates';
+import { asOptions, assignPlaces, diameterOf, optionsOf } from './candidates';
 import {
   length,
   nets,
@@ -76,11 +76,17 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
   const { pads, specs, ends } = specsOf(env, keys);
   const paths = pathsIn(env, obstaclesOf(env, keys));
   const placeOf = assignPlaces(env, specs, ends, paths.leg);
-  // The jack's and the reset switch's link wires negotiate too, each with its
-  // route at each of its levels, lowest first.
+  // The jack's and the reset switch's link wires negotiate too, each with
+  // its routes.
   const links = linkWires(cfg, frames, new Set(nets(cfg).map((n) => n.pin)));
   const linkOptions = links.map((x) =>
-    x.levels.map((points, rank) => ({ tube: tubeOf(points, x.diameter), rank })),
+    asOptions(
+      x.routes.map(({ points, rank }) => ({
+        tube: tubeOf(points, x.diameter),
+        rank,
+        blocked: paths.hitsTiles(points, x.diameter / 2),
+      })),
+    ),
   );
 
   // Route with the usual choices first; if wires still meet, or some wire has
@@ -123,7 +129,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
     };
   });
   wires.push(
-    ...links.map(({ levels, ...x }, i) => {
+    ...links.map(({ routes, ...x }, i) => {
       const points = solved.paths[specs.length + i];
       return { ...x, points, length: length(points) + 2 * w.end_allowance_mm };
     }),
