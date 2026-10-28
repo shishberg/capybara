@@ -379,13 +379,14 @@ function shapeOfPart(M: Factory, part: Part) {
 function checkHardware(p: Probe, parts: Part[], result: Manifold) {
   const shapeOf = (part: Part) => shapeOfPart(p.M, part);
   const tiles = p.M.union(
-    parts.filter((x) => ['pcb', 'components', 'pads'].includes(x.group)).map(shapeOf),
+    parts.filter((x) => ['pcb', 'components', 'pads', 'stubs'].includes(x.group)).map(shapeOf),
   );
   const against: Record<string, Manifold> = {
     pcb: result,
     components: result,
     controller: result,
     cable: result,
+    stubs: result,
     dupont: result.add(tiles),
   };
   const highlights: Highlight[] = [];
@@ -400,7 +401,8 @@ function checkHardware(p: Probe, parts: Part[], result: Manifold) {
 
 /**
  * Every wire, as a tube of its diameter, must miss every other wire, and, but
- * for the drops onto its ends, the hardware.
+ * for the drops onto its ends, the hardware: a rail between each stub and the
+ * next, as it was routed.
  */
 function checkWires(p: Probe, wired: Wiring, parts: Part[]) {
   const tube = (points: number[][], d: number) =>
@@ -418,13 +420,19 @@ function checkWires(p: Probe, wired: Wiring, parts: Part[]) {
   const all = p.M.union(shapes.map((x) => x.shape));
   const wireHits: string[] = [];
   for (const w of wired.wires) {
-    const inner = w.points.slice(1, -1);
-    if (inner.length < 2) continue;
-    const t = tube(inner, w.diameter);
-    if (p.volume(all, t) <= CHECKS.overlap) continue;
-    for (const s of shapes) {
-      const name = `${wireName(w)} and ${s.name}`;
-      if (p.collision(s.shape, t, name, 'wire', highlights) > CHECKS.overlap) wireHits.push(name);
+    const stubs = w.stubs ?? [];
+    const pieces = stubs.length
+      ? stubs.slice(1).map((s, i) => w.points.slice(stubs[i].points[1], s.points[0] + 1))
+      : [w.points];
+    for (const piece of pieces) {
+      const inner = piece.slice(1, -1);
+      if (inner.length < 2) continue;
+      const t = tube(inner, w.diameter);
+      if (p.volume(all, t) <= CHECKS.overlap) continue;
+      for (const s of shapes) {
+        const name = `${wireName(w)} and ${s.name}`;
+        if (p.collision(s.shape, t, name, 'wire', highlights) > CHECKS.overlap) wireHits.push(name);
+      }
     }
   }
   return { crossings: crossed, wireHits, highlights };

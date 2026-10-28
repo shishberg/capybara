@@ -11,6 +11,10 @@
 //           straight from that point on one tile to that on the next;
 //  chain    keys joined one to the next by a net's wires (wiring.nets[].chains);
 //  feed     the wire from a chain's end to its net's pin;
+//  stub     a short length of bare copper soldered into a tile's hole,
+//           standing down from it (wiring.stub_mm);
+//  rail     a chain that is one wire, from stub to stub, soldered to each:
+//           +5 V's and GND's (wiring.nets[].rail);
 //  loom     the height above the bottom section at which feeds run to the
 //           Pro Micro, before each climbs beside its housing to its top.
 import {
@@ -20,11 +24,13 @@ import {
   tilePads,
   tileUnderside,
   type Config,
+  type V3,
 } from '../geometry';
 import { tilePocketHalf } from '../plates';
 import { padParts } from './pads';
 import { asOptions, diameterOf, optionsOf } from './candidates';
 import {
+  distance,
   length,
   nets,
   type Env,
@@ -64,8 +70,10 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       .filter((p) => nets(cfg).some((n) => n.pads.includes(p.name)))
       .map((p) => [p.at_mm[0], p.at_mm[1]]),
     hole,
+    stubRoom: Math.max(w.stub_mm[0], w.power_wire_mm) / 2,
   };
-  const { pads, specs, ends } = specsOf(env, keys);
+  const { pads, specs, ends, rails } = specsOf(env, keys);
+  const joined = rails.flatMap((r) => r.slice(1).map((s, i): [number, number] => [r[i], s]));
   const paths = pathsIn(env, obstaclesOf(env, keys));
   // The jack's and the reset switch's link wires negotiate too, each with
   // its routes.
@@ -93,7 +101,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
           none.map((s) => `${s.net.name} ${s.from}-${s.to}`).join(', '),
       );
     }
-    const { left, choice } = negotiate([...options, ...linkOptions], wide);
+    const { left, choice } = negotiate([...options, ...linkOptions], wide, joined);
     return {
       left,
       paths: [...options, ...linkOptions].map((list, i) => list[choice[i]].tube.points),
@@ -105,7 +113,7 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
     if (again.left < solved.left) solved = again;
   }
 
-  const wires: Wire[] = specs.map((s, i) => {
+  const routed: Wire[] = specs.map((s, i) => {
     const isFeed = typeof s.a === 'number';
     return {
       net: s.net.name,
@@ -118,6 +126,33 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       feed: isFeed,
     };
   });
+  // Each rail's pieces, one from a stub to the next, are one wire, which
+  // runs down or up its stub between the joints its pieces end at.
+  const inRail = new Set(rails.flat());
+  const wires: Wire[] = routed.filter((_, i) => !inRail.has(i));
+  for (const r of rails.filter((r) => r.length)) {
+    const parts = r.map((i) => routed[i]);
+    const points: V3[] = [];
+    const stubs: NonNullable<Wire['stubs']> = [{ key: parts[0].from, points: [0, 0], along: 0 }];
+    for (const x of parts) {
+      // A piece leaves its stub from the joint the last came to, or another.
+      const same = points.length && distance(points.at(-1)!, x.points[0]) < 1e-6 ? 1 : 0;
+      stubs.at(-1)!.points[1] = points.length - same;
+      points.push(...x.points.slice(same));
+      stubs.push({ key: x.to, points: [points.length - 1, points.length - 1], along: 0 });
+    }
+    for (const s of stubs) {
+      const [a, b] = s.points.map((k) => length(points.slice(0, k + 1)));
+      s.along = w.end_allowance_mm + (a + b) / 2;
+    }
+    wires.push({
+      ...parts[0],
+      to: parts.at(-1)!.to,
+      points,
+      length: length(points) + 2 * w.end_allowance_mm,
+      stubs,
+    });
+  }
   wires.push(
     ...links.map(({ routes, ...x }, i) => {
       const points = solved.paths[specs.length + i];
@@ -132,7 +167,9 @@ export function wiring(cfg: Config, frames = componentFrames(cfg)): Wiring {
       label: pinName(cfg, net.pin),
       group: net.group,
       wires: own.length,
-      joints: 2 * own.length - own.filter((x) => x.feed).length,
+      // Both ends of a wire, but a feed's other end plugs on; on a rail, one
+      // at each stub and the stub's own in its hole.
+      joints: own.reduce((t, x) => t + (x.feed ? 1 : x.stubs ? 2 * x.stubs.length : 2), 0),
       length: own.reduce((t, x) => t + x.length, 0),
     };
   });

@@ -12,10 +12,16 @@ export interface Option {
  * Picks an option for each wire. Wires negotiate, then what is left is
  * repaired in small groups. With `wide`, if any still meet, it starts again
  * with those wires placed first and keeps the best try. Returns each wire's
- * option index and how many wires still meet another.
+ * option index and how many wires still meet another. The pairs in `joined`
+ * are pieces of one wire (a rail's, meeting at a stub), which may meet.
  */
-export function negotiate(options: Option[][], wide: boolean) {
+export function negotiate(options: Option[][], wide: boolean, joined: [number, number][] = []) {
   const all = options.map((_, i) => i);
+  const one = all.map(() => new Set<number>());
+  for (const [i, j] of joined) {
+    one[i].add(j);
+    one[j].add(i);
+  }
   // Wires whose options can meet.
   const reach = options.map((list) => ({
     lo: [0, 1, 2].map((k) => Math.min(...list.map((o) => o.tube.lo[k]))),
@@ -25,6 +31,7 @@ export function negotiate(options: Option[][], wide: boolean) {
     all.filter(
       (j) =>
         j !== i &&
+        !one[i].has(j) &&
         [0, 1, 2].every(
           (k) => reach[i].lo[k] <= reach[j].hi[k] && reach[j].lo[k] <= reach[i].hi[k],
         ),
@@ -122,7 +129,11 @@ export function negotiate(options: Option[][], wide: boolean) {
     const mutual = (d: number, k: number, chosen: number[]) => {
       let n = 0;
       for (let e = 0; e < d; e++)
-        if (meets(options[group[d]][k].tube, options[group[e]][chosen[e]].tube)) n++;
+        if (
+          !one[group[d]].has(group[e]) &&
+          meets(options[group[d]][k].tube, options[group[e]][chosen[e]].tube)
+        )
+          n++;
       return n;
     };
     const now = group.map((g) => choice[g]);

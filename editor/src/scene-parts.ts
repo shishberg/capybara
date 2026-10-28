@@ -95,6 +95,7 @@ const colors: Record<string, number> = {
   dupont: 0x1a1a1a,
   cable: 0x3a3a3a,
   pads: 0xd8c27a,
+  stubs: 0xc87533,
 };
 /** Wire colours by net group. */
 const wireColors: Record<string, number> = {
@@ -225,7 +226,7 @@ export function visibility() {
         ? $('caps').matches(':checked')
         : o.userData.group === 'switch'
           ? false
-          : o.userData.group === 'pads'
+          : ['pads', 'stubs'].includes(o.userData.group)
             ? $('wires').matches(':checked')
             : CONTROLLER_GROUPS.includes(o.userData.group)
               ? $('controller').matches(':checked')

@@ -50,8 +50,9 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
    */
   const makeLeg = (p: Pad, [axis, sign]: Edge, depth: number, aside: number, keep: number): Leg => {
     // Shift aside just under the tile first, so the wire's way down is clear
-    // of the pad's line, where other wires run past.
-    const hop = Math.min(depth, WIRING.hopDepth);
+    // of the pad's line, where other wires run past. On a stub, the wire
+    // joins it at its depth, or failing that its tip, and shifts from there.
+    const hop = Math.min(depth, p.stub ?? WIRING.hopDepth);
     const start: V3 = [p.xy[0], p.xy[1], padZ - hop];
     const shifted: V3 = [...start];
     shifted[1 - axis] += aside;
@@ -64,7 +65,16 @@ export function pathsIn(env: Env, { blocked, plates }: Obstacles) {
     const own = ownEdge(p, half);
     const inward = own[0] === 1 - axis && aside * own[1] < 0;
     const turn: V3 = inward ? [start[0], start[1], padZ - depth] : shifted;
-    const points = [p.at, ...[start, turn, down, out].map((x) => point(frames[p.key], x))];
+    const way = clean([start, turn, down, out]);
+    if (p.stub === undefined)
+      return { points: [p.at, ...way.map((x) => point(frames[p.key], x))], stray };
+    // Off a stub, its first step is out of the stub's room, as a drop onto a
+    // pad is: that far along the way it heads, or straight down off its tip.
+    const [x, y] = [way[1][0] - start[0], way[1][1] - start[1]];
+    const l = Math.hypot(x, y);
+    const t = Math.min(env.stubRoom + keep, l) / l;
+    const off: V3[] = l > 1e-6 ? [[start[0] + x * t, start[1] + y * t, start[2]]] : [];
+    const points = clean([start, ...off, ...way.slice(1)]).map((x) => point(frames[p.key], x));
     return { points, stray };
   };
   // Many lanes share a leg: each is made once, so routes share its points

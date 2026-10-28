@@ -447,6 +447,21 @@ function migrate(c: Record<string, any>) {
       t.description = d.trrs.description;
     c.schema = 17;
   }
+  if (!(c.schema >= 18)) {
+    // Schema 18: +5 V and GND each run as a rail, one wire from a stub in
+    // each tile's V (or G) hole to the next, where they chained hole to
+    // LED-edge pad. Each net a project still has as schema 17 left it takes
+    // the new one.
+    const w = c.wiring;
+    for (const n of w?.nets ?? [])
+      if (same(n.pads, [n.pads?.[0], `${n.pads?.[0]} LED edge`])) {
+        n.pads = [n.pads[0], n.pads[0]];
+        n.rail = true;
+      }
+    if (w && /and the LED-edge pad\./.test(w.description ?? ''))
+      w.description = d.wiring.description;
+    c.schema = 18;
+  }
   if (c.chassis && c.chassis.skin_mm === undefined && c.chassis.base_thickness_mm !== undefined)
     c.chassis.skin_mm = c.chassis.base_thickness_mm;
   delete c.chassis?.base_thickness_mm;

@@ -247,8 +247,8 @@ Under the plates:
 - **Tile holes and pads** (`tile.pads`, measured): through holes near the tile's
   sides, two C, two R, in and out, and V and G nearer the LED; a pad for each of
   in, out, V and G on both the socket and the LED edges, on the underside; and a
-  spare C and R hole under the socket, which no wire uses. **One wire per hole or
-  pad**: a 22 AWG wire fits a hole, two don't.
+  spare C and R hole under the socket, which no wire uses. **One wire or stub per
+  hole**: a 22 AWG wire fits a hole, two don't.
 - **Matrix**: each hand is 4 rows × 5 columns. The finger rows are RT, RH and RB;
   the five thumbs are row RX. Columns C0–C4 run pinky to inner. Each thumb sits
   on a finger column: x2 on C0, near on C1, x1 on C2, home on C3, far on C4.
@@ -256,8 +256,8 @@ Under the plates:
   (`pro_micro.dupont`) on the Pro Micro pin `pro_micro.pins` gives it (the
   [Pro Micro](pro-micro.md#pins) doc says which pins can do what). Each housing,
   with its header's spacer under it and room over it for the wire to come out
-  and turn, is checked against the chassis and against the tiles, their parts
-  and pads over the board. The jack's four link wires and the reset switch's
+  and turn, is checked against the chassis and against the tiles, their parts,
+  pads and stubs over the board. The jack's four link wires and the reset switch's
   two run from their pins' housings to the jack's lugs and the switch's legs:
   down beside the housing and across just over the board's parts and the jack
   (or the switch). Where the way across passes over other housings (on the
@@ -271,10 +271,11 @@ Under the plates:
   at the tile's C (or R) hole nearer where it comes from, and the next leaves
   from the other. LED data runs out → in through `wiring.led_order` (the columns
   in alternating directions from pinky top, then the thumbs). +5 V and GND
-  daisy-chain every tile, arriving at the V
-  (or G) hole or the LED-edge V (or G) pad, whichever is nearer, and leaving from
-  the other. Each chain has one **feed**, a wire from its nearer end to its
-  net's pin.
+  each run as a **rail** (`wiring.nets[].rail`) through every tile in
+  `wiring.led_order`: a **stub** (`wiring.stub_mm`, 0.6 mm across and 3 mm
+  long) stands down from each tile's V (or G) hole, and one wire runs from stub
+  to stub, soldered to each. Each chain has one **feed**, a wire from its
+  nearer end to its net's pin; a rail's lands on its first stub.
 - **Paths**: wires run close under the tiles. Each end leaves its tile by a
   **leg**, in the key's frame: 0.6 mm down from the pad, an optional shift
   sideways, down to the leg's depth, then straight out to the tile edge facing
@@ -284,7 +285,9 @@ Under the plates:
   tiles it may also, last of its choices, shift out to the pad's own edge just
   inside the pocket and run along it 0.6 mm below the tile (the **rim**), which
   keeps it shallow where a low edge would take the run under the pads below the
-  floor; one across the tile runs just under its parts. A wire between
+  floor; one across the tile runs just under its parts. A rail's leg starts
+  on its stub, at the leg's depth or, deeper, at the stub's tip, and steps off
+  the stub's room (the rail's width) before shifting. A wire between
   two tiles, thumb or finger, joins its two legs with a straight run. Where
   that would run into a plate, it steps back under the higher tile and drops,
   or turns a corner in plan, or runs under both ends.
@@ -297,8 +300,9 @@ Under the plates:
   its own.
 - **Routing**: each wire has many candidate routes (depths, shifts,
   loom levels and, for a feed, its way onto its housing). Routes
-  that run into a tile, its parts or a plate, the jack, the reset switch or a
-  Dupont housing and the room over it, that shift out past the
+  that run into a tile, its parts or a plate, a stub and the room its joints
+  take, the jack, the reset switch or a Dupont housing and the room over it,
+  that shift out past the
   tile's pocket, or whose underside runs below the base plate's top
   (`chassis.skin_mm` above z = 0) are dropped; a wire left with no route fails
   the routing. The wires then negotiate: each takes its cheapest
@@ -306,14 +310,20 @@ Under the plates:
   round until none meet. The link wires negotiate too, each choosing
   the level of its run across, from its lowest up in 1.2 mm steps, or, where
   it has one, a way under the housings, so they pass the other links and the
-  tiles' wires. Pairs that still meet are repaired together with the
+  tiles' wires. A rail's pieces, one from each stub to the next, route and
+  negotiate as wires of their own, but they are one wire, so they may meet
+  each other; the feed and the rail on a first stub may not. Pairs that still
+  meet are repaired together with the
   wires most in their way. Routing runs in a worker of its own
   (`src/wiring-worker.ts`) while the build worker builds the chassis, so the wires
   follow an edit when the chassis rebuilds.
 - **Wire**: 30 AWG (0.6 mm) for signals, 26 AWG (0.9 mm) for power and ground.
 - **Cut length**: each wire's path plus 5 mm at each end. A feed also has its
   **service loop** (`wiring.service_loop_mm`; [design status](design-status.md)
-  says why).
+  says why). A rail is cut as one wire, bared where it meets each stub; the
+  wiring gives how far along it each stub's joint is.
 
-The default hand has 106 wires (100 under the keys and six link wires),
-194 solder joints, 17 plugs and about 5.2 m of wire.
+The default hand has 70 wires (64 under the keys and six link wires),
+198 solder joints, 17 plugs and about 4.8 m of wire. Each rail is about 620 mm
+long, and the longest of the other wires is the left hand's +5 V feed, about
+176 mm.

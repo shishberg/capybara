@@ -27,3 +27,14 @@ test('negotiation reports the wires that cannot avoid each other', () => {
   ];
   assert.deepEqual(negotiate(options, true), { left: 2, choice: [0, 0, 0] });
 });
+
+test("negotiation lets a rail's pieces meet each other, at their stub, but not other wires", () => {
+  const options = [
+    // Two pieces of one rail off one stub, and a wire across both.
+    [option([0, 0, 0], [10, 0, 0], 0)],
+    [option([0, 0, 0], [0, 10, 0], 0)],
+    [option([5, -5, 0], [5, 2, 0], 0), option([20, -5, 0], [20, 2, 0], 1)],
+  ];
+  assert.deepEqual(negotiate(options, false, [[0, 1]]), { left: 0, choice: [0, 0, 1] });
+  assert.deepEqual(negotiate(options, false).left, 2);
+});

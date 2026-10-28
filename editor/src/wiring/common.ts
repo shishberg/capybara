@@ -13,6 +13,12 @@ export interface NetSpec {
   chains?: string[][];
   /** The feed goes to the first key of each chain (LED data flows DI to DO). */
   directed?: boolean;
+  /**
+   * Each chain is one wire, a rail: a stub (wiring.stub_mm) stands down from
+   * its pad (a hole) on each key, and the rail runs from stub to stub,
+   * soldered to each. The feed lands on the first stub.
+   */
+  rail?: boolean;
 }
 export interface Pad {
   key: string;
@@ -21,6 +27,8 @@ export interface Pad {
   at: V3;
   xy: [number, number];
   down: V3;
+  /** On a rail's pad: how far its stub stands below the tile's underside. A wire joins it anywhere along it. */
+  stub?: number;
 }
 export interface Wire {
   net: string;
@@ -32,6 +40,13 @@ export interface Wire {
   /** Cut length: along the path, plus end allowances and, on a feed, the service loop. */
   length: number;
   feed: boolean;
+  /**
+   * On a rail: the stubs it is soldered to, in order. Each one's key, the
+   * points (indices into points) where the rail comes onto it and leaves it,
+   * and how far along the rail from its cut end its joint is (the middle of
+   * those), in mm.
+   */
+  stubs?: { key: string; points: [number, number]; along: number }[];
 }
 export interface NetSummary {
   name: string;
@@ -40,7 +55,10 @@ export interface NetSummary {
   label: string;
   group: string;
   wires: number;
-  /** Solder joints: both ends of each wire but a feed's, which plugs onto its pin. */
+  /**
+   * Solder joints: both ends of each wire but a feed's, which plugs onto its
+   * pin; on a rail, one at each stub and the stub's own in its hole.
+   */
   joints: number;
   length: number;
 }
@@ -101,6 +119,11 @@ export interface Env {
   /** Where on a tile (x, y) the pads and holes are that some net's wires end on. */
   wiredPads: [number, number][];
   hole: Record<number, V3>;
+  /**
+   * Half the width of the room a stub keeps for its joints, which a route
+   * puts on the stub's line: the wider of the stub and the rail's wire.
+   */
+  stubRoom: number;
 }
 
 /** Extra sizes for the wiring, in mm unless noted, that are not in the config. */
@@ -213,3 +236,6 @@ export function pinOf(cfg: Config, net: string) {
 /** The hand's nets (wiring.nets), each with the pin its feeds land on. */
 export const nets = (cfg: Config): NetSpec[] =>
   (cfg.wiring.nets as Omit<NetSpec, 'pin'>[]).map((n) => ({ ...n, pin: pinOf(cfg, n.name) }));
+
+/** The names of the pads a rail's stubs stand in. */
+export const railPads = (cfg: Config) => new Set(nets(cfg).flatMap((n) => (n.rail ? n.pads : [])));

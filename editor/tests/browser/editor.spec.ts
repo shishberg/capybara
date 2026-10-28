@@ -255,9 +255,9 @@ test('clearance overlays isolate collisions, toggle, and clear on edit', async (
 test('the wiring panel lists the matrix and cut list, and the wiring follows the keys', async ({
   page,
 }) => {
-  await expect(page.locator('#wiring-summary')).toContainText('106 wires, 194 solder joints');
+  await expect(page.locator('#wiring-summary')).toContainText('70 wires, 198 solder joints');
   await expect(page.locator('#matrix-table tr')).toHaveCount(21);
-  await expect(page.locator('#fit-list')).toContainText('All 106 wires are clear of the chassis.');
+  await expect(page.locator('#fit-list')).toContainText('No wire runs into hardware.');
   const wiring = () => page.evaluate(() => (window as any).rosebearEditor.getWiring());
   const before = (await wiring()).pads.find((p: any) => p.key === 'matrix_middle_top').at;
   await page.locator('[data-view="Front"]').click();

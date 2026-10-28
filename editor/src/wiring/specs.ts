@@ -2,7 +2,7 @@
 // shared pad or hole each sits.
 import { point, tilePads, type V3 } from '../geometry';
 import { holeAlong } from './pro-micro';
-import { WIRING, distance, nets, type Env, type NetSpec, type Pad } from './common';
+import { WIRING, distance, nets, railPads, type Env, type NetSpec, type Pad } from './common';
 
 export interface Spec {
   net: NetSpec;
@@ -13,13 +13,17 @@ export interface Spec {
   b: Pad;
 }
 
-/** The tiles' pads, the wires' specs, and each spec's ends shifted to share their pads and holes. */
+/**
+ * The tiles' pads, the wires' specs, each spec's ends shifted to share their
+ * pads and holes, and each rail's specs in order (the feed not among them).
+ */
 export function specsOf(env: Env, keys: string[]) {
   const { cfg, frames, hole, padZ } = env;
   const downOf = (key: string): V3 => {
     const e = frames[key].elements;
     return [-e[8], -e[9], -e[10]];
   };
+  const rail = railPads(cfg);
   const pads: Pad[] = keys.flatMap((key) =>
     tilePads(cfg).map((p) => ({
       key,
@@ -27,6 +31,7 @@ export function specsOf(env: Env, keys: string[]) {
       at: point(frames[key], [p.at_mm[0], p.at_mm[1], padZ]),
       xy: [p.at_mm[0], p.at_mm[1]] as [number, number],
       down: downOf(key),
+      stub: rail.has(p.name) ? cfg.wiring.stub_mm[1] : undefined,
     })),
   );
   const padsOf = (key: string, name: string) =>
@@ -35,6 +40,7 @@ export function specsOf(env: Env, keys: string[]) {
     options.reduce((a, b) => (distance(a.at, to) <= distance(b.at, to) ? a : b));
 
   const specs: Spec[] = [];
+  const rails: number[][] = [];
   for (const net of nets(cfg)) {
     for (const listed of net.chains ?? [cfg.wiring.led_order]) {
       const chain = listed.filter((k) => frames[k]);
@@ -48,6 +54,7 @@ export function specsOf(env: Env, keys: string[]) {
         chain.reverse();
       let from = hole[net.pin];
       let previous: Pad | undefined;
+      if (net.rail) rails.push([]);
       chain.forEach((key, i) => {
         // One wire to a pad: a directed net arrives at its first pad and
         // leaves from its second. An undirected net's pads are alike: it
@@ -57,6 +64,7 @@ export function specsOf(env: Env, keys: string[]) {
         const options = net.directed ? padsOf(key, net.pads[0]) : both;
         if (!options.length) throw Error(`Tile has no ${net.pads[0]} pad for ${net.name}`);
         const arrive = nearest(options, from);
+        if (net.rail && previous) rails.at(-1)!.push(specs.length);
         specs.push(
           previous
             ? { net, from: previous.key, to: key, a: previous, b: arrive }
@@ -75,7 +83,8 @@ export function specsOf(env: Env, keys: string[]) {
 
   // Two wires on one pad (on a tile with only one of its net's pads) sit side
   // by side along it, the one heading further along the pad on that side;
-  // two on one pin sit side by side along the pin row.
+  // two on one pin sit side by side along the pin row. A rail's wires join
+  // its stub on its line.
   const otherEnd = (s: Spec, end: Pad | number): V3 => {
     const e = end === s.b ? s.a : s.b;
     return typeof e === 'number' ? hole[e] : e.at;
@@ -90,7 +99,7 @@ export function specsOf(env: Env, keys: string[]) {
   };
   const shift = (s: Spec, end: Pad | number) => {
     const list = users.get(end)!;
-    if (list.length < 2) return 0;
+    if (list.length < 2 || (typeof end !== 'number' && end.stub !== undefined)) return 0;
     const along = alongOf(end);
     const at = typeof end === 'number' ? hole[end] : end.at;
     const reach = (x: Spec) => {
@@ -118,5 +127,5 @@ export function specsOf(env: Env, keys: string[]) {
         : shiftedPad(s.a, shift(s, s.a)),
     b: shiftedPad(s.b, shift(s, s.b)),
   }));
-  return { pads, specs, ends };
+  return { pads, specs, ends, rails };
 }

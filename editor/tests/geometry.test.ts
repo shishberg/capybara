@@ -645,8 +645,31 @@ test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
   const hole = holes(cfg, frames);
   // Two wires on one pad or hole sit side by side on it, up to 0.5 mm off its centre.
   const near = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i])) < 0.51;
+  const [, stub] = cfg.wiring.stub_mm;
   for (const net of nets(cfg)) {
     const wires = w.wires.filter((x) => x.net === net.name);
+    if (net.rail) {
+      // A rail is one wire from the stub in each key's hole to the next, in
+      // led_order from its end nearer the pin, soldered to each anywhere along
+      // it; its feed lands on the first stub.
+      const [feed, rail] = [wires.filter((x) => x.feed), wires.filter((x) => !x.feed)];
+      assert.equal(feed.length, 1, net.name);
+      assert.equal(rail.length, 1, net.name);
+      const order = cfg.wiring.led_order;
+      const keys = rail[0].stubs!.map((s) => s.key);
+      assert.deepEqual(keys, keys[0] === order[0] ? order : [...order].reverse(), net.name);
+      const onStub = (key: string, q: number[]) => {
+        const v = new Vector3(...q).applyMatrix4(frames[key].clone().invert());
+        const p = w.pads.find((x) => x.key === key && x.name === net.pads[0])!;
+        const depth = tileUnderside(cfg) - v.z;
+        return Math.hypot(v.x - p.xy[0], v.y - p.xy[1]) < 1e-6 && depth > 0 && depth <= stub + 1e-9;
+      };
+      for (const s of rail[0].stubs!)
+        for (const k of s.points) assert(onStub(s.key, rail[0].points[k]), `${net.name} ${s.key}`);
+      assert(onStub(keys[0], feed[0].points.at(-1)!), net.name);
+      assert(near(feed[0].points[0], hole[net.pin]), `${net.name} reaches pin ${net.pin}`);
+      continue;
+    }
     // Each pad named for the net, and the hole, is an end of some wire.
     const ends = wires.flatMap((x) => [x.points[0], x.points.at(-1)!]);
     const pads = w.pads.filter((p) => net.pads.includes(p.name));
@@ -661,9 +684,10 @@ test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
     assert.equal(wires.length, perKey.size, net.name);
     assert.equal(wires.filter((x) => x.feed).length, net.chains?.length ?? 1, net.name);
   }
-  // 100 under the keys, and the jack's four link wires and the reset switch's two.
-  assert.equal(w.wires.length, 106);
-  // One wire to a tile's hole or pad: two don't fit a hole.
+  // 64 under the keys, and the jack's four link wires and the reset switch's two.
+  assert.equal(w.wires.length, 70);
+  // One wire to a tile's hole or pad: two don't fit a hole. (A rail's hole
+  // holds its stub.)
   const ends = w.wires.flatMap((x) => [x.points[0], x.points.at(-1)!]);
   for (const p of w.pads)
     assert(ends.filter((e) => near(e, p.at)).length <= 1, `${p.key} ${p.name} at ${p.xy}`);
@@ -682,11 +706,12 @@ test("the wiring joins each net's pads and pin, for a 4 × 5 matrix", () => {
         p[2] >= cfg.chassis.skin_mm + x.diameter / 2 - 1e-9,
         `${x.net} ${x.from}-${x.to} at z ${p[2].toFixed(3)}`,
       );
-  // Both ends of every wire but the 18 plugged onto the Pro Micro: the 12
-  // feeds' and the six link wires'.
+  // Both ends of every wire but the 18 plugged onto the Pro Micro (the 12
+  // feeds' and the six link wires'), and on each rail, its joint on each of
+  // its 20 stubs and each stub's in its hole.
   assert.equal(
     w.nets.reduce((s, n) => s + n.joints, 0),
-    194,
+    198,
   );
 });
 test('a project saved before the wiring loads with the default wiring', () => {
@@ -722,7 +747,7 @@ test('a failed wire router rejects the build, and the next build still runs', as
     /router crashed/,
   );
   const r = await buildSolidAsync(wasm, clone(defaults), async (c) => wiring(c));
-  assert.equal(r.report.wiring.wires, 106);
+  assert.equal(r.report.wiring.wires, 70);
   assert.equal(r.report.pieces.length, 1);
 });
 

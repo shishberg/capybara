@@ -1,8 +1,8 @@
 // What wires keep out of, and the test for a wire's segment against it.
 import type { Matrix4 } from 'three';
-import { point, tilePartCentre, type V3 } from '../geometry';
+import { point, tilePads, tilePartCentre, type V3 } from '../geometry';
 import { plateHalfWidths } from '../plates';
-import { WIRING, distance, type Env } from './common';
+import { WIRING, distance, railPads, type Env } from './common';
 import { pinAt, plugPins } from './pro-micro';
 
 /** A box in a key's frame (or the jack's, the reset switch's or the Pro Micro's) that wires must keep out of. */
@@ -18,7 +18,7 @@ interface Obstacle {
 }
 
 export interface Obstacles {
-  /** Each tile from its underside up, and its parts with their clearance; the jack, the reset switch and the Pro Micro's Dupont housings. */
+  /** Each tile from its underside up, its parts with their clearance and its stubs' rooms; the jack, the reset switch and the Pro Micro's Dupont housings. */
   tiles: Obstacle[];
   /** Where a wire climbs between keys at different heights: the plates. */
   plates: Obstacle[];
@@ -34,6 +34,8 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
   const plateHalf = plateHalfWidths(cfg);
   const [hx, hy] = env.half;
   const c = tile.component_clearance_mm;
+  const stubs = tilePads(cfg).filter((p) => railPads(cfg).has(p.name));
+  const [room, stub] = [env.stubRoom, cfg.wiring.stub_mm[1]];
   // A box (lo to hi) in frame m.
   const boxIn = (m: Matrix4, lo: V3, hi: V3, list = tiles) => {
     const corners = [0, 1, 2, 3, 4, 5, 6, 7].map((i) =>
@@ -60,6 +62,11 @@ export function obstaclesOf(env: Env, keys: string[]): Obstacles {
         at.map((x, k) => x + p.size_mm[k] / 2 + c) as V3,
       );
     }
+    // Each stub, with the room its joints take.
+    for (const {
+      at_mm: [x, y],
+    } of stubs)
+      box([x - room, y - room, padZ - stub], [x + room, y + room, padZ]);
   }
   // The jack stands up into the loom (its plug comes in over the rail), so
   // the feeds keep out of it too: its body and barrel; and out of the reset

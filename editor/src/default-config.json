@@ -1,5 +1,5 @@
 {
-  "schema": 17,
+  "schema": 18,
   "description": "Individual RGB 1U tiles; dimensions marked provisional must be measured before a full print.",
   "half": "right",
   "geometry": {
@@ -433,9 +433,10 @@
   },
   "wiring": {
     "provisional": true,
-    "description": "Hand wiring from the tile holes and pads to the Pro Micro's pins, as a 4 x 5 matrix: rows RT, RH, RB and RX (the thumbs), columns C0 (pinky) to C4 (inner). Each thumb shares a finger column: its column wire chains on from that column's bottom key. One wire per tile hole or pad: each row and column wire arrives at one of the tile's two R (or C) holes and the next leaves from the other; +5 V and GND use the V (or G) hole and the LED-edge pad. LED data follows led_order, in to out. Each net's feeds land on the Pro Micro pin pro_micro.pins gives it.",
+    "description": "Hand wiring from the tile holes and pads to the Pro Micro's pins, as a 4 x 5 matrix: rows RT, RH, RB and RX (the thumbs), columns C0 (pinky) to C4 (inner). Each thumb shares a finger column: its column wire chains on from that column's bottom key. One wire per tile hole or pad: each row and column wire arrives at one of the tile's two R (or C) holes and the next leaves from the other; +5 V and GND each run as a rail: a stub of bare copper wire (stub_mm: its diameter and how far it stands below the tile) is soldered into each tile's V (or G) hole, and one wire runs from stub to stub, soldered to each; the feed lands on the first stub. LED data follows led_order, in to out. Each net's feeds land on the Pro Micro pin pro_micro.pins gives it.",
     "signal_wire_mm": 0.6,
     "power_wire_mm": 0.9,
+    "stub_mm": [0.6, 3],
     "loom_height_mm": 10,
     "service_loop_mm": 30,
     "end_allowance_mm": 5,
@@ -550,12 +551,14 @@
       {
         "name": "+5V",
         "group": "power",
-        "pads": ["V", "V LED edge"]
+        "pads": ["V", "V"],
+        "rail": true
       },
       {
         "name": "GND",
         "group": "ground",
-        "pads": ["G", "G LED edge"]
+        "pads": ["G", "G"],
+        "rail": true
       }
     ]
   },

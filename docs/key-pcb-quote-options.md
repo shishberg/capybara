@@ -175,9 +175,7 @@ Dots indicate joins; undotted crossings are not joined.
    unconnected. Start with the thumbs, then snake through the columns in
    alternating directions, to keep runs short.
 4. All LEDs connect to the same +5 V and GND buses, electrically in parallel.
-   Each tile's **V** hole is joined to its V edge pads, and its **G** hole to
-   its G edge pads, so one power wire arrives at the hole and one leaves from
-   the LED-edge pad without a splice.
+   [Design status](design-status.md) says how they are wired.
 5. Ribbon pins 14–19 are spare.
 
 ### Effort and physical feasibility
