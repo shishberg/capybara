@@ -100,20 +100,12 @@ module hotswap_socket() {
   color("dimgray") socket_body();
   color("silver") socket_tabs();
 }
-/** The socket's pocket: body with clearance, open downward to below the
- * floor, and the tabs' slots. */
+/** The socket's pocket: body with clearance and the tabs' slots. Its shaft
+ * down to the bottom plate is cut in world axes (chassis.scad socket_shaft),
+ * so it stands square to the plate under a tilted key. */
 module hotswap_socket_room() {
   socket_body(socket_clearance_mm);
   socket_tabs(socket_clearance_mm);
-  // Open below the socket for the bottom plate's boss (down to well below the floor).
-  hull() { socket_body(socket_clearance_mm); translate([0, 0, -30]) socket_body(socket_clearance_mm); }
-}
-/** The boss on the bottom plate that holds the socket up: the body, inset. */
-module socket_boss(height) {
-  intersection() {
-    hull() { socket_body(-boss_inset_mm); translate([0, 0, -40]) socket_body(-boss_inset_mm); }
-    translate([0, 0, socket_bottom_z() - boss_clearance_mm - height]) box([40, 40, height], [0, 0, height / 2]);
-  }
 }
 
 // ---------------------------------------------------------------- diode

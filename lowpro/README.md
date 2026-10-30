@@ -105,9 +105,11 @@ down to a flat underside. No cutouts, ribs or gaps.
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
 below the plate, then a 1.6 mm layer in place of a PCB with holes for the
 centre post, the side posts and the two pins, and under that the hotswap socket's
-pocket, open downward as a shaft to the underside. The socket is pushed up the
-shaft from below until it meets the pocket's ceiling, where the switch's pins
-reach it; the socket body is modelled as the measured 11.6 × 6.2 × 1.9 mm
+pocket, open downward as a shaft to the underside. The shaft and the solder wells
+are cut vertically, square to the bottom plate, however the key tilts, so the
+plate's bosses stand straight and no sliver of body is left under a tilted key.
+The socket is pushed up the shaft from below until it meets the pocket's
+ceiling, where the switch's pins reach it; the socket body is modelled as the measured 11.6 × 6.2 × 1.9 mm
 envelope cut into the two boxes about its pin cups (`socket_body` in
 `parts.scad`), with its two solder tabs out of the ±x ends. A solder well under
 each tab reaches up from the underside so a wire can be soldered to the tab

@@ -148,12 +148,17 @@ module diode_rooms() for (k = KEYS) multmatrix(k[K_FRAME])
   translate([col_x, (socket_tab_y[0] + ne_y) / 2 + 1, socket_top_z() - diode_mm[1] / 2 - 0.4])
     cube([diode_mm[1] + 0.8, diode_mm[0] + 0.8, diode_mm[1] + 0.8], center = true);
 function diode_frame(k) = k[K_FRAME] * trans([col_x, (socket_tab_y[0] + ne_y) / 2 + 1, socket_top_z() - diode_mm[1] / 2 - 0.4]);
+/** Something in key k's frame carried straight down (in world) to below the
+ * floor: shafts and wells stand square to the bottom plate however the key tilts. */
+module dropped(k) hull() { multmatrix(k[K_FRAME]) children(); translate([0, 0, -60]) multmatrix(k[K_FRAME]) children(); }
+/** The socket's shaft from its pocket down to the bottom plate, `grow` round the body. */
+module socket_shaft(k, grow) dropped(k) socket_body(grow);
 /** Room under each socket tab to solder to it. */
-module solder_wells() for (k = KEYS) multmatrix(k[K_FRAME]) for (side = [-1, 1]) let(t = socket_tab_tip(side))
-  translate([t[0] - solder_well_mm[0] / 2, t[1] - solder_well_mm[1] / 2, -40]) cube([solder_well_mm[0], solder_well_mm[1], 40 + t[2]]);
+module solder_wells() for (k = KEYS, side = [-1, 1]) let(t = socket_tab_tip(side)) dropped(k)
+  translate([t[0] - solder_well_mm[0] / 2, t[1] - solder_well_mm[1] / 2, t[2] - 0.6]) cube([solder_well_mm[0], solder_well_mm[1], 0.6]);
 
 // ---------------------------------------------------------------- the body
-module key_rooms() for (k = KEYS) multmatrix(k[K_FRAME]) { mx_switch_room(); hotswap_socket_room(); }
+module key_rooms() for (k = KEYS) { multmatrix(k[K_FRAME]) { mx_switch_room(); hotswap_socket_room(); } socket_shaft(k, socket_clearance_mm); }
 module bay_rooms() {
   multmatrix(MCU) mcu_room();
   multmatrix(BATTERY) battery_room();
@@ -174,7 +179,7 @@ module body() difference() {
 /** The boss under key k's socket: the socket's shaft, inset, from the plate up
  * to just under the socket. */
 module socket_boss(k) intersection() {
-  multmatrix(k[K_FRAME]) hull() { socket_body(-boss_inset_mm); translate([0, 0, -60]) socket_body(-boss_inset_mm); }
+  socket_shaft(k, -boss_inset_mm);
   multmatrix(k[K_FRAME]) translate([0, 0, socket_bottom_z() - boss_clearance_mm - 100]) cube([80, 80, 200], center = true);
   translate([BBOX[0][0], BBOX[0][1], FLOOR_Z - 0.01]) cube([BBOX[1][0] - BBOX[0][0], BBOX[1][1] - BBOX[0][1], 100]);
 }
