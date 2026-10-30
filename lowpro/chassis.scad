@@ -96,10 +96,19 @@ module field_solid(hi, lo) {
   polyhedron(points = concat(top, bot), faces = faces, convexity = 20);
 }
 /** The body before anything is cut from it: the shell between the top surface
- * and its underside, within the footprint. */
-module blank() intersection() {
-  field_solid(TOP, [for (z = TOP) z - FLOOR_DROP]);
-  linear_extrude(200) footprint_2d();
+ * and its underside, within the footprint, its top edge rounded. The round is
+ * a stack: at each of top_round_steps insets from the wall, the top lowered by
+ * the quarter circle's drop there, all unioned, then the underside cut. */
+module blank() {
+  r = top_round_mm; n = r > 0 ? ($preview ? min(4, top_round_steps) : top_round_steps) : 0;
+  difference() {
+    union() for (i = [0 : n]) let(a = 90 * i / max(n, 1), d = r * (1 - cos(a)), dz = r * (1 - sin(a)))
+      intersection() {
+        translate([0, 0, -dz]) field_solid(TOP, -1);
+        linear_extrude(200) offset(r = -d) footprint_2d();
+      }
+    field_solid([for (z = TOP) z - FLOOR_DROP], -2);
+  }
 }
 /** The plinth before anything is cut from it: from the desk up to the body's underside. */
 module plinth_blank() intersection() {

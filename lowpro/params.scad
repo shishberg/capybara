@@ -124,6 +124,10 @@ outline_style = "hulls";
 outline_round_mm = 6;        // round of the outline's convex corners
 outline_close_mm = 10;       // gaps narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05;             // the cell each key owns in plan, square
+// The body's top edge is rounded to this radius, as a stack of top_round_steps
+// insets (the preview draws four); 0 leaves it sharp.
+top_round_mm = 4;
+top_round_steps = 12;
 // The body is a shell of one thickness: its underside is its top surface
 // dropped by the room every key needs, the socket's bottom and this much
 // under it (room for the wires under it and the print's tolerance). The

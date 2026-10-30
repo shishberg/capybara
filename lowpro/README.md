@@ -109,9 +109,16 @@ round it (6 mm, which carries the trunk channels and the screws' inserts), the
 notch is rounded to `outline_close_mm` and every convex corner to
 `outline_round_mm`: straight sides, the stagger steps filled. ("closed" instead
 follows the cells and channels, with the gaps between them closed up.) The
-walls are vertical. No cutouts, ribs or gaps. The underside is curved and
-tilted, so the body prints on support (or on a raft): lay it on the tent plane
-and the support is at most a few millimetres tall; the plinth prints flat.
+walls are vertical, and the top edge is rounded to `top_round_mm` (4 mm). No
+cutouts, ribs or gaps. The underside is curved and tilted, so the body prints
+on support (or on a raft): lay it on the tent plane and the support is at most
+a few millimetres tall; the plinth prints flat.
+
+The top edge's round is built as a stack: at each of `top_round_steps` insets
+from the wall the top surface is lowered by the quarter circle's drop there,
+and the stack is unioned, so the profile is stepped (0.5 mm at twelve steps,
+which a 0.2 mm layer print smooths over; the preview draws four). It costs a
+few minutes of render time per step; set `top_round_mm` to 0 for a sharp edge.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
