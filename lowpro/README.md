@@ -14,6 +14,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 37 mm (26 mm at the pinky) |
+| Plan per half | | about 142 × 137 mm |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
@@ -94,9 +95,11 @@ key's cell the plate's plane; between cells the nearby cells' planes blended by
 distance, each taken at its cell's nearest point, so the surface runs smoothly
 across the column stagger and the gap to the thumb cluster without extrapolating
 any plane. The footprint is the cells closed up (gaps narrower than
-2 × `outline_close_mm` filled) with a `wall_mm` wall round them and rounded
-corners; the walls are vertical down to a flat underside. No cutouts, ribs or
-gaps.
+2 × `outline_close_mm` filled, with a round of that radius where they meet the
+outline), a `wall_mm` wall round them (6 mm, which carries the trunk channels and
+the screws' inserts) and every convex corner rounded to `outline_round_mm`
+(8 mm): a smooth outline that still follows the hand. The walls are vertical
+down to a flat underside. No cutouts, ribs or gaps.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
@@ -121,9 +124,9 @@ tops, closed by the bottom plate:
   the rows);
 - the inner column's channel is a wider trunk (`trunk_w_mm`): the three row
   wires join it, and it runs on into the controller's bay;
-- a trunk in the back wall from the pinky column's top to the bay, which the
-  other columns' wires follow, and one in the front wall along the bottom row
-  that joins the thumb cluster;
+- a trunk in the back wall from the pinky column's top along to the inner
+  column and into the bay, which the columns' wires follow, and one in the
+  front wall along the bottom row that joins the thumb cluster;
 - in the thumb cluster, a trunk along the three row keys' north edges (the
   thumb row's wire and the thumb keys' column wires on their way to the front
   trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps
@@ -137,21 +140,23 @@ millimetre of each other a render can leave a speck of body between them (the
 right body has a few of under 1 mm³); a slicer drops them.
 
 **Bay.** Nothing can sit on the floor under a socket, since each socket's shaft is
-open to the bottom plate, so the controller and battery lie in a bay behind the
-top row: the board along the back wall behind the inner and index columns,
-components down, its USB-C port out of the inner side wall through a chamfered
-opening; the battery behind the next columns toward the pinky; the power switch
-in the back wall behind the board. The whole shelf behind the top row, walls
-included, steps down to a roof `bay_roof_mm` thick over the pockets, the step a
-millimetre behind the top cells (set `bay_roof_mm` to 0 for no step, and the
-surface blends over the bay). The back trunk channel stays under that roof. The
-bottom plate has a pinhole over the board's reset button.
+open to the bottom plate, so the controller and battery lie in a bay on the
+inner side of the inner column: the board along the column, components down,
+its USB-C port out of the back wall through a chamfered opening; the power
+switch beside it in the inner side wall; the battery in front of the board. The
+body steps down over the bay to a roof `bay_roof_mm` thick over the pockets,
+the step a few millimetres inside the inner column's cells (set `bay_roof_mm`
+to 0 for no step, and the surface blends over the bay). The back trunk channel
+enters the bay at its back corner, under the roof. The bottom plate has a
+pinhole over the board's reset button.
 
 **Bottom plate.** The same outline, `bottom_plate_mm` thick, screwed from below
-with M2 screws into heat-set inserts in the body at ten ears on the outline
-(`screw_points` in `layout.scad`), countersunk. Under each socket it carries a
-boss, the socket's shaft inset `boss_inset_mm`, that rises to 0.15 mm under the
-socket and holds it against its ceiling when a switch is pushed in.
+with M2 screws into heat-set inserts in the body's wall at eight points
+(`screw_points` in `layout.scad`: the pinky's outer side, the thumb cluster's far
+side and front, the bay's inner side and front, all edges the trunk channels keep
+clear of), countersunk. Under each socket it carries a boss, the socket's shaft
+inset `boss_inset_mm`, that rises to 0.15 mm under the socket and holds it
+against its ceiling when a switch is pushed in.
 
 ## Checks and what they don't cover
 
@@ -174,7 +179,5 @@ socket's tabs, the controller, the battery and the power switch are nominal size
 - The thumb keys' drop and tilt (`thumb_drop_mm`, `thumb_tilt_deg`) are guesses
   from the flat-paper prints; the hand model would say more.
 - Fanned thumb keys at a wider pitch versus parallel ones at 19.05 mm.
-- Whether a USB-C port on the inner side is acceptable, or the bay should be
-  reshaped to bring it out of the back.
 - Whether the 1.6 mm PCB layer should hold the switch posts more tightly, and the
   socket pocket's fit, both need a test print of one key.

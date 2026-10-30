@@ -143,42 +143,38 @@ function cap_top(k) = xform(k[K_FRAME], [0, 0, cap_top_height(k[K_CAPROW])]);
 // ---------------------------------------------------------------- the bay: controller, battery, power switch
 // Nothing with a socket over it can sit on the floor (each socket's shaft is
 // open to the bottom plate), so the controller and the battery lie in a bay
-// behind the top row, in world axes: the board along the back wall behind the
-// inner and index columns, its port out of the inner side; the battery behind
-// the next columns toward the pinky; the power switch in the back wall between
-// the board and the wall. The bay's rectangles are [[x0, y0], [x1, y1]] in plan.
-/** The back (greatest y) of a key's cell in world plan, and its x extent. */
+// on the inner side of the inner column, in world axes: the board along the
+// column with its port out of the back wall, the power switch beside it in
+// the inner side wall, and the battery in front of the board. The bay's
+// rectangles are [[x0, y0], [x1, y1]] in plan.
 function cell_back(k) = vmax([for (c = cell_corners(k)) c[1]]);
 function cell_x0(k) = vmin([for (c = cell_corners(k)) c[0]]);
 function cell_x1(k) = vmax([for (c = cell_corners(k)) c[0]]);
-bay_gap_mm = 1;   // between a cell's back and a pocket
-function top_key(col) = [for (k = KEYS) if (k[K_GROUP] == "finger" && k[K_COL] == col && k[K_ROW] == rows_above) k][0];
-/** The controller's bay: behind the inner and index columns' top cells, deep
- * enough for the board and, behind it, the power switch. */
+bay_gap_mm = 1;   // between a cell and a pocket
+function column_key(col, row) = [for (k = KEYS) if (k[K_GROUP] == "finger" && k[K_COL] == col && k[K_ROW] == row) k][0];
+/** The strip beside the board for the power switch. */
+function switch_strip() = power_switch ? power_switch_mm[1] + 1.2 : 0;
+/** The controller's bay: beside the inner column's cells, its back at the
+ * top cell's back, as long as the board, as wide as the board and the switch. */
 function mcu_bay() = let(
-    a = top_key(0), b = top_key(1), c = mcu_clearance_mm,
-    x0 = min(cell_x0(a), cell_x0(b)), x1 = x0 + mcu_board_mm[1] + 2 * c,
-    y0 = max(cell_back(a), cell_back(b)) + bay_gap_mm,
-    y1 = y0 + mcu_board_mm[0] + 2 * c + (power_switch ? power_switch_mm[1] + 1.2 : 0)
-  ) [[x0, y0], [x1, y1]];
+    c = mcu_clearance_mm,
+    x1 = vmin([for (r = [-rows_below : rows_above]) cell_x0(column_key(0, r))]) - bay_gap_mm,
+    y1 = cell_back(column_key(0, rows_above))
+  ) [[x1 - mcu_board_mm[0] - 2 * c - switch_strip(), y1 - mcu_board_mm[1] - 2 * c], [x1, y1]];
 /** The controller board's frame in world (parts.scad mcu_board): origin at the
  * middle of its port end on the floor, +y along the board, components down.
- * The board lies along the back wall, its port facing the inner side (-x). */
+ * The board lies along the column, its port facing the back (+y). */
 function mcu_frame() = let(b = mcu_bay(), c = mcu_clearance_mm)
-  trans([b[0][0] - mcu_usb_overhang_mm, b[0][1] + c + mcu_board_mm[0] / 2, FLOOR_Z]) * rot_z(-90 + mcu_turn_deg);
+  trans([b[1][0] - c - mcu_board_mm[0] / 2, b[1][1] + mcu_usb_overhang_mm, FLOOR_Z]) * rot_z(180 + mcu_turn_deg);
 MCU = mcu_frame();
-/** The power switch's frame: body centred, knob out of the back (+y). */
+/** The power switch's frame: body centred in its strip, knob out of the inner side (-x). */
 function power_switch_frame() = let(b = mcu_bay(), c = 0.3)
-  trans([b[0][0] + mcu_board_mm[1] / 2 + power_switch_offset_mm, b[1][1] - c - power_switch_mm[1] / 2,
-         FLOOR_Z + power_switch_mm[2] / 2 + c]) * rot_z(180);
+  trans([b[0][0] + c + power_switch_mm[1] / 2, b[1][1] - power_switch_back_mm - power_switch_mm[0] / 2,
+         FLOOR_Z + power_switch_mm[2] / 2 + c]) * rot_z(-90);
 POWER_SWITCH = power_switch_frame();
-/** The battery's bay: east of the controller's, behind whichever top cells it spans. */
-function battery_bay() = let(
-    m = mcu_bay(), c = battery_clearance_mm, w = battery_mm[0] + 2 * c, d = battery_mm[1] + 2 * c,
-    x0 = m[1][0] + bay_gap_mm, x1 = x0 + w,
-    y0 = vmax([for (col = [0 : 4]) let(k = top_key(col))
-          if (cell_x1(k) > x0 && cell_x0(k) < x1) cell_back(k) + bay_gap_mm])
-  ) [[x0, y0], [x1, y0 + d]];
+/** The battery's bay: in front of the controller's, the same width. */
+function battery_bay() = let(m = mcu_bay(), c = battery_clearance_mm, y1 = m[0][1] - bay_gap_mm)
+  [[m[0][0], y1 - battery_mm[1] - 2 * c], [m[1][0], y1]];
 /** The battery's frame: its centre on the floor (parts.scad battery). */
 function battery_frame() = let(b = battery_bay())
   trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, FLOOR_Z]);
@@ -186,15 +182,17 @@ BATTERY = battery_frame();
 function bays() = [mcu_bay(), battery_bay()];
 
 // ---------------------------------------------------------------- screws
-/** Where the bottom plate screws into the body, in world plan: ears on the
- * outline, each a cell corner (or a bay corner) carried `ear` mm outward. */
-function screw_points(ear) = concat(
-  [for (s = [
-    ["pinky_1", [1, 1]], ["pinky_-1", [1, -1]], ["inner_1", [-1, 0.3]], ["ring_-1", [0.5, -1]],
-    ["thumb_far", [-1, 1]], ["thumb_far", [-1, -1]],
-    [thumb_extra ? "thumb_x2" : "thumb_home", [-0.3, -1]],
-    [thumb_extra ? "thumb_x1" : "thumb_near", [1, -1]]
-  ]) let(k = key_named(s[0]), c = cell_size(k) / 2, d = s[1])
-    xy(xform(k[K_FRAME], [d[0] * c[0] + sign(d[0]) * ear, d[1] * c[1] + sign(d[1]) * ear, 0]))],
-  let(m = mcu_bay(), b = battery_bay())
-    [[m[0][0] - ear, m[1][1] + ear], [b[1][0] + ear, b[1][1] + ear]]);
+/** Where the bottom plate screws into the body's wall, in world plan: a point
+ * on a cell's or a bay's edge carried screw_out_mm outward, on edges the trunk
+ * channels (chassis.scad) keep clear of: the pinky's outer side, the thumb
+ * cluster's far side and front, and the bay's inner side and front. */
+function screw_points() = let(s = screw_out_mm,
+    edge = function(k, d) let(c = cell_size(k) / 2)
+      xy(xform(k[K_FRAME], [d[0] * c[0] + (abs(d[0]) == 1 ? d[0] * s : 0), d[1] * c[1] + (abs(d[1]) == 1 ? d[1] * s : 0), 0])),
+    m = mcu_bay(), b = battery_bay())
+  [edge(key_named("pinky_1"), [1, 0.3]), edge(key_named("pinky_-1"), [1, -0.3]),
+   edge(key_named("thumb_far"), [-1, 0]),
+   edge(key_named(thumb_extra ? "thumb_x2" : "thumb_home"), [0, -1]),
+   edge(key_named(thumb_extra ? "thumb_x1" : "thumb_near"), [0, -1]),
+   [m[0][0] - s, (m[0][1] + m[1][1]) / 2 - 6], [b[0][0] - s, (b[0][1] + b[1][1]) / 2],
+   [(b[0][0] + b[1][0]) / 2, b[0][1] - s]];

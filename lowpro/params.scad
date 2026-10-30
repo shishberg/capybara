@@ -117,31 +117,32 @@ diode_mm = [4.0, 2.0];
 // each row's wire joins the +x tabs along the cells' north edges. See the README.
 
 // ---------------------------------------------------------------- the body and bottom plate
-wall_mm = 4.5;               // the body's wall past the key cells (the back trunk channel runs in it)
-outline_round_mm = 2;        // round of the outline's corners (0: sharp)
-outline_close_mm = 12;       // gaps between cells narrower than twice this are filled
+wall_mm = 6;                 // the body's wall past the key cells; the trunk channels and the screws' inserts sit in it
+outline_round_mm = 8;        // round of the outline's convex corners
+outline_close_mm = 16;       // gaps between cells narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05;             // the cell each key owns in plan, square
 // The body's underside is this far below the lowest socket's top (room for the
 // socket, the wires under it and the print's tolerance), flat; the bottom
 // plate closes it.
 under_socket_mm = 0.6;
 bottom_plate_mm = 2;
-// The body steps down behind the top row to a roof this thick over the bay's
-// pockets (0: no step, the surface blends over the bay).
+// The body steps down beside the inner column to a roof this thick over the
+// bay's pockets (0: no step, the surface blends over the bay).
 bay_roof_mm = 3;
 plate_gap_mm = 0.1;          // the plate's clearance in the body's rim
 // Bosses on the bottom plate hold each socket up against its pocket's ceiling.
 boss_clearance_mm = 0.15;
 boss_inset_mm = 0.6;         // the boss is this much smaller than the socket body all round
-// M2 screws from below into heat-set inserts in the body: insert hole and depth,
-// the screw's clearance hole and countersink in the plate.
+// M2 screws from below into heat-set inserts in the body's wall: insert hole
+// and depth, the screw's clearance hole and countersink in the plate, and how
+// far past a cell's or bay's edge each insert's centre sits.
 insert_d = 3.2;
 insert_depth_mm = 4;
 screw_d = 2.4;
 screw_head_d = 4.2;
 screw_head_mm = 1.2;
-// Screws between these cell corners (pairs of [column index, row offset] etc.)
-// are placed by layout.scad; see screw_points() there.
+screw_out_mm = 2.2;
+// Which edges carry screws: see screw_points() in layout.scad.
 
 // ---------------------------------------------------------------- controller, battery, switch
 // PROVISIONAL: a Pro Micro form factor nRF52840 (nice!nano v2 / SuperMini):
@@ -153,21 +154,21 @@ mcu_usb_mm = [9.0, 3.3];         // the port's width and height
 mcu_usb_overhang_mm = 1.3;
 mcu_usb_opening_mm = [10.5, 5];  // the hole through the back wall for the plug
 mcu_clearance_mm = 0.3;
-// The board lies along the back wall in a bay behind the inner and index
-// columns (layout.scad mcu_bay), its USB-C port out of the inner side wall.
+// The board lies in a bay on the inner side of the inner column (layout.scad
+// mcu_bay), along the column, its USB-C port out of the back wall.
 // mcu_turn_deg turns it in plan about its port end.
 mcu_turn_deg = 0;
 // The reset button on the board, from the port end: across (x) and along (y) the board.
 mcu_reset_mm = [0, 14.5];
-// Battery: PROVISIONAL 402030 LiPo (about 200 mAh), lying flat in the bay
-// beside the board, its 30 mm along the back wall.
+// Battery: PROVISIONAL 402030 LiPo (about 200 mAh), lying flat in the bay in
+// front of the board, its 30 mm along the column.
 battery_mm = [30, 20, 4.2];
 battery_clearance_mm = 0.5;
 // Power switch: PROVISIONAL MSK-12C02 slide switch, body and its knob's reach.
 power_switch = true;
 power_switch_mm = [8.6, 3.7, 3.5];
 power_switch_knob_mm = [1.5, 3.0, 1.5];  // width, travel + width, how far it stands out
-power_switch_offset_mm = 0;              // along the back wall from the board's middle, toward +x
+power_switch_back_mm = 8;                // along the inner side wall, from the bay's back
 
 // ---------------------------------------------------------------- rendering
 surface_step_mm = 2;   // the top surface's mesh step; finer is slower

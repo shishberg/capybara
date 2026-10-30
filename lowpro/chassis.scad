@@ -12,8 +12,7 @@ include <parts.scad>
 // capped at the bay roof.
 INV = [for (k = KEYS) rinv(k[K_FRAME])];
 blend_mm = 1.5;
-ear_mm = insert_d / 2 + 1.6;        // a screw ear's radius round its insert
-ear_out_mm = ear_mm - 1.0;          // how far an ear's centre sits past the cell corner
+
 function plane_z(k, x, y) = let(o = origin(k[K_FRAME]), n = axis_z(k[K_FRAME]))
   o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2];
 /** [distance outside key i's cell in its plane, the plane's height at the cell's nearest point]. */
@@ -27,10 +26,10 @@ function bay_pocket_h() = max(mcu_parts_mm + mcu_board_mm[2] + mcu_clearance_mm,
 function bay_roof_z() = FLOOR_Z + bay_pocket_h() + bay_roof_mm;
 function in_rect(r, x, y) = x >= r[0][0] && x <= r[1][0] && y >= r[0][1] && y <= r[1][1];
 function in_bay(x, y) = len([for (b = bays()) if (in_rect(b, x, y)) 1]) > 0;
-/** The shelf that steps down to the bay roof: the bays' span in x with their
- * walls, from the foremost bay's front back to the wall behind them, except
+/** The shelf that steps down to the bay roof: the bays' span with their
+ * walls, except
  * within a mesh step and a millimetre of any cell (so the step starts clear of it). */
-function shelf_rect() = let(B = bays(), e = ear_out_mm + 2 * ear_mm + wall_mm + outline_round_mm + 1)
+function shelf_rect() = let(B = bays(), e = wall_mm + outline_round_mm + 1)
   [[vmin([for (b = B) b[0][0]]) - e, vmin([for (b = B) b[0][1]])], [vmax([for (b = B) b[1][0]]) + e, vmax([for (b = B) b[1][1]]) + e]];
 function on_shelf(x, y, ss) = in_rect(shelf_rect(), x, y) && vmin([for (s = ss) s[0]]) > surface_step_mm + 1;
 function top_z(x, y) = let(
@@ -41,23 +40,23 @@ function top_z(x, y) = let(
   ) bay_roof_mm > 0 && on_shelf(x, y, ss) ? min(z, bay_roof_z()) : z;
 
 // ---------------------------------------------------------------- the outline
-SCREWS = screw_points(ear_out_mm);
-/** The cells, ears, bays and channel paths in plan, before the wall. */
+SCREWS = screw_points();
+/** The cells, bays and channel paths in plan, before the wall. */
 module cells_2d() {
   for (k = KEYS) polygon(cell_corners(k));
-  for (p = SCREWS) translate(p) circle(r = ear_mm, $fn = 32);
   for (b = bays()) translate(b[0]) square(b[1] - b[0]);
   for (c = channels(), i = [0 : len(c[1]) - 2]) hull() for (p = [c[1][i], c[1][i + 1]])
     translate(xy(p)) circle(r = c[0] / 2 + 1, $fn = 16);
 }
 /** The body's footprint: the cells closed up (gaps narrower than
- * 2 * outline_close_mm filled), the wall round them and the corners rounded. */
-module footprint_2d() offset(r = outline_round_mm) offset(delta = wall_mm - outline_round_mm)
+ * 2 * outline_close_mm filled, with a round of that radius where they meet
+ * the outline), the wall round them, and the convex corners rounded. */
+module footprint_2d() offset(r = outline_round_mm) offset(r = -outline_round_mm) offset(r = wall_mm)
   offset(r = -outline_close_mm) offset(r = outline_close_mm) cells_2d();
 /** The plan's bounding box, [[x0, y0], [x1, y1]], with room for the wall. */
 function plan_bbox() = let(
     pts = concat([for (k = KEYS) each cell_corners(k)], SCREWS, [for (b = bays()) each b]),
-    xs = [for (p = pts) p[0]], ys = [for (p = pts) p[1]], m = wall_mm + ear_mm + 2
+    xs = [for (p = pts) p[0]], ys = [for (p = pts) p[1]], m = wall_mm + outline_round_mm + 2
   ) [[vmin(xs) - m, vmin(ys) - m], [vmax(xs) + m, vmax(ys) + m]];
 BBOX = plan_bbox();
 
@@ -104,6 +103,8 @@ function ne(k) = at(k, [row_x, ne_y]);
 function back_pt(k) = let(p = at(k, [col_x, out_y]))
   [p[0], p[1], bay_roof_mm > 0 ? min(p[2], bay_roof_z() - 1.5) : p[2]];
 function front_pt(k) = at(k, [col_x, -out_y]);
+/** Where the trunks enter the controller's bay: just inside its back corner by the column. */
+function bay_entry() = let(b = mcu_bay()) [b[1][0] - 3, b[1][1] - 3, FLOOR_Z + bay_pocket_h() - 0.3];
 function finger_key(col, row) = [for (k = KEYS) if (k[K_GROUP] == "finger" && k[K_COL] == col && k[K_ROW] == row) k][0];
 function thumb(name) = key_named(str("thumb_", name));
 /** The channels as polylines [width, [points...]] in world. */
@@ -113,8 +114,8 @@ function channels() = concat(
     [front_pt(finger_key(c, -rows_below))],
     [for (r = [-rows_below : rows_above]) c_tab(finger_key(c, r))],
     [back_pt(finger_key(c, rows_above))])]],
-  // The back trunk, pinky to index (the bay takes the rest), and the front trunk.
-  [[trunk_w_mm, [for (c = [4 : -1 : 1]) back_pt(finger_key(c, rows_above))]]],
+  // The back trunk, pinky to inner column and into the bay, and the front trunk.
+  [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) back_pt(finger_key(c, rows_above))], [bay_entry()])]],
   [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) front_pt(finger_key(c, -rows_below))])]],
   [[trunk_w_mm, [front_pt(finger_key(1, -rows_below)), ne(thumb("near"))]]],
   // Each finger row: from each key's tab up to its north edge, across to the
@@ -216,4 +217,4 @@ function report() = let(
         r2(vmin(tops)), " to ", r2(vmax(tops)), " mm; bay roof ", r2(bay_roof_z()),
         " mm; fingertip reach between rows ",
         [for (i = [0 : 3]) r2(finger_plate_pitch(i) * finger_reach_radius(i) / finger_plate_radius(i))],
-        " mm (index to pinky); plan about ", r2(b[1][0] - b[0][0] - 2 * (ear_mm + 2)), " x ", r2(b[1][1] - b[0][1] - 2 * (ear_mm + 2)), " mm");
+        " mm (index to pinky); plan about ", r2(b[1][0] - b[0][0] - 2 * (outline_round_mm + 2)), " x ", r2(b[1][1] - b[0][1] - 2 * (outline_round_mm + 2)), " mm");
