@@ -45,26 +45,31 @@ SCREWS = screw_points();
 module cells_2d() {
   for (k = KEYS) polygon(cell_corners(k));
   for (b = bays()) translate(b[0]) square(b[1] - b[0]);
-  for (c = channels(), i = [0 : len(c[1]) - 2]) hull() for (p = [c[1][i], c[1][i + 1]])
-    translate(xy(p)) circle(r = c[0] / 2 + 1, $fn = 16);
+  channels_2d();
 }
-/** The finger field (its cells and the bays) and the thumb cluster each as a
- * convex hull, and the bridge between them (the near thumb key and the two
- * bottom keys nearest it). */
+/** The channel paths in plan, with a margin round them. */
+module channels_2d(group) for (c = channels(), i = [0 : len(c[1]) - 2]) if (is_undef(group) || c[2] == group)
+  hull() for (p = [c[1][i], c[1][i + 1]]) translate(xy(p)) circle(r = c[0] / 2 + 1, $fn = 16);
+/** The finger field (its cells, the bays and its channels) and the thumb
+ * cluster each as a convex hull, and the bridge joining them: the thumb row,
+ * the two bottom keys nearest it, the bays on the inner side and the channel
+ * between the two, so the inner edge runs straight from the bays to the thumb. */
 module hulls_2d() {
-  hull() { for (k = KEYS) if (k[K_GROUP] == "finger") polygon(cell_corners(k)); for (b = bays()) translate(b[0]) square(b[1] - b[0]); }
-  hull() for (k = KEYS) if (k[K_GROUP] != "finger") polygon(cell_corners(k));
-  hull() for (n = ["thumb_near", str("index_", -rows_below), str("inner_", -rows_below)]) polygon(cell_corners(key_named(n)));
+  hull() { for (k = KEYS) if (k[K_GROUP] == "finger") polygon(cell_corners(k)); for (b = bays()) translate(b[0]) square(b[1] - b[0]); channels_2d("finger"); }
+  hull() { for (k = KEYS) if (k[K_GROUP] != "finger") polygon(cell_corners(k)); channels_2d("thumb"); }
+  hull() {
+    for (k = KEYS) if (k[K_GROUP] == "thumb" || (k[K_GROUP] == "finger" && k[K_COL] <= 1 && k[K_ROW] == -rows_below)) polygon(cell_corners(k));
+    for (b = bays()) translate(b[0]) square(b[1] - b[0]);
+    channels_2d("bridge");
+  }
 }
-/** The body's footprint: outline_style "hulls" is the two hulls joined, "closed"
- * the cells closed up (gaps narrower than 2 * outline_close_mm filled). Either
- * way the channel paths are in, the gaps that remain get a round of
- * outline_close_mm, the wall goes round it and the convex corners are rounded
- * to outline_round_mm. */
+/** The body's footprint: outline_style "hulls" is the hulls joined, "closed"
+ * the cells and channel paths closed up (gaps narrower than 2 * outline_close_mm
+ * filled). Either way the gaps that remain get a round of outline_close_mm, the
+ * wall goes round it and the convex corners are rounded to outline_round_mm. */
 module footprint_2d() offset(r = outline_round_mm) offset(r = -outline_round_mm) offset(r = wall_mm)
   offset(r = -outline_close_mm) offset(r = outline_close_mm) {
-    cells_2d();
-    if (outline_style == "hulls") hulls_2d();
+    if (outline_style == "hulls") hulls_2d(); else cells_2d();
   }
 /** The plan's bounding box, [[x0, y0], [x1, y1]], with room for the wall. */
 function plan_bbox() = let(
@@ -120,34 +125,35 @@ function front_pt(k) = at(k, [col_x, -out_y]);
 function bay_entry() = let(b = mcu_bay()) [b[1][0] - 3, b[1][1] - 3, FLOOR_Z + bay_pocket_h() - 0.3];
 function finger_key(col, row) = [for (k = KEYS) if (k[K_GROUP] == "finger" && k[K_COL] == col && k[K_ROW] == row) k][0];
 function thumb(name) = key_named(str("thumb_", name));
-/** The channels as polylines [width, [points...]] in world. */
+/** The channels as polylines [width, [points...], group] in world; the group
+ * ("finger", "thumb" or "bridge") says which hull of the footprint holds it. */
 function channels() = concat(
   // Each finger column: front trunk point, its keys' column tabs, back trunk point.
   [for (c = [0 : 4]) [c == 0 ? trunk_w_mm : channel_w_mm, concat(
     [front_pt(finger_key(c, -rows_below))],
     [for (r = [-rows_below : rows_above]) c_tab(finger_key(c, r))],
-    [back_pt(finger_key(c, rows_above))])]],
+    [back_pt(finger_key(c, rows_above))]), "finger"]],
   // The back trunk, pinky to inner column and into the bay, and the front trunk.
-  [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) back_pt(finger_key(c, rows_above))], [bay_entry()])]],
-  [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) front_pt(finger_key(c, -rows_below))])]],
-  [[trunk_w_mm, [front_pt(finger_key(1, -rows_below)), ne(thumb("near"))]]],
+  [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) back_pt(finger_key(c, rows_above))], [bay_entry()]), "finger"]],
+  [[trunk_w_mm, concat([for (c = [4 : -1 : 0]) front_pt(finger_key(c, -rows_below))]), "finger"]],
+  [[trunk_w_mm, [front_pt(finger_key(1, -rows_below)), ne(thumb("near"))], "bridge"]],
   // Each finger row: from each key's tab up to its north edge, across to the
   // next cell's north edge and along it to that key's tab; the inner column's
   // feeds its wire into the column channel.
   [for (r = [-rows_below : rows_above]) each concat(
-    [[channel_w_mm, [r_tab(finger_key(0, r)), ne(finger_key(0, r)), nw(finger_key(0, r))]]],
+    [[channel_w_mm, [r_tab(finger_key(0, r)), ne(finger_key(0, r)), nw(finger_key(0, r))], "finger"]],
     [for (c = [0 : 3]) [channel_w_mm,
-      [r_tab(finger_key(c, r)), ne(finger_key(c, r)), nw(finger_key(c + 1, r)), ne(finger_key(c + 1, r)), r_tab(finger_key(c + 1, r))]]])],
+      [r_tab(finger_key(c, r)), ne(finger_key(c, r)), nw(finger_key(c + 1, r)), ne(finger_key(c + 1, r)), r_tab(finger_key(c + 1, r))], "finger"]])],
   // The thumb row: a trunk along the three keys' north edges (the row wire and
   // the column wires on their way to the front trunk), each key's tabs risen to it.
-  [[trunk_w_mm, [ne(thumb("near")), nw(thumb("near")), ne(thumb("home")), nw(thumb("home")), ne(thumb("far")), nw(thumb("far"))]]],
-  [for (n = ["near", "home", "far"]) each [[channel_w_mm, [r_tab(thumb(n)), ne(thumb(n))]], [channel_w_mm, [c_tab(thumb(n)), nw(thumb(n))]]]],
+  [[trunk_w_mm, [ne(thumb("near")), nw(thumb("near")), ne(thumb("home")), nw(thumb("home")), ne(thumb("far")), nw(thumb("far"))], "thumb"]],
+  [for (n = ["near", "home", "far"]) each [[channel_w_mm, [r_tab(thumb(n)), ne(thumb(n))], "thumb"], [channel_w_mm, [c_tab(thumb(n)), nw(thumb(n))], "thumb"]]],
   // The extra keys: their tabs risen to their north edges, joined to the gap
   // between the row keys over them.
   thumb_extra ? [for (x = [["x1", "near", "home"], ["x2", "home", "far"]]) let(k = thumb(x[0]),
       g = (nw(thumb(x[1])) + ne(thumb(x[2]))) / 2) each [
-    [channel_w_mm, [r_tab(k), ne(k), nw(k), c_tab(k)]],
-    [channel_w_mm, [(ne(k) + nw(k)) / 2, g]]]] : []);
+    [channel_w_mm, [r_tab(k), ne(k), nw(k), c_tab(k)], "thumb"],
+    [channel_w_mm, [(ne(k) + nw(k)) / 2, g], "thumb"]]] : []);
 /** A channel's post at a world point: from under the floor up to the point,
  * or to the bay's pocket where the point is in a bay. */
 module post(p, w) {

@@ -95,13 +95,16 @@ key's cell the plate's plane; between cells the nearby cells' planes blended by
 distance, each taken at its cell's nearest point, so the surface runs smoothly
 across the column stagger and the gap to the thumb cluster without extrapolating
 any plane. The footprint (`outline_style`) is a convex hull round the finger
-field and the bays and another round the thumb cluster, joined across the gap
-between them, with a `wall_mm` wall round it (6 mm, which carries the trunk
-channels and the screws' inserts), the notch between the two hulls rounded to
-`outline_close_mm` and every convex corner to `outline_round_mm`: straight
-sides, the stagger steps filled. ("closed" instead follows the cells, with the
-gaps between them closed up.) The walls are vertical
-down to a flat underside. No cutouts, ribs or gaps.
+field (its cells, the bays and its wire channels) and another round the thumb
+cluster, joined by a third round the thumb row, the bottom keys nearest it and
+the bays, so the inner edge runs straight from the bays to the thumb cluster
+and only the notch under the pinky side stays open. Every channel lies inside
+one of the hulls, so none of them shows in the outline. A `wall_mm` wall goes
+round it (6 mm, which carries the trunk channels and the screws' inserts), the
+notch is rounded to `outline_close_mm` and every convex corner to
+`outline_round_mm`: straight sides, the stagger steps filled. ("closed" instead
+follows the cells and channels, with the gaps between them closed up.) The
+walls are vertical down to a flat underside. No cutouts, ribs or gaps.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
