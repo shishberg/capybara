@@ -118,8 +118,11 @@ diode_mm = [4.0, 2.0];
 
 // ---------------------------------------------------------------- the body and bottom plate
 wall_mm = 6;                 // the body's wall past the key cells; the trunk channels and the screws' inserts sit in it
-outline_round_mm = 8;        // round of the outline's convex corners
-outline_close_mm = 16;       // gaps between cells narrower than twice this are filled, with a round of this radius
+// The outline: "hulls" joins a convex hull round the finger field and one
+// round the thumb cluster (straight sides); "closed" follows the cells.
+outline_style = "hulls";
+outline_round_mm = 6;        // round of the outline's convex corners
+outline_close_mm = 10;       // gaps narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05;             // the cell each key owns in plan, square
 // The body's underside is this far below the lowest socket's top (room for the
 // socket, the wires under it and the print's tolerance), flat; the bottom

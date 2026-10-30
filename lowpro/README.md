@@ -94,11 +94,13 @@ nRF52840 build.
 key's cell the plate's plane; between cells the nearby cells' planes blended by
 distance, each taken at its cell's nearest point, so the surface runs smoothly
 across the column stagger and the gap to the thumb cluster without extrapolating
-any plane. The footprint is the cells closed up (gaps narrower than
-2 × `outline_close_mm` filled, with a round of that radius where they meet the
-outline), a `wall_mm` wall round them (6 mm, which carries the trunk channels and
-the screws' inserts) and every convex corner rounded to `outline_round_mm`
-(8 mm): a smooth outline that still follows the hand. The walls are vertical
+any plane. The footprint (`outline_style`) is a convex hull round the finger
+field and the bays and another round the thumb cluster, joined across the gap
+between them, with a `wall_mm` wall round it (6 mm, which carries the trunk
+channels and the screws' inserts), the notch between the two hulls rounded to
+`outline_close_mm` and every convex corner to `outline_round_mm`: straight
+sides, the stagger steps filled. ("closed" instead follows the cells, with the
+gaps between them closed up.) The walls are vertical
 down to a flat underside. No cutouts, ribs or gaps.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a

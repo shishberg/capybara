@@ -19,7 +19,7 @@ function plane_z(k, x, y) = let(o = origin(k[K_FRAME]), n = axis_z(k[K_FRAME]))
 function cell_sample(i, x, y) = let(
     k = KEYS[i], l = xform(INV[i], [x, y, plane_z(k, x, y)]), s = cell_size(k) / 2,
     cx = clamp(l[0], -s[0], s[0]), cy = clamp(l[1], -s[1], s[1])
-  ) [norm([abs(l[0]) - cx, abs(l[1]) - cy]), xform(k[K_FRAME], [cx, cy, 0])[2]];
+  ) [norm([l[0] - cx, l[1] - cy]), xform(k[K_FRAME], [cx, cy, 0])[2]];
 /** The pocket height the bays need, from the floor, and their roof over it. */
 function bay_pocket_h() = max(mcu_parts_mm + mcu_board_mm[2] + mcu_clearance_mm,
   battery_mm[2] + battery_clearance_mm, power_switch ? power_switch_mm[2] + 0.6 : 0);
@@ -48,11 +48,24 @@ module cells_2d() {
   for (c = channels(), i = [0 : len(c[1]) - 2]) hull() for (p = [c[1][i], c[1][i + 1]])
     translate(xy(p)) circle(r = c[0] / 2 + 1, $fn = 16);
 }
-/** The body's footprint: the cells closed up (gaps narrower than
- * 2 * outline_close_mm filled, with a round of that radius where they meet
- * the outline), the wall round them, and the convex corners rounded. */
+/** The finger field (its cells and the bays) and the thumb cluster each as a
+ * convex hull, and the bridge between them (the near thumb key and the two
+ * bottom keys nearest it). */
+module hulls_2d() {
+  hull() { for (k = KEYS) if (k[K_GROUP] == "finger") polygon(cell_corners(k)); for (b = bays()) translate(b[0]) square(b[1] - b[0]); }
+  hull() for (k = KEYS) if (k[K_GROUP] != "finger") polygon(cell_corners(k));
+  hull() for (n = ["thumb_near", str("index_", -rows_below), str("inner_", -rows_below)]) polygon(cell_corners(key_named(n)));
+}
+/** The body's footprint: outline_style "hulls" is the two hulls joined, "closed"
+ * the cells closed up (gaps narrower than 2 * outline_close_mm filled). Either
+ * way the channel paths are in, the gaps that remain get a round of
+ * outline_close_mm, the wall goes round it and the convex corners are rounded
+ * to outline_round_mm. */
 module footprint_2d() offset(r = outline_round_mm) offset(r = -outline_round_mm) offset(r = wall_mm)
-  offset(r = -outline_close_mm) offset(r = outline_close_mm) cells_2d();
+  offset(r = -outline_close_mm) offset(r = outline_close_mm) {
+    cells_2d();
+    if (outline_style == "hulls") hulls_2d();
+  }
 /** The plan's bounding box, [[x0, y0], [x1, y1]], with room for the wall. */
 function plan_bbox() = let(
     pts = concat([for (k = KEYS) each cell_corners(k)], SCREWS, [for (b = bays()) each b]),
