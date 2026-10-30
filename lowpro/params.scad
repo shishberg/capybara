@@ -124,26 +124,28 @@ outline_style = "hulls";
 outline_round_mm = 6;        // round of the outline's convex corners
 outline_close_mm = 10;       // gaps narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05;             // the cell each key owns in plan, square
-// The body's underside is this far below the lowest socket's top (room for the
-// socket, the wires under it and the print's tolerance), flat; the bottom
-// plate closes it.
+// The body is a shell of one thickness: its underside is its top surface
+// dropped by the room every key needs, the socket's bottom and this much
+// under it (room for the wires under it and the print's tolerance). The
+// bottom plate is a plinth, flat on the desk, its top the same surface
+// plate_gap_mm lower; it is at least bottom_plate_mm thick.
 under_socket_mm = 0.6;
 bottom_plate_mm = 2;
-// The body steps down beside the inner column to a roof this thick over the
-// bay's pockets (0: no step, the surface blends over the bay).
-bay_roof_mm = 3;
-plate_gap_mm = 0.1;          // the plate's clearance in the body's rim
+plate_gap_mm = 0.1;
 // Bosses on the bottom plate hold each socket up against its pocket's ceiling.
 boss_clearance_mm = 0.15;
 boss_inset_mm = 0.6;         // the boss is this much smaller than the socket body all round
 // M2 screws from below into heat-set inserts in the body's wall: insert hole
-// and depth, the screw's clearance hole and countersink in the plate, and how
-// far past a cell's or bay's edge each insert's centre sits.
+// and depth, the screw's clearance hole through the plate, the head's
+// diameter (its counterbore is 0.6 wider), how much plate every screw grips
+// under the body (the counterbore goes up to it, so one screw length fits
+// everywhere: screw_grip_mm + insert_depth_mm), and how far past a cell's or
+// bay's edge each insert's centre sits.
 insert_d = 3.2;
 insert_depth_mm = 4;
 screw_d = 2.4;
 screw_head_d = 4.2;
-screw_head_mm = 1.2;
+screw_grip_mm = 3;
 screw_out_mm = 2.2;
 // Which edges carry screws: see screw_points() in layout.scad.
 
@@ -157,8 +159,11 @@ mcu_usb_mm = [9.0, 3.3];         // the port's width and height
 mcu_usb_overhang_mm = 1.3;
 mcu_usb_opening_mm = [10.5, 5];  // the hole through the back wall for the plug
 mcu_clearance_mm = 0.3;
-// The board lies in a bay on the inner side of the inner column (layout.scad
-// mcu_bay), along the column, its USB-C port out of the back wall.
+bay_under_mm = 1;
+// The board lies in a well in the bottom plate on the inner side of the inner
+// column (layout.scad mcu_bay), along the column, its USB-C port out of the
+// back wall; the well's floor sits bay_under_mm below the parts' room under
+// the body (so the port's opening stays in the plate's wall).
 // mcu_turn_deg turns it in plan about its port end.
 mcu_turn_deg = 0;
 // The reset button on the board, from the port end: across (x) and along (y) the board.

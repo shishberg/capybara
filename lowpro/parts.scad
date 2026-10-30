@@ -113,9 +113,9 @@ module diode() color("orange") rotate([-90, 0, 0]) cylinder(d = diode_mm[1], h =
 
 // ---------------------------------------------------------------- controller (nRF52840 Pro Micro)
 /** The board in its frame (layout.scad mcu_frame): origin at the middle of its
- * port end on the floor, +y along the board into the hand, components down
+ * port end on the well's floor, +y along the board into the hand, components down
  * toward the bottom plate. The board's underside (its component side) is
- * mcu_parts_mm over the floor. */
+ * mcu_parts_mm over the well's floor. */
 function mcu_pcb_z() = mcu_parts_mm;
 module mcu_board() {
   b = mcu_board_mm;
@@ -126,8 +126,8 @@ module mcu_board() {
   // Reset button, component side.
   color("white") translate([mcu_reset_mm[0], mcu_reset_mm[1], mcu_pcb_z() - 1.5]) cylinder(d = 3, h = 1.5);
 }
-/** The board's pocket: from the floor up over the board, with the wall's
- * opening for the plug. */
+/** The board's pocket: from the well's floor up over the board, with the
+ * wall's opening for the plug. */
 module mcu_room() {
   b = mcu_board_mm; c = mcu_clearance_mm;
   translate([-b[0] / 2 - c, -c, -1]) cube([b[0] + 2 * c, b[1] + 2 * c, mcu_pcb_z() + b[2] + c + 1]);
@@ -155,18 +155,21 @@ module power_switch_part() {
   color("black") cube(b, center = true);
   color("red") translate([0, -b[1] / 2 - k[2] / 2, 0]) cube([k[0], k[2], k[0]], center = true);
 }
-module power_switch_room() {
+/** The switch's pocket, with the knob's slot through the wall; `up` opens it
+ * that far upward (through the plate's top, so the switch drops in from the body's side). */
+module power_switch_room(up = 0) {
   b = power_switch_mm; k = power_switch_knob_mm; c = 0.3;
   cube(b + [2 * c, 2 * c, 2 * c], center = true);
   translate([0, -b[1] / 2 - 5, 0]) cube([k[1] + 2 * c, 10, k[0] + 2 * c], center = true);
-  // Open to the floor so the switch drops in from below.
-  translate([0, 0, -10]) cube([b[0] + 2 * c, b[1] + 2 * c, 20], center = true);
+  if (up > 0) translate([-b[0] / 2 - c, -b[1] / 2 - c, 0]) cube([b[0] + 2 * c, b[1] + 2 * c, up]);
 }
 
 // ---------------------------------------------------------------- screws
 module insert_hole() translate([0, 0, -1]) cylinder(d = insert_d, h = insert_depth_mm + 1);
-/** The screw's hole through the bottom plate, countersunk from below (z = 0 the plate's underside). */
-module screw_hole() {
-  translate([0, 0, -1]) cylinder(d = screw_d, h = bottom_plate_mm + 2);
-  translate([0, 0, -0.01]) cylinder(d1 = screw_head_d + 2 * screw_head_mm, d2 = screw_d, h = screw_head_mm + screw_d / 2);
+/** The screw's hole up through the bottom plate, which is h thick here (z = 0
+ * its underside): counterbored from below for the head so that every screw
+ * grips the same screw_grip_mm of plate under the body. */
+module screw_hole(h) {
+  translate([0, 0, -1]) cylinder(d = screw_d, h = h + 2);
+  if (h > screw_grip_mm) translate([0, 0, -1]) cylinder(d = screw_head_d + 0.6, h = h - screw_grip_mm + 1);
 }

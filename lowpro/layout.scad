@@ -1,5 +1,5 @@
 // The key layout from the measured hand: every key's frame, and the world
-// frame (the tent and the lift that stands the body on the floor).
+// frame (the tent and the lift that stands the body on the bottom plate).
 //
 // A key frame has its origin at the plate's top at the stem centre, +z out of
 // the key (up through the cap), +y along the column away from you (the switch's
@@ -111,16 +111,19 @@ function layout_keys() = concat(
   thumb_keys(), extra_keys());
 /** The tent and pitch, about the layout origin. */
 function tent_frame() = rot_x(pitch_deg) * rot_y(tent_deg);
-/** How far below a key's plate top the body's underside must reach: the socket's
- * bottom and the room under it. */
+/** How far below a key's plate top the body's underside must reach along the
+ * key's normal: the socket's bottom and the room under it. */
 function body_depth() = switch_below_plate_mm + pcb_layer_mm + socket_body_mm[2] + under_socket_mm;
-/** The lowest point any key's cell needs the body to reach, in tented axes. */
+/** The body's underside is the top surface dropped straight down by this much:
+ * body_depth() along the normal of the most tilted key, so no socket's room
+ * comes up short. */
+function floor_drop(T) = body_depth() / vmin([for (k = layout_keys()) axis_z(T * k[K_FRAME])[2]]);
+/** The lowest point any key's cell puts the body's underside, in tented axes. */
 function tented_floor_z(T) = vmin([for (k = layout_keys()) each
-  [for (sx = [-1, 1], sy = [-1, 1]) let(
-    c = [sx * k[K_CELL][0] / 2, sy * k[K_CELL][1] / 2, -body_depth()]
-  ) xform(T * k[K_FRAME], c)[2]]]);
-/** Layout axes to world: tented, then lifted so the body's underside sits on
- * the bottom plate, which stands on z = 0. */
+  [for (sx = [-1, 1], sy = [-1, 1])
+    xform(T * k[K_FRAME], [sx * k[K_CELL][0] / 2, sy * k[K_CELL][1] / 2, 0])[2]]]) - floor_drop(T);
+/** Layout axes to world: tented, then lifted so the body's lowest point sits
+ * bottom_plate_mm over the desk, which is z = 0. */
 function world_frame() = let(T = tent_frame())
   trans([0, 0, bottom_plate_mm - tented_floor_z(T)]) * T;
 WORLD = world_frame();
@@ -129,8 +132,8 @@ function keys() = [for (k = layout_keys())
   [k[K_NAME], WORLD * k[K_FRAME], k[K_GROUP], k[K_COL], k[K_ROW], k[K_CAPROW], k[K_UNITS], k[K_CELL]]];
 KEYS = keys();
 function key_named(name) = [for (k = KEYS) if (k[K_NAME] == name) k][0];
-/** The body's underside: the bottom plate's top. */
-FLOOR_Z = bottom_plate_mm;
+/** The body's underside drops this far below its top surface (chassis.scad floor_z). */
+FLOOR_DROP = floor_drop(tent_frame());
 /** A key's cell in its frame: [width along x, depth along y]. */
 function cell_size(k) = k[K_CELL];
 /** The cell's four corners in world plan, counterclockwise. */
@@ -141,12 +144,13 @@ function cell_corners(k, grow = 0) = let(s = cell_size(k) / 2 + [grow, grow])
 function cap_top(k) = xform(k[K_FRAME], [0, 0, cap_top_height(k[K_CAPROW])]);
 
 // ---------------------------------------------------------------- the bay: controller, battery, power switch
-// Nothing with a socket over it can sit on the floor (each socket's shaft is
-// open to the bottom plate), so the controller and the battery lie in a bay
-// on the inner side of the inner column, in world axes: the board along the
-// column with its port out of the back wall, the power switch beside it in
-// the inner side wall, and the battery in front of the board. The bay's
-// rectangles are [[x0, y0], [x1, y1]] in plan.
+// Nothing with a socket over it can sit under the body's floor (each socket's
+// shaft is open to the bottom plate), so the controller and the battery lie in
+// a well in the bottom plate on the inner side of the inner column, in world
+// axes: the board along the column with its port out of the back wall, the
+// power switch beside it in the inner side wall, and the battery in front of
+// the board. The bay's rectangles are [[x0, y0], [x1, y1]] in plan; the
+// parts' frames here are on z = 0, chassis.scad lifts them to the well's floor.
 function cell_back(k) = vmax([for (c = cell_corners(k)) c[1]]);
 function cell_x0(k) = vmin([for (c = cell_corners(k)) c[0]]);
 function cell_x1(k) = vmax([for (c = cell_corners(k)) c[0]]);
@@ -161,24 +165,21 @@ function mcu_bay() = let(
     x1 = vmin([for (r = [-rows_below : rows_above]) cell_x0(column_key(0, r))]) - bay_gap_mm,
     y1 = cell_back(column_key(0, rows_above))
   ) [[x1 - mcu_board_mm[0] - 2 * c - switch_strip(), y1 - mcu_board_mm[1] - 2 * c], [x1, y1]];
-/** The controller board's frame in world (parts.scad mcu_board): origin at the
- * middle of its port end on the floor, +y along the board, components down.
+/** The controller board's frame (parts.scad mcu_board): origin at the middle
+ * of its port end on the well's floor, +y along the board, components down.
  * The board lies along the column, its port facing the back (+y). */
 function mcu_frame() = let(b = mcu_bay(), c = mcu_clearance_mm)
-  trans([b[1][0] - c - mcu_board_mm[0] / 2, b[1][1] + mcu_usb_overhang_mm, FLOOR_Z]) * rot_z(180 + mcu_turn_deg);
-MCU = mcu_frame();
+  trans([b[1][0] - c - mcu_board_mm[0] / 2, b[1][1] + mcu_usb_overhang_mm, 0]) * rot_z(180 + mcu_turn_deg);
 /** The power switch's frame: body centred in its strip, knob out of the inner side (-x). */
 function power_switch_frame() = let(b = mcu_bay(), c = 0.3)
   trans([b[0][0] + c + power_switch_mm[1] / 2, b[1][1] - power_switch_back_mm - power_switch_mm[0] / 2,
-         FLOOR_Z + power_switch_mm[2] / 2 + c]) * rot_z(-90);
-POWER_SWITCH = power_switch_frame();
+         power_switch_mm[2] / 2 + c]) * rot_z(-90);
 /** The battery's bay: in front of the controller's, the same width. */
 function battery_bay() = let(m = mcu_bay(), c = battery_clearance_mm, y1 = m[0][1] - bay_gap_mm)
   [[m[0][0], y1 - battery_mm[1] - 2 * c], [m[1][0], y1]];
-/** The battery's frame: its centre on the floor (parts.scad battery). */
+/** The battery's frame: its centre on the well's floor (parts.scad battery). */
 function battery_frame() = let(b = battery_bay())
-  trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, FLOOR_Z]);
-BATTERY = battery_frame();
+  trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0]);
 function bays() = [mcu_bay(), battery_bay()];
 
 // ---------------------------------------------------------------- screws

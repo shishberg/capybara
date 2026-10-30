@@ -1,6 +1,7 @@
-// The body: the key field's top surface blended from the key cells, walled
-// and floored, with the switch and socket pockets, the wire channels, the bay
-// for the controller and battery, and the bottom plate with its socket bosses.
+// The body: the key field's top surface blended from the key cells, walled,
+// a shell of one thickness, with the switch and socket pockets and the wire
+// channels; and the bottom plate: a plinth up to the body's underside, with
+// the socket bosses and the well for the controller and battery.
 // Everything here is in world axes (layout.scad).
 include <layout.scad>
 include <parts.scad>
@@ -8,8 +9,8 @@ include <parts.scad>
 // ---------------------------------------------------------------- the top surface
 // A height field over the plan: inside a key's cell, its plate's plane; outside
 // every cell, the nearby cells' planes blended by distance, each taken at its
-// cell's nearest point (so no plane is extrapolated). Over the bays it is
-// capped at the bay roof.
+// cell's nearest point (so no plane is extrapolated). The body's underside is
+// the same field FLOOR_DROP lower, the plate's top plate_gap_mm under that.
 INV = [for (k = KEYS) rinv(k[K_FRAME])];
 blend_mm = 1.5;
 
@@ -20,24 +21,13 @@ function cell_sample(i, x, y) = let(
     k = KEYS[i], l = xform(INV[i], [x, y, plane_z(k, x, y)]), s = cell_size(k) / 2,
     cx = clamp(l[0], -s[0], s[0]), cy = clamp(l[1], -s[1], s[1])
   ) [norm([l[0] - cx, l[1] - cy]), xform(k[K_FRAME], [cx, cy, 0])[2]];
-/** The pocket height the bays need, from the floor, and their roof over it. */
-function bay_pocket_h() = max(mcu_parts_mm + mcu_board_mm[2] + mcu_clearance_mm,
-  battery_mm[2] + battery_clearance_mm, power_switch ? power_switch_mm[2] + 0.6 : 0);
-function bay_roof_z() = FLOOR_Z + bay_pocket_h() + bay_roof_mm;
-function in_rect(r, x, y) = x >= r[0][0] && x <= r[1][0] && y >= r[0][1] && y <= r[1][1];
-function in_bay(x, y) = len([for (b = bays()) if (in_rect(b, x, y)) 1]) > 0;
-/** The shelf that steps down to the bay roof: the bays' span with their
- * walls, except
- * within a mesh step and a millimetre of any cell (so the step starts clear of it). */
-function shelf_rect() = let(B = bays(), e = wall_mm + outline_round_mm + 1)
-  [[vmin([for (b = B) b[0][0]]) - e, vmin([for (b = B) b[0][1]])], [vmax([for (b = B) b[1][0]]) + e, vmax([for (b = B) b[1][1]]) + e]];
-function on_shelf(x, y, ss) = in_rect(shelf_rect(), x, y) && vmin([for (s = ss) s[0]]) > surface_step_mm + 1;
 function top_z(x, y) = let(
     ss = [for (i = [0 : len(KEYS) - 1]) cell_sample(i, x, y)],
     inside = [for (s = ss) if (s[0] <= 0) s[1]],
-    w = [for (s = ss) 1 / pow(s[0] + blend_mm, 3)],
-    z = len(inside) > 0 ? vmax(inside) : sum([for (i = [0 : len(ss) - 1]) w[i] * ss[i][1]]) / sum(w)
-  ) bay_roof_mm > 0 && on_shelf(x, y, ss) ? min(z, bay_roof_z()) : z;
+    w = [for (s = ss) 1 / pow(s[0] + blend_mm, 3)]
+  ) len(inside) > 0 ? vmax(inside) : sum([for (i = [0 : len(ss) - 1]) w[i] * ss[i][1]]) / sum(w);
+function floor_z(x, y) = top_z(x, y) - FLOOR_DROP;
+function plate_z(x, y) = floor_z(x, y) - plate_gap_mm;
 
 // ---------------------------------------------------------------- the outline
 SCREWS = screw_points();
@@ -78,32 +68,62 @@ function plan_bbox() = let(
   ) [[vmin(xs) - m, vmin(ys) - m], [vmax(xs) + m, vmax(ys) + m]];
 BBOX = plan_bbox();
 
-// ---------------------------------------------------------------- the surface solid
-/** The height field as a solid, from below the floor up to the surface. */
-module surface_solid() {
-  b = BBOX; st = surface_step_mm;
-  nx = ceil((b[1][0] - b[0][0]) / st) + 1; ny = ceil((b[1][1] - b[0][1]) / st) + 1;
-  xs = [for (i = [0 : nx - 1]) b[0][0] + i * st]; ys = [for (j = [0 : ny - 1]) b[0][1] + j * st];
-  top = [for (j = [0 : ny - 1], i = [0 : nx - 1]) [xs[i], ys[j], top_z(xs[i], ys[j])]];
-  bot = [for (j = [0 : ny - 1], i = [0 : nx - 1]) [xs[i], ys[j], FLOOR_Z - 1]];
-  N = nx * ny;
+// ---------------------------------------------------------------- the surface solids
+// The height field sampled on a grid over the plan, once.
+GRID = let(b = BBOX, st = surface_step_mm) [
+  ceil((b[1][0] - b[0][0]) / st) + 1, ceil((b[1][1] - b[0][1]) / st) + 1];
+GRID_XS = [for (i = [0 : GRID[0] - 1]) BBOX[0][0] + i * surface_step_mm];
+GRID_YS = [for (j = [0 : GRID[1] - 1]) BBOX[0][1] + j * surface_step_mm];
+TOP = [for (j = [0 : GRID[1] - 1], i = [0 : GRID[0] - 1]) top_z(GRID_XS[i], GRID_YS[j])];
+/** The solid between two height fields over the grid, each a z per grid point
+ * (row by row) or a single z. */
+module field_solid(hi, lo) {
+  nx = GRID[0]; ny = GRID[1]; N = nx * ny;
+  function z(f, n) = is_list(f) ? f[n] : f;
+  top = [for (j = [0 : ny - 1], i = [0 : nx - 1]) [GRID_XS[i], GRID_YS[j], z(hi, j * nx + i)]];
+  bot = [for (j = [0 : ny - 1], i = [0 : nx - 1]) [GRID_XS[i], GRID_YS[j], z(lo, j * nx + i)]];
   function t(i, j) = j * nx + i;
   function u(i, j) = N + j * nx + i;
   faces = concat(
     [for (j = [0 : ny - 2], i = [0 : nx - 2]) each
       [[t(i, j), t(i, j + 1), t(i + 1, j + 1)], [t(i, j), t(i + 1, j + 1), t(i + 1, j)]]],
-    [for (j = [0 : ny - 2], i = [0 : nx - 2]) [u(i, j), u(i + 1, j), u(i + 1, j + 1), u(i, j + 1)]],
+    [for (j = [0 : ny - 2], i = [0 : nx - 2]) each
+      [[u(i, j), u(i + 1, j + 1), u(i, j + 1)], [u(i, j), u(i + 1, j), u(i + 1, j + 1)]]],
     [for (i = [0 : nx - 2]) [t(i, 0), t(i + 1, 0), u(i + 1, 0), u(i, 0)]],
     [for (i = [0 : nx - 2]) [t(i + 1, ny - 1), t(i, ny - 1), u(i, ny - 1), u(i + 1, ny - 1)]],
     [for (j = [0 : ny - 2]) [t(0, j + 1), t(0, j), u(0, j), u(0, j + 1)]],
     [for (j = [0 : ny - 2]) [t(nx - 1, j), t(nx - 1, j + 1), u(nx - 1, j + 1), u(nx - 1, j)]]);
   polyhedron(points = concat(top, bot), faces = faces, convexity = 20);
 }
-/** The body before anything is cut from it. */
+/** The body before anything is cut from it: the shell between the top surface
+ * and its underside, within the footprint. */
 module blank() intersection() {
-  surface_solid();
-  translate([0, 0, FLOOR_Z]) linear_extrude(200) footprint_2d();
+  field_solid(TOP, [for (z = TOP) z - FLOOR_DROP]);
+  linear_extrude(200) footprint_2d();
 }
+/** The plinth before anything is cut from it: from the desk up to the body's underside. */
+module plinth_blank() intersection() {
+  field_solid([for (z = TOP) z - FLOOR_DROP - plate_gap_mm], -1);
+  linear_extrude(200) footprint_2d();
+}
+
+// ---------------------------------------------------------------- the bay's well
+/** The pocket height the parts need over the well's floor. */
+function bay_pocket_h() = max(mcu_parts_mm + mcu_board_mm[2] + mcu_clearance_mm,
+  battery_mm[2] + battery_clearance_mm, power_switch ? power_switch_mm[2] + 0.6 : 0);
+/** The well's floor: bay_under_mm below the parts' room under the lowest point
+ * of the body's underside over the bays, but never thinner than the plate's minimum. */
+function bay_floor_z() = let(
+    lows = [for (b = bays(), i = [0 : 4], j = [0 : 4])
+      floor_z(b[0][0] + (b[1][0] - b[0][0]) * i / 4, b[0][1] + (b[1][1] - b[0][1]) * j / 4)]
+  ) max(bottom_plate_mm, vmin(lows) - bay_pocket_h() - bay_under_mm);
+BAY_Z = bay_floor_z();
+MCU = trans([0, 0, BAY_Z]) * mcu_frame();
+BATTERY = trans([0, 0, BAY_Z]) * battery_frame();
+POWER_SWITCH = trans([0, 0, BAY_Z]) * power_switch_frame();
+/** The well: both bays' rectangles, open from the well's floor up through the
+ * plate's top (and into the body, where the parts need more than the plate has). */
+module well() for (b = bays()) translate([b[0][0], b[0][1], BAY_Z]) cube([b[1][0] - b[0][0], b[1][1] - b[0][1], 100]);
 
 // ---------------------------------------------------------------- wiring points
 // In a key's frame, at the socket's top: the column line past the -x tab
@@ -117,12 +137,10 @@ function c_tab(k) = at(k, [col_x, socket_tab_y[0]]);
 function r_tab(k) = at(k, [row_x, socket_tab_y[1]]);
 function nw(k) = at(k, [col_x, ne_y]);
 function ne(k) = at(k, [row_x, ne_y]);
-/** The back trunk's point behind a top key, held under the bay roof. */
-function back_pt(k) = let(p = at(k, [col_x, out_y]))
-  [p[0], p[1], bay_roof_mm > 0 ? min(p[2], bay_roof_z() - 1.5) : p[2]];
+function back_pt(k) = at(k, [col_x, out_y]);
 function front_pt(k) = at(k, [col_x, -out_y]);
-/** Where the trunks enter the controller's bay: just inside its back corner by the column. */
-function bay_entry() = let(b = mcu_bay()) [b[1][0] - 3, b[1][1] - 3, FLOOR_Z + bay_pocket_h() - 0.3];
+/** Where the back trunk reaches the well: just inside its back corner by the column. */
+function bay_entry() = let(b = mcu_bay(), x = b[1][0] - 3, y = b[1][1] - 3) [x, y, floor_z(x, y) + 3];
 function finger_key(col, row) = [for (k = KEYS) if (k[K_GROUP] == "finger" && k[K_COL] == col && k[K_ROW] == row) k][0];
 function thumb(name) = key_named(str("thumb_", name));
 /** The channels as polylines [width, [points...], group] in world; the group
@@ -154,11 +172,12 @@ function channels() = concat(
       g = (nw(thumb(x[1])) + ne(thumb(x[2]))) / 2) each [
     [channel_w_mm, [r_tab(k), ne(k), nw(k), c_tab(k)], "thumb"],
     [channel_w_mm, [(ne(k) + nw(k)) / 2, g], "thumb"]]] : []);
-/** A channel's post at a world point: from under the floor up to the point,
- * or to the bay's pocket where the point is in a bay. */
+/** A channel's post at a world point: from under the body's underside up to
+ * the point. It starts 3 mm under, so the hull between two posts stays open
+ * to the underside where that curves up between them. */
 module post(p, w) {
-  z = in_bay(p[0], p[1]) ? min(p[2], FLOOR_Z + bay_pocket_h() - 0.3) : p[2];
-  translate([p[0] - w / 2, p[1] - w / 2, FLOOR_Z - 1]) cube([w, w, z - FLOOR_Z + 1]);
+  f = floor_z(p[0], p[1]) - 3;
+  translate([p[0] - w / 2, p[1] - w / 2, f]) cube([w, w, p[2] - f]);
 }
 module channel(w, pts) for (i = [0 : len(pts) - 2]) hull() { post(pts[i], w); post(pts[i + 1], w); }
 module channels() for (c = channels()) channel(c[0], c[1]);
@@ -168,9 +187,9 @@ module diode_rooms() for (k = KEYS) multmatrix(k[K_FRAME])
     cube([diode_mm[1] + 0.8, diode_mm[0] + 0.8, diode_mm[1] + 0.8], center = true);
 function diode_frame(k) = k[K_FRAME] * trans([col_x, (socket_tab_y[0] + ne_y) / 2 + 1, socket_top_z() - diode_mm[1] / 2 - 0.4]);
 /** Something in key k's frame carried straight down (in world) to below the
- * floor: shafts and wells stand square to the bottom plate however the key tilts. */
+ * desk: shafts and wells stand square to the desk however the key tilts. */
 module dropped(k) hull() { multmatrix(k[K_FRAME]) children(); translate([0, 0, -60]) multmatrix(k[K_FRAME]) children(); }
-/** The socket's shaft from its pocket down to the bottom plate, `grow` round the body. */
+/** The socket's shaft from its pocket down through the body's underside, `grow` round the body. */
 module socket_shaft(k, grow) dropped(k) socket_body(grow);
 /** Room under each socket tab to solder to it. */
 module solder_wells() for (k = KEYS, side = [-1, 1]) let(t = socket_tab_tip(side)) dropped(k)
@@ -178,12 +197,15 @@ module solder_wells() for (k = KEYS, side = [-1, 1]) let(t = socket_tab_tip(side
 
 // ---------------------------------------------------------------- the body
 module key_rooms() for (k = KEYS) { multmatrix(k[K_FRAME]) { mx_switch_room(); hotswap_socket_room(); } socket_shaft(k, socket_clearance_mm); }
-module bay_rooms() {
+/** The parts' rooms in the well, cut from the plinth (where the switch's
+ * pocket opens up through the plate's top) and from the body where they reach
+ * above the plate's top. */
+module bay_rooms(plinth = false) {
   multmatrix(MCU) mcu_room();
   multmatrix(BATTERY) battery_room();
-  if (power_switch) multmatrix(POWER_SWITCH) power_switch_room();
+  if (power_switch) multmatrix(POWER_SWITCH) power_switch_room(plinth ? 100 : 0);
 }
-module insert_holes() for (p = SCREWS) translate([p[0], p[1], FLOOR_Z]) insert_hole();
+module insert_holes() for (p = SCREWS) translate([p[0], p[1], floor_z(p[0], p[1])]) insert_hole();
 module body() difference() {
   blank();
   key_rooms();
@@ -195,17 +217,21 @@ module body() difference() {
 }
 
 // ---------------------------------------------------------------- the bottom plate
-/** The boss under key k's socket: the socket's shaft, inset, from the plate up
- * to just under the socket. */
+/** The boss under key k's socket: the socket's shaft, inset, from the desk up
+ * to just under the socket (it merges with the plinth below the plate's top). */
 module socket_boss(k) intersection() {
   socket_shaft(k, -boss_inset_mm);
   multmatrix(k[K_FRAME]) translate([0, 0, socket_bottom_z() - boss_clearance_mm - 100]) cube([80, 80, 200], center = true);
-  translate([BBOX[0][0], BBOX[0][1], FLOOR_Z - 0.01]) cube([BBOX[1][0] - BBOX[0][0], BBOX[1][1] - BBOX[0][1], 100]);
+  translate([BBOX[0][0], BBOX[0][1], 0]) cube([BBOX[1][0] - BBOX[0][0], BBOX[1][1] - BBOX[0][1], 100]);
 }
+/** The plinth: up to the body's underside, with the well, the screw holes and
+ * the pinhole over the reset button, and the socket bosses standing on it. */
 module bottom_plate() {
   difference() {
-    linear_extrude(bottom_plate_mm) footprint_2d();
-    for (p = SCREWS) translate([p[0], p[1], 0]) screw_hole();
+    plinth_blank();
+    well();
+    bay_rooms(plinth = true);
+    for (p = SCREWS) translate([p[0], p[1], 0]) screw_hole(plate_z(p[0], p[1]));
     multmatrix(MCU) mcu_reset_hole();
   }
   for (k = KEYS) socket_boss(k);
@@ -233,12 +259,14 @@ module cap_collisions() for (p = near_pairs(), press = [[0, 0], [cap_travel_mm, 
     multmatrix(KEYS[p[0]][K_FRAME]) keycap_probe(KEYS[p[0]][K_CAPROW], KEYS[p[0]][K_UNITS], press[0]);
     multmatrix(KEYS[p[1]][K_FRAME]) keycap_probe(KEYS[p[1]][K_CAPROW], KEYS[p[1]][K_UNITS], press[1]);
   }
-/** The board's height: from the floor to the highest cap's top, and the lowest. */
+/** The board's height: from the desk to the highest cap's top, and the lowest. */
 function cap_tops() = [for (k = KEYS) cap_top(k)[2]];
 function report() = let(
-    b = BBOX, tops = cap_tops(), plates = [for (k = KEYS) origin(k[K_FRAME])[2]]
+    b = BBOX, tops = cap_tops(), plates = [for (k = KEYS) origin(k[K_FRAME])[2]],
+    floors = [for (k = KEYS) floor_z(origin(k[K_FRAME])[0], origin(k[K_FRAME])[1])]
   ) str("plate tops ", r2(vmin(plates)), " to ", r2(vmax(plates)), " mm over the desk; cap tops ",
-        r2(vmin(tops)), " to ", r2(vmax(tops)), " mm; bay roof ", r2(bay_roof_z()),
+        r2(vmin(tops)), " to ", r2(vmax(tops)), " mm; body shell ", r2(FLOOR_DROP),
+        " mm thick; plinth ", r2(vmin(floors)), " to ", r2(vmax(floors)), " mm under the keys; well floor ", r2(BAY_Z),
         " mm; fingertip reach between rows ",
         [for (i = [0 : 3]) r2(finger_plate_pitch(i) * finger_reach_radius(i) / finger_plate_radius(i))],
         " mm (index to pinky); plan about ", r2(b[1][0] - b[0][0] - 2 * (outline_round_mm + 2)), " x ", r2(b[1][1] - b[0][1] - 2 * (outline_round_mm + 2)), " mm");

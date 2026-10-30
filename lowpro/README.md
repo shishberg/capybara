@@ -13,13 +13,13 @@ and the way it moves. What changes:
 |---|---|---|
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
-| Height to the highest cap | 63 mm | about 37 mm (26 mm at the pinky) |
+| Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
 | Plan per half | | about 142 × 137 mm |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
 | Power | USB | A small LiPo per hand and a slide switch |
-| Chassis | Open rib frame, bottom section | One enclosed body on a screwed-on bottom plate |
+| Chassis | Open rib frame, bottom section | An enclosed shell of one thickness, screwed onto a plinth that carries the tent |
 
 ## Files
 
@@ -28,12 +28,12 @@ and the way it moves. What changes:
 | `capybara-lowpro.scad` | Open this. `half` and `show` pick the hand and what to draw; see its header. |
 | `params.scad` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
 | `hand.scad` | The measured hand, generated from `hand/left-hand.json` by `hand_from_json.py`. Do not edit; rerun the script if the hand model changes. |
-| `layout.scad` | The key frames from the hand, the tent and lift, the controller and battery bay, the screw positions. |
+| `layout.scad` | The key frames from the hand, the tent and lift, the bay for the controller and battery, the screw positions. |
 | `parts.scad` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
-| `chassis.scad` | The body, its pockets and channels, the bottom plate, and the checks. |
+| `chassis.scad` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 
 Render from the repository root with `make lowpro`: the right and left bodies
-and bottom plates as STL, the collision check and a few preview images, into
+and plinths as STL, the collision check and a few preview images, into
 `output/lowpro/`. One part at a time:
 
 ```sh
@@ -90,11 +90,16 @@ nRF52840 build.
 
 ## The chassis
 
-**Body.** One solid, this way up, its top surface the key field: inside each
-key's cell the plate's plane; between cells the nearby cells' planes blended by
-distance, each taken at its cell's nearest point, so the surface runs smoothly
-across the column stagger and the gap to the thumb cluster without extrapolating
-any plane. The footprint (`outline_style`) is a convex hull round the finger
+**Body.** A shell of one thickness, this way up. Its top surface is the key
+field: inside each key's cell the plate's plane; between cells the nearby cells'
+planes blended by distance, each taken at its cell's nearest point, so the
+surface runs smoothly across the column stagger and the gap to the thumb cluster
+without extrapolating any plane. Its underside is the same surface dropped
+straight down by the room every key needs (the socket's bottom and
+`under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
+so the body is as thick under the inner column as under the pinky and every
+wiring channel is the same depth. The tent and the wells live in the plinth
+under it. The footprint (`outline_style`) is a convex hull round the finger
 field (its cells, the bays and its wire channels) and another round the thumb
 cluster, joined by a third round the thumb row, the bottom keys nearest it and
 the bays, so the inner edge runs straight from the bays to the thumb cluster
@@ -104,15 +109,17 @@ round it (6 mm, which carries the trunk channels and the screws' inserts), the
 notch is rounded to `outline_close_mm` and every convex corner to
 `outline_round_mm`: straight sides, the stagger steps filled. ("closed" instead
 follows the cells and channels, with the gaps between them closed up.) The
-walls are vertical down to a flat underside. No cutouts, ribs or gaps.
+walls are vertical. No cutouts, ribs or gaps. The underside is curved and
+tilted, so the body prints on support (or on a raft): lay it on the tent plane
+and the support is at most a few millimetres tall; the plinth prints flat.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
 below the plate, then a 1.6 mm layer in place of a PCB with holes for the
 centre post, the side posts and the two pins, and under that the hotswap socket's
 pocket, open downward as a shaft to the underside. The shaft and the solder wells
-are cut vertically, square to the bottom plate, however the key tilts, so the
-plate's bosses stand straight and no sliver of body is left under a tilted key.
+are cut vertically, square to the desk, however the key tilts, so the
+plinth's bosses stand straight and no sliver of body is left under a tilted key.
 The socket is pushed up the shaft from below until it meets the pocket's
 ceiling, where the switch's pins reach it; the socket body is modelled as the measured 11.6 × 6.2 × 1.9 mm
 envelope cut into the two boxes about its pin cups (`socket_body` in
@@ -120,8 +127,8 @@ envelope cut into the two boxes about its pin cups (`socket_body` in
 each tab reaches up from the underside so a wire can be soldered to the tab
 after the socket is in. There are no LEDs.
 
-**Wiring channels.** Slots in the underside, from the floor up to the sockets'
-tops, closed by the bottom plate:
+**Wiring channels.** Slots in the underside, from the underside up to the
+sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
 
 - a column channel up each column past the keys' −x tabs, with a pocket for
   each key's diode (DO-35) in line, so the diodes' legs make the column wire as
@@ -130,10 +137,10 @@ tops, closed by the bottom plate:
   +x tab, crossing that key's column channel on the way (use insulated wire for
   the rows);
 - the inner column's channel is a wider trunk (`trunk_w_mm`): the three row
-  wires join it, and it runs on into the controller's bay;
+  wires join it;
 - a trunk in the back wall from the pinky column's top along to the inner
-  column and into the bay, which the columns' wires follow, and one in the
-  front wall along the bottom row that joins the thumb cluster;
+  column and on over the well's rim, which the columns' wires follow, and one in
+  the front wall along the bottom row that joins the thumb cluster;
 - in the thumb cluster, a trunk along the three row keys' north edges (the
   thumb row's wire and the thumb keys' column wires on their way to the front
   trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps
@@ -146,24 +153,32 @@ of two posts), and where two meet they merge. Look at them from below
 millimetre of each other a render can leave a speck of body between them (the
 right body has a few of under 1 mm³); a slicer drops them.
 
-**Bay.** Nothing can sit on the floor under a socket, since each socket's shaft is
-open to the bottom plate, so the controller and battery lie in a bay on the
-inner side of the inner column: the board along the column, components down,
-its USB-C port out of the back wall through a chamfered opening; the power
-switch beside it in the inner side wall; the battery in front of the board. The
-body steps down over the bay to a roof `bay_roof_mm` thick over the pockets,
-the step a few millimetres inside the inner column's cells (set `bay_roof_mm`
-to 0 for no step, and the surface blends over the bay). The back trunk channel
-enters the bay at its back corner, under the roof. The bottom plate has a
-pinhole over the board's reset button.
+**Plinth.** The bottom plate is a plinth: flat on the desk, its top the body's
+underside `plate_gap_mm` lower, the same outline. It is `bottom_plate_mm` thick
+at its thinnest, under pinky home, and about 14 mm under the inner column and
+the thumbs, so it carries the tent and the wells and the body does not. Under
+each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
+rises to 0.15 mm under the socket and holds it against its ceiling when a
+switch is pushed in. It is screwed from below with M2 screws into heat-set
+inserts in the body's wall at eight points (`screw_points` in `layout.scad`:
+the pinky's outer side, the thumb cluster's far side and front, the bay's inner
+side and front, all edges the trunk channels keep clear of). Each screw hole is
+counterbored from below so that every screw grips `screw_grip_mm` of plinth
+under the body: one screw length (that plus `insert_depth_mm`, so M2 × 8)
+fits the thin side and the thick.
 
-**Bottom plate.** The same outline, `bottom_plate_mm` thick, screwed from below
-with M2 screws into heat-set inserts in the body's wall at eight points
-(`screw_points` in `layout.scad`: the pinky's outer side, the thumb cluster's far
-side and front, the bay's inner side and front, all edges the trunk channels keep
-clear of), countersunk. Under each socket it carries a boss, the socket's shaft
-inset `boss_inset_mm`, that rises to 0.15 mm under the socket and holds it
-against its ceiling when a switch is pushed in.
+**Bay.** Nothing can sit under a socket, since each socket's shaft is open to
+the underside, so the controller and battery lie in a well in the plinth on the
+inner side of the inner column, open at the top and closed by the body: the
+board along the column, components down, its USB-C port out of the back wall
+through a chamfered opening; the power switch beside it in the inner side wall,
+its pocket open upward so it drops in from the body's side; the battery in
+front of the board. The well's floor is `bay_under_mm` below the parts' room
+under the lowest point of the body over the bay (6 mm over the desk), never
+less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
+rooms are cut up into the body as well. The back trunk channel runs over the
+well's rim at its back corner. The plinth has a pinhole under the board's reset
+button.
 
 ## Checks and what they don't cover
 
@@ -171,7 +186,8 @@ against its ceiling when a switch is pushed in.
 `cap_clearance_mm`) meet, at rest and with either one pressed `cap_travel_mm`;
 it is empty when the layout is clear, and `make lowpro` fails if it isn't. The
 default layout is clear. `report()` echoes the plate and cap heights over the
-desk, the bay roof, the fingertip reach per column and the plan size.
+desk, the shell's thickness, the plinth's height under the keys, the well's
+floor, the fingertip reach per column and the plan size.
 
 Not checked: the hand's reach (the `?hand` prototype's checks don't run on this
 layout), switches and caps against the body (the cells are planar and larger than
@@ -182,7 +198,7 @@ socket's tabs, the controller, the battery and the power switch are nominal size
 ## Open questions
 
 - Flatter still? `tent_deg` and `reach_mix` are the two knobs; the pinky side is
-  already at the body's minimum (a socket, a wire and the bottom plate).
+  already at the minimum (the shell and the plinth's 2 mm).
 - The thumb keys' drop and tilt (`thumb_drop_mm`, `thumb_tilt_deg`) are guesses
   from the flat-paper prints; the hand model would say more.
 - Fanned thumb keys at a wider pitch versus parallel ones at 19.05 mm.
