@@ -90,7 +90,7 @@ module blank() intersection() {
 // ---------------------------------------------------------------- wiring points
 // In a key's frame, at the socket's top: the column line past the -x tab
 // (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
-col_x = socket_centre_mm[0] - socket_body_mm[0] / 2 - socket_tab_mm[0] + 1.1;
+col_x = socket_centre_mm[0] - socket_body_mm[0] / 2 - 0.3;   // overlapping the socket's shaft, so no sliver is left between them under the tent
 row_x = socket_centre_mm[0] + socket_body_mm[0] / 2 + socket_tab_mm[0];
 ne_y = cell_mm / 2 - channel_w_mm / 2;
 out_y = cell_mm / 2 + 1.5;    // a trunk point just past a cell's edge
