@@ -80,7 +80,7 @@ module surface_solid() {
     [for (i = [0 : nx - 2]) [t(i + 1, ny - 1), t(i, ny - 1), u(i, ny - 1), u(i + 1, ny - 1)]],
     [for (j = [0 : ny - 2]) [t(0, j + 1), t(0, j), u(0, j), u(0, j + 1)]],
     [for (j = [0 : ny - 2]) [t(nx - 1, j), t(nx - 1, j + 1), u(nx - 1, j + 1), u(nx - 1, j)]]);
-  polyhedron(points = concat(top, bot), faces = faces, convexity = 4);
+  polyhedron(points = concat(top, bot), faces = faces, convexity = 20);
 }
 /** The body before anything is cut from it. */
 module blank() intersection() {
