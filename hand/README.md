@@ -80,7 +80,7 @@ The scripts:
 PHOTOS=/path/to/photos PYTHON=/path/to/venv/bin/python hand/tools/run.sh
 ```
 
-`run.sh` needs Python 3 with numpy, pillow and scipy. It writes `left-hand.json`, and puts the grid-check overlays in `output/hand/`.
+`run.sh` needs Python 3 with numpy, pillow and scipy. It writes `left-hand.json`, and puts the grid-check overlays in `output/hand/`. The [low-profile proposal](../lowpro/README.md) reads a copy of the measured values from `lowpro/hand.scad`; `make lowpro-hand` regenerates that from `left-hand.json`.
 
 The photos (`kb-sheet-a.jpg`, `kb-sheet-b.jpg`, `kb-hand-a.jpg`, `kb-hand-b.jpg`, `kb-uncropped-a.jpg`, `kb-uncropped-b.jpg`) aren't in the repo. `PHOTOS` defaults to the repo root.
 
