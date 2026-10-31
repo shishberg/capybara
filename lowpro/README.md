@@ -48,7 +48,9 @@ python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 
 The STEP files are true solids (fillets, splines and all), so FreeCAD or any
 other CAD opens them to measure, section or change them; the STL files go to
-the slicer.
+the slicer. A body's STEP is large (about 90 MB: the spline underside is cut
+into hundreds of faces by the channels and pockets, each carrying the
+surface), so give FreeCAD a minute to open it.
 
 ## The layout
 

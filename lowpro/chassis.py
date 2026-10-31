@@ -108,7 +108,7 @@ def top_face():
     X, Y = np.meshgrid(xs, ys, indexing="ij")
     Z = field(X.ravel(), Y.ravel()).reshape(X.shape)
     pts = [[(float(X[i, j]), float(Y[i, j]), float(Z[i, j])) for j in range(X.shape[1])] for i in range(X.shape[0])]
-    return Face.make_surface_from_array_of_points(pts, tol=0.01, min_deg=2, max_deg=2)
+    return Face.make_surface_from_array_of_points(pts, tol=P.surface_fit_mm, min_deg=2, max_deg=2)
 
 
 def floor_face():
@@ -226,9 +226,9 @@ def footprint_2d():
     outline = max(s.faces(), key=lambda f: f.area).outer_wire()
     # The offsets leave a chain of hundreds of short lines and arcs (the hulls
     # are polygons), which a fillet along the top edge cannot follow; one smooth
-    # periodic spline through the chain, sampled every millimetre or so, is
+    # periodic spline through the chain, sampled every outline_sample_mm, is
     # within a few hundredths of it and fillets cleanly.
-    n = int(outline.length / 1.0)
+    n = int(outline.length / P.outline_sample_mm)
     pts = [outline.position_at(i / n) for i in range(n)]
     return Face(Wire([Edge.make_spline(pts, periodic=True)]))
 

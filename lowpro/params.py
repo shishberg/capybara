@@ -185,10 +185,15 @@ power_switch_knob_mm = (1.5, 3.0, 1.5)  # width, travel + width, how far it stan
 power_switch_back_mm = 8                # along the inner side wall, from the bay's back
 
 # ---------------------------------------------------------------- modelling
-# The top surface is fitted through the key field sampled at this step; finer
-# is slower to fit and to cut. Between cells the field blends the cells' planes,
-# from this far inside each cell's edge (chassis.py field).
+# The top surface is fitted through the key field sampled at this step, to
+# this tolerance. Between cells the field blends the cells' planes, from this
+# far inside each cell's edge (chassis.py field). The footprint's outline is
+# smoothed into one spline through points this far apart. The top edge's
+# fillet is particular about both: it fails with a looser fit (0.05) or a
+# coarser outline (2 mm).
 surface_step_mm = 2
+surface_fit_mm = 0.01
 surface_blend_mm = 3
+outline_sample_mm = 1
 # Each cell's plane is cut clear this far past its edge (chassis.py body_blank).
 cell_step_mm = 0.6
