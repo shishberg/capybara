@@ -24,7 +24,7 @@ Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capy
 
 ## Proposed: a low-profile Capybara
 
-[`lowpro/`](lowpro/README.md) is a parametric OpenSCAD study of a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. `make lowpro` renders it into `output/lowpro/`.
+[`lowpro/`](lowpro/README.md) is a parametric build123d (OpenCascade) study of a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. `make lowpro` builds it to STEP and STL in `output/lowpro/`.
 
 ## Paused: the pod
 

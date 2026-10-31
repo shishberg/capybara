@@ -3,8 +3,9 @@
 A proposal for a lower, more compact Capybara: still MX switches, still a split
 hand-wired board on a printed chassis, but much flatter than the
 [Capybara frame](../docs/editor-chassis.md), wireless, and modelled as one
-parametric OpenSCAD design instead of the editor's pipeline. It is a layout
-study: nothing here has been printed.
+parametric design in Python ([build123d](https://build123d.readthedocs.io/),
+on the OpenCascade kernel FreeCAD uses) instead of the editor's pipeline. It
+is a layout study: nothing here has been printed.
 
 What carries over from the current design is the [measured hand](../hand/README.md)
 and the way it moves. What changes:
@@ -25,25 +26,29 @@ and the way it moves. What changes:
 
 | File | What it is |
 |---|---|
-| `capybara-lowpro.scad` | Open this. `half` and `show` pick the hand and what to draw; see its header. |
-| `params.scad` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
-| `hand.scad` | The measured hand, generated from `hand/left-hand.json` by `hand_from_json.py`. Do not edit; rerun the script if the hand model changes. |
-| `layout.scad` | The key frames from the hand, the tent and lift, the bay for the controller and battery, the screw positions. |
-| `parts.scad` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
-| `chassis.scad` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
+| `build.py` | The command: builds the parts to STEP and STL; see its header. |
+| `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
+| `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions. |
+| `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
+| `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
+| `lib.py` | Frames as 4 × 4 matrices. |
 
-Render from the repository root with `make lowpro`: the right and left bodies
-and plinths as STL, the collision check and a few preview images, into
-`output/lowpro/`. One part at a time:
+It needs Python 3 with `build123d` and `scipy` (`pip install build123d scipy`;
+build123d brings the OpenCascade kernel with it). Build from the repository
+root with `make lowpro`: the right and left bodies and plinths as STEP and STL,
+the right assembly (body, plinth, switches, caps, sockets, diodes and
+electronics, coloured) as STEP, and the keycap check, into `output/lowpro/`.
+A body takes about ten minutes, a plinth one (`--verbose` shows the stages). One part at a time, or with a
+parameter changed:
 
 ```sh
-openscad -D 'show="body"' -D 'half="left"' -o left-body.stl lowpro/capybara-lowpro.scad
+python3 -m lowpro.build --half left --part body
+python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 ```
 
-Any parameter can be overridden on the command line the same way (`-D 'tent_deg=4'`).
-The surface is a 2 mm mesh (`surface_step_mm`); OpenSCAD 2021 renders a body in a
-few minutes, a 2024 or later release with Manifold in seconds. The preview (F5) is
-instant either way, and is where to tune parameters.
+The STEP files are true solids (fillets, splines and all), so FreeCAD or any
+other CAD opens them to measure, section or change them; the STL files go to
+the slicer.
 
 ## The layout
 
@@ -91,10 +96,17 @@ nRF52840 build.
 ## The chassis
 
 **Body.** A shell of one thickness, this way up. Its top surface is the key
-field: inside each key's cell the plate's plane; between cells the nearby cells'
-planes blended by distance, each taken at its cell's nearest point, so the
-surface runs smoothly across the column stagger and the gap to the thumb cluster
-without extrapolating any plane. Its underside is the same surface dropped
+field: inside each key's cell the plate's plane, exactly; between cells the
+nearby cells' planes blended by distance, each taken at its cell's nearest
+point, so the surface runs smoothly across the column stagger and the gap to
+the thumb cluster without extrapolating any plane. The blend is a quadratic
+spline surface fitted through the field sampled every `surface_step_mm`, and
+it starts `surface_blend_mm` inside each cell's edge; then each cell's plane is
+cut and filled back exactly, `cell_step_mm` past its edge, so where two cells
+of different heights abut (the bottom row's ring and pinky keys differ by
+5 mm) the surface steps at the higher cell's edge rather than ramping across
+both. (A ring 0.3 mm wide and 0.1 mm deep is left round each cell's plane:
+OpenCascade is surest of booleans whose faces do not coincide.) Its underside is the same surface dropped
 straight down by the room every key needs (the socket's bottom and
 `under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
 so the body is as thick under the inner column as under the pinky and every
@@ -107,18 +119,13 @@ and only the notch under the pinky side stays open. Every channel lies inside
 one of the hulls, so none of them shows in the outline. A `wall_mm` wall goes
 round it (6 mm, which carries the trunk channels and the screws' inserts), the
 notch is rounded to `outline_close_mm` and every convex corner to
-`outline_round_mm`: straight sides, the stagger steps filled. ("closed" instead
-follows the cells and channels, with the gaps between them closed up.) The
-walls are vertical, and the top edge is rounded to `top_round_mm` (4 mm). No
-cutouts, ribs or gaps. The underside is curved and tilted, so the body prints
-on support (or on a raft): lay it on the tent plane and the support is at most
-a few millimetres tall; the plinth prints flat.
-
-The top edge's round is built as a stack: at each of `top_round_steps` insets
-from the wall the top surface is lowered by the quarter circle's drop there,
-and the stack is unioned, so the profile is stepped (0.5 mm at twelve steps,
-which a 0.2 mm layer print smooths over; the preview draws four). It costs a
-few minutes of render time per step; set `top_round_mm` to 0 for a sharp edge.
+`outline_round_mm`: straight sides, the stagger steps filled, and the result
+smoothed into one closed spline. ("closed" instead follows the cells and
+channels, with the gaps between them closed up.) The walls are vertical, and
+the top edge is a true fillet of `top_round_mm` (4 mm; 0 leaves it sharp).
+No cutouts, ribs or gaps. The underside is curved and tilted, so the body
+prints on support (or on a raft): lay it on the tent plane and the support is
+at most a few millimetres tall; the plinth prints flat.
 
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
@@ -130,7 +137,7 @@ plinth's bosses stand straight and no sliver of body is left under a tilted key.
 The socket is pushed up the shaft from below until it meets the pocket's
 ceiling, where the switch's pins reach it; the socket body is modelled as the measured 11.6 × 6.2 × 1.9 mm
 envelope cut into the two boxes about its pin cups (`socket_body` in
-`parts.scad`), with its two solder tabs out of the ±x ends. A solder well under
+`parts.py`), with its two solder tabs out of the ±x ends. A solder well under
 each tab reaches up from the underside so a wire can be soldered to the tab
 after the socket is in. There are no LEDs.
 
@@ -154,11 +161,8 @@ sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
   between the row keys.
 
 The channels are a first cut: each is a straight slot between two points (a hull
-of two posts), and where two meet they merge. Look at them from below
-(`show="body"`, view from underneath) before trusting a route; `channels()` in
-`chassis.scad` is the list to edit. Where two cuts come within a fraction of a
-millimetre of each other a render can leave a speck of body between them (the
-right body has a few of under 1 mm³); a slicer drops them.
+of two posts), and where two meet they merge. Look at them from below before
+trusting a route; `channels()` in `chassis.py` is the list to edit.
 
 **Plinth.** The bottom plate is a plinth: flat on the desk, its top the body's
 underside `plate_gap_mm` lower, the same outline. It is `bottom_plate_mm` thick
@@ -167,7 +171,7 @@ the thumbs, so it carries the tent and the wells and the body does not. Under
 each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
 rises to 0.15 mm under the socket and holds it against its ceiling when a
 switch is pushed in. It is screwed from below with M2 screws into heat-set
-inserts in the body's wall at eight points (`screw_points` in `layout.scad`:
+inserts in the body's wall at eight points (`screw_points` in `layout.py`:
 the pinky's outer side, the thumb cluster's far side and front, the bay's inner
 side and front, all edges the trunk channels keep clear of). Each screw hole is
 counterbored from below so that every screw grips `screw_grip_mm` of plinth
@@ -189,10 +193,10 @@ button.
 
 ## Checks and what they don't cover
 
-`show="check"` renders where any two neighbouring caps (grown by
-`cap_clearance_mm`) meet, at rest and with either one pressed `cap_travel_mm`;
-it is empty when the layout is clear, and `make lowpro` fails if it isn't. The
-default layout is clear. `report()` echoes the plate and cap heights over the
+The build checks whether any two neighbouring caps (grown by
+`cap_clearance_mm`) meet, at rest and with either one pressed `cap_travel_mm`,
+and fails naming the pair if they do (`make lowpro-check` runs only this). The
+default layout is clear. It also prints the plate and cap heights over the
 desk, the shell's thickness, the plinth's height under the keys, the well's
 floor, the fingertip reach per column and the plan size.
 

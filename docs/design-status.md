@@ -38,7 +38,7 @@ Paused, kept as reference: the flex finger boards, flat thumb PCBs and LED-free 
 |---|---|
 | Pro Micro build | The clone's pinout, the LEDs at 3.3 V and the LED current: see [Pro Micro](pro-micro.md#open). Its parts' sizes are provisional until measured. |
 | Modtap prediction model | Collecting keypress data for a modtap prediction model was a reason to keep the ESP32-P4. For the model to move between chips, its features should be key timestamps, not anything specific to one chip. |
-| Low-profile Capybara | A proposal, not a decision: [`lowpro/`](../lowpro/README.md) lays out a flatter (6° tent), wireless half on the same hand model as one parametric OpenSCAD design, with Cherry caps, hotswap sockets in pockets and an nRF52840 Pro Micro with a battery. Its own README lists what it leaves open. |
+| Low-profile Capybara | A proposal, not a decision: [`lowpro/`](../lowpro/README.md) lays out a flatter (6° tent), wireless half on the same hand model as one parametric build123d (OpenCascade) design, with Cherry caps, hotswap sockets in pockets and an nRF52840 Pro Micro with a battery. Its own README lists what it leaves open. |
 | Capybara corners | A final pass, once the chassis settles: round or chamfer the frame's hard corners by rule. Before 5d1f602 and 8994376 the rail rounded where it turned in at the drops. The user liked that slight rounding but not its direction (concave). They want convex rounds or chamfers: the rail's corners at the drops and its steps at the back, the limb feet, the bridges and the plate and web edges. Keep the crisp, rib-like look, with no blobby fairing. |
 
 ## Bring-up

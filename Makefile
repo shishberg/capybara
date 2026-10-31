@@ -32,27 +32,13 @@ firmware:
 
 .PHONY: firmware
 
-# Low-profile Capybara proposal (OpenSCAD); see lowpro/README.md.
-LOWPRO = lowpro/capybara-lowpro.scad
-LOWPRO_OUT = output/lowpro
+# Low-profile Capybara proposal (build123d / OpenCascade); see lowpro/README.md.
+# Needs: pip install build123d scipy
+lowpro:
+	python3 -m lowpro.build
 
-lowpro: lowpro-check
-	mkdir -p $(LOWPRO_OUT)
-	for half in right left; do \
-	  openscad -D "half=\"$$half\"" -D 'show="body"' -o $(LOWPRO_OUT)/$$half-body.stl $(LOWPRO); \
-	  openscad -D "half=\"$$half\"" -D 'show="plate"' -o $(LOWPRO_OUT)/$$half-plate.stl $(LOWPRO); \
-	done
-	openscad -D 'show="assembly"' --imgsize=1600,1200 --viewall --autocenter --camera=0,0,0,55,0,25,0 -o $(LOWPRO_OUT)/right-assembly.png $(LOWPRO)
-	openscad -D 'show="assembly"' --imgsize=1600,1200 --viewall --autocenter --camera=0,0,0,0,0,0,0 -o $(LOWPRO_OUT)/right-top.png $(LOWPRO)
-	openscad -D 'show="body"' --imgsize=1600,1200 --viewall --autocenter --camera=0,0,0,180,0,0,0 -o $(LOWPRO_OUT)/right-underside.png $(LOWPRO)
-
-# Fails when any two keycaps meet (the check renders their overlap; empty is clear).
+# Fails when any two keycaps meet.
 lowpro-check:
-	mkdir -p $(LOWPRO_OUT)
-	openscad -D 'show="check"' -o $(LOWPRO_OUT)/check.stl $(LOWPRO) 2>&1 | tee $(LOWPRO_OUT)/check.log
-	@grep -q "top level object is empty" $(LOWPRO_OUT)/check.log && echo "keycaps clear" || (echo "keycaps meet: see $(LOWPRO_OUT)/check.stl"; exit 1)
+	python3 -m lowpro.build --check
 
-lowpro-hand:
-	python3 lowpro/hand_from_json.py
-
-.PHONY: lowpro lowpro-check lowpro-hand
+.PHONY: lowpro lowpro-check
