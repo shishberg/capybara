@@ -3,40 +3,27 @@ a shell of one thickness, with the switch and socket pockets and the wire
 channels; and the bottom plate: a plinth up to the body's underside, with
 the socket bosses and the well for the controller and battery.
 
-Everything here is in world axes (layout.py). Solids are build123d's
-(OpenCascade); the expensive ones are cached, see layout.reset().
+Everything here is in world axes (layout.py). The body's and the plinth's
+blanks are meshes built here (the top surface, the underside and the round
+sampled from their functions, the walls one vertical quad per outline
+segment); everything cut from them or added to them is an exact Manifold
+solid, and the booleans are Manifold's. The expensive results are cached,
+see layout.reset().
 """
+import math
 import time
 
 import numpy as np
-from build123d import Color, Compound, Edge, Face, GeomType, Kind, Plane, Shell, Solid, Vertex, Wire, extrude, offset
-from OCP.BRep import BRep_Builder, BRep_Tool
-from OCP.BRepAlgoAPI import BRepAlgoAPI_Splitter
-from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeSolid, BRepBuilderAPI_Sewing
-from OCP.BRepCheck import BRepCheck_Analyzer
-from OCP.BRepGProp import BRepGProp
-from OCP.BRepLib import BRepLib
-from OCP.BRepTools import BRepTools
-from OCP.collections import (Array1_double, Array1_int, Array2_gp_Pnt, HArray1_double, HArray1_gp_Pnt, HArray1_gp_Pnt2d,
-                             HArray2_gp_Pnt, List_TopoDS_Shape)
-from OCP.GCPnts import GCPnts_UniformAbscissa
-from OCP.Geom import Geom_BSplineSurface, Geom_SurfaceOfLinearExtrusion
-from OCP.Geom2dAPI import Geom2dAPI_Interpolate
-from OCP.GeomAdaptor import GeomAdaptor_Curve
-from OCP.GeomAPI import GeomAPI_Interpolate, GeomAPI_PointsToBSplineSurface
-from OCP.GeomLProp import GeomLProp_SLProps
-from OCP.gp import gp_Pnt, gp_Pnt2d, gp_Vec, gp_Vec2d
-from OCP.GProp import GProp_GProps
-from OCP.Precision import Precision
-from OCP.TopLoc import TopLoc_Location
-from OCP.TopoDS import TopoDS_Shell
-from scipy.spatial import ConvexHull
+import triangle
+from manifold3d import CrossSection, FillRule, JoinType, Manifold, Mesh64, OpType
+from scipy.interpolate import CubicSpline, RectBivariateSpline
 
 from . import layout as L
 from . import params as P
 from . import parts as R
 from .layout import cached, cell_corners, keys, key_named
-from .lib import axis_x, axis_z, origin, r2, rinv, trans, xform
+from .lib import origin, r2, rinv, trans, xform
+from .parts import Piece, box_corners, segments, union
 
 VERBOSE = False
 
@@ -44,20 +31,26 @@ VERBOSE = False
 def stage(label, t0):
     """Print how long a stage took, when VERBOSE."""
     if VERBOSE:
-        print(f"  {label}: {time.time() - t0:.1f} s", flush=True)
+        print(f"  {label}: {time.time() - t0:.2f} s", flush=True)
     return time.time()
 
 
 # ---------------------------------------------------------------- frames
-def plane_of(m):
-    """A build123d Plane for a 4x4 frame."""
-    return Plane(origin=tuple(origin(m)), x_dir=tuple(axis_x(m)), z_dir=tuple(axis_z(m)))
+def placed(m, solid):
+    """A solid drawn in frame m, in world."""
+    return solid.transform(m[:3])
 
 
-def place(m, shapes):
-    """The shapes, drawn in frame m, in world."""
-    loc = plane_of(m).location
-    return [loc * s for s in shapes]
+def place(m, solids):
+    return [placed(m, s) for s in solids]
+
+
+def subtract(solid, tools):
+    return Manifold.batch_boolean([solid] + list(tools), OpType.Subtract)
+
+
+def add(solid, tools):
+    return Manifold.batch_boolean([solid] + list(tools), OpType.Add)
 
 
 # ---------------------------------------------------------------- the top surface
@@ -66,16 +59,20 @@ def place(m, shapes):
 # taken at its cell's nearest point, so no plane is extrapolated. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
 # heights abut it ramps between them over twice that rather than stepping; the
-# cells' planes are put back exactly afterwards (body_blank), which turns the
-# ramp into a step at the higher cell's edge. The body's underside is the same
-# field floor_drop() lower, the plate's top plate_gap_mm under that.
+# cells' planes are put back exactly afterwards (plane_groups), which turns the
+# ramp into a step at the higher cell's edge. The top surface is a quadratic
+# spline through this field sampled every surface_step_mm (top_fit): taking
+# each plane at its cell's nearest point creases the field along the lines
+# that carry the cells' edges out, and the spline smooths those over a step.
+# The body's underside is the same surface floor_drop() lower, the plate's
+# top plate_gap_mm under that.
 def field(x, y):
-    """The top surface's height over the world points (x, y) (arrays)."""
+    """The key field's height over the world points (x, y) (arrays)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     D, Z = [], []
     for k in keys():
         inv = rinv(k.frame)
-        o, n = origin(k.frame), axis_z(k.frame)
+        o, n = origin(k.frame), k.frame[:3, 2]
         pz = o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2]
         lx = inv[0, 0] * x + inv[0, 1] * y + inv[0, 2] * pz + inv[0, 3]
         ly = inv[1, 0] * x + inv[1, 1] * y + inv[1, 2] * pz + inv[1, 3]
@@ -113,94 +110,55 @@ def bbox():
 
 
 @cached
-def top_face():
-    """The top surface: a quadratic spline fitted through the field sampled at
-    surface_step_mm over the plan. It follows the field to a few hundredths of
-    a millimetre except across the cliffs between abutting cells of different
-    heights, where it ramps over a grid step; the cells' planes are then put
-    back exactly (body_blank)."""
+def top_fit():
+    """The top surface: a quadratic spline through the field sampled every
+    surface_step_mm over the plan."""
     (x0, y0), (x1, y1) = bbox()
     st = P.surface_step_mm
-    xs = np.arange(x0, x1 + st, st)
-    ys = np.arange(y0, y1 + st, st)
+    xs, ys = np.arange(x0, x1 + st, st), np.arange(y0, y1 + st, st)
     X, Y = np.meshgrid(xs, ys, indexing="ij")
-    Z = field(X.ravel(), Y.ravel()).reshape(X.shape)
-    pts = HArray2_gp_Pnt(1, X.shape[0], 1, X.shape[1])
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            pts.SetValue(i + 1, j + 1, gp_Pnt(float(X[i, j]), float(Y[i, j]), float(Z[i, j])))
-    fit = GeomAPI_PointsToBSplineSurface(pts, DegMin=2, DegMax=2, Tol3D=P.surface_fit_mm)
-    return Face(BRepBuilderAPI_MakeFace(fit.Surface(), Precision.Confusion_s()).Face())
+    return RectBivariateSpline(xs, ys, field(X.ravel(), Y.ravel()).reshape(X.shape), kx=2, ky=2, s=0)
 
 
-def floor_face():
-    return top_face().translate((0, 0, -L.floor_drop()))
+def top_surface(xy):
+    """The top surface's height over the plan points xy (N x 2)."""
+    return top_fit().ev(xy[:, 0], xy[:, 1])
 
 
-def plate_face():
-    return top_face().translate((0, 0, -L.floor_drop() - P.plate_gap_mm))
-
-
-def volume(shape):
-    """A shape's volume (OpenCascade's default rule; within a percent here)."""
-    props = GProp_GProps()
-    BRepGProp.VolumeProperties_s(shape.wrapped, props)
-    return props.Mass()
-
-
-def solid(result):
-    """The largest solid of a boolean's result (a Shape, a list or None)."""
-    if result is None:
-        return None
-    sols = result.solids() if hasattr(result, "solids") else [s for r in result for s in r.solids()]
-    return max(sols, key=volume) if sols else None
-
-
-def under(face, depth=300):
-    """The solid under a surface face, `depth` deep."""
-    return extrude(face, amount=depth, dir=(0, 0, -1))
-
-
-def over(face, height=300):
-    """The solid over a surface face, `height` high."""
-    return extrude(face, amount=height, dir=(0, 0, 1))
-
-
-def prism(face2d, z0, h):
-    """A plan face extruded from z0 up by h."""
-    return extrude(face2d.translate((0, 0, z0)), amount=h, dir=(0, 0, 1))
+def top_slope(xy):
+    """The top surface's slope (dz/dx, dz/dy) over the plan points xy (N x 2)."""
+    f = top_fit()
+    return np.c_[f.ev(xy[:, 0], xy[:, 1], dx=1), f.ev(xy[:, 0], xy[:, 1], dy=1)]
 
 
 # ---------------------------------------------------------------- the outline
 def polygon(pts):
-    return Face(Wire.make_polygon([(float(p[0]), float(p[1]), 0.0) for p in pts], close=True))
+    return CrossSection([np.asarray(pts, float)[:, :2]], FillRule.NonZero)
 
 
 def cell_face(k, grow=0):
     return polygon(cell_corners(k, grow))
 
 
+def bay_points(b):
+    return [(b[0][0], b[0][1]), (b[1][0], b[0][1]), (b[1][0], b[1][1]), (b[0][0], b[1][1])]
+
+
 def bay_face(b):
-    return polygon([(b[0][0], b[0][1]), (b[1][0], b[0][1]), (b[1][0], b[1][1]), (b[0][0], b[1][1])])
+    return polygon(bay_points(b))
 
 
 def fused(faces):
-    faces = list(faces)
-    return faces[0].fuse(*faces[1:]).clean() if len(faces) > 1 else faces[0]
+    return CrossSection.batch_boolean(list(faces), OpType.Add)
 
 
 def hull_of(points):
-    """The convex hull of some plan points, as a face."""
-    pts = np.asarray([(p[0], p[1]) for p in points], float)
-    return polygon(pts[ConvexHull(pts).vertices])
+    """The convex hull of some plan points."""
+    return CrossSection.hull_points(np.asarray([(p[0], p[1]) for p in points], float))
 
 
 def circle_points(p, r, n=36):
     return [(p[0] + r * np.cos(a), p[1] + r * np.sin(a)) for a in np.linspace(0, 2 * np.pi, n, endpoint=False)]
-
-
-def bay_points(b):
-    return [(b[0][0], b[0][1]), (b[1][0], b[0][1]), (b[1][0], b[1][1]), (b[0][0], b[1][1])]
 
 
 def channel_points(group=None):
@@ -236,449 +194,305 @@ def hulls_2d():
     return fused([finger, thumb, bridge])
 
 
+def signed_area(pts):
+    x, y = pts[:, 0], pts[:, 1]
+    return 0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
+
+
 @cached
-def footprint_2d():
-    """The body's footprint: outline_style "hulls" is the hulls joined, "closed"
-    the cells and channel paths closed up (gaps narrower than 2 * outline_close_mm
-    filled). Either way the gaps that remain get a round of outline_close_mm, the
-    wall goes round it and the convex corners are rounded to outline_round_mm."""
+def outline_curve():
+    """The body's outline as a smooth closed curve: outline_style "hulls" is the
+    hulls joined, "closed" the cells and channel paths closed up (gaps narrower
+    than 2 * outline_close_mm filled). Either way the gaps that remain get a
+    round of outline_close_mm, the wall goes round it and the convex corners
+    are rounded to outline_round_mm. The offsets leave a polygon of straight
+    sides and arcs (as chords within mesh_tol_mm); the curve is a periodic
+    cubic spline through points along it a tenth of mesh_mm apart, so that its
+    normal turns smoothly where an arc meets a side. Returns the spline, over
+    the polygon's length, counterclockwise."""
     s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm, -P.outline_round_mm, P.outline_round_mm):
-        s = offset(s, amount, kind=Kind.ARC)
-    outline = max(s.faces(), key=lambda f: f.area).outer_wire()
-    # The offsets leave a chain of hundreds of short lines and arcs (the hulls
-    # are polygons), which a fillet along the top edge cannot follow; one smooth
-    # periodic spline through the chain, sampled every outline_sample_mm, is
-    # within a few hundredths of it and fillets cleanly.
-    n = int(outline.length / P.outline_sample_mm)
-    pts = [outline.position_at(i / n) for i in range(n)]
-    return Face(Wire([Edge.make_spline(pts, periodic=True)]))
+        s = s.offset(amount, JoinType.Round, 2.0, segments(abs(amount)))
+    piece = max(s.decompose(), key=lambda c: c.area())
+    pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
+    pts = np.r_[pts, pts[:1]]
+    along = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+    s = np.linspace(0, along[-1], math.ceil(along[-1] / (P.mesh_mm / 10)) + 1)
+    samples = np.c_[np.interp(s, along, pts[:, 0]), np.interp(s, along, pts[:, 1])]
+    samples[-1] = samples[0]
+    return CubicSpline(s, samples, bc_type="periodic", axis=0)
 
 
-# ---------------------------------------------------------------- the blanks
-def swept(solid, depth=60):
-    """A solid carried straight down (in world) by `depth`: itself and the
-    prisms of its downward faces, so shafts and wells stand square to the desk
-    however the key tilts. Returns the pieces."""
-    pieces = [solid]
-    for f in solid.faces():
-        if f.normal_at().Z < -1e-6:
-            pieces.append(extrude(f, amount=depth, dir=(0, 0, -1)))
-    return pieces
+@cached
+def outline_stations():
+    """The stations along the outline the walls and the top edge's round are
+    built on: no further apart than mesh_mm, nor so far that the chord between
+    two leaves the curve by more than mesh_tol_mm. Returns their points and
+    the outline's inward normals there (each N x 2)."""
+    curve = outline_curve()
+    s = np.linspace(0, curve.x[-1], len(curve.x) * 4)
+    d1, d2 = curve(s, 1), curve(s, 2)
+    bend = np.abs(d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]) / np.linalg.norm(d1, axis=1) ** 3
+    step = np.minimum(P.mesh_mm, np.sqrt(8 * P.mesh_tol_mm / np.maximum(bend, 1e-9)))
+    count = np.r_[0, np.cumsum(np.diff(s) / step[1:])]
+    n = math.ceil(count[-1])
+    at = np.interp(np.arange(n) * count[-1] / n, count, s)
+    d = curve(at, 1)
+    return curve(at), np.c_[-d[:, 1], d[:, 0]] / np.linalg.norm(d, axis=1)[:, None]
 
 
-def half_space(m, z, below=True, size=60):
-    """Everything in frame m below (or above) its plane z, within `size`."""
-    box = Solid.make_box(size, size, size).translate((-size / 2, -size / 2, z - size if below else z))
-    return place(m, [box])[0]
+def outline():
+    """The outline as a counterclockwise polygon through its stations (N x 2)."""
+    return outline_stations()[0]
 
 
-def top_trimmed():
-    """The top surface within the footprint, as a face."""
-    blank = solid(under(top_face()).intersect(prism(footprint_2d(), -1, 201)))
-    return max(blank.faces().filter_by(GeomType.BSPLINE), key=lambda f: f.center().Z)
+def outline_2d():
+    return polygon(outline())
 
 
-# OpenCascade intersects every tool with every face whose box it overlaps, and
-# what each intersection costs grows with how much of its surface the face
-# covers; the top and bottom surfaces cover the whole board. So the blank is
-# split by vertical planes patch_mm apart and every face's surface is cut
-# down to the face (restrict), which turns the two surfaces into a few
-# hundred small patches; a boolean then only works on the patches near its
-# tool, and the whole body is cut in a few operations instead of hundreds.
-# The split faces inside are dropped and the pieces' outer faces, which
-# already match since they came from one solid, make the solid again.
-def patched(shape):
-    """The solid with its surfaces in patches about patch_mm square."""
-    (x0, y0), (x1, y1) = bbox()
-    every = P.patch_mm
-    planes = [Plane(origin=(x, 0, 0), z_dir=(1, 0, 0)) for x in np.linspace(x0, x1, round((x1 - x0) / every) + 1)[1:-1]]
-    planes += [Plane(origin=(0, y, 0), z_dir=(0, 1, 0)) for y in np.linspace(y0, y1, round((y1 - y0) / every) + 1)[1:-1]]
-    splitter = BRepAlgoAPI_Splitter()
-    args, tools = List_TopoDS_Shape(), List_TopoDS_Shape()
-    args.Append(shape.wrapped)
-    for plane in planes:
-        tools.Append(Face.make_rect(2 * (x1 - x0 + y1 - y0), 400, plane).wrapped)
-    splitter.SetArguments(args)
-    splitter.SetTools(tools)
-    splitter.SetRunParallel(True)
-    splitter.Build()
-    pieces = Compound(splitter.Shape()).solids()
-    restrict(pieces)
-    count = {}
-    for piece in pieces:
-        for f in piece.faces():
-            count[hash(f)] = count.get(hash(f), 0) + 1
-    builder, shell = BRep_Builder(), TopoDS_Shell()
-    builder.MakeShell(shell)
-    for piece in pieces:
-        for f in piece.faces():
-            if count[hash(f)] == 1:
-                builder.Add(shell, f.wrapped)
-    return Solid(BRepBuilderAPI_MakeSolid(shell).Solid())
-
-
-def restrict(shapes):
-    """Each face's surface cut down to the face, in place: a face left on a
-    surface that runs far past it costs every boolean near it."""
-    builder = BRep_Builder()
-    for shape in shapes:
-        for f in shape.faces():
-            if f.geom_type not in (GeomType.BSPLINE, GeomType.EXTRUSION):
-                continue
-            loc = TopLoc_Location()
-            surface = BRep_Tool.Surface_s(f.wrapped, loc)
-            u0, u1, v0, v1 = BRepTools.UVBounds_s(f.wrapped)
-            su0, su1, sv0, sv1 = surface.Bounds()
-            if f.geom_type == GeomType.BSPLINE:
-                part = surface.Copy()
-                part.Segment(max(u0, su0), min(u1, su1), max(v0, sv0), min(v1, sv1))
-            else:
-                curve = surface.BasisCurve().Copy()
-                curve.Segment(max(u0, su0), min(u1, su1))
-                part = Geom_SurfaceOfLinearExtrusion(curve, surface.Direction())
-            # The edges' curves on the face are keyed by its surface: carry them over.
-            pcurves = [(e.wrapped, BRep_Tool.CurveOnSurface_s(e.wrapped, f.wrapped, 0.0, 0.0),
-                        BRep_Tool.Range_s(e.wrapped, f.wrapped), BRep_Tool.Tolerance_s(e.wrapped)) for e in f.edges()]
-            builder.UpdateFace(f.wrapped, part, loc, BRep_Tool.Tolerance_s(f.wrapped))
-            for e, c, (p0, p1), tol in pcurves:
-                builder.UpdateEdge(e, c, f.wrapped, tol)
-                builder.Range(e, f.wrapped, p0, p1)
-
-# Tools that overlap one another in one boolean give OpenCascade trouble (the
-# caps of neighbouring cells, whose planes cross): those go in a few batches of
-# tools that keep apart in plan. Tools that are meant to run together (a key's
-# pockets and shaft, the channels) are fused into one tool first, which costs
-# little on small solids and spares the big boolean every tool-to-tool
-# intersection.
-def apart(tools):
-    """The tools in batches whose members' plan boxes do not meet."""
-    boxes = [t.bounding_box() for t in tools]
-    batches = []
-    for i, b in enumerate(boxes):
-        for batch in batches:
-            if all(b.max.X < boxes[j].min.X or boxes[j].max.X < b.min.X or b.max.Y < boxes[j].min.Y or boxes[j].max.Y < b.min.Y
-                   for j in batch):
-                batch.append(i)
-                break
-        else:
-            batches.append([i])
-    return [[tools[i] for i in batch] for batch in batches]
-
-
-def united(solids):
-    """The solids fused, as a list of solids."""
-    return solids[0].fuse(*solids[1:]).solids() if len(solids) > 1 else list(solids)
-
-
-def column(k, grow=0):
-    """Key k's cell, cell_step_mm (and `grow`) past its edge, as a vertical
-    column through everything."""
-    return prism(cell_face(k, P.cell_step_mm + grow), -1, 201)
-
-
-def cell_cap(k, z, grow=0, below=False):
-    """Everything over key k's column above (or below) the plane z of its frame."""
-    return solid(column(k, grow).intersect(half_space(k.frame, z, below=below)))
-
-
-def cell_block(k, z_top, z_bottom):
-    """Key k's column between two planes of its frame."""
-    return solid(solid(column(k).intersect(half_space(k.frame, z_top))).intersect(half_space(k.frame, z_bottom, below=False)))
-
-
-# Every cell's plane is put back exactly in two steps, one cell at a time:
-# whatever the blend left above the plane over the cell (and cell_step_mm plus
-# a little round it) is cut away, and under the body whatever it left below
-# the plane floor_drop() lower, then a block between those two planes is
-# added. The caps are cut a little inside the planes and a little wider than
-# the block, so no face of the caps, the block and the shell coincides with
-# another, which OpenCascade is surest of (the ring round each cell is left
-# that much lower on top, and that much higher underneath). The underside
-# needs its cap as much as the top: the floor is the fitted surface, within
-# surface_fit_mm of the block's bottom over the whole cell, and fusing the
-# block onto that lost the body outright for some layouts. Where a cell meets
-# a higher neighbour the surface so steps at that neighbour's edge, with
-# nothing left standing in the gap, and the floor steps with it.
-cap_under_mm = 0.1
-cap_wider_mm = 0.3
+def outline_distance(p):
+    """The plan distance from the point p to the outline."""
+    a = outline()
+    b = np.roll(a, -1, axis=0)
+    d = b - a
+    t = np.clip(((p[0] - a[:, 0]) * d[:, 0] + (p[1] - a[:, 1]) * d[:, 1]) / (d * d).sum(1), 0, 1)
+    return float(np.hypot(a[:, 0] + t * d[:, 0] - p[0], a[:, 1] + t * d[:, 1] - p[1]).min())
 
 
 # ---------------------------------------------------------------- the rounded top edge
-# OpenCascade's fillet (BRepFilletAPI, a rolling ball marched along the edge)
-# is not reliable on the one closed edge where the top surface meets the wall:
-# on one and the same geometry it failed for three of ten positions of that
-# edge's seam, each time differently (walking failure, twisted surface), and
-# an outline or parameter change moves the seam. The round between a vertical
-# wall and the top has a closed form, so it is built from that instead. At
-# each station along the outline the ball's centre is top_round_mm inside the
-# wall and top_round_mm under the top along the top's normal (a Newton solve
-# on the top surface); its wall contact is level with the centre, its top
-# contact is where that normal meets the top, and the section between them is
-# an exact circular arc about the centre. One cubic spline surface through
-# those arcs (periodic along the outline, the stations no further apart than
-# round_step_mm as the arcs move) is the fillet, and its two edges are the
-# contact curves, which lie on the top and the wall to a few 1e-5 mm. Those
-# edges are given their curves on the top's and the wall's surfaces, the top
-# is made inside its contact curve, the wall cut at its, and the faces sewn
-# with the floor: no boolean ever has to find where the fillet touches the
-# surfaces it is tangent to.
-def ball_sections(curve, params, surf, up, inward, r, m, starts=None):
-    """The rolling ball's sections at the outline parameters `params`: for each,
-    the top contact's (u, v) on the top surface, the wall contact's height and
-    the m points of the arc from the wall contact to the top contact. `starts`
-    gives a first guess for each top contact's (u, v); without one, each
-    station starts from the previous station's answer (a continuation along
-    the outline), the first from the plan's place in the fit's parameters,
-    which run about linearly over it."""
-    (x0, y0), (x1, y1) = bbox()
-    u0, u1, v0, v1 = surf.Bounds()
-
-    def centred(uv, a):
-        """The top point at uv, its normal, and how far its ball centre's plan is from a."""
-        pnt, du, dv = gp_Pnt(), gp_Vec(), gp_Vec()
-        surf.D1(float(uv[0]), float(uv[1]), pnt, du, dv)
-        n = du.Crossed(dv)
-        n.Normalize()
-        if not up:
-            n.Reverse()
-        p, n = np.array([pnt.X(), pnt.Y(), pnt.Z()]), np.array([n.X(), n.Y(), n.Z()])
-        return p, n, (p - r * n)[:2] - a
-
-    out = {}
-    uv = None
-    for i, s in enumerate(params):
-        qp, d1 = gp_Pnt(), gp_Vec()
-        curve.D1(float(s), qp, d1)
-        q, t = np.array([qp.X(), qp.Y(), 0.0]), np.array([d1.X(), d1.Y(), 0.0])
-        t /= np.linalg.norm(t)
-        a = q[:2] + inward * np.array([-t[1], t[0]]) * r             # the ball centre's plan
-        if starts is not None:
-            uv = np.array(starts[i], float)
-        elif uv is None:
-            uv = np.array([u0 + (u1 - u0) * (a[0] - x0) / (x1 - x0), v0 + (v1 - v0) * (a[1] - y0) / (y1 - y0)])
-        # Quasi-Newton on the ball centre's plan. The top is a quadratic spline,
-        # so the normal's derivative jumps at its knots, and over a ridge it
-        # turns through most of its range within one knot span: a Newton step
-        # from a one-sided difference there overshoots and cycles. So each
-        # step is shortened until the centre gets closer, and the Jacobian is
-        # then corrected by the secant through the step (Broyden), which
-        # sees the slope the step actually crossed.
-        p, n, g = centred(uv, a)
-        h = 1e-4
-        J = np.column_stack([(centred(uv + (h, 0), a)[2] - g) / h, (centred(uv + (0, h), a)[2] - g) / h])
-        for _ in range(60):
-            if np.hypot(*g) < 1e-8:
-                break
-            step = np.linalg.solve(J, -g)
-            for _ in range(30):
-                p1, n1, g1 = centred(uv + step, a)
-                if np.hypot(*g1) < np.hypot(*g):
-                    break
-                step /= 2
-            else:
-                raise RuntimeError(f"the top edge's round: no ball centre over ({a[0]:.1f}, {a[1]:.1f})")
-            J += np.outer(g1 - g - J @ step, step) / (step @ step)
-            uv, p, n, g = uv + step, p1, n1, g1
-        else:
-            raise RuntimeError(f"the top edge's round: no ball centre over ({a[0]:.1f}, {a[1]:.1f})")
-        c = p - r * n
-        d0 = np.array([q[0], q[1], c[2]]) - c                          # to the wall contact
-        ang = np.arccos(np.clip(np.dot(d0, p - c) / r / r, -1, 1))
-        perp = (p - c) - d0 * np.dot(d0, p - c) / r / r
-        perp *= r / np.linalg.norm(perp)
-        out[float(s)] = (tuple(uv), c[2], [c + d0 * np.cos(ang * j / (m - 1)) + perp * np.sin(ang * j / (m - 1)) for j in range(m)])
-    return out
-
-
-def interpolate(points, params, periodic, period=None, tangents=None):
-    """A cubic B-spline through 3D or 2D points at the given parameters (periodic:
-    closing at params[0] + period)."""
-    flat = len(points[0]) == 2
-    pts = (HArray1_gp_Pnt2d if flat else HArray1_gp_Pnt)(1, len(points))
-    for i, p in enumerate(points):
-        pts.SetValue(i + 1, (gp_Pnt2d if flat else gp_Pnt)(*map(float, p)))
-    par = HArray1_double(1, len(points) + (1 if periodic else 0))
-    for i, u in enumerate(params):
-        par.SetValue(i + 1, float(u))
-    if periodic:
-        par.SetValue(len(points) + 1, float(params[0] + period))
-    it = (Geom2dAPI_Interpolate if flat else GeomAPI_Interpolate)(pts, par, periodic, 1e-9)
-    if tangents is not None:
-        it.Load(gp_Vec2d(*map(float, tangents[0])), gp_Vec2d(*map(float, tangents[1])), False)
-    it.Perform()
-    return it.Curve()
-
-
-def spline_through(rows, uparams, uperiod, vparams):
-    """A cubic B-spline surface through rows[j][i] at (uparams[i], vparams[j]),
-    periodic in u: each row interpolated in u, then the rows' poles in v, so
-    the rows are its iso-v curves exactly."""
-    ucurves = [interpolate(row, uparams, True, uperiod) for row in rows]
-    cu = ucurves[0]
-    vcurves = [interpolate([(c.Pole(k + 1).X(), c.Pole(k + 1).Y(), c.Pole(k + 1).Z()) for c in ucurves], vparams, False)
-               for k in range(cu.NbPoles())]
-    cv = vcurves[0]
-    poles = Array2_gp_Pnt(1, cu.NbPoles(), 1, cv.NbPoles())
-    for k, c in enumerate(vcurves):
-        for j in range(cv.NbPoles()):
-            poles.SetValue(k + 1, j + 1, c.Pole(j + 1))
-
-    def knots(c):
-        ks, ms = Array1_double(1, c.NbKnots()), Array1_int(1, c.NbKnots())
-        for i in range(c.NbKnots()):
-            ks.SetValue(i + 1, c.Knot(i + 1))
-            ms.SetValue(i + 1, c.Multiplicity(i + 1))
-        return ks, ms
-
-    uk, um = knots(cu)
-    vk, vm = knots(cv)
-    return Geom_BSplineSurface(poles, uk, vk, um, vm, cu.Degree(), cv.Degree(), True, False)
-
-
-def split_face(face, edge):
-    """The face split by an edge lying on it (the edge carries its curve on the face)."""
-    splitter = BRepAlgoAPI_Splitter()
-    args, tools = List_TopoDS_Shape(), List_TopoDS_Shape()
-    args.Append(face.wrapped)
-    tools.Append(edge.wrapped)
-    splitter.SetArguments(args)
-    splitter.SetTools(tools)
-    splitter.Build()
-    return Compound(splitter.Shape()).faces()
-
-
-def rounded_shell():
-    """The body's shell with its top edge rounded to top_round_mm: the top
-    inside the round's top contact, the round, the wall under its wall
-    contact, and the floor."""
-    r, m = P.top_round_mm, 11
-    top = top_face()
-    surf = BRep_Tool.Surface_s(top.wrapped)
-    u0, u1, v0, v1 = surf.Bounds()
-    pnt, du, dv = gp_Pnt(), gp_Vec(), gp_Vec()
-    surf.D1((u0 + u1) / 2, (v0 + v1) / 2, pnt, du, dv)
-    up = du.Crossed(dv).Z() > 0
-    fp = footprint_2d()
-    oedge = fp.outer_wire().edges()[0]
-    curve = BRep_Tool.Curve_s(oedge.wrapped, 0.0, 0.0)
-    p0, p1 = oedge.param_at(0), oedge.param_at(1)
-    t0, q0 = oedge.tangent_at(0), oedge.position_at(0)
-    inward = 1 if fp.is_inside(q0 + (-t0.Y, t0.X, 0)) else -1
-    # Stations: outline_sample_mm apart to begin with, then halved wherever the
-    # ball's section moves more than round_step_mm between neighbours (it moves
-    # fastest across the blend between cells of different heights, and at the
-    # outline's corners, where the top contact turns on a radius of a millimetre).
-    abscissa = GCPnts_UniformAbscissa(GeomAdaptor_Curve(curve), float(P.outline_sample_mm), p0, p1)
-    sections = ball_sections(curve, [abscissa.Parameter(i + 1) for i in range(abscissa.NbPoints() - 1)], surf, up, inward, r, m)
-    while True:
-        at = sorted(sections)
-        between = [(a, b) for a, b in zip(at, at[1:] + [at[0] + (p1 - p0)])
-                   if np.linalg.norm(np.array(sections[a][2]) - np.array(sections[b % (p1 - p0) if b >= p1 else b][2]), axis=1).max() > P.round_step_mm]
-        if not between:
+# The round between the vertical wall and the top is a rolling ball's. At each
+# station q on the outline the ball's centre is top_round_mm inside the wall
+# (along the outline's inward normal there) and top_round_mm under the top
+# along the top's normal at the ball's top contact p: p is found by iterating
+# p = centre's plan + top_round_mm * the top's normal's plan at p, which
+# converges wherever the top is convex on a radius larger than the ball. The
+# wall contact is level with the centre, and the section between the two
+# contacts is the circular arc about the centre, sampled to mesh_tol_mm; the
+# arcs at neighbouring stations are joined by quads. The wall below the wall
+# contacts is one vertical quad per outline segment.
+@cached
+def round_sections():
+    """The rolling ball's section at each outline station, as (N, m, 3): m points
+    from the wall contact (on the outline, level with the ball's centre) along
+    the arc to the top contact (on the top surface)."""
+    (q, inward), r = outline_stations(), P.top_round_mm
+    if r <= 0:
+        return np.c_[q, top_surface(q)][:, None, :]
+    a = q + r * inward
+    p = a.copy()
+    for _ in range(200):
+        g = top_slope(p)
+        s = np.sqrt(1 + (g * g).sum(1))
+        moved = np.linalg.norm(a - r * g / s[:, None] - p, axis=1)
+        p = a - r * g / s[:, None]
+        if moved.max() < 1e-9:
             break
-        sections.update(ball_sections(curve, [((a + b) / 2) % (p1 - p0) for a, b in between], surf, up, inward, r, m,
-                                      [(np.array(sections[a][0]) + np.array(sections[b % (p1 - p0) if b >= p1 else b][0])) / 2 for a, b in between]))
-    at = sorted(sections)
-    rows = [[sections[s][2][j] for s in at] for j in range(m)]
-    tops = np.array(rows[-1])[:, :2]
-    steps = np.diff(np.vstack([tops, tops[:1]]), axis=0)
-    if ((steps[:-1] * steps[1:]).sum(1) < 0).any():
-        raise ValueError(f"the top edge's round folds: top_round_mm {r} is too large for outline_round_mm {P.outline_round_mm} "
-                         "where the top tilts toward the edge")
-    # The ball has to fit under the top along the contact: where the top is
-    # convex on a radius under r the fillet would cross itself (and a fillet
-    # left in that state is a crease).
-    for s in at:
-        props = GeomLProp_SLProps(surf, *map(float, sections[s][0]), 2, 1e-9)
-        convex = -min(props.MinCurvature(), props.MaxCurvature()) * (1 if (props.Normal().Z() > 0) == up else -1)
-        if convex * r > 1:
-            x, y, _ = sections[s][2][-1]
-            raise ValueError(f"the top edge's round: top_round_mm {r} is larger than the top's convex radius "
-                             f"{1 / convex:.1f} mm at ({x:.1f}, {y:.1f})")
-    # The surface's parameter along the outline: the rows' mean travel, so no
-    # row runs much faster or slower than the parameter anywhere.
-    chords = np.linalg.norm(np.diff(np.array([row + row[:1] for row in rows]), axis=1), axis=2).mean(0)
-    uparams, uperiod = np.concatenate([[0], np.cumsum(chords)[:-1]]), float(chords.sum())
-    fillet = Face(BRepBuilderAPI_MakeFace(spline_through(rows, uparams, uperiod, np.linspace(0, 1, m)), 1e-7).Face())
-    closed = [e for e in fillet.edges() if e.is_closed]
-    e_wall, e_top = min(closed, key=lambda e: e.center().Z), max(closed, key=lambda e: e.center().Z)
-    # The body under the round: over the floor, inside the footprint's prism.
-    lower = solid(over(floor_face()).intersect(prism(fp, -1, 201)))
-    floor = min(lower.faces().filter_by(GeomType.BSPLINE), key=lambda f: f.center().Z)
-    wall = lower.faces().filter_by(GeomType.EXTRUSION)[0]
-    wall_surf = BRep_Tool.Surface_s(wall.wrapped)
-    # The contact edges' curves on the top and on the wall, at the same parameter
-    # as the fillet's. The wall's u is the outline's parameter, which winds once
-    # round, so that curve is not periodic: it closes a period on, with the
-    # periodic tangent at both ends.
-    builder = BRep_Builder()
-    builder.UpdateEdge(e_top.wrapped, interpolate([sections[s][0] for s in at], uparams, True, uperiod), top.wrapped, 1e-5)
-    vdir = wall_surf.Value(0, 1).Z() - wall_surf.Value(0, 0).Z()
-    on_wall = [(s, (sections[s][1] - wall_surf.Value(0, 0).Z()) / vdir) for s in at]
-    a, b = on_wall[-1], on_wall[1]
-    tangent = ((b[0] - a[0] + (p1 - p0)) / (uparams[1] + uperiod - uparams[-1]), (b[1] - a[1]) / (uparams[1] + uperiod - uparams[-1]))
-    builder.UpdateEdge(e_wall.wrapped, interpolate(on_wall + [(on_wall[0][0] + (p1 - p0), on_wall[0][1])], list(uparams) + [uperiod],
-                                                   False, tangents=(tangent, tangent)), wall.wrapped, 1e-5)
-    for e in (e_top, e_wall):
-        BRepLib.SameParameter_s(e.wrapped, 1e-5, True)
-    top_inner = Face(BRepBuilderAPI_MakeFace(surf, Wire([e_top]).wrapped, True).Face())
-    if top_inner.area > fp.area:
-        top_inner = Face(BRepBuilderAPI_MakeFace(surf, Wire([e_top]).wrapped.Reversed(), True).Face())
-    wall_lower = min(split_face(wall, e_wall), key=lambda f: f.bounding_box().max.Z)
-    sewing = BRepBuilderAPI_Sewing(1e-5)
-    for f in (top_inner, fillet, wall_lower, floor):
-        sewing.Add(f.wrapped)
-    sewing.Perform()
-    if sewing.NbFreeEdges():
-        raise RuntimeError("the top edge's round does not close with the top, the wall and the floor")
-    shell = Solid(BRepBuilderAPI_MakeSolid(Shell(sewing.SewedShape()).wrapped).Solid())
-    if volume(shell) < 0:
-        shell = Solid(shell.wrapped.Reversed())
-    if not BRepCheck_Analyzer(shell.wrapped).IsValid():
-        raise RuntimeError("the rounded shell is not a valid solid")
-    return shell
-
-
-@cached
-def body_blank():
-    """The body before anything is cut from it: the top surface within the
-    footprint carried straight down floor_drop() (so its underside is the same
-    surface that much lower), its top edge rounded to top_round_mm, and every
-    cell's plane put back exactly."""
-    t = time.time()
-    if P.top_round_mm > 0:
-        shell = rounded_shell()
-        t = stage("body shell and round", t)
     else:
-        shell = solid(extrude(top_trimmed(), amount=L.floor_drop(), dir=(0, 0, -1)))
-        t = stage("body shell", t)
-    shell = patched(shell)
-    t = stage("body patches", t)
-    for batch in apart([cell_cap(k, -cap_under_mm, cap_wider_mm) for k in keys()]):
-        shell = solid(shell.cut(*batch))
-    for batch in apart([cell_cap(k, -L.floor_drop() + cap_under_mm, cap_wider_mm, below=True) for k in keys()]):
-        shell = solid(shell.cut(*batch))
-    shell = solid(shell.fuse(*[cell_block(k, 0, -L.floor_drop()) for k in keys()]))
-    stage("body cells", t)
+        x, y = a[moved.argmax()]
+        raise ValueError(f"the top edge's round: top_round_mm {r} is larger than the top's convex radius near ({x:.1f}, {y:.1f})")
+    g = top_slope(p)
+    s = np.sqrt(1 + (g * g).sum(1))
+    top = np.c_[p, top_surface(p)]
+    centre = np.c_[a, top[:, 2] - r / s]
+    wall = np.c_[q, centre[:, 2]]
+    floor = top_surface(q) - L.floor_drop()
+    if (wall[:, 2] <= floor).any():
+        x, y = q[(wall[:, 2] - floor).argmin()]
+        raise ValueError(f"the top edge's round: top_round_mm {r} reaches under the body's underside at ({x:.1f}, {y:.1f})")
+    d0, d1 = wall - centre, top - centre
+    cos = np.clip((d0 * d1).sum(1) / r / r, -1, 1)
+    ang = np.arccos(cos)
+    perp = d1 - d0 * cos[:, None]
+    perp *= r / np.linalg.norm(perp, axis=1)[:, None]
+    m = 1 + math.ceil(ang.max() / (2 * math.acos(1 - P.mesh_tol_mm / r)))
+    f = ang[:, None] * np.linspace(0, 1, m)[None, :]
+    rows = centre[:, None, :] + d0[:, None, :] * np.cos(f)[..., None] + perp[:, None, :] * np.sin(f)[..., None]
+    rows[:, 0], rows[:, -1] = wall, top
+    # Every row of the round runs round the outline the same way as the
+    # outline: a step backwards is the round folding over itself, at a convex
+    # corner too tight for it where the top tilts toward the edge.
+    dq = np.roll(q, -1, axis=0) - q
+    for j in range(1, m):
+        step = np.roll(rows[:, j, :2], -1, axis=0) - rows[:, j, :2]
+        back = (step * dq).sum(1) <= 0
+        if back.any():
+            x, y = q[back.argmax()]
+            raise ValueError(f"the top edge's round folds at ({x:.1f}, {y:.1f}): top_round_mm {r} is too large for "
+                             f"outline_round_mm {P.outline_round_mm} where the top tilts toward the edge")
+    contact = top[:, :2]
+    if abs(polygon(contact).area() - signed_area(contact)) > 1e-6 * abs(signed_area(contact)):
+        raise ValueError(f"the top edge's round crosses itself: top_round_mm {r} is too large for this outline")
+    return rows
+
+
+def top_contact_2d():
+    """The plan inside the top edge's round, where the top surface is the top."""
+    return polygon(round_sections()[:, -1, :2])
+
+
+# ---------------------------------------------------------------- the blanks
+def plan_mesh(boundary, fill=True):
+    """A triangulation of a counterclockwise plan polygon (N x 2) whose sides it
+    keeps whole, with points inside about mesh_mm apart (fill) or none. Returns
+    the vertices, the polygon's first, and the triangles, counterclockwise."""
+    n = len(boundary)
+    sides = np.c_[np.arange(n), (np.arange(n) + 1) % n]
+    opts = "pYQ" + (f"q25a{0.5 * P.mesh_mm ** 2:.6f}" if fill else "")
+    out = triangle.triangulate({"vertices": boundary, "segments": sides}, opts)
+    v, t = out["vertices"], out["triangles"]
+    if len(v) < n or not np.array_equal(v[:n], boundary):
+        raise RuntimeError("the plan's triangulation lost the outline's points")
+    e1, e2 = v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]]
+    cw = e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0] < 0
+    t[cw] = t[cw][:, ::-1]
+    return v, t
+
+
+def walled(ring_lo, ring_hi):
+    """The quads, as triangles, from a ring of vertex indices up to another over
+    the same stations round a counterclockwise polygon, facing out of it."""
+    a, b = ring_lo, ring_hi
+    a1, b1 = np.roll(a, -1), np.roll(b, -1)
+    return np.r_[np.c_[a, a1, b1], np.c_[a, b1, b]]
+
+
+def solid_from(vertices, triangles, what):
+    solid = Manifold(Mesh64(np.ascontiguousarray(vertices, float), np.ascontiguousarray(triangles, np.uint64)))
+    if solid.status().name != "NoError":
+        raise RuntimeError(f"the {what} is not a closed manifold mesh ({solid.status().name})")
+    return solid
+
+
+# The body is everything under its top and over its underside: two blanks,
+# intersected once each has its cells put back (body_shell). Under the top:
+# the outline's prism from under the desk up to the top surface, its top edge
+# rounded. Over the underside: the plan's bounding box from the underside up
+# past every key. The plinth is the outline's prism from the desk with
+# everything over the underside, lowered plate_gap_mm, taken away, so its top
+# is the body's underside to the last triangle.
+def under_blank():
+    """Everything within the outline under the top surface, from z = -1: its
+    vertices the bottom's (the outline's stations), the round's sections
+    (the first of each on the outline, level with the ball's centre: the
+    wall), then the top's inside the round."""
+    t = time.time()
+    q = outline()
+    n = len(q)
+    rows = round_sections()
+    m = rows.shape[1]
+    vi, ti = plan_mesh(rows[:, -1, :2])
+    _, tb = plan_mesh(q, fill=False)
+    station = np.arange(n)
+    ring = [n + station * m + j for j in range(m)]
+    top = np.where(ti < n, n + ti * m + m - 1, n + n * m + ti - n)
+    vertices = np.r_[np.c_[q, np.full(n, -1.0)], rows.reshape(-1, 3), np.c_[vi[n:], top_surface(vi[n:])]]
+    triangles = [tb[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
+    blank = solid_from(vertices, np.concatenate(triangles), "body's top")
+    stage("the top's mesh", t)
+    return blank
+
+
+def over_blank():
+    """Everything over the underside (the top surface floor_drop() lower) within
+    the plan's bounding box, up to 100 mm over the desk: the underside a grid
+    of mesh_mm squares, each two triangles."""
+    (x0, y0), (x1, y1) = bbox()
+    nx, ny = math.ceil((x1 - x0) / P.mesh_mm) + 1, math.ceil((y1 - y0) / P.mesh_mm) + 1
+    X, Y = np.meshgrid(np.linspace(x0, x1, nx), np.linspace(y0, y1, ny), indexing="ij")
+    xy = np.c_[X.ravel(), Y.ravel()]
+    index = np.arange(nx * ny).reshape(nx, ny)
+    a, b, c, d = index[:-1, :-1].ravel(), index[1:, :-1].ravel(), index[1:, 1:].ravel(), index[:-1, 1:].ravel()
+    under = np.r_[np.c_[a, c, b], np.c_[a, d, c]]
+    rim = np.r_[index[:-1, 0], index[-1, :-1], index[:0:-1, -1], index[0, :0:-1]]   # counterclockwise
+    lid = nx * ny + np.arange(len(rim))
+    _, tt = plan_mesh(xy[rim], fill=False)
+    vertices = np.r_[np.c_[xy, top_surface(xy) - L.floor_drop()], np.c_[xy[rim], np.full(len(rim), 100.0)]]
+    triangles = np.r_[under, walled(rim, lid), lid[tt]]
+    return solid_from(vertices, triangles, "body's underside")
+
+
+# Every cell's plane is put back exactly, cell_step_mm past its edge: over the
+# cell, whatever the blank under the top has above the plane is cut away and
+# a block under the plane added, and whatever the blank over the underside
+# has below the plane floor_drop() lower likewise. Where two cells overlap,
+# so the top steps at the higher cell's edge (with nothing left standing in
+# the gap) and the underside at the lower's. Inside a cell a blank's surface
+# lies on the plane to within rounding, and a boolean between faces that
+# nearly coincide leaves slivers, so the cuts start put_back_mm inside the
+# block, and they are ring_mm narrower than the blocks so that no face of a
+# cut lies on a face of a block: the blocks meet the blanks in volumes, and
+# where a blank stands higher than the plane at the cell's edge the step
+# comes ring_mm inside it. Keys whose plates share a plane share one block.
+put_back_mm = 0.1
+ring_mm = 0.01
+
+
+def plane_groups():
+    """The keys grouped by their plates' planes."""
+    groups = []
+    for k in keys():
+        for g in groups:
+            m = g[0].frame
+            if np.abs(k.frame[:3, 2] - m[:3, 2]).max() < 1e-9 and abs(m[:3, 2] @ (origin(k.frame) - origin(m))) < 1e-9:
+                g.append(k)
+                break
+        else:
+            groups.append([k])
+    return groups
+
+
+def column(group, grow):
+    """The group's cells, `grow` past their edges, as a vertical column from z = -2 up."""
+    return fused([cell_face(k, grow) for k in group]).extrude(203).translate((0, 0, -2))
+
+
+def half_space(m, z, below=True, size=200):
+    """Everything in frame m below (or above) its plane z, within `size`."""
+    return placed(m, Manifold.cube((size, size, size)).translate((-size / 2, -size / 2, z - size if below else z)))
+
+
+def slab(m, z_top, z_bottom, size=200):
+    """Everything in frame m between its planes z_bottom and z_top, within `size`."""
+    return placed(m, Manifold.cube((size, size, z_top - z_bottom)).translate((-size / 2, -size / 2, z_bottom)))
+
+
+@cached
+def over_underside():
+    """Everything over the body's underside, every cell's plane put back."""
+    t = time.time()
+    d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
+    caps = [column(g, cut) ^ half_space(g[0].frame, -d + put_back_mm) for g in plane_groups()]
+    blocks = [column(g, block) ^ slab(g[0].frame, -d / 2, -d) for g in plane_groups()]
+    shell = add(subtract(over_blank(), caps), blocks)
+    stage("the underside", t)
     return shell
 
 
 @cached
-def plinth_blank():
-    """The plinth before anything is cut from it: from the desk up to the body's
-    underside, flat under each cell as the body is."""
+def body_shell():
+    """The body before anything is cut from it: under its top and over its
+    underside, every cell's plane put back."""
     t = time.time()
-    # The footprint's prism standing on the desk, under the plate surface (the
-    # desk is the prism's own bottom face: cutting the prism's spline wall with
-    # a desk plane instead failed for some outlines).
-    plinth = patched(solid(under(plate_face()).intersect(prism(footprint_2d(), 0, 100))))
-    t = stage("plinth patches", t)
-    z = -L.floor_drop() - P.plate_gap_mm
-    for batch in apart([cell_cap(k, z) for k in keys()]):
-        plinth = solid(plinth.cut(*batch))
-    stage("plinth cells", t)
-    return plinth
+    reach = fused([cell_face(k, P.cell_step_mm) for k in keys()]) - top_contact_2d()
+    if reach.area() > 1e-6:
+        x0, y0, _, _ = reach.bounds()
+        raise ValueError(f"a cell's plane reaches the top edge's round near ({x0:.1f}, {y0:.1f}): "
+                         "top_round_mm is too large for wall_mm")
+    d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
+    caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
+    blocks = [column(g, block) ^ slab(g[0].frame, 0, -d / 2) for g in plane_groups()]
+    under = add(subtract(under_blank(), caps), blocks)
+    shell = under ^ over_underside()
+    stage("the body's shell", t)
+    return shell
+
+
+@cached
+def plinth_shell():
+    """The plinth before anything is cut from it: the outline's prism from the
+    desk, under the body's underside lowered plate_gap_mm."""
+    prism = outline_2d().extrude(90)
+    return prism - over_underside().translate((0, 0, -P.plate_gap_mm))
 
 
 # ---------------------------------------------------------------- the bay's well
@@ -713,7 +527,7 @@ def power_switch_frame():
 def well():
     """The well: both bays' rectangles, open from the well's floor up through the
     plate's top (and into the body, where the parts need more than the plate has)."""
-    return [Solid.make_box(b[1][0] - b[0][0], b[1][1] - b[0][1], 100).translate((b[0][0], b[0][1], bay_z()))
+    return [Manifold.cube((b[1][0] - b[0][0], b[1][1] - b[0][1], 100)).translate((b[0][0], b[0][1], bay_z()))
             for b in L.bays()]
 
 
@@ -841,19 +655,6 @@ def channels():
     return out
 
 
-def hull_solid(points):
-    """The convex hull of some world points, as a solid."""
-    pts = np.asarray(points, float)
-    hull = ConvexHull(pts)
-    faces = []
-    for tri, eq in zip(hull.simplices, hull.equations):
-        a, b, c = pts[tri]
-        if np.dot(np.cross(b - a, c - a), eq[:3]) < 0:
-            tri = tri[[0, 2, 1]]
-        faces.append(Face(Wire.make_polygon([tuple(pts[i]) for i in tri], close=True)))
-    return Solid(Shell(faces)).clean()
-
-
 def post_points(p, w):
     """A channel post's corners at a world point: a square of w from 3 mm under
     the body's underside up to the point (so the hull between two posts stays
@@ -863,7 +664,7 @@ def post_points(p, w):
 
 
 def channel_solids():
-    return [hull_solid(post_points(a, w) + post_points(b, w))
+    return [Manifold.hull_points(post_points(a, w) + post_points(b, w))
             for w, pts, _ in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
@@ -875,31 +676,32 @@ def diode_frame(k):
 def diode_rooms():
     """Room for the diode in the column channel, over the column tab."""
     d = P.diode_mm
-    return [s for k in keys() for s in place(diode_frame(k), [R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8))])]
+    return [placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8))) for k in keys()]
+
+
+def swept(m, size, centre, depth=60):
+    """A box drawn in frame m carried straight down (in world) by `depth`, so
+    shafts and wells stand square to the desk however the key tilts."""
+    pts = np.array([xform(m, c) for c in box_corners(size, centre)])
+    return Manifold.hull_points(np.r_[pts, pts - (0, 0, depth)])
 
 
 def socket_shaft(k, grow):
     """The socket's shaft from its pocket down through the body's underside, `grow` round the body."""
-    return [piece for s in place(k.frame, R.socket_body(grow)) for piece in swept(s)]
+    return [swept(k.frame, s, c) for s, c in R.socket_boxes(grow)]
 
 
 def solder_wells():
     """Room under each socket tab to solder to it."""
-    out = []
-    for k in keys():
-        for side in (-1, 1):
-            t = R.socket_tab_tip(side)
-            s = P.solder_well_mm
-            box = Solid.make_box(s[0], s[1], 0.6).translate((t[0] - s[0] / 2, t[1] - s[1] / 2, t[2] - 0.6))
-            out += [piece for b in place(k.frame, [box]) for piece in swept(b)]
-    return out
+    s = P.solder_well_mm
+    return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) for k in keys() for side in (-1, 1)]
 
 
 # ---------------------------------------------------------------- the body
 def key_rooms():
-    """Each key's room (switch, socket and shaft) fused into one cutter."""
-    return [s for k in keys()
-            for s in united(place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm))]
+    """Each key's room (switch, socket and shaft) as one cutter."""
+    rooms = R.mx_switch_room() + R.hotswap_socket_room()
+    return [union(place(k.frame, rooms) + socket_shaft(k, P.socket_clearance_mm)) for k in keys()]
 
 
 def bay_rooms(plinth=False):
@@ -919,20 +721,20 @@ def insert_holes():
 @cached
 def body_cuts():
     """Everything cut from the body but the screws' insert holes, in named groups."""
-    return [("a key's room", key_rooms()), ("a solder well", united(solder_wells())), ("a diode's room", diode_rooms()),
-            ("a channel", united(channel_solids())), ("a bay room", bay_rooms())]
+    return [("a key's room", key_rooms()), ("a solder well", solder_wells()), ("a diode's room", diode_rooms()),
+            ("a channel", channel_solids()), ("a bay room", bay_rooms())]
 
 
 def body_cutters():
     return [s for _, group in body_cuts() for s in group]
 
 
+@cached
 def body():
-    blank = body_blank()
+    shell = body_shell()
     t = time.time()
-    cutters = body_cutters() + insert_holes()
-    t = stage("body cutters", t)
-    body = solid(blank.cut(*cutters))
+    body = subtract(shell, body_cutters() + insert_holes())
+    body.num_tri()   # Manifold evaluates lazily: make the cut happen here
     stage("body cuts", t)
     return body
 
@@ -940,11 +742,10 @@ def body():
 # ---------------------------------------------------------------- the bottom plate
 def socket_boss(k):
     """The boss under key k's socket: the socket's shaft, inset, standing on the
-    plinth's top under the cell up to just under the socket."""
-    pieces = socket_shaft(k, -P.boss_inset_mm)
-    shaft = pieces[0].fuse(*pieces[1:])
-    shaft = solid(shaft.intersect(half_space(k.frame, R.socket_bottom_z() - P.boss_clearance_mm)))
-    return solid(shaft.intersect(half_space(k.frame, -L.floor_drop() - P.plate_gap_mm, below=False)))
+    plinth's top under the cell up to just under the socket (and reaching
+    put_back_mm into the plinth, so the two meet in a volume)."""
+    return (union(socket_shaft(k, -P.boss_inset_mm)) ^ half_space(k.frame, R.socket_bottom_z() - P.boss_clearance_mm)
+            ^ half_space(k.frame, -L.floor_drop() - P.plate_gap_mm - put_back_mm, below=False))
 
 
 def screw_holes():
@@ -962,47 +763,45 @@ def plate_cutters():
     return [s for _, group in plate_cuts() for s in group]
 
 
+@cached
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
     the pinhole over the reset button, and the socket bosses standing on it."""
-    blank = plinth_blank()
+    shell = plinth_shell()
     t = time.time()
-    plate = solid(blank.cut(*(plate_cutters() + screw_holes())))
-    t = stage("plinth cuts", t)
-    plate = solid(plate.fuse(*[socket_boss(k) for k in keys()]))
-    stage("plinth bosses", t)
+    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
+    plate.num_tri()
+    stage("plinth cuts and bosses", t)
     return plate
 
 
 # ---------------------------------------------------------------- the parts, for the assembly
+def at_keys(part, frame=lambda k: k.frame):
+    """A part's pieces at every key, each named for its key."""
+    return [Piece(f"{p.label} {k.name}", p.colour, placed(frame(k), p.solid)) for k in keys() for p in part]
+
+
 def switches():
-    return Compound(children=place_all([(k.frame, R.mx_switch()) for k in keys()]), label="switches")
+    return at_keys(R.mx_switch())
 
 
 def keycaps(pressed=0):
-    caps = [R.keycap(k.cap_row, k.units, pressed) for k in keys()]
-    c = Compound(children=place_all([(k.frame, cap) for k, cap in zip(keys(), caps)]), label="keycaps")
-    c.color = Color("ivory")
-    return c
+    return [Piece(f"keycap {k.name}", "ivory", placed(k.frame, R.keycap(k.cap_row, k.units, pressed))) for k in keys()]
 
 
 def sockets():
-    return Compound(children=place_all([(k.frame, R.hotswap_socket()) for k in keys()]), label="sockets")
+    return at_keys(R.hotswap_socket())
 
 
 def diodes():
-    return Compound(children=place_all([(diode_frame(k), R.diode()) for k in keys()]), label="diodes")
+    return at_keys(R.diode(), diode_frame)
 
 
 def electronics():
     parts = [(mcu_frame(), R.mcu_board()), (battery_frame(), R.battery())]
     if P.power_switch:
         parts.append((power_switch_frame(), R.power_switch_part()))
-    return Compound(children=place_all(parts), label="electronics")
-
-
-def place_all(pairs):
-    return [place(m, [s])[0] for m, s in pairs]
+    return [Piece(p.label, p.colour, placed(m, p.solid)) for m, part in parts for p in part]
 
 
 # ---------------------------------------------------------------- checks
@@ -1021,20 +820,18 @@ def cap_collisions():
     hits = []
     for i, j in near_pairs():
         for pi, pj in ((0, 0), (P.cap_travel_mm, 0), (0, P.cap_travel_mm)):
-            a = place(ks[i].frame, [R.keycap_probe(ks[i].cap_row, ks[i].units, pi)])[0]
-            b = place(ks[j].frame, [R.keycap_probe(ks[j].cap_row, ks[j].units, pj)])[0]
-            hit = a.intersect(b)
-            v = 0 if hit is None else sum(volume(s) for s in hit.solids())
+            a = placed(ks[i].frame, R.keycap_probe(ks[i].cap_row, ks[i].units, pi))
+            b = placed(ks[j].frame, R.keycap_probe(ks[j].cap_row, ks[j].units, pj))
+            v = (a ^ b).volume()
             if v > 1e-6:
                 hits.append((ks[i].name, ks[j].name, v))
     return hits
 
 
 def gap(a, b):
-    """The gap between two shapes' bounding boxes (0 when they overlap)."""
-    a, b = a.bounding_box(), b.bounding_box()
-    return max(0, a.min.X - b.max.X, b.min.X - a.max.X, a.min.Y - b.max.Y, b.min.Y - a.max.Y,
-               a.min.Z - b.max.Z, b.min.Z - a.max.Z)
+    """The gap between two solids' bounding boxes (0 when they overlap)."""
+    a, b = np.array(a.bounding_box()), np.array(b.bounding_box())
+    return max(0, *(a[:3] - b[3:]), *(b[:3] - a[3:]))
 
 
 @cached
@@ -1044,26 +841,25 @@ def screw_walls():
     part, and against the outline. Returns the least wall as (mm, screw, what)
     and the clashes as a list of (screw, what, overlap mm^3), empty when every
     hole is clear."""
-    outline = footprint_2d().outer_wire()
     least, hits = (float("inf"), None, None), []
     for i, p in enumerate(L.screw_points()):
         x, y = float(p[0]), float(p[1])
         name = f"screw {i + 1} ({x:.1f}, {y:.1f})"
-        plate_holes = [h.translate((x, y, 0)) for h in R.screw_hole(plate_z(x, y))]
-        holes = [(h, plate_cuts()) for h in plate_holes]
+        holes = [(h.translate((x, y, 0)), plate_cuts()) for h in R.screw_hole(plate_z(x, y))]
         holes.append((R.insert_hole().translate((x, y, floor_z(x, y))), body_cuts()))
         for hole, cuts in holes:
-            r = hole.bounding_box().size.X / 2
-            walls = [(outline.distance_to(Vertex(x, y, 0)) - r, "the outline")]
+            box = hole.bounding_box()
+            walls = [(outline_distance((x, y)) - (box[3] - box[0]) / 2, "the outline")]
             for what, group in cuts:
                 for s in group:
                     if gap(hole, s) > 5:
                         continue
-                    d = hole.distance_to(s)
-                    walls.append((d, what))
-                    if d < 1e-6:
-                        hit = hole.intersect(s)
-                        hits.append((name, what, 0 if hit is None else sum(volume(v) for v in hit.solids())))
+                    v = (hole ^ s).volume()
+                    if v > 0:
+                        hits.append((name, what, v))
+                        walls.append((0.0, what))
+                    else:
+                        walls.append((hole.min_gap(s, 5), what))
             d, what = min(walls)
             if d < least[0]:
                 least = (d, name, what)

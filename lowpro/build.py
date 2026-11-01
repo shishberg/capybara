@@ -8,22 +8,24 @@
 Any parameter in params.py can be overridden with --set. Files go to
 output/lowpro/ (--out): <half>-body.stl, <half>-plate.stl and
 right-assembly.3mf (body, plinth, switches, caps, sockets, diodes and
-electronics, each a coloured mesh). The left half is the right mirrored.
-
-The body takes longest, so when the plinth is wanted too it is built, checked
-and written by a second process alongside, which then also writes the
-assembly once the body reaches it.
+electronics, each piece a named, coloured mesh). The left half is the right
+mirrored.
 """
 import argparse
 import ast
-import multiprocessing
 import sys
-import tempfile
 import time
+import zipfile
 from pathlib import Path
+
+import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 PARTS = ("body", "plate", "assembly")
+
+COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "808080", "gold": "FFD700",
+           "dimgray": "696969", "silver": "C0C0C0", "orange": "FFA500", "darkgreen": "006400", "white": "FFFFFF",
+           "steelblue": "4682B4", "black": "000000", "red": "FF0000"}
 
 
 def set_params(assignments):
@@ -36,72 +38,93 @@ def set_params(assignments):
         setattr(P, name, ast.literal_eval(value))
 
 
-def write(shape, path):
-    """Export a part to STL, refusing one that does not span the outline (a
-    boolean that lost the part leaves a fragment behind) or is not a valid
-    solid (it would not mesh closed)."""
-    from build123d import export_stl
-    from OCP.BRepCheck import BRepCheck_Analyzer
+def mesh_of(solid):
+    """A solid's vertices (float64) and triangles."""
+    m = solid.to_mesh64()
+    return np.asarray(m.vert_properties)[:, :3], np.asarray(m.tri_verts, np.int64)
 
+
+def refuse_invalid(solid, name):
+    """Stop the build on a part that is not one closed manifold solid spanning
+    the outline (a boolean that lost the part leaves a fragment, and a stray
+    piece or a sliver is a second solid)."""
     from . import chassis as C
 
-    span, want = shape.bounding_box().size, C.footprint_2d().bounding_box().size
-    if abs(span.X - want.X) > 0.01 or abs(span.Y - want.Y) > 0.01:
-        sys.exit(f"{path.name} does not span the outline: {span.X:.1f} x {span.Y:.1f} mm, not {want.X:.1f} x {want.Y:.1f}")
-    if not BRepCheck_Analyzer(shape.wrapped).IsValid():
-        bad = [f for f in shape.faces() if not BRepCheck_Analyzer(f.wrapped).IsValid()]
-        sys.exit(f"{path.name} is not a valid solid: {len(bad)} bad faces "
-                 + ", ".join(f"{f.geom_type.name} at {tuple(round(c, 1) for c in f.center())}" for f in bad[:8]))
-    path = path.with_suffix(".stl")
-    export_stl(shape, str(path), tolerance=0.02, angular_tolerance=0.2)
-    print(f"wrote {path}", flush=True)
+    if solid.status().name != "NoError":
+        sys.exit(f"{name} is not a closed manifold solid: {solid.status().name}")
+    pieces = solid.decompose()
+    if len(pieces) != 1:
+        sys.exit(f"{name} is {len(pieces)} solids, not one: volumes "
+                 + ", ".join(f"{p.volume():.3g} mm^3 at {tuple(round(c, 1) for c in p.bounding_box()[:3])}"
+                             for p in sorted(pieces, key=lambda p: -p.volume())[:8]))
+    if solid.volume() <= 0:
+        sys.exit(f"{name} has no volume")
+    box = solid.bounding_box()
+    q = C.outline()
+    span, want = (box[3] - box[0], box[4] - box[1]), np.ptp(q, axis=0)
+    if abs(span[0] - want[0]) > 0.01 or abs(span[1] - want[1]) > 0.01:
+        sys.exit(f"{name} does not span the outline: {span[0]:.1f} x {span[1]:.1f} mm, not {want[0]:.1f} x {want[1]:.1f}")
 
 
-def for_half(shape, half):
-    from build123d import Plane, mirror
+def write_stl(solid, path):
+    """A part to binary STL, after refuse_invalid. Each facet's normal is worked
+    out from its corners as written (single precision)."""
+    refuse_invalid(solid, path.name)
+    v, t = mesh_of(solid)
+    corners = v[t].astype(np.float32)
+    n = np.cross((corners[:, 1] - corners[:, 0]).astype(float), (corners[:, 2] - corners[:, 0]).astype(float))
+    n /= np.maximum(np.linalg.norm(n, axis=1), 1e-300)[:, None]
+    facets = np.zeros(len(t), dtype=[("normal", "<f4", 3), ("corners", "<f4", (3, 3)), ("attr", "<u2")])
+    facets["normal"], facets["corners"] = n, corners
+    with open(path, "wb") as f:
+        f.write(b"lowpro".ljust(80, b" "))
+        f.write(np.uint32(len(t)).tobytes())
+        f.write(facets.tobytes())
+    print(f"wrote {path} ({len(t)} triangles)", flush=True)
 
-    return mirror(shape, about=Plane.YZ) if half == "left" else shape
+
+def write_3mf(pieces, path):
+    """Named, coloured pieces to one 3MF: each piece an object with one colour."""
+    names = sorted({p.colour for p in pieces})
+    out = ['<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" '
+           'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<resources>\n<basematerials id="1">\n']
+    out += [f'<base name="{c}" displaycolor="#{COLOURS[c]}"/>\n' for c in names]
+    out.append("</basematerials>\n")
+    for i, piece in enumerate(pieces, start=2):
+        v, t = mesh_of(piece.solid)
+        out.append(f'<object id="{i}" type="model" name="{piece.label}" pid="1" pindex="{names.index(piece.colour)}">'
+                   "<mesh><vertices>\n")
+        out.append("\n".join(map('<vertex x="%.4f" y="%.4f" z="%.4f"/>'.__mod__, map(tuple, v))))
+        out.append("\n</vertices><triangles>\n")
+        out.append("\n".join(map('<triangle v1="%d" v2="%d" v3="%d"/>'.__mod__, map(tuple, t))))
+        out.append("\n</triangles></mesh></object>\n")
+    out.append("</resources>\n<build>\n")
+    out += [f'<item objectid="{i}"/>\n' for i in range(2, len(pieces) + 2)]
+    out.append("</build>\n</model>\n")
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+        z.writestr("[Content_Types].xml",
+                   '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                   '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                   '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
+        z.writestr("_rels/.rels",
+                   '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                   '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
+                   'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+        z.writestr("3D/3dmodel.model", "".join(out))
+    print(f"wrote {path} ({len(pieces)} pieces)", flush=True)
 
 
-def assembly(plate):
-    """The right half's assembly without the body, meshed for 3MF: one
-    coloured, named mesh per piece. Everything but the body, so it can be
-    meshed while the body is still being built."""
-    from build123d import Color, Mesher
+def for_half(solid, half):
+    return solid.mirror((1, 0, 0)) if half == "left" else solid
 
+
+def assembly(body, plate):
+    """The right half's pieces: body, plinth, switches, caps, sockets, diodes and electronics."""
     from . import chassis as C
+    from .parts import Piece
 
-    plate.color, plate.label = Color("peru"), "plinth"
-    mesher = Mesher()
-    for shape in leaves([plate, C.switches(), C.keycaps(), C.sockets(), C.diodes(), C.electronics()]):
-        mesher.add_shape(shape, linear_deflection=0.02, angular_deflection=0.2)
-    return mesher
-
-
-def write_assembly(mesher, body, path):
-    """The assembly with the body added, to 3MF."""
-    from build123d import Color
-
-    body.color, body.label = Color("burlywood"), "body"
-    mesher.add_shape(body, linear_deflection=0.02, angular_deflection=0.2)
-    path = path.with_suffix(".3mf")
-    mesher.write(str(path))
-    print(f"wrote {path}", flush=True)
-
-
-def leaves(shapes, color=None, label=""):
-    """The pieces under these shapes' compounds, each carrying the colour and
-    name of the nearest compound above it that has one (a 3MF mesh holds one
-    colour)."""
-    from build123d import Compound
-
-    for shape in shapes:
-        c, name = shape.color or color, shape.label or label
-        if isinstance(shape, Compound) and shape.children:
-            yield from leaves(shape.children, c, name)
-        else:
-            shape.color, shape.label = c, name
-            yield shape
+    return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
+            + C.switches() + C.keycaps() + C.sockets() + C.diodes() + C.electronics())
 
 
 def check():
@@ -123,48 +146,6 @@ def check():
     return ok
 
 
-def save(shape, path):
-    from OCP.BinTools import BinTools
-
-    BinTools.Write_s(shape.wrapped, str(path))
-
-
-def load(path):
-    from build123d import Solid
-    from OCP.BinTools import BinTools
-    from OCP.TopoDS import TopoDS_Shape
-
-    shape = TopoDS_Shape()
-    BinTools.Read_s(shape, str(path))
-    return Solid(shape)
-
-
-def setup(args):
-    from . import chassis as C
-    from . import layout as L
-
-    C.VERBOSE = args.verbose
-    set_params(args.set)
-    L.reset()
-
-
-def plate_process(args, out, halves, parts, do_check, body_file, pipe):
-    """The second process: the plinth, the check and, given the body, the assembly."""
-    setup(args)
-    from . import chassis as C
-
-    ok = check() if do_check else True
-    plate = C.bottom_plate()
-    if "plate" in parts:
-        for half in halves:
-            write(for_half(plate, half), out / f"{half}-plate")
-    if "assembly" in parts:
-        mesher = assembly(plate)
-        pipe.recv()
-        write_assembly(mesher, load(body_file), out / "right-assembly")
-    pipe.send(ok)
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--half", choices=("right", "left", "both"), default="both")
@@ -181,43 +162,33 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     t = time.time()
 
-    # Start the plinth's process before the heavy imports, so both load OpenCascade at once.
-    want_body = bool({"body", "assembly"} & set(parts)) and not args.check
-    want_plate = bool({"plate", "assembly"} & set(parts)) and not args.check
-    child = pipe = body_file = None
-    if want_body and want_plate:
-        pipe, far = multiprocessing.get_context("spawn").Pipe()
-        body_file = Path(tempfile.mkdtemp()) / "body.brep"
-        child = multiprocessing.get_context("spawn").Process(
-            target=plate_process, args=(args, out, halves, parts, not args.no_check, body_file, far))
-        child.start()
-
-    setup(args)
     from . import chassis as C
+    from . import layout as L
 
+    C.VERBOSE = args.verbose
+    set_params(args.set)
+    L.reset()
     print(C.report(), flush=True)
-    ok = True if child or args.no_check else check()
+    s = C.stage("report", t)
+    ok = True if args.no_check else check()
+    s = C.stage("checks", s)
     if args.check:
         return 0 if ok else 1
 
-    body = C.body() if want_body else None
-    plate = C.bottom_plate() if want_plate and not child else None
-    if child:
-        if "assembly" in parts:
-            save(body, body_file)
-            pipe.send(True)
-    if "body" in parts:
-        for half in halves:
-            write(for_half(body, half), out / f"{half}-body")
-    if plate is not None:
-        for half in halves:
-            write(for_half(plate, half), out / f"{half}-plate")
-    if child:
-        ok = pipe.recv()
-        child.join()
-        body_file.unlink()
-        body_file.parent.rmdir()
-    print(f"built in {time.time() - t:.0f} s", flush=True)
+    body = C.body() if {"body", "assembly"} & set(parts) else None
+    plate = C.bottom_plate() if {"plate", "assembly"} & set(parts) else None
+    s = time.time()
+    for name, solid in (("body", body), ("plate", plate)):
+        if name in parts:
+            for half in halves:
+                write_stl(for_half(solid, half), out / f"{half}-{name}.stl")
+    s = C.stage("STL", s)
+    if "assembly" in parts:
+        refuse_invalid(body, "the assembly's body")
+        refuse_invalid(plate, "the assembly's plinth")
+        write_3mf(assembly(body, plate), out / "right-assembly.3mf")
+        C.stage("3MF", s)
+    print(f"built in {time.time() - t:.1f} s", flush=True)
     return 0 if ok else 1
 
 

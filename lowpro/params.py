@@ -189,21 +189,16 @@ power_switch_knob_mm = (1.5, 3.0, 1.5)  # width, travel + width, how far it stan
 power_switch_back_mm = 8                # along the inner side wall, from the bay's back
 
 # ---------------------------------------------------------------- modelling
-# The top surface is fitted through the key field sampled at this step, to
-# this tolerance. Between cells the field blends the cells' planes, from this
-# far inside each cell's edge (chassis.py field). The footprint's outline is
-# smoothed into one spline through points this far apart. The top edge's round
-# is a spline surface through the rolling ball's sections, taken wherever the
-# ball moves this far (chassis.py rounded_shell); at 0.3 its edges lie on the
-# top and the wall to a few 1e-5 mm.
+# The top surface is a smooth (quadratic) spline through the key field sampled
+# at this step. Between cells the field blends the cells' planes, from this
+# far inside each cell's edge (chassis.py field).
 surface_step_mm = 2
-surface_fit_mm = 0.01
 surface_blend_mm = 3
-outline_sample_mm = 1
-round_step_mm = 0.3
-# Each cell's plane is cut clear this far past its edge (chassis.py body_blank).
+# Each cell's plane is put back exactly this far past its edge (chassis.py plane_groups).
 cell_step_mm = 0.6
-# The blank's surfaces are split into patches about this big before anything is
-# cut from it (chassis.py patched): the booleans then only meet the patches
-# near each tool.
-patch_mm = 20
+# The meshes: the top surface, the underside and the plinth's top are
+# triangles about this big, with the outline's stations no further apart;
+# every curve (the outline's arcs, the top edge's round, the cylinders) is
+# chords no further than mesh_tol_mm from it.
+mesh_mm = 1
+mesh_tol_mm = 0.01
