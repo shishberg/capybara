@@ -29,6 +29,7 @@ from pathlib import Path
 import numpy as np
 
 from . import params as P
+from .parts import counterbore_d, socket_top_z
 from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
@@ -328,6 +329,60 @@ def cap_top(k):
     return xform(k.frame, [0, 0, cap_top_height(k.cap_row)])
 
 
+# ---------------------------------------------------------------- wiring points
+# In a key's frame, at the socket's top: the column line past the -x tab
+# (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
+# A tile's are its north C hole's and east R hole's.
+def col_x():
+    if P.key_parts == "tiles":
+        return P.tile_c_hole[0]
+    # Overlapping the socket's shaft, so no sliver is left between them under the tent.
+    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - 0.3
+
+
+def row_x():
+    if P.key_parts == "tiles":
+        return P.tile_r_hole[0]
+    return P.socket_centre_mm[0] + P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]
+
+
+def ne_y():
+    return P.cell_mm / 2 - P.channel_w_mm / 2
+
+
+def out_y():
+    """A trunk point just past a cell's edge."""
+    return P.cell_mm / 2 + P.trunk_out_mm
+
+
+def at(k, p):
+    return xform(k.frame, [p[0], p[1], socket_top_z()])
+
+
+def c_tab(k):
+    return at(k, (col_x(), P.tile_c_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[0]))
+
+
+def r_tab(k):
+    return at(k, (row_x(), P.tile_r_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[1]))
+
+
+def nw(k):
+    return at(k, (col_x(), ne_y()))
+
+
+def ne(k):
+    return at(k, (row_x(), ne_y()))
+
+
+def back_pt(k):
+    return at(k, (col_x(), out_y()))
+
+
+def front_pt(k):
+    return at(k, (col_x(), -out_y()))
+
+
 # ---------------------------------------------------------------- the bay: controller, battery, power switch
 # Nothing with a socket over it can sit under the body's floor (each socket's
 # shaft is open to the bottom plate), so the controller and the battery lie in
@@ -363,15 +418,30 @@ def switch_strip():
 
 @cached
 def mcu_bay():
-    """The controller's bay: beside the inner column's cells, its back at the
-    top cell's back, as wide as the board and the switch, and reaching as far
-    forward as the board's room (the board sits mcu_usb_overhang_mm back past
-    the bay's back, toward the port's opening: mcu_frame)."""
+    """The controller's bay, as wide as the board and the switch, reaching as
+    far forward as the board's room (the board sits mcu_usb_overhang_mm back
+    past the bay's back, toward the port's opening: mcu_frame). Beside the
+    inner column's cells, its back at the top cell's back; or under the cells,
+    its inner side and back under the room (chassis.py channel_points) of the
+    inner column's channel and of the back trunk behind the top keys over it,
+    which run over the bay, open into it. Either way the walls beside and
+    behind it are wall_mm thick, which the ports and the reset switch go through."""
     c = P.mcu_clearance_mm
-    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.min_wall_mm
-    y1 = cell_back(column_key(0, P.rows_above))
-    y0 = y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c
-    return ((x1 - P.mcu_board_mm[0] - 2 * c - switch_strip(), y0), (x1, y1))
+    inner = [column_key(0, r) for r in range(-P.rows_below, P.rows_above + 1)]
+    w = P.mcu_board_mm[0] + 2 * c + switch_strip()
+    if P.bay_place == "under":
+        room = P.trunk_w_mm / 2 + P.channel_margin_mm
+        channel = [front_pt(inner[0])] + [c_tab(k) for k in inner] + [back_pt(inner[-1])]
+        x0 = min([p[0] for k in inner for p in cell_corners(k)] + [p[0] - room for p in channel])
+        x1 = x0 + w
+        top = [k for k in (column_key(col, P.rows_above) for col in range(5))
+               if min(p[0] for p in cell_corners(k)) < x1 and max(p[0] for p in cell_corners(k)) > x0]
+        y1 = max(at(k, (sx * out_y(), out_y()))[1] for k in top for sx in (-1, 1)) + room
+    else:
+        x1 = min(cell_x0(k) for k in inner) - P.min_wall_mm
+        x0 = x1 - w
+        y1 = cell_back(column_key(0, P.rows_above))
+    return ((x0, y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c), (x1, y1))
 
 
 def mcu_frame():
@@ -414,14 +484,17 @@ def trrs_frame():
     return trans([b[0][0] + switch_strip() / 2, b[1][1], 0])
 
 
-def reset_frame():
-    """The reset switch's frame (parts.py reset_switch): origin at the middle of
-    its plunger face, the plunger along -x through the inner side wall, its
-    body in a pocket in the wall reset_skin_mm inside the outer face, in front
-    of the jack, standing on the well's floor."""
+def reset_y():
+    """Where along the inner side wall the reset switch is (chassis.py
+    reset_frame): in front of the jack."""
     b, c = mcu_bay(), P.reset_clearance_mm
-    y = b[1][1] - P.trrs_body_mm[0] - 2 * c - 1 - P.reset_leg_span_mm / 2
-    return trans([b[0][0] - P.wall_mm + P.reset_skin_mm, y, P.reset_body_mm[0] / 2 + c])
+    return b[1][1] - P.trrs_body_mm[0] - 2 * c - 1 - P.reset_leg_span_mm / 2
+
+
+def knob_y():
+    """Where along the inner side wall the knob's axis is (chassis.py
+    knob_frame): in front of the bay, its bearing's pocket min_wall_mm from it."""
+    return mcu_bay()[0][1] - P.min_wall_mm - P.knob_bearing_mm[1] / 2 - P.knob_clearance_mm
 
 
 def bays():
@@ -456,7 +529,13 @@ def screw_points():
                                   d[1] * cy + (d[1] * s if abs(d[1]) == 1 else 0), 0]))
 
     m = mcu_bay()
-    if P.link == "trrs":
+    if P.bay_place == "under":
+        # The inner side wall is no thicker than elsewhere, and the inner
+        # column's shafts lean into it: in front of the inner column's bottom
+        # key instead, past the front trunk, min_wall_mm from it.
+        k = column_key(0, -P.rows_below)
+        bay = [xy(at(k, (0, -out_y() - P.trunk_w_mm / 2 - counterbore_d() / 2 - P.min_wall_mm)))]
+    elif P.link == "trrs":
         # In front of the reset switch on the inner side, and the bay's front.
         bay = [(m[0][0] - s, m[0][1] + 4), ((m[0][0] + m[1][0]) / 2, m[0][1] - s)]
     else:

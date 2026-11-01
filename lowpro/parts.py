@@ -214,14 +214,19 @@ def mcu_board():
 def mcu_room():
     """The board's pocket: from the well's floor up over the board, with the
     wall's opening for the plug, chamfered outward."""
-    b, c, o = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_opening_mm
+    b, c = P.mcu_board_mm, P.mcu_clearance_mm
     h = mcu_pcb_z() + b[2] + c + 1
     pocket = box((b[0] + 2 * c, b[1] + 2 * c, h), (0, b[1] / 2, h / 2 - 1))
-    # The opening runs along -y through the back wall: drawn along z, then
-    # turned so that its z runs along +y from wall_mm + 5 out.
+    return [pocket, mcu_opening()]
+
+
+def mcu_opening():
+    """The wall's opening for the plug, chamfered outward: drawn along z, then
+    turned so that its z runs along -y from wall_mm + 5 out."""
+    o = P.mcu_usb_opening_mm
     opening = frustum((o[0] + 2, o[1] + 2), o, 0, P.wall_mm + 5)
     turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.wall_mm - 5, mcu_pcb_z() - P.mcu_usb_mm[1] / 2))
-    return [pocket, opening.transform(turn[:3])]
+    return opening.transform(turn[:3])
 
 
 def mcu_reset_hole():
@@ -279,14 +284,19 @@ def trrs_room(up=0):
     b, (bl, bd), c = P.trrs_body_mm, P.trrs_barrel_mm, P.trrs_clearance_mm
     h = b[2] + 2 * c + 2
     rooms = [box((b[1] + 2 * c, b[0] + 2 * c, h), (0, -b[0] / 2, h / 2 - c)),
-             along_y(bd + 2 * c, bl + 0.1, (0, -0.05, b[2] / 2)),
-             along_y(P.trrs_plug_d + 2 * c, P.wall_mm + 5, (0, bl, b[2] / 2))]
+             along_y(bd + 2 * c, bl + 0.1, (0, -0.05, b[2] / 2)), trrs_plug_hole()]
     if up > 0:
         rooms.append(box((b[1] + 2 * c, b[0] + 2 * c, up), (0, -b[0] / 2, up / 2)))
     return rooms
 
 
 # ---------------------------------------------------------------- reset switch
+def trrs_plug_hole():
+    """The plug's hole through the wall, from the barrel's end."""
+    b, (bl, _), c = P.trrs_body_mm, P.trrs_barrel_mm, P.trrs_clearance_mm
+    return along_y(P.trrs_plug_d + 2 * c, P.wall_mm + 5, (0, bl, b[2] / 2))
+
+
 def reset_switch():
     """The switch on edge in its frame (layout.py reset_frame): origin at the
     middle of its plunger face, its body behind (+x), the plunger out along -x,
@@ -305,11 +315,73 @@ def reset_room(up=0):
     the pocket that far upward (so it drops in from the body's side)."""
     (h, w, d), (pd, pp), c = P.reset_body_mm, P.reset_plunger_mm, P.reset_clearance_mm
     reach = P.wall_mm + 1
-    rooms = [box((reach, P.reset_leg_span_mm + 2 * c, h + 2 * c), (reach / 2 - c, 0, 0)),
-             cylinder(pd + 2 * c, P.reset_skin_mm + 2).rotate((0, -90, 0)).translate((0.1, 0, 0))]
+    rooms = [box((reach, P.reset_leg_span_mm + 2 * c, h + 2 * c), (reach / 2 - c, 0, 0)), reset_plunger_hole()]
     if up > 0:
         rooms.append(box((reach, P.reset_leg_span_mm + 2 * c, up), (reach / 2 - c, 0, up / 2)))
     return rooms
+
+
+def reset_plunger_hole():
+    """The plunger's hole through the skin in front of the switch."""
+    (_, _, _), (pd, _), c = P.reset_body_mm, P.reset_plunger_mm, P.reset_clearance_mm
+    return cylinder(pd + 2 * c, P.reset_skin_mm + 2).rotate((0, -90, 0)).translate((0.1, 0, 0))
+
+
+# ---------------------------------------------------------------- the AS5600 knob
+# In its frame (chassis.py knob_frame): origin on the axis at the wall's outer
+# face, +x in along the axis. Outside: the knob on its shaft. In the wall, from
+# the face in: the bearing, flush with the face; the shaft's end a millimetre
+# past it with the magnet in it; the magnet's gap; the sensor board, chip
+# toward the magnet, its pads up.
+def along_x(d, x0, x1):
+    """A cylinder of diameter d along x from x0 to x1."""
+    return cylinder(d, x1 - x0).rotate((0, 90, 0)).translate((float(x0), 0, 0))
+
+
+def knob_shaft_end():
+    return P.knob_bearing_mm[2] + 1
+
+
+def knob_sensor_x():
+    """The sensor board's face (the chip's) and back."""
+    x = knob_shaft_end() + P.knob_magnet_mm[2]
+    return x, x + P.knob_sensor_mm[2]
+
+
+def knob():
+    (kd, kh, kg), (bore, od, bw), (md, ml, _), s = P.knob_mm, P.knob_bearing_mm, P.knob_magnet_mm, P.knob_sensor_mm
+    end, (f, b) = knob_shaft_end(), knob_sensor_x()
+    ring = along_x(od, 0, bw) - along_x(bore, -1, bw + 1)
+    return (pieces([along_x(kd, -kg - kh, -kg)], "dimgray", "knob")
+            + pieces([along_x(bore, -kg - kh + 2, end) - along_x(md, end - ml, end + 1)], "silver", "shaft")
+            + pieces([ring], "lightgray", "bearing") + pieces([along_x(md, end - ml, end)], "firebrick", "magnet")
+            + pieces([box((b - f, s[0], s[1]), ((f + b) / 2, 0, 0))], "purple", "sensor"))
+
+
+def knob_room(reach, up=100):
+    """What the plinth loses: the bearing's pocket open to the outside; room
+    behind it for the shaft's end, clear of the bearing's outer race (the
+    pocket's floor, between the two races, holds that); the sensor's slot,
+    open upward so the board drops in before the body goes on; and its wires'
+    slot, `reach` along +y into the well, open upward."""
+    (bore, od, bw), s, c = P.knob_bearing_mm, P.knob_sensor_mm, P.knob_clearance_mm
+    f, b = knob_sensor_x()
+    w = P.channel_w_mm
+    return [knob_bearing_pocket(), along_x((bore + od) / 2, bw - 0.1, f),
+            box((b - f + 2 * c, s[0] + 2 * c, up), ((f + b) / 2, 0, up / 2 - s[1] / 2 - c)),
+            box((w, reach, up), (b - w / 2 + c, reach / 2, up / 2 + s[1] / 2 - 2 * w))]
+
+
+def knob_bearing_pocket():
+    """The bearing's pocket, open to the outside."""
+    (_, od, bw), c = P.knob_bearing_mm, P.knob_clearance_mm
+    return along_x(od + 2 * c, -1, bw)
+
+
+def knob_clear():
+    """The room the knob turns in outside the wall."""
+    (kd, kh, kg), c = P.knob_mm, P.knob_clearance_mm
+    return along_x(kd + 2 * c, -kg - kh - c, -kg + c)
 
 
 # ---------------------------------------------------------------- screws

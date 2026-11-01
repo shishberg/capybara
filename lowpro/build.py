@@ -29,7 +29,8 @@ PARTS = ("body", "plate", "assembly")
 
 COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "808080", "gold": "FFD700",
            "dimgray": "696969", "silver": "C0C0C0", "orange": "FFA500", "darkgreen": "006400", "white": "FFFFFF",
-           "steelblue": "4682B4", "black": "000000", "red": "FF0000"}
+           "steelblue": "4682B4", "black": "000000", "red": "FF0000", "lightgray": "D3D3D3", "firebrick": "B22222",
+           "purple": "800080"}
 
 
 def set_params(assignments, preset=None):
@@ -162,6 +163,19 @@ def check():
         ok = False
     else:
         print("every wire reaches the controller")
+    closed = C.closed_ports()
+    if closed:
+        print("not through the wall: " + ", ".join(closed))
+        ok = False
+    else:
+        print("ports open through the wall")
+    if C.P.knob:
+        clash = C.knob_clashes()
+        if clash:
+            print("the knob runs into: " + ", ".join(clash))
+            ok = False
+        else:
+            print("the knob turns clear")
     v = C.part_overlap()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")

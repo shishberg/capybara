@@ -163,6 +163,10 @@ wire_d_mm = 1.0
 # The trunks (the inner column's channel, which the row wires join, and the
 # one behind the top row that the columns' wires follow to the controller).
 trunk_w_mm = 3.5
+# How far past the end cells' edges the back and front trunks' centre lines run.
+trunk_out_mm = 1.5
+# The room the outline leaves round each channel, past its width.
+channel_margin_mm = 1
 # The per-key diode (DO-35, 1N4148), in the column channel: body length and diameter.
 diode_mm = (4.0, 2.0)
 # Each key's diode leg runs up its column in the channel past the -x tabs;
@@ -242,6 +246,23 @@ power_switch = True
 power_switch_mm = (8.6, 3.7, 3.5)
 power_switch_knob_mm = (1.5, 3.0, 1.5)  # width, travel + width, how far it stands out
 power_switch_back_mm = 8                # along the inner side wall, from the bay's back
+# Where the controller's bay is (layout.py mcu_bay): "beside" the inner
+# column, or "under" the inner and index columns' top keys, for a plinth tall
+# enough to hold it there.
+bay_place = "beside"
+# An AS5600 magnetic knob in the plinth's inner side wall, in front of the
+# bay, its axis square to the wall (parts.py knob). PROVISIONAL sizes, from
+# the parts in hand. Knob: diameter, how far it stands out of the wall, its gap to the
+# wall. Bearing (608 2RS): bore, outside diameter, width. Magnet: diameter,
+# length, and its gap to the chip. Sensor board: along y, along z, thick
+# (board and chip). knob_z_mm is the axis's height over the desk.
+knob = False
+knob_mm = (22, 9, 0.5)
+knob_bearing_mm = (8, 22, 7)
+knob_magnet_mm = (5, 2, 1)
+knob_sensor_mm = (17, 15, 2.6)
+knob_z_mm = 15
+knob_clearance_mm = 0.2
 # link "trrs": the Capybara's TRRS jack and reset switch, their sizes the
 # editor's (editor/src/default-config.json, trrs and reset). The jack lies
 # beside the board, lugs up, its barrel out of the back wall: body (along the
@@ -287,6 +308,7 @@ PRESETS = {
         "key_layout": "swung_in",
         "key_parts": "tiles",
         "link": "trrs",
+        "bay_place": "under",
         "cap_base_mm": _switch["keycap_mm"][0],
         "cap_top_mm": tuple(_switch["keycap_top_mm"]),
         "cap_height_mm": (_switch["keycap_mm"][2],) * 4,

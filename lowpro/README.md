@@ -55,8 +55,8 @@ python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
 `python3 -m lowpro.build --preset capybara` (and `lowpro.render --preset
 capybara`) builds this chassis with the Capybara's choices, into
 `output/lowpro/capybara/`: three parameters switch the design and the rest
-come from the editor's project, so they stay the Capybara's
-(`PRESETS` in `params.py`):
+come from the editor's project, so they stay the Capybara's, and a fourth
+moves the controller (`PRESETS` in `params.py`):
 
 - `key_layout = "swung_in"`: Swung in's keys and its 15° tent, as the editor
   places them (`editor/tests/key-frames.ts` prints them; the build runs it, so
@@ -72,6 +72,24 @@ come from the editor's project, so they stay the Capybara's
 - `link = "trrs"`: an RP2040 Pro Micro, its TRRS jack beside it with the
   barrel out of the back wall, and the reset switch on edge in the inner side
   wall, its plunger through a `reset_skin_mm` skin. No battery or power switch.
+- `bay_place = "under"`: the controller's bay is in the plinth under the inner
+  and index columns' top keys, not beside them. Its inner side and back reach
+  under the room of the inner column's channel and of the back trunk, so the
+  walls the ports and the reset switch go through stay `wall_mm` thick. The
+  tile shafts and channels over the bay open into it; the walls check holds
+  only the keys' seats to it. The plan is 28 mm narrower (119 mm across). The
+  inner side's screw moves to in front of the inner column, past the front
+  trunk, because the inner wall beside the leaning shafts has no room for one.
+
+`--set knob=True` adds an AS5600 magnetic knob, written to
+`output/lowpro/capybara-knob/` when built with `--out`. Its axis runs across,
+square to the inner side wall in front of the bay, `knob_z_mm` over the desk.
+The knob sits outside the wall on a shaft through a 608 bearing pocketed flush
+in the plinth's wall. A diametric magnet sits in the shaft's end, a millimetre
+past the bearing. The sensor board stands in a slot behind it, chip toward the
+magnet, and drops in from the plinth's top before the body goes on. Its three
+wires (GND, 3.3 V, OUT to an ADC pin) run along a slot into the well. The
+sizes in `params.py` are provisional, taken from the parts in hand.
 
 With the Capybara's keycaps as well, it comes out as tall as the Capybara (caps
 37 to 66 mm over the desk), the body 14.4 mm thick (its steepest keys lean
@@ -82,7 +100,8 @@ The body's and the plinth's blanks are each one closed triangle mesh, built
 from the surfaces' functions: the top surface and the underside over one
 triangulation of the plan, the round's arcs at each station along the outline,
 and the walls one vertical quad per outline segment, so the walls are exactly
-vertical and nothing but the USB opening and the power switch's knob cuts them.
+vertical and nothing but the openings through them (the USB port, the switches,
+the TRRS plug, the knob's bearing) cuts them.
 Everything cut from the blanks or added to them (the cells' planes put back,
 the pockets, channels, well, screw holes and bosses) is an exact solid, and the
 booleans are Manifold's. The meshes' triangles are about `mesh_mm` across and
@@ -259,8 +278,10 @@ seen to fail with the setting beside it, and the default layout passes them all.
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel | `--set screw_head_d=8` |
-| Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
-| Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
+| Wiring | A socket tab or tile hole, the battery's leads, the power switch, the jack, the reset switch or the knob's sensor has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
+| Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room or tile's seat; the bay's rooms, well and the knob's room) come within `min_wall_mm` of each other, or a channel or tile shaft comes within it of the bay (unless the bay is under the keys) or of another key's seat | `--set socket_tab_mm=(3.5,2.6)` |
+| Ports | An opening that must go through the wall (the controller's port, the TRRS plug's hole, the reset switch's plunger hole, the knob's bearing pocket) stops inside the outline | `--preset capybara --set mcu_usb_overhang_mm=-6` |
+| Knob | The knob's room outside the wall (grown by `knob_clearance_mm`) reaches the desk, the body or the plinth | `--preset capybara --set knob=True --set knob_z_mm=10` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set trunk_w_mm=12` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |

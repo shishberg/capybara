@@ -21,8 +21,9 @@ from scipy.interpolate import CubicSpline, RectBivariateSpline
 from . import layout as L
 from . import params as P
 from . import parts as R
-from .layout import cached, cell_corners, keys, key_named
-from .lib import origin, r2, rinv, trans, xform
+from .layout import (at, back_pt, c_tab, cached, cell_corners, col_x, front_pt, keys, key_named, ne, ne_y, nw,
+                     out_y, r_tab, row_x)
+from .lib import origin, r2, rinv, rot_z, trans, xform
 from .parts import Piece, box_corners, segments, union
 
 VERBOSE = False
@@ -160,7 +161,8 @@ def channel_points(group=None):
         if group is not None and g != group:
             continue
         for a, b in zip(pts[:-1], pts[1:]):
-            out.append(circle_points(a, w / 2 + 1) + circle_points(b, w / 2 + 1))
+            r = w / 2 + P.channel_margin_mm
+            out.append(circle_points(a, r) + circle_points(b, r))
     return out
 
 
@@ -527,8 +529,38 @@ def trrs_frame():
     return trans([0, 0, bay_z()]) @ L.trrs_frame()
 
 
+def inner_wall_frame(y, z=0):
+    """A frame on the outer face of the inner side wall (the outline's least x
+    at y), at height z: +x in, square to the wall, +z up."""
+    q = outline()
+    hits = []
+    for a, b in zip(q, np.roll(q, -1, axis=0)):
+        if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]:
+            t = (y - a[1]) / (b[1] - a[1])
+            hits.append((a[0] + t * (b[0] - a[0]), b - a))
+    x, d = min(hits, key=lambda h: h[0])
+    # Counterclockwise, so the inward normal is the edge turned left.
+    return trans([x, y, z]) @ rot_z(math.degrees(math.atan2(d[0], -d[1])))
+
+
 def reset_frame():
-    return trans([0, 0, bay_z()]) @ L.reset_frame()
+    """The reset switch's frame (parts.py reset_switch): origin at the middle of
+    its plunger face, the plunger out through the inner side wall, its body in
+    a pocket in the wall reset_skin_mm inside the outer face, in front of the
+    jack, standing on the well's floor."""
+    return inner_wall_frame(L.reset_y(), bay_z()) @ trans([P.reset_skin_mm, 0, P.reset_body_mm[0] / 2 + P.reset_clearance_mm])
+
+
+def knob_frame():
+    """The knob's frame (parts.py knob): origin on its axis at the inner side
+    wall's outer face, knob_z_mm over the desk, +x in along the axis."""
+    return inner_wall_frame(L.knob_y(), P.knob_z_mm)
+
+
+def knob_slot_reach():
+    """How far the sensor's wire slot runs (+y in the knob's frame) to reach
+    the well, a millimetre into it."""
+    return L.mcu_bay()[0][1] - L.knob_y() + 1
 
 
 def floor_box(r, h):
@@ -542,60 +574,6 @@ def well():
     takes the parts' rooms, bay_rooms, where they reach above it)."""
     notch = [L.lead_notch()] if P.link == "ble" else []
     return [floor_box(b, 100) for b in L.bays() + notch]
-
-
-# ---------------------------------------------------------------- wiring points
-# In a key's frame, at the socket's top: the column line past the -x tab
-# (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
-# A tile's are its north C hole's and east R hole's.
-def col_x():
-    if P.key_parts == "tiles":
-        return P.tile_c_hole[0]
-    # Overlapping the socket's shaft, so no sliver is left between them under the tent.
-    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - 0.3
-
-
-def row_x():
-    if P.key_parts == "tiles":
-        return P.tile_r_hole[0]
-    return P.socket_centre_mm[0] + P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]
-
-
-def ne_y():
-    return P.cell_mm / 2 - P.channel_w_mm / 2
-
-
-def out_y():
-    """A trunk point just past a cell's edge."""
-    return P.cell_mm / 2 + 1.5
-
-
-def at(k, p):
-    return xform(k.frame, [p[0], p[1], R.socket_top_z()])
-
-
-def c_tab(k):
-    return at(k, (col_x(), P.tile_c_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[0]))
-
-
-def r_tab(k):
-    return at(k, (row_x(), P.tile_r_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[1]))
-
-
-def nw(k):
-    return at(k, (col_x(), ne_y()))
-
-
-def ne(k):
-    return at(k, (row_x(), ne_y()))
-
-
-def back_pt(k):
-    return at(k, (col_x(), out_y()))
-
-
-def front_pt(k):
-    return at(k, (col_x(), -out_y()))
 
 
 def edge_trunk(side):
@@ -841,6 +819,8 @@ def screw_holes():
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
     cuts = [("the well", well()), ("a bay room", bay_rooms(plinth=True))]
+    if P.knob:
+        cuts.append(("the knob's room", place(knob_frame(), R.knob_room(knob_slot_reach()))))
     if P.link == "ble":
         cuts.append(("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()])))
     return cuts
@@ -894,6 +874,8 @@ def electronics():
         parts.append((battery_frame(), R.battery()))
         if P.power_switch:
             parts.append((power_switch_frame(), R.power_switch_part()))
+    if P.knob:
+        parts.append((knob_frame(), R.knob()))
     return [Piece(p.label, p.colour, placed(m, p.solid)) for m, part in parts for p in part]
 
 
@@ -921,6 +903,29 @@ def cap_collisions():
     return hits
 
 
+def closed_ports():
+    """The openings that should break out through the wall (the controller's
+    port, the TRRS plug's hole, the reset switch's plunger hole, the knob's
+    bearing pocket) but stop inside the outline."""
+    ports = [("the controller's port", mcu_frame(), R.mcu_opening())]
+    if P.link == "trrs":
+        ports += [("the TRRS plug's hole", trrs_frame(), R.trrs_plug_hole()),
+                  ("the reset switch's plunger hole", reset_frame(), R.reset_plunger_hole())]
+    if P.knob:
+        ports.append(("the knob's bearing pocket", knob_frame(), R.knob_bearing_pocket()))
+    inside = polygon(outline()).extrude(400).translate((0, 0, -200))
+    return [name for name, m, hole in ports if (placed(m, hole) - inside).volume() <= 1e-6]
+
+
+def knob_clashes():
+    """What the knob's room outside the wall (parts.py knob_clear) runs into:
+    the desk, the body or the plinth; empty when it turns clear."""
+    room = placed(knob_frame(), R.knob_clear())
+    out = [] if room.bounding_box()[2] > 0 else ["the desk"]
+    return out + [what for what, solid in (("the body", body()), ("the plinth", bottom_plate()))
+                  if (room ^ solid).volume() > 1e-6]
+
+
 def part_overlap():
     """How much the body and the plinth overlap, mm^3 (0 when the plinth stays
     under the body's underside)."""
@@ -945,6 +950,9 @@ def wire_ends():
         ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
         if P.power_switch:
             ends.append(("the power switch", origin(power_switch_frame())))
+    if P.knob:
+        f, b = R.knob_sensor_x()
+        ends.append(("the knob's sensor", xform(knob_frame(), [(f + b) / 2, 0, P.knob_sensor_mm[1] / 2 + d])))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 
@@ -982,7 +990,9 @@ def thin_walls():
     (room, room, wall mm), empty when every wall is thick enough. Channels
     join keys by design, so they are held only to the bay. A tile's room is
     its seat (tile_seat), and its shaft, wiring space like a channel, is held
-    to the other keys' seats and to the bay."""
+    to the other keys' seats and to the bay. A bay under the keys is wiring
+    space too, which the shafts and channels over it open into: they are
+    not held to it. The knob's room is the bay's."""
     tiles = P.key_parts == "tiles"
     rooms = [(k.name, lost(body_shell(), [tile_seat(k)] if tiles else
                            [key_room(k), *solder_wells(k), *diode_rooms(k)], True)) for k in keys()]
@@ -991,10 +1001,12 @@ def thin_walls():
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
     if tiles:
         shafts = [(f"{k.name}'s shaft", lost(body_shell(), [tile_shaft(k)], True)) for k in keys()]
-        pairs += [(s, r) for i, s in enumerate(shafts) for j, r in enumerate(rooms) if i != j]
-    pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
-                lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
-              for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
+        pairs += [(s, r) for i, s in enumerate(shafts) for j, r in enumerate(rooms)
+                  if i != j and not (r[0] == "the bay" and P.bay_place == "under")]
+    if P.bay_place != "under":
+        pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
+                    lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
+                  for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
     out = []
     for (a, sa), (b, sb) in pairs:
         if gap(sa, sb) < P.min_wall_mm:

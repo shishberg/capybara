@@ -7,8 +7,8 @@ Builds the parts in-process (as lowpro.build does, without the checks or the
 files) and writes: the assembly and the body with plinth from above, the
 wiring (channels, sockets, diodes and the bay's parts through a see-through
 body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
-below, sections across and along that key, and a section through the round at
-the outline's front. Needs pyvista. The checks, not these, are what say the
+below, sections across and along that key, a section through the round at
+the outline's front, and with the knob, a section across its axis. Needs pyvista. The checks, not these, are what say the
 build is right.
 """
 import argparse
@@ -81,6 +81,8 @@ def wiring(C, body):
               (origin(C.mcu_frame()), "controller")]
     if P.link == "trrs":
         labels += [(origin(C.trrs_frame()), "TRRS jack"), (origin(C.reset_frame()), "reset switch")]
+    if P.knob:
+        labels.append((origin(C.knob_frame()), "knob"))
     else:
         labels.append((origin(C.battery_frame()), "battery"))
         if P.power_switch:
@@ -143,6 +145,13 @@ def main(argv=None):
     shot(out, "section-along", section(shell, (1, 0, 0), key), c + (300, 0, 0), c, parallel=True, zoom=1.4)
     near = section(shell, (1, 0, 0), front, ((front[0] - 10, front[1] - 5, -1), (front[0] + 1, front[1] + 25, box[5] + 1)))
     shot(out, "section-round", near, front + (300, 10, 0), front + (0, 10, 0), parallel=True, zoom=1.1)
+    from . import params as P
+    if P.knob:
+        # Across the knob's axis, with its parts: from the knob out to the well.
+        k = origin(C.knob_frame())
+        cut = [(p.solid, p.colour) for p in C.electronics() if p.label.startswith(("knob", "shaft", "bearing", "magnet", "sensor"))]
+        lo, hi = (k[0] - 15, k[1] - 20, -1), (k[0] + 30, k[1] + 30, box[5] + 1)
+        shot(out, "section-knob", section(shell + cut, (0, 1, 0), k, (lo, hi)), k + (0, 300, 0), k, parallel=True, zoom=1.1)
     return 0
 
 
