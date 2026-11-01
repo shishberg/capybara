@@ -128,7 +128,9 @@ outline_style = "hulls"
 outline_round_mm = 6        # round of the outline's convex corners
 outline_close_mm = 10       # gaps narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05             # the cell each key owns in plan, square
-# The body's top edge is rounded (filleted) to this radius; 0 leaves it sharp.
+# The body's top edge is rounded (a rolling-ball fillet) to this radius; 0 leaves
+# it sharp. It must leave room at the outline's convex corners: outline_round_mm
+# less this, less this times the sine of the top's tilt there, has to stay positive.
 top_round_mm = 4
 # The body is a shell of one thickness: its underside is its top surface
 # dropped by the room every key needs, the socket's bottom and this much
@@ -188,13 +190,15 @@ power_switch_back_mm = 8                # along the inner side wall, from the ba
 # The top surface is fitted through the key field sampled at this step, to
 # this tolerance. Between cells the field blends the cells' planes, from this
 # far inside each cell's edge (chassis.py field). The footprint's outline is
-# smoothed into one spline through points this far apart. The top edge's
-# fillet is particular about both: it fails with a looser fit (0.05) or a
-# coarser outline (2 mm).
+# smoothed into one spline through points this far apart. The top edge's round
+# is a spline surface through the rolling ball's sections, taken wherever the
+# ball moves this far (chassis.py rounded_shell); at 0.3 its edges lie on the
+# top and the wall to a few 1e-5 mm.
 surface_step_mm = 2
 surface_fit_mm = 0.01
 surface_blend_mm = 3
 outline_sample_mm = 1
+round_step_mm = 0.3
 # Each cell's plane is cut clear this far past its edge (chassis.py body_blank).
 cell_step_mm = 0.6
 # The blank's surfaces are split into patches about this big before anything is

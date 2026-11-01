@@ -51,13 +51,16 @@ python3 -m lowpro.build --half left --part body
 python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 ```
 
-The STEP files are true solids (fillets, splines and all), so FreeCAD or any
+The STEP files are true solids (the round, splines and all), so FreeCAD or any
 other CAD opens them to measure, section or change them; the STL files go to
-the slicer. A body's STEP is large (about 37 MB, the plinth's 8.5 MB: the
-channels and pockets cut the spline underside and the fillet into thousands of
-edges, each carrying its curves; the curves are trimmed to their edges before
-export, which is what keeps it from being 90 MB), so give FreeCAD a minute to
-open it.
+the slicer. The build refuses to write a part that is not a valid solid
+(OpenCascade's BRepCheck, which is what a CAD program runs before it will
+section or mesh a shape) or that does not span the outline (a boolean that
+loses the part leaves a fragment behind). A body's STEP is large (about 25 MB,
+the plinth's 8.5 MB: the channels and pockets cut the spline underside and the
+round into thousands of edges, each carrying its curves; the curves are trimmed
+to their edges before export, which is what keeps it from being 90 MB), so give
+FreeCAD a minute to open it.
 
 ## The layout
 
@@ -114,12 +117,13 @@ it starts `surface_blend_mm` inside each cell's edge; then each cell's plane is
 cut and filled back exactly, `cell_step_mm` past its edge, so where two cells
 of different heights abut (the bottom row's ring and pinky keys differ by
 5 mm) the surface steps at the higher cell's edge rather than ramping across
-both. (A ring 0.3 mm wide and 0.1 mm deep is left round each cell's plane:
-OpenCascade is surest of booleans whose faces do not coincide.) Its underside is the same surface dropped
+both. (A ring 0.3 mm wide and 0.1 mm deep is left round each cell's plane,
+on top and underneath: OpenCascade is surest of booleans whose faces do not
+coincide.) Its underside is the same surface dropped
 straight down by the room every key needs (the socket's bottom and
 `under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
 so the body is as thick under the inner column as under the pinky and every
-wiring channel is the same depth. The tent and the wells live in the plinth
+wiring channel is the same depth, and flat under each cell as the top is. The tent and the wells live in the plinth
 under it. The footprint (`outline_style`) is a convex hull round the finger
 field (its cells, the bays and its wire channels) and another round the thumb
 cluster, joined by a third round the thumb row, the bottom keys nearest it and
@@ -131,7 +135,16 @@ notch is rounded to `outline_close_mm` and every convex corner to
 `outline_round_mm`: straight sides, the stagger steps filled, and the result
 smoothed into one closed spline. ("closed" instead follows the cells and
 channels, with the gaps between them closed up.) The walls are vertical, and
-the top edge is a true fillet of `top_round_mm` (4 mm; 0 leaves it sharp).
+the top edge is rounded to `top_round_mm` (4 mm; 0 leaves it sharp): a true
+rolling-ball round, one smooth spline surface tangent to the top and the wall.
+It is built from the ball's closed form rather than by OpenCascade's fillet
+(which failed on this one closed edge depending only on where its seam fell):
+the ball's section is worked out at stations along the outline, no further
+apart than `round_step_mm` as the section moves, and one spline surface runs
+through them; its edges are the contact curves, so the top and the wall are
+trimmed at them and sewn with no boolean involved. The round needs room: the
+top's convex curvature must be gentler than `top_round_mm` where the round
+runs, and the build stops if the round would fold at a corner.
 No cutouts, ribs or gaps. The underside is curved and tilted, so the body
 prints on support (or on a raft): lay it on the tent plane and the support is
 at most a few millimetres tall; the plinth prints flat.

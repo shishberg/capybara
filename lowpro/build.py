@@ -37,8 +37,21 @@ def set_params(assignments):
 
 
 def write(shape, path, stl=True):
+    """Export a part, refusing one that does not span the outline (a boolean
+    that lost the part leaves a fragment behind) or is not a valid solid (a
+    CAD program would refuse to section or mesh it)."""
     from build123d import export_step, export_stl
+    from OCP.BRepCheck import BRepCheck_Analyzer
 
+    from . import chassis as C
+
+    span, want = shape.bounding_box().size, C.footprint_2d().bounding_box().size
+    if abs(span.X - want.X) > 0.01 or abs(span.Y - want.Y) > 0.01:
+        sys.exit(f"{path.name} does not span the outline: {span.X:.1f} x {span.Y:.1f} mm, not {want.X:.1f} x {want.Y:.1f}")
+    if not BRepCheck_Analyzer(shape.wrapped).IsValid():
+        bad = [f for f in shape.faces() if not BRepCheck_Analyzer(f.wrapped).IsValid()]
+        sys.exit(f"{path.name} is not a valid solid: {len(bad)} bad faces "
+                 + ", ".join(f"{f.geom_type.name} at {tuple(round(c, 1) for c in f.center())}" for f in bad[:8]))
     export_step(shape, str(path.with_suffix(".step")))
     if stl:
         export_stl(shape, str(path.with_suffix(".stl")), tolerance=0.02, angular_tolerance=0.2)
