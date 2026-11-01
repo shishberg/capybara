@@ -9,9 +9,21 @@ Everything here is in world axes (layout.py). Solids are build123d's
 import time
 
 import numpy as np
-from build123d import Color, Compound, Edge, Face, GeomType, Keep, Kind, Plane, Shell, Solid, Wire, extrude, offset, split
+from build123d import Color, Compound, Edge, Face, GeomType, Kind, Plane, Shell, Solid, Wire, extrude, offset
+from OCP.BRep import BRep_Builder, BRep_Tool
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Splitter
+from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakeSolid
 from OCP.BRepGProp import BRepGProp
+from OCP.BRepTools import BRepTools
+from OCP.collections import HArray2_gp_Pnt, List_TopoDS_Shape
+from OCP.Geom import Geom_BSplineCurve, Geom_SurfaceOfLinearExtrusion, Geom_TrimmedCurve
+from OCP.Geom2d import Geom2d_BSplineCurve, Geom2d_TrimmedCurve
+from OCP.GeomAPI import GeomAPI_PointsToBSplineSurface
+from OCP.gp import gp_Pnt
 from OCP.GProp import GProp_GProps
+from OCP.Precision import Precision
+from OCP.TopLoc import TopLoc_Location
+from OCP.TopoDS import TopoDS_Shell
 from scipy.spatial import ConvexHull
 
 from . import layout as L
@@ -107,8 +119,12 @@ def top_face():
     ys = np.arange(y0, y1 + st, st)
     X, Y = np.meshgrid(xs, ys, indexing="ij")
     Z = field(X.ravel(), Y.ravel()).reshape(X.shape)
-    pts = [[(float(X[i, j]), float(Y[i, j]), float(Z[i, j])) for j in range(X.shape[1])] for i in range(X.shape[0])]
-    return Face.make_surface_from_array_of_points(pts, tol=P.surface_fit_mm, min_deg=2, max_deg=2)
+    pts = HArray2_gp_Pnt(1, X.shape[0], 1, X.shape[1])
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            pts.SetValue(i + 1, j + 1, gp_Pnt(float(X[i, j]), float(Y[i, j]), float(Z[i, j])))
+    fit = GeomAPI_PointsToBSplineSurface(pts, DegMin=2, DegMax=2, Tol3D=P.surface_fit_mm)
+    return Face(BRepBuilderAPI_MakeFace(fit.Surface(), Precision.Confusion_s()).Face())
 
 
 def floor_face():
@@ -258,33 +274,119 @@ def top_trimmed():
 
 
 # OpenCascade intersects every tool with every face whose box it overlaps, and
-# the top and bottom surfaces' boxes cover the whole board, so the pockets and
-# channels are cut from the blank split by a few vertical planes into a
-# compound of pieces: a cut then only touches the pieces near it, which is ten
-# to twenty times quicker. The pieces are fused back into one solid at the end
-# (glue), and the faces the planes split are merged again.
-def split_pieces(shape, every=40):
-    """The shape split by vertical planes about `every` mm apart."""
+# what each intersection costs grows with how much of its surface the face
+# covers; the top and bottom surfaces cover the whole board. So the blank is
+# split by vertical planes patch_mm apart and every face's surface is cut
+# down to the face (restrict), which turns the two surfaces into a few
+# hundred small patches; a boolean then only works on the patches near its
+# tool, and the whole body is cut in a few operations instead of hundreds.
+# The split faces inside are dropped and the pieces' outer faces, which
+# already match since they came from one solid, make the solid again.
+def patched(shape):
+    """The solid with its surfaces in patches about patch_mm square."""
     (x0, y0), (x1, y1) = bbox()
+    every = P.patch_mm
     planes = [Plane(origin=(x, 0, 0), z_dir=(1, 0, 0)) for x in np.linspace(x0, x1, round((x1 - x0) / every) + 1)[1:-1]]
     planes += [Plane(origin=(0, y, 0), z_dir=(0, 1, 0)) for y in np.linspace(y0, y1, round((y1 - y0) / every) + 1)[1:-1]]
-    pieces = [shape]
+    splitter = BRepAlgoAPI_Splitter()
+    args, tools = List_TopoDS_Shape(), List_TopoDS_Shape()
+    args.Append(shape.wrapped)
     for plane in planes:
-        pieces = [s for piece in pieces for s in split(piece, bisect_by=plane, keep=Keep.BOTH).solids()]
-    return pieces
+        tools.Append(Face.make_rect(2 * (x1 - x0 + y1 - y0), 400, plane).wrapped)
+    splitter.SetArguments(args)
+    splitter.SetTools(tools)
+    splitter.SetRunParallel(True)
+    splitter.Build()
+    pieces = Compound(splitter.Shape()).solids()
+    restrict(pieces)
+    count = {}
+    for piece in pieces:
+        for f in piece.faces():
+            count[hash(f)] = count.get(hash(f), 0) + 1
+    builder, shell = BRep_Builder(), TopoDS_Shell()
+    builder.MakeShell(shell)
+    for piece in pieces:
+        for f in piece.faces():
+            if count[hash(f)] == 1:
+                builder.Add(shell, f.wrapped)
+    return Solid(BRepBuilderAPI_MakeSolid(shell).Solid())
 
 
-def cut_pieces(pieces, cutters, size=40):
-    """The cutters cut from the pieces, a few dozen at a time."""
-    comp = Compound(children=pieces)
-    for i in range(0, len(cutters), size):
-        comp = comp.cut(*cutters[i:i + size])
-    return comp.solids()
+def restrict(shapes):
+    """Each face's surface and each edge's curves cut down to the face or
+    edge, in place. A face left on a surface that runs far past it costs every
+    boolean near it, and an edge that is a piece of a long curve (the fillet's
+    edges, split by every pocket) is written to STEP with the whole curve."""
+    builder = BRep_Builder()
+    for shape in shapes:
+        for f in shape.faces():
+            if f.geom_type not in (GeomType.BSPLINE, GeomType.EXTRUSION):
+                continue
+            loc = TopLoc_Location()
+            surface = BRep_Tool.Surface_s(f.wrapped, loc)
+            u0, u1, v0, v1 = BRepTools.UVBounds_s(f.wrapped)
+            su0, su1, sv0, sv1 = surface.Bounds()
+            if f.geom_type == GeomType.BSPLINE:
+                part = surface.Copy()
+                part.Segment(max(u0, su0), min(u1, su1), max(v0, sv0), min(v1, sv1))
+            else:
+                curve = surface.BasisCurve().Copy()
+                curve.Segment(max(u0, su0), min(u1, su1))
+                part = Geom_SurfaceOfLinearExtrusion(curve, surface.Direction())
+            # The edges' curves on the face are keyed by its surface: carry them over.
+            pcurves = [(e.wrapped, BRep_Tool.CurveOnSurface_s(e.wrapped, f.wrapped, 0.0, 0.0),
+                        BRep_Tool.Range_s(e.wrapped, f.wrapped), BRep_Tool.Tolerance_s(e.wrapped)) for e in f.edges()]
+            builder.UpdateFace(f.wrapped, part, loc, BRep_Tool.Tolerance_s(f.wrapped))
+            for e, c, (p0, p1), tol in pcurves:
+                builder.UpdateEdge(e, c, f.wrapped, tol)
+                builder.Range(e, f.wrapped, p0, p1)
+        for e in shape.edges():
+            c = BRep_Tool.Curve_s(e.wrapped, 0.0, 0.0)
+            if isinstance(c, Geom_TrimmedCurve):
+                c = c.BasisCurve()
+            p0, p1 = BRep_Tool.Range_s(e.wrapped)
+            if isinstance(c, Geom_BSplineCurve) and (c.FirstParameter() < p0 - 1e-9 or c.LastParameter() > p1 + 1e-9):
+                part = c.Copy()
+                part.Segment(p0, p1)
+                builder.UpdateEdge(e.wrapped, part, BRep_Tool.Tolerance_s(e.wrapped))
+                builder.Range(e.wrapped, p0, p1, True)
+        for f in shape.faces():
+            for e in f.edges():
+                c = BRep_Tool.CurveOnSurface_s(e.wrapped, f.wrapped, 0.0, 0.0)
+                if isinstance(c, Geom2d_TrimmedCurve):
+                    c = c.BasisCurve()
+                p0, p1 = BRep_Tool.Range_s(e.wrapped, f.wrapped)
+                if isinstance(c, Geom2d_BSplineCurve) and (c.FirstParameter() < p0 - 1e-9 or c.LastParameter() > p1 + 1e-9):
+                    part = c.Copy()
+                    part.Segment(p0, p1)
+                    builder.UpdateEdge(e.wrapped, part, f.wrapped, BRep_Tool.Tolerance_s(e.wrapped))
+                    builder.Range(e.wrapped, f.wrapped, p0, p1)
 
 
-def glue(pieces):
-    """The pieces, which touch but do not overlap, as one solid."""
-    return solid(pieces[0].fuse(*pieces[1:]).clean())
+# Tools that overlap one another in one boolean give OpenCascade trouble (the
+# caps of neighbouring cells, whose planes cross): those go in a few batches of
+# tools that keep apart in plan. Tools that are meant to run together (a key's
+# pockets and shaft, the channels) are fused into one tool first, which costs
+# little on small solids and spares the big boolean every tool-to-tool
+# intersection.
+def apart(tools):
+    """The tools in batches whose members' plan boxes do not meet."""
+    boxes = [t.bounding_box() for t in tools]
+    batches = []
+    for i, b in enumerate(boxes):
+        for batch in batches:
+            if all(b.max.X < boxes[j].min.X or boxes[j].max.X < b.min.X or b.max.Y < boxes[j].min.Y or boxes[j].max.Y < b.min.Y
+                   for j in batch):
+                batch.append(i)
+                break
+        else:
+            batches.append([i])
+    return [[tools[i] for i in batch] for batch in batches]
+
+
+def united(solids):
+    """The solids fused, as a list of solids."""
+    return solids[0].fuse(*solids[1:]).solids() if len(solids) > 1 else list(solids)
 
 
 def column(k, grow=0):
@@ -324,16 +426,17 @@ def body_blank():
     cell's plane put back exactly."""
     t = time.time()
     shell = solid(extrude(top_trimmed(), amount=L.floor_drop(), dir=(0, 0, -1)))
-    t = stage("shell", t)
+    t = stage("body shell", t)
     if P.top_round_mm > 0:
         top = max(shell.faces().filter_by(GeomType.BSPLINE), key=lambda f: f.center().Z)
         shell = shell.fillet(P.top_round_mm, top.edges())
-        t = stage("fillet", t)
-    for k in keys():
-        shell = solid(shell.cut(cell_cap(k, -cap_under_mm, cap_wider_mm)))
-    for k in keys():
-        shell = solid(shell.fuse(cell_block(k, 0, -L.floor_drop())))
-    stage("cells", t)
+        t = stage("body fillet", t)
+    shell = patched(shell)
+    t = stage("body patches", t)
+    for batch in apart([cell_cap(k, -cap_under_mm, cap_wider_mm) for k in keys()]):
+        shell = solid(shell.cut(*batch))
+    shell = solid(shell.fuse(*[cell_block(k, 0, -L.floor_drop()) for k in keys()]))
+    stage("body cells", t)
     return shell
 
 
@@ -343,11 +446,12 @@ def plinth_blank():
     underside, flat under each cell as the body is."""
     t = time.time()
     plate_top = top_trimmed().translate((0, 0, -L.floor_drop() - P.plate_gap_mm))
-    plinth = solid(extrude(plate_top, amount=100, dir=(0, 0, -1)).intersect(above_desk()))
+    plinth = patched(solid(extrude(plate_top, amount=100, dir=(0, 0, -1)).intersect(above_desk())))
+    t = stage("plinth patches", t)
     z = -L.floor_drop() - P.plate_gap_mm
-    for k in keys():
-        plinth = solid(plinth.cut(cell_cap(k, z)))
-    stage("plinth", t)
+    for batch in apart([cell_cap(k, z) for k in keys()]):
+        plinth = solid(plinth.cut(*batch))
+    stage("plinth cells", t)
     return plinth
 
 
@@ -576,16 +680,16 @@ def insert_holes():
 
 
 def body():
+    blank = body_blank()
     t = time.time()
-    pieces = split_pieces(body_blank())
     cutters = []
     for k in keys():
-        cutters += place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm)
-    cutters += solder_wells() + diode_rooms() + channel_solids() + bay_rooms() + insert_holes()
-    pieces = cut_pieces(pieces, cutters)
-    t = stage("cuts", t)
-    body = glue(pieces)
-    stage("glue", t)
+        cutters += united(place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm))
+    cutters += united(solder_wells()) + diode_rooms() + united(channel_solids()) + bay_rooms() + insert_holes()
+    t = stage("body cutters", t)
+    body = solid(blank.cut(*cutters))
+    restrict([body])
+    stage("body cuts", t)
     return body
 
 
@@ -602,16 +706,17 @@ def socket_boss(k):
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
     the pinhole over the reset button, and the socket bosses standing on it."""
+    blank = plinth_blank()
     t = time.time()
-    pieces = split_pieces(plinth_blank())
     cutters = well() + bay_rooms(plinth=True)
     for p in L.screw_points():
         cutters += [h.translate((p[0], p[1], 0)) for h in R.screw_hole(plate_z(p[0], p[1]))]
     cutters += place(mcu_frame(), [R.mcu_reset_hole()])
-    pieces = cut_pieces(pieces, cutters)
-    t = stage("cuts", t)
-    plate = glue(pieces + [socket_boss(k) for k in keys()])
-    stage("glue", t)
+    plate = solid(blank.cut(*cutters))
+    t = stage("plinth cuts", t)
+    plate = solid(plate.fuse(*[socket_boss(k) for k in keys()]))
+    restrict([plate])
+    stage("plinth bosses", t)
     return plate
 
 

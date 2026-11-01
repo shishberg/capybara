@@ -38,8 +38,13 @@ build123d brings the OpenCascade kernel with it). Build from the repository
 root with `make lowpro`: the right and left bodies and plinths as STEP and STL,
 the right assembly (body, plinth, switches, caps, sockets, diodes and
 electronics, coloured) as STEP, and the keycap check, into `output/lowpro/`.
-A body takes about ten minutes, a plinth one (`--verbose` shows the stages). One part at a time, or with a
-parameter changed:
+The whole build takes about twenty seconds, the body most of it (`--verbose`
+shows the stages; the plinth, the check and the assembly run in a second
+process alongside). The blank's surfaces are split into patches (`patch_mm`)
+before anything is cut from them, the cell cuts are batched so that no two
+tools meet, and each key's cutters are fused before the one cut that makes the
+body; without those the booleans against the whole-board spline took minutes.
+One part at a time, or with a parameter changed:
 
 ```sh
 python3 -m lowpro.build --half left --part body
@@ -48,9 +53,11 @@ python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 
 The STEP files are true solids (fillets, splines and all), so FreeCAD or any
 other CAD opens them to measure, section or change them; the STL files go to
-the slicer. A body's STEP is large (about 90 MB: the spline underside is cut
-into hundreds of faces by the channels and pockets, each carrying the
-surface), so give FreeCAD a minute to open it.
+the slicer. A body's STEP is large (about 37 MB, the plinth's 8.5 MB: the
+channels and pockets cut the spline underside and the fillet into thousands of
+edges, each carrying its curves; the curves are trimmed to their edges before
+export, which is what keeps it from being 90 MB), so give FreeCAD a minute to
+open it.
 
 ## The layout
 

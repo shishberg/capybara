@@ -197,3 +197,7 @@ surface_blend_mm = 3
 outline_sample_mm = 1
 # Each cell's plane is cut clear this far past its edge (chassis.py body_blank).
 cell_step_mm = 0.6
+# The blank's surfaces are split into patches about this big before anything is
+# cut from it (chassis.py patched): the booleans then only meet the patches
+# near each tool.
+patch_mm = 20
