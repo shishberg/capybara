@@ -340,16 +340,18 @@ def power_switch_frame():
 
 @cached
 def battery_bay():
-    """The battery's bay: in front of the controller's, the same width."""
+    """The battery's bay: in front of the controller's, the same width, as long
+    as the battery, which lies along the column."""
     m, c = mcu_bay(), P.battery_clearance_mm
     y1 = m[0][1] - bay_gap_mm
-    return ((m[0][0], y1 - P.battery_mm[1] - 2 * c), (m[1][0], y1))
+    return ((m[0][0], y1 - P.battery_mm[0] - 2 * c), (m[1][0], y1))
 
 
 def battery_frame():
-    """The battery's frame: its centre on the well's floor (parts.py battery)."""
+    """The battery's frame: its centre on the well's floor, its length (+x in
+    parts.py battery) along the column."""
     b = battery_bay()
-    return trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0])
+    return trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0]) @ rot_z(90)
 
 
 def bays():
@@ -360,10 +362,13 @@ def bays():
 @cached
 def screw_points():
     """Where the bottom plate screws into the body's wall, in world plan: a point
-    on a cell's or a bay's edge carried screw_out_mm outward, on edges the trunk
-    channels (chassis.py) keep clear of: the pinky's outer side, the thumb
-    cluster's far side and front, and the bay's inner side and front."""
-    s = P.screw_out_mm
+    on a cell's or a bay's edge carried out to the middle of the wall, so the
+    counterbore has the same wall on both sides, on edges the trunk channels
+    (chassis.py) keep clear of: the pinky's outer side, the thumb cluster's far
+    side and front, and the bay's inner side and front. The -x tab's solder well
+    overhangs a cell's -x edge north of the stem (both tabs are at +y), so a
+    screw on a -x edge sits south of the stem."""
+    s = P.wall_mm / 2
 
     def edge(k, d):
         cx, cy = k.cell[0] / 2, k.cell[1] / 2
@@ -372,7 +377,7 @@ def screw_points():
 
     m, b = mcu_bay(), battery_bay()
     return [edge(key_named("pinky_1"), (1, 0.3)), edge(key_named("pinky_-1"), (1, -0.3)),
-            edge(key_named("thumb_far"), (-1, 0)),
+            edge(key_named("thumb_far"), (-1, -0.3)),
             edge(key_named("thumb_x2" if P.thumb_extra else "thumb_home"), (0, -1)),
             edge(key_named("thumb_x1" if P.thumb_extra else "thumb_near"), (0, -1)),
             (m[0][0] - s, (m[0][1] + m[1][1]) / 2 - 6), (b[0][0] - s, (b[0][1] + b[1][1]) / 2),

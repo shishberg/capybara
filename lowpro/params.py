@@ -145,16 +145,18 @@ boss_clearance_mm = 0.15
 boss_inset_mm = 0.6         # the boss is this much smaller than the socket body all round
 # M2 screws from below into heat-set inserts in the body's wall: insert hole
 # and depth, the screw's clearance hole through the plate, the head's
-# diameter (its counterbore is 0.6 wider), how much plate every screw grips
-# under the body (the counterbore goes up to it, so one screw length fits
-# everywhere: screw_grip_mm + insert_depth_mm), and how far past a cell's or
-# bay's edge each insert's centre sits.
+# diameter and the clearance round it (its counterbore), and how much plate
+# every screw grips under the body (the counterbore goes up to it, so one
+# screw length fits everywhere: screw_grip_mm + insert_depth_mm). Each screw
+# sits in the middle of the wall, wall_mm / 2 past the cell's or bay's edge,
+# so the counterbore leaves (wall_mm - screw_head_d - screw_head_clearance_mm) / 2
+# of wall on each side; the build checks the holes against everything else.
 insert_d = 3.2
 insert_depth_mm = 4
 screw_d = 2.4
 screw_head_d = 4.2
+screw_head_clearance_mm = 0.6
 screw_grip_mm = 3
-screw_out_mm = 2.2
 # Which edges carry screws: see screw_points() in layout.py.
 
 # ---------------------------------------------------------------- controller, battery, switch
