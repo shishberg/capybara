@@ -20,8 +20,7 @@ from OCP.BRepTools import BRepTools
 from OCP.collections import (Array1_double, Array1_int, Array2_gp_Pnt, HArray1_double, HArray1_gp_Pnt, HArray1_gp_Pnt2d,
                              HArray2_gp_Pnt, List_TopoDS_Shape)
 from OCP.GCPnts import GCPnts_UniformAbscissa
-from OCP.Geom import Geom_BSplineCurve, Geom_BSplineSurface, Geom_SurfaceOfLinearExtrusion, Geom_TrimmedCurve
-from OCP.Geom2d import Geom2d_BSplineCurve, Geom2d_TrimmedCurve
+from OCP.Geom import Geom_BSplineSurface, Geom_SurfaceOfLinearExtrusion
 from OCP.Geom2dAPI import Geom2dAPI_Interpolate
 from OCP.GeomAdaptor import GeomAdaptor_Curve
 from OCP.GeomAPI import GeomAPI_Interpolate, GeomAPI_PointsToBSplineSurface
@@ -320,10 +319,8 @@ def patched(shape):
 
 
 def restrict(shapes):
-    """Each face's surface and each edge's curves cut down to the face or
-    edge, in place. A face left on a surface that runs far past it costs every
-    boolean near it, and an edge that is a piece of a long curve (the fillet's
-    edges, split by every pocket) is written to STEP with the whole curve."""
+    """Each face's surface cut down to the face, in place: a face left on a
+    surface that runs far past it costs every boolean near it."""
     builder = BRep_Builder()
     for shape in shapes:
         for f in shape.faces():
@@ -347,28 +344,6 @@ def restrict(shapes):
             for e, c, (p0, p1), tol in pcurves:
                 builder.UpdateEdge(e, c, f.wrapped, tol)
                 builder.Range(e, f.wrapped, p0, p1)
-        for e in shape.edges():
-            c = BRep_Tool.Curve_s(e.wrapped, 0.0, 0.0)
-            if isinstance(c, Geom_TrimmedCurve):
-                c = c.BasisCurve()
-            p0, p1 = BRep_Tool.Range_s(e.wrapped)
-            if isinstance(c, Geom_BSplineCurve) and (c.FirstParameter() < p0 - 1e-9 or c.LastParameter() > p1 + 1e-9):
-                part = c.Copy()
-                part.Segment(p0, p1)
-                builder.UpdateEdge(e.wrapped, part, BRep_Tool.Tolerance_s(e.wrapped))
-                builder.Range(e.wrapped, p0, p1, True)
-        for f in shape.faces():
-            for e in f.edges():
-                c = BRep_Tool.CurveOnSurface_s(e.wrapped, f.wrapped, 0.0, 0.0)
-                if isinstance(c, Geom2d_TrimmedCurve):
-                    c = c.BasisCurve()
-                p0, p1 = BRep_Tool.Range_s(e.wrapped, f.wrapped)
-                if isinstance(c, Geom2d_BSplineCurve) and (c.FirstParameter() < p0 - 1e-9 or c.LastParameter() > p1 + 1e-9):
-                    part = c.Copy()
-                    part.Segment(p0, p1)
-                    builder.UpdateEdge(e.wrapped, part, f.wrapped, BRep_Tool.Tolerance_s(e.wrapped))
-                    builder.Range(e.wrapped, f.wrapped, p0, p1)
-
 
 # Tools that overlap one another in one boolean give OpenCascade trouble (the
 # caps of neighbouring cells, whose planes cross): those go in a few batches of
@@ -958,7 +933,6 @@ def body():
     cutters = body_cutters() + insert_holes()
     t = stage("body cutters", t)
     body = solid(blank.cut(*cutters))
-    restrict([body])
     stage("body cuts", t)
     return body
 
@@ -996,7 +970,6 @@ def bottom_plate():
     plate = solid(blank.cut(*(plate_cutters() + screw_holes())))
     t = stage("plinth cuts", t)
     plate = solid(plate.fuse(*[socket_boss(k) for k in keys()]))
-    restrict([plate])
     stage("plinth bosses", t)
     return plate
 

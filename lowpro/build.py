@@ -1,4 +1,4 @@
-"""Build the low-profile Capybara's parts to STEP and STL. From the repository root:
+"""Build the low-profile Capybara's parts to STL and 3MF. From the repository root:
 
     python3 -m lowpro.build                      # both halves' bodies and plinths, the right assembly, the check
     python3 -m lowpro.build --half left --part body
@@ -6,9 +6,9 @@
     python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 
 Any parameter in params.py can be overridden with --set. Files go to
-output/lowpro/ (--out): <half>-body.step/.stl, <half>-plate.step/.stl and
-right-assembly.step (body, plinth, switches, caps, sockets, diodes and
-electronics, coloured). The left half is the right mirrored.
+output/lowpro/ (--out): <half>-body.stl, <half>-plate.stl and
+right-assembly.3mf (body, plinth, switches, caps, sockets, diodes and
+electronics, each a coloured mesh). The left half is the right mirrored.
 
 The body takes longest, so when the plinth is wanted too it is built, checked
 and written by a second process alongside, which then also writes the
@@ -36,11 +36,11 @@ def set_params(assignments):
         setattr(P, name, ast.literal_eval(value))
 
 
-def write(shape, path, stl=True):
-    """Export a part, refusing one that does not span the outline (a boolean
-    that lost the part leaves a fragment behind) or is not a valid solid (a
-    CAD program would refuse to section or mesh it)."""
-    from build123d import export_step, export_stl
+def write(shape, path):
+    """Export a part to STL, refusing one that does not span the outline (a
+    boolean that lost the part leaves a fragment behind) or is not a valid
+    solid (it would not mesh closed)."""
+    from build123d import export_stl
     from OCP.BRepCheck import BRepCheck_Analyzer
 
     from . import chassis as C
@@ -52,10 +52,9 @@ def write(shape, path, stl=True):
         bad = [f for f in shape.faces() if not BRepCheck_Analyzer(f.wrapped).IsValid()]
         sys.exit(f"{path.name} is not a valid solid: {len(bad)} bad faces "
                  + ", ".join(f"{f.geom_type.name} at {tuple(round(c, 1) for c in f.center())}" for f in bad[:8]))
-    export_step(shape, str(path.with_suffix(".step")))
-    if stl:
-        export_stl(shape, str(path.with_suffix(".stl")), tolerance=0.02, angular_tolerance=0.2)
-    print(f"wrote {path.with_suffix('.step')}" + (" and .stl" if stl else ""), flush=True)
+    path = path.with_suffix(".stl")
+    export_stl(shape, str(path), tolerance=0.02, angular_tolerance=0.2)
+    print(f"wrote {path}", flush=True)
 
 
 def for_half(shape, half):
@@ -64,15 +63,45 @@ def for_half(shape, half):
     return mirror(shape, about=Plane.YZ) if half == "left" else shape
 
 
-def assembly(body, plate):
-    from build123d import Color, Compound
+def assembly(plate):
+    """The right half's assembly without the body, meshed for 3MF: one
+    coloured, named mesh per piece. Everything but the body, so it can be
+    meshed while the body is still being built."""
+    from build123d import Color, Mesher
 
     from . import chassis as C
 
-    body.color, body.label = Color("burlywood"), "body"
     plate.color, plate.label = Color("peru"), "plinth"
-    return Compound(children=[body, plate, C.switches(), C.keycaps(), C.sockets(), C.diodes(), C.electronics()],
-                    label="capybara-lowpro")
+    mesher = Mesher()
+    for shape in leaves([plate, C.switches(), C.keycaps(), C.sockets(), C.diodes(), C.electronics()]):
+        mesher.add_shape(shape, linear_deflection=0.02, angular_deflection=0.2)
+    return mesher
+
+
+def write_assembly(mesher, body, path):
+    """The assembly with the body added, to 3MF."""
+    from build123d import Color
+
+    body.color, body.label = Color("burlywood"), "body"
+    mesher.add_shape(body, linear_deflection=0.02, angular_deflection=0.2)
+    path = path.with_suffix(".3mf")
+    mesher.write(str(path))
+    print(f"wrote {path}", flush=True)
+
+
+def leaves(shapes, color=None, label=""):
+    """The pieces under these shapes' compounds, each carrying the colour and
+    name of the nearest compound above it that has one (a 3MF mesh holds one
+    colour)."""
+    from build123d import Compound
+
+    for shape in shapes:
+        c, name = shape.color or color, shape.label or label
+        if isinstance(shape, Compound) and shape.children:
+            yield from leaves(shape.children, c, name)
+        else:
+            shape.color, shape.label = c, name
+            yield shape
 
 
 def check():
@@ -130,8 +159,9 @@ def plate_process(args, out, halves, parts, do_check, body_file, pipe):
         for half in halves:
             write(for_half(plate, half), out / f"{half}-plate")
     if "assembly" in parts:
+        mesher = assembly(plate)
         pipe.recv()
-        write(assembly(load(body_file), plate), out / "right-assembly", stl=False)
+        write_assembly(mesher, load(body_file), out / "right-assembly")
     pipe.send(ok)
 
 
@@ -180,11 +210,8 @@ def main(argv=None):
         for half in halves:
             write(for_half(body, half), out / f"{half}-body")
     if plate is not None:
-        if "plate" in parts:
-            for half in halves:
-                write(for_half(plate, half), out / f"{half}-plate")
-        if "assembly" in parts:
-            write(assembly(body, plate), out / "right-assembly", stl=False)
+        for half in halves:
+            write(for_half(plate, half), out / f"{half}-plate")
     if child:
         ok = pipe.recv()
         child.join()

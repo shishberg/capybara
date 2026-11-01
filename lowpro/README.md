@@ -26,7 +26,7 @@ and the way it moves. What changes:
 
 | File | What it is |
 |---|---|
-| `build.py` | The command: builds the parts to STEP and STL; see its header. |
+| `build.py` | The command: builds the parts to STL and the assembly to 3MF; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
 | `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions. |
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
@@ -35,9 +35,9 @@ and the way it moves. What changes:
 
 It needs Python 3 with `build123d` and `scipy` (`pip install build123d scipy`;
 build123d brings the OpenCascade kernel with it). Build from the repository
-root with `make lowpro`: the right and left bodies and plinths as STEP and STL,
-the right assembly (body, plinth, switches, caps, sockets, diodes and
-electronics, coloured) as STEP, and the keycap check, into `output/lowpro/`.
+root with `make lowpro`: the right and left bodies and plinths as STL, the
+right assembly (body, plinth, switches, caps, sockets, diodes and electronics,
+each a coloured, named mesh) as 3MF, and the checks, into `output/lowpro/`.
 The whole build takes about twenty seconds, the body most of it (`--verbose`
 shows the stages; the plinth, the check and the assembly run in a second
 process alongside). The blank's surfaces are split into patches (`patch_mm`)
@@ -51,16 +51,10 @@ python3 -m lowpro.build --half left --part body
 python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 ```
 
-The STEP files are true solids (the round, splines and all), so FreeCAD or any
-other CAD opens them to measure, section or change them; the STL files go to
-the slicer. The build refuses to write a part that is not a valid solid
-(OpenCascade's BRepCheck, which is what a CAD program runs before it will
-section or mesh a shape) or that does not span the outline (a boolean that
-loses the part leaves a fragment behind). A body's STEP is large (about 25 MB,
-the plinth's 8.5 MB: the channels and pockets cut the spline underside and the
-round into thousands of edges, each carrying its curves; the curves are trimmed
-to their edges before export, which is what keeps it from being 90 MB), so give
-FreeCAD a minute to open it.
+The files are outputs only: the design is the code and `params.py`, and a
+change is made there and rebuilt. The build refuses to write a part that is not
+a valid solid (OpenCascade's BRepCheck) or that does not span the outline (a
+boolean that loses the part leaves a fragment behind).
 
 ## The layout
 
