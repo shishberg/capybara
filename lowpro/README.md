@@ -27,6 +27,7 @@ and the way it moves. What changes:
 | File | What it is |
 |---|---|
 | `build.py` | The command: builds the parts to STL and the assembly to 3MF; see its header. |
+| `render.py` | PNGs of the right half for a person to look over; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
 | `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions. |
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
@@ -34,11 +35,14 @@ and the way it moves. What changes:
 | `lib.py` | Frames as 4 × 4 matrices. |
 
 It needs Python 3 with `manifold3d`, `numpy`, `scipy` and `triangle`
-(`pip install manifold3d numpy scipy triangle`). Build from the repository
+(`pip install manifold3d numpy scipy triangle`), and `pyvista` for the renders. Build from the repository
 root with `make lowpro`: the right and left bodies and plinths as STL, the
 right assembly (body, plinth, switches, caps, sockets, diodes and electronics,
 each a coloured, named mesh) as 3MF, and the checks, into `output/lowpro/`.
-The whole build takes about a second (`--verbose` shows the stages).
+The whole build takes about a second (`--verbose` shows the stages). `make lowpro-render`
+writes PNGs of the right half to look over into `output/lowpro/renders/` (the
+assembly, the body and plinth from above, the underside, a pocket close-up and
+sections).
 One part at a time, or with a parameter changed:
 
 ```sh
@@ -215,15 +219,19 @@ button.
 
 ## Checks and what they don't cover
 
-The build checks whether any two neighbouring caps (grown by
-`cap_clearance_mm`) meet, at rest and with either one pressed `cap_travel_mm`,
-and fails naming the pair if they do, and whether any screw's holes (the
-plinth's screw hole and counterbore, the body's insert hole) break into
-anything else cut from that part, the well, the parts' rooms, a key's pockets,
-a solder well, a diode's room or a channel, and fails naming the screw and what
-it met, and whether the body and the plinth overlap anywhere (`make
-lowpro-check` runs only these checks). The default layout is
-clear. It also prints the plate and cap heights over the desk, the shell's
+The build runs these checks before it writes anything, fails naming what met
+what, and exits 1 (`make lowpro-check` runs only the checks). Each has been
+seen to fail with the setting beside it, and the default layout passes them all.
+
+| Check | Fails when | Seen failing with |
+|---|---|---|
+| Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
+| Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel | `--set screw_head_d=8` |
+| Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
+| One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--set trunk_w_mm=12` |
+| Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
+
+The build also prints the plate and cap heights over the desk, the shell's
 thickness, the plinth's height under the keys, the well's floor, the fingertip
 reach per column, the plan size, and the least wall left round any screw's
 hole, to the outline or to another cut.

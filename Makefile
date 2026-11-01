@@ -36,8 +36,12 @@ firmware:
 lowpro:
 	python3 -m lowpro.build
 
-# Fails when any two keycaps meet or a screw hole breaks into a cut.
+# Only the checks; fails when one does (lowpro/README.md lists them).
 lowpro-check:
 	python3 -m lowpro.build --check
 
-.PHONY: lowpro lowpro-check
+# PNGs of the right half for a person to look over; needs pyvista.
+lowpro-render:
+	python3 -m lowpro.render
+
+.PHONY: lowpro lowpro-check lowpro-render
