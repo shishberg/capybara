@@ -413,7 +413,7 @@ def plinth_blank():
 
 # Every cell's plane is put back exactly, cell_step_mm past its edge: over the
 # cell, whatever the body's blank has above the plane is cut away and a block
-# under it added, and likewise under the plane floor_drop() lower (the
+# under it added, and likewise under the plane floor_drop() straight down (the
 # underside), which the plinth's top follows (plinth_shell). Where two cells overlap, so the
 # top steps at the higher cell's edge (with nothing left standing in the gap)
 # and the underside at the lower's. Inside a cell a blank's surface lies on the
@@ -439,6 +439,12 @@ def plane_groups():
         else:
             groups.append([k])
     return groups
+
+
+def below_plane(group, drop):
+    """How far under the group's plane, along its normal, a plane `drop`
+    lower (straight down, as the blanks' undersides are) is."""
+    return -drop * group[0].frame[2, 2]
 
 
 def column(group, grow):
@@ -467,8 +473,8 @@ def body_shell():
                          "top_round_mm is too large for wall_mm")
     d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
     caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
-    caps += [column(g, cut) ^ half_space(g[0].frame, -d + put_back_mm) for g in plane_groups()]
-    blocks = [column(g, block) ^ slab(g[0].frame, 0, -d) for g in plane_groups()]
+    caps += [column(g, cut) ^ half_space(g[0].frame, below_plane(g, d) + put_back_mm) for g in plane_groups()]
+    blocks = [column(g, block) ^ slab(g[0].frame, 0, below_plane(g, d)) for g in plane_groups()]
     shell = add(subtract(body_blank(), caps), blocks)
     stage("the body's shell", t)
     return shell
@@ -483,12 +489,11 @@ def plinth_shell():
     where the underside does, and where two cells' columns overlap it is the
     lower plane's, as the underside is."""
     t = time.time()
-    d = L.floor_drop()
-    z = -d - P.plate_gap_mm
+    d = L.floor_drop() + P.plate_gap_mm
     floor = Manifold.cube((400, 400, 100)).translate((-200, -200, put_back_mm))
-    fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
+    fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, below_plane(g, d) + put_back_mm) ^ floor
             for g in plane_groups()]
-    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, z, below=False) for g in plane_groups()]
+    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, below_plane(g, d), below=False) for g in plane_groups()]
     shell = subtract(add(plinth_blank(), fill), clear)
     stage("the plinth's shell", t)
     return shell

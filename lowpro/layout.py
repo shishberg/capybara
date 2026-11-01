@@ -286,8 +286,10 @@ def floor_drop_in(T):
 
 
 def tented_floor_z(T):
-    """The lowest point any key's cell puts the body's underside, in tented axes."""
-    zs = [xform(T @ k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, 0])[2]
+    """The lowest point any key's cell puts the body's underside, in tented
+    axes: its plane is put back cell_step_mm past its edge (chassis.py body_shell)."""
+    g = P.cell_step_mm
+    zs = [xform(T @ k.frame, [sx * (k.cell[0] / 2 + g), sy * (k.cell[1] / 2 + g), 0])[2]
           for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1)]
     return min(zs) - floor_drop_in(T)
 
