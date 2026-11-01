@@ -2,7 +2,7 @@
 
     python3 -m lowpro.build                      # both halves' bodies and plinths, the right assembly, the check
     python3 -m lowpro.build --half left --part body
-    python3 -m lowpro.build --check              # only the keycap check (exit 1 when caps meet)
+    python3 -m lowpro.build --check              # only the checks (exit 1 when caps meet or a screw hole breaks into a pocket)
     python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
 
 Any parameter in params.py can be overridden with --set. Files go to
@@ -52,12 +52,20 @@ def assembly(body, plate):
 
 
 def check():
+    ok = True
     hits = C.cap_collisions()
     if hits:
         print("keycaps meet: " + ", ".join(f"{a} with {b} ({v:.2f} mm^3)" for a, b, v in hits))
-        return False
-    print("keycaps clear")
-    return True
+        ok = False
+    else:
+        print("keycaps clear")
+    _, hits = C.screw_walls()
+    if hits:
+        print("screw holes break into: " + ", ".join(f"{s} into {w} ({v:.2f} mm^3)" for s, w, v in hits))
+        ok = False
+    else:
+        print("screw holes clear")
+    return ok
 
 
 def main(argv=None):
@@ -66,8 +74,8 @@ def main(argv=None):
     ap.add_argument("--part", action="append", choices=PARTS, help="which parts (default: all)")
     ap.add_argument("--out", default=str(ROOT / "output" / "lowpro"))
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a parameter")
-    ap.add_argument("--check", action="store_true", help="only run the keycap check")
-    ap.add_argument("--no-check", action="store_true", help="skip the keycap check")
+    ap.add_argument("--check", action="store_true", help="only run the checks")
+    ap.add_argument("--no-check", action="store_true", help="skip the checks")
     ap.add_argument("--verbose", action="store_true", help="print how long each stage takes")
     args = ap.parse_args(argv)
     C.VERBOSE = args.verbose

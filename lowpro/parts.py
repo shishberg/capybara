@@ -211,11 +211,15 @@ def insert_hole():
     return cylinder(P.insert_d, P.insert_depth_mm + 1, (0, 0, -1))
 
 
+def counterbore_d():
+    return P.screw_head_d + P.screw_head_clearance_mm
+
+
 def screw_hole(h):
     """The screw's hole up through the bottom plate, which is h thick here (z = 0
     its underside): counterbored from below for the head so that every screw
     grips the same screw_grip_mm of plate under the body."""
     holes = [cylinder(P.screw_d, h + 2, (0, 0, -1))]
     if h > P.screw_grip_mm:
-        holes.append(cylinder(P.screw_head_d + 0.6, h - P.screw_grip_mm + 1, (0, 0, -1)))
+        holes.append(cylinder(counterbore_d(), h - P.screw_grip_mm + 1, (0, 0, -1)))
     return holes

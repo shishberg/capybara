@@ -175,10 +175,14 @@ rises to 0.15 mm under the socket and holds it against its ceiling when a
 switch is pushed in. It is screwed from below with M2 screws into heat-set
 inserts in the body's wall at eight points (`screw_points` in `layout.py`:
 the pinky's outer side, the thumb cluster's far side and front, the bay's inner
-side and front, all edges the trunk channels keep clear of). Each screw hole is
-counterbored from below so that every screw grips `screw_grip_mm` of plinth
-under the body: one screw length (that plus `insert_depth_mm`, so M2 × 8)
-fits the thin side and the thick.
+side and front, all edges the trunk channels keep clear of). Each screw sits
+in the middle of the wall, `wall_mm / 2` past the cell's or bay's edge, so its
+counterbore has the same wall on both sides (0.6 mm at a 6 mm wall; the report
+prints the least wall left round any screw). A screw on a cell's −x edge goes
+south of the stem, since the −x tab's solder well overhangs that edge north of
+it. Each screw hole is counterbored from below so that every screw grips
+`screw_grip_mm` of plinth under the body: one screw length (that plus
+`insert_depth_mm`, so M2 × 8) fits the thin side and the thick.
 
 **Bay.** Nothing can sit under a socket, since each socket's shaft is open to
 the underside, so the controller and battery lie in a well in the plinth on the
@@ -197,15 +201,20 @@ button.
 
 The build checks whether any two neighbouring caps (grown by
 `cap_clearance_mm`) meet, at rest and with either one pressed `cap_travel_mm`,
-and fails naming the pair if they do (`make lowpro-check` runs only this). The
-default layout is clear. It also prints the plate and cap heights over the
-desk, the shell's thickness, the plinth's height under the keys, the well's
-floor, the fingertip reach per column and the plan size.
+and fails naming the pair if they do, and whether any screw's holes (the
+plinth's screw hole and counterbore, the body's insert hole) break into
+anything else cut from that part, the well, the parts' rooms, a key's pockets,
+a solder well, a diode's room or a channel, and fails naming the screw and what
+it met (`make lowpro-check` runs only these checks). The default layout is
+clear. It also prints the plate and cap heights over the desk, the shell's
+thickness, the plinth's height under the keys, the well's floor, the fingertip
+reach per column, the plan size, and the least wall left round any screw's
+hole, to the outline or to another cut.
 
 Not checked: the hand's reach (the `?hand` prototype's checks don't run on this
 layout), switches and caps against the body (the cells are planar and larger than
 a cap, so a cap can't meet the body, but nothing proves it), channels against
-pockets, wall thickness, and the bay against the key pockets. The Cherry cap, the
+pockets, wall thickness other than round the screws, and the bay against the key pockets. The Cherry cap, the
 socket's tabs, the controller, the battery and the power switch are nominal sizes.
 
 ## Open questions

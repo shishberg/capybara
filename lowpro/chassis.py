@@ -9,7 +9,8 @@ Everything here is in world axes (layout.py). Solids are build123d's
 import time
 
 import numpy as np
-from build123d import Color, Compound, Edge, Face, GeomType, Keep, Kind, Plane, Shell, Solid, Wire, extrude, offset, split
+from build123d import (Color, Compound, Edge, Face, GeomType, Keep, Kind, Plane, Shell, Solid, Vertex, Wire, extrude,
+                       offset, split)
 from OCP.BRepGProp import BRepGProp
 from OCP.GProp import GProp_GProps
 from scipy.spatial import ConvexHull
@@ -575,14 +576,20 @@ def insert_holes():
     return [R.insert_hole().translate((p[0], p[1], floor_z(p[0], p[1]))) for p in L.screw_points()]
 
 
+def body_cuts():
+    """Everything cut from the body but the screws' insert holes, in named groups."""
+    return [("a key's room", key_rooms()), ("a solder well", solder_wells()), ("a diode's room", diode_rooms()),
+            ("a channel", channel_solids()), ("a bay room", bay_rooms())]
+
+
+def body_cutters():
+    return [s for _, group in body_cuts() for s in group]
+
+
 def body():
     t = time.time()
     pieces = split_pieces(body_blank())
-    cutters = []
-    for k in keys():
-        cutters += place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm)
-    cutters += solder_wells() + diode_rooms() + channel_solids() + bay_rooms() + insert_holes()
-    pieces = cut_pieces(pieces, cutters)
+    pieces = cut_pieces(pieces, body_cutters() + insert_holes())
     t = stage("cuts", t)
     body = glue(pieces)
     stage("glue", t)
@@ -599,16 +606,26 @@ def socket_boss(k):
     return solid(shaft.intersect(half_space(k.frame, -L.floor_drop() - P.plate_gap_mm, below=False)))
 
 
+def screw_holes():
+    return [h.translate((p[0], p[1], 0)) for p in L.screw_points() for h in R.screw_hole(plate_z(p[0], p[1]))]
+
+
+def plate_cuts():
+    """Everything cut from the plinth but the screw holes, in named groups."""
+    return [("the well", well()), ("a bay room", bay_rooms(plinth=True)),
+            ("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()]))]
+
+
+def plate_cutters():
+    return [s for _, group in plate_cuts() for s in group]
+
+
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
     the pinhole over the reset button, and the socket bosses standing on it."""
     t = time.time()
     pieces = split_pieces(plinth_blank())
-    cutters = well() + bay_rooms(plinth=True)
-    for p in L.screw_points():
-        cutters += [h.translate((p[0], p[1], 0)) for h in R.screw_hole(plate_z(p[0], p[1]))]
-    cutters += place(mcu_frame(), [R.mcu_reset_hole()])
-    pieces = cut_pieces(pieces, cutters)
+    pieces = cut_pieces(pieces, plate_cutters() + screw_holes())
     t = stage("cuts", t)
     plate = glue(pieces + [socket_boss(k) for k in keys()])
     stage("glue", t)
@@ -671,6 +688,46 @@ def cap_collisions():
     return hits
 
 
+def gap(a, b):
+    """The gap between two shapes' bounding boxes (0 when they overlap)."""
+    a, b = a.bounding_box(), b.bounding_box()
+    return max(0, a.min.X - b.max.X, b.min.X - a.max.X, a.min.Y - b.max.Y, b.min.Y - a.max.Y,
+               a.min.Z - b.max.Z, b.min.Z - a.max.Z)
+
+
+@cached
+def screw_walls():
+    """The wall left round each screw: its holes (the plate's screw hole and
+    counterbore, the body's insert hole) against everything else cut from that
+    part, and against the outline. Returns the least wall as (mm, screw, what)
+    and the clashes as a list of (screw, what, overlap mm^3), empty when every
+    hole is clear."""
+    outline = footprint_2d().outer_wire()
+    least, hits = (float("inf"), None, None), []
+    for i, p in enumerate(L.screw_points()):
+        x, y = float(p[0]), float(p[1])
+        name = f"screw {i + 1} ({x:.1f}, {y:.1f})"
+        plate_holes = [h.translate((x, y, 0)) for h in R.screw_hole(plate_z(x, y))]
+        holes = [(h, plate_cuts()) for h in plate_holes]
+        holes.append((R.insert_hole().translate((x, y, floor_z(x, y))), body_cuts()))
+        for hole, cuts in holes:
+            r = hole.bounding_box().size.X / 2
+            walls = [(outline.distance_to(Vertex(x, y, 0)) - r, "the outline")]
+            for what, group in cuts:
+                for s in group:
+                    if gap(hole, s) > 5:
+                        continue
+                    d = hole.distance_to(s)
+                    walls.append((d, what))
+                    if d < 1e-6:
+                        hit = hole.intersect(s)
+                        hits.append((name, what, 0 if hit is None else sum(volume(v) for v in hit.solids())))
+            d, what = min(walls)
+            if d < least[0]:
+                least = (d, name, what)
+    return least, hits
+
+
 def report():
     """The board's heights and sizes, as text."""
     ks = keys()
@@ -680,7 +737,9 @@ def report():
     floors = [floor_z(*origin(k.frame)[:2]) for k in ks]
     reach = [r2(L.finger_plate_pitch(i) * L.finger_reach_radius(i) / L.finger_plate_radius(i)) for i in range(4)]
     m = 2 * (P.outline_round_mm + 2)
+    (wall, screw, what), _ = screw_walls()
     return (f"plate tops {r2(min(plates))} to {r2(max(plates))} mm over the desk; cap tops {r2(min(tops))} to "
             f"{r2(max(tops))} mm; body shell {r2(L.floor_drop())} mm thick; plinth {r2(min(floors))} to "
             f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; fingertip reach between rows "
-            f"{reach} mm (index to pinky); plan about {r2(x1 - x0 - m)} x {r2(y1 - y0 - m)} mm")
+            f"{reach} mm (index to pinky); plan about {r2(x1 - x0 - m)} x {r2(y1 - y0 - m)} mm; "
+            f"least wall round a screw {r2(wall)} mm ({screw} to {what})")
