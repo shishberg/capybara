@@ -3,9 +3,9 @@
 A proposal for a lower, more compact Capybara: still MX switches, still a split
 hand-wired board on a printed chassis, but much flatter than the
 [Capybara frame](../docs/editor-chassis.md), wireless, and modelled as one
-parametric design in Python ([build123d](https://build123d.readthedocs.io/),
-on the OpenCascade kernel FreeCAD uses) instead of the editor's pipeline. It
-is a layout study: nothing here has been printed.
+parametric design in Python (triangle meshes cut with
+[Manifold](https://github.com/elalish/manifold)) instead of the editor's
+pipeline. It is a layout study: nothing here has been printed.
 
 What carries over from the current design is the [measured hand](../hand/README.md)
 and the way it moves. What changes:
@@ -15,7 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | about 143 × 137 mm |
+| Plan per half | | 139 × 142 mm |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
@@ -33,28 +33,34 @@ and the way it moves. What changes:
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `lib.py` | Frames as 4 × 4 matrices. |
 
-It needs Python 3 with `build123d` and `scipy` (`pip install build123d scipy`;
-build123d brings the OpenCascade kernel with it). Build from the repository
+It needs Python 3 with `manifold3d`, `numpy`, `scipy` and `triangle`
+(`pip install manifold3d numpy scipy triangle`). Build from the repository
 root with `make lowpro`: the right and left bodies and plinths as STL, the
 right assembly (body, plinth, switches, caps, sockets, diodes and electronics,
 each a coloured, named mesh) as 3MF, and the checks, into `output/lowpro/`.
-The whole build takes about twenty seconds, the body most of it (`--verbose`
-shows the stages; the plinth, the check and the assembly run in a second
-process alongside). The blank's surfaces are split into patches (`patch_mm`)
-before anything is cut from them, the cell cuts are batched so that no two
-tools meet, and each key's cutters are fused before the one cut that makes the
-body; without those the booleans against the whole-board spline took minutes.
+The whole build takes about a second (`--verbose` shows the stages).
 One part at a time, or with a parameter changed:
 
 ```sh
 python3 -m lowpro.build --half left --part body
-python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
+python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
 ```
+
+The body's and the plinth's blanks are each one closed triangle mesh, built
+from the surfaces' functions: the top surface and the underside over one
+triangulation of the plan, the round's arcs at each station along the outline,
+and the walls one vertical quad per outline segment, so the walls are exactly
+vertical and nothing but the USB opening and the power switch's knob cuts them.
+Everything cut from the blanks or added to them (the cells' planes put back,
+the pockets, channels, well, screw holes and bosses) is an exact solid, and the
+booleans are Manifold's. The meshes' triangles are about `mesh_mm` across and
+every curve is within `mesh_tol_mm` of its chords.
 
 The files are outputs only: the design is the code and `params.py`, and a
 change is made there and rebuilt. The build refuses to write a part that is not
-a valid solid (OpenCascade's BRepCheck) or that does not span the outline (a
-boolean that loses the part leaves a fragment behind).
+one closed manifold solid (a stray piece or a sliver left by a boolean is a
+second solid) or that does not span the outline (a boolean that loses the part
+leaves a fragment behind).
 
 ## The layout
 
@@ -106,14 +112,12 @@ field: inside each key's cell the plate's plane, exactly; between cells the
 nearby cells' planes blended by distance, each taken at its cell's nearest
 point, so the surface runs smoothly across the column stagger and the gap to
 the thumb cluster without extrapolating any plane. The blend is a quadratic
-spline surface fitted through the field sampled every `surface_step_mm`, and
+spline surface through the field sampled every `surface_step_mm`, and
 it starts `surface_blend_mm` inside each cell's edge; then each cell's plane is
 cut and filled back exactly, `cell_step_mm` past its edge, so where two cells
 of different heights abut (the bottom row's ring and pinky keys differ by
 5 mm) the surface steps at the higher cell's edge rather than ramping across
-both. (A ring 0.3 mm wide and 0.1 mm deep is left round each cell's plane,
-on top and underneath: OpenCascade is surest of booleans whose faces do not
-coincide.) Its underside is the same surface dropped
+both. Its underside is the same surface dropped
 straight down by the room every key needs (the socket's bottom and
 `under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
 so the body is as thick under the inner column as under the pinky and every
@@ -130,15 +134,13 @@ notch is rounded to `outline_close_mm` and every convex corner to
 smoothed into one closed spline. ("closed" instead follows the cells and
 channels, with the gaps between them closed up.) The walls are vertical, and
 the top edge is rounded to `top_round_mm` (4 mm; 0 leaves it sharp): a true
-rolling-ball round, one smooth spline surface tangent to the top and the wall.
-It is built from the ball's closed form rather than by OpenCascade's fillet
-(which failed on this one closed edge depending only on where its seam fell):
-the ball's section is worked out at stations along the outline, no further
-apart than `round_step_mm` as the section moves, and one spline surface runs
-through them; its edges are the contact curves, so the top and the wall are
-trimmed at them and sewn with no boolean involved. The round needs room: the
-top's convex curvature must be gentler than `top_round_mm` where the round
-runs, and the build stops if the round would fold at a corner.
+rolling-ball round, tangent to the top and the wall, built from the ball's
+closed form: at each station along the outline the ball's section is an arc
+from the wall to the top, and the arcs at neighbouring stations are joined.
+The round needs room: the top's convex curvature must be gentler than
+`top_round_mm` where the round runs, and the build stops if the round would
+fold at a corner, cross itself or reach under the underside, or if a cell's
+plane would reach into it.
 No cutouts, ribs or gaps. The underside is curved and tilted, so the body
 prints on support (or on a raft): lay it on the tent plane and the support is
 at most a few millimetres tall; the plinth prints flat.

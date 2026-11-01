@@ -32,12 +32,11 @@ firmware:
 
 .PHONY: firmware
 
-# Low-profile Capybara proposal (build123d / OpenCascade); see lowpro/README.md.
-# Needs: pip install build123d scipy
+# Low-profile Capybara proposal (meshes cut with Manifold); see lowpro/README.md for what it needs.
 lowpro:
 	python3 -m lowpro.build
 
-# Fails when any two keycaps meet.
+# Fails when any two keycaps meet or a screw hole breaks into a cut.
 lowpro-check:
 	python3 -m lowpro.build --check
 
