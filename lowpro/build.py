@@ -176,6 +176,12 @@ def check():
             ok = False
         else:
             print("the knob turns clear")
+    buried = C.parts_buried()
+    if buried:
+        print("parts run into: " + ", ".join(f"{a} into {b} ({v:.2f} mm^3)" for a, b, v in buried))
+        ok = False
+    else:
+        print("parts sit in their rooms")
     v = C.part_overlap()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")

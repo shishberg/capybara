@@ -177,6 +177,17 @@ def tile_board(grow=0):
     return (s, s, t), (0, 0, -P.switch_below_plate_mm - P.pcb_layer_mm / 2)
 
 
+def hanging_boxes():
+    """What hangs under a key's switch, with its clearance, as boxes (size,
+    centre) in the key's frame: the tile's board and the parts under it, or
+    the socket."""
+    if P.key_parts == "tiles":
+        top = -P.switch_below_plate_mm
+        c = P.tile_clearance_mm
+        return [tile_board(c)] + [(tuple(s + 2 * c for s in size), (x, y, top + z)) for _, size, (x, y, z) in P.tile_parts]
+    return socket_boxes(P.socket_clearance_mm)
+
+
 def key_tile():
     """The tile as it hangs from the switch: the board and the parts under it."""
     top = -P.switch_below_plate_mm
@@ -358,18 +369,20 @@ def knob():
             + pieces([box((b - f, s[0], s[1]), ((f + b) / 2, 0, 0))], "purple", "sensor"))
 
 
-def knob_room(reach, up=100):
-    """What the plinth loses: the bearing's pocket open to the outside; room
-    behind it for the shaft's end, clear of the bearing's outer race (the
-    pocket's floor, between the two races, holds that); the sensor's slot,
-    open upward so the board drops in before the body goes on; and its wires'
-    slot, `reach` along +y into the well, open upward."""
+def knob_room(reach, up=0):
+    """The knob's rooms: the bearing's pocket open to the outside; room behind
+    it for the shaft's end, clear of the bearing's outer race (the pocket's
+    floor, between the two races, holds that); the sensor's slot; and its
+    wires' slot, `reach` along +y into the well, over the sensor's pads. `up`
+    opens both slots that far upward (so the board drops in from the body's
+    side)."""
     (bore, od, bw), s, c = P.knob_bearing_mm, P.knob_sensor_mm, P.knob_clearance_mm
     f, b = knob_sensor_x()
     w = P.channel_w_mm
+    sensor_h, wires_h = s[1] + 2 * c + up, 2 * w + c + up
     return [knob_bearing_pocket(), along_x((bore + od) / 2, bw - 0.1, f),
-            box((b - f + 2 * c, s[0] + 2 * c, up), ((f + b) / 2, 0, up / 2 - s[1] / 2 - c)),
-            box((w, reach, up), (b - w / 2 + c, reach / 2, up / 2 + s[1] / 2 - 2 * w))]
+            box((b - f + 2 * c, s[0] + 2 * c, sensor_h), ((f + b) / 2, 0, sensor_h / 2 - s[1] / 2 - c)),
+            box((w, reach, wires_h), (b - w / 2 + c, reach / 2, wires_h / 2 + s[1] / 2 - 2 * w))]
 
 
 def knob_bearing_pocket():

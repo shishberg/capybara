@@ -190,9 +190,10 @@ cell_mm = 19.05             # the cell each key owns in plan, square
 top_round_mm = 4
 # The body is a shell of one thickness: its underside is its top surface
 # dropped by the room every key needs, the socket's bottom and this much
-# under it (room for the wires under it and the print's tolerance). The
-# bottom plate is a plinth, flat on the desk, its top the same surface
-# plate_gap_mm lower; it is at least bottom_plate_mm thick.
+# under it (room for the wires under it and the print's tolerance), cut off
+# plate_gap_mm over the plinth's floor. The bottom plate is a plinth, flat on
+# the desk, its top the same surface plate_gap_mm lower; it is at least
+# bottom_plate_mm thick.
 under_socket_mm = 0.6
 bottom_plate_mm = 2
 plate_gap_mm = 0.1

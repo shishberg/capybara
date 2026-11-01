@@ -85,15 +85,17 @@ moves the controller (`PRESETS` in `params.py`):
 `output/lowpro/capybara-knob/` when built with `--out`. Its axis runs across,
 square to the inner side wall in front of the bay, `knob_z_mm` over the desk.
 The knob sits outside the wall on a shaft through a 608 bearing pocketed flush
-in the plinth's wall. A diametric magnet sits in the shaft's end, a millimetre
+in the side wall. Its rooms are cut from the plinth and the body alike (as
+the bay's are), so the bearing is held wherever the two meet across it. A diametric magnet sits in the shaft's end, a millimetre
 past the bearing. The sensor board stands in a slot behind it, chip toward the
 magnet, and drops in from the plinth's top before the body goes on. Its three
 wires (GND, 3.3 V, OUT to an ADC pin) run along a slot into the well. The
 sizes in `params.py` are provisional, taken from the parts in hand.
 
-With the Capybara's keycaps as well, it comes out as tall as the Capybara (caps
-37 to 66 mm over the desk), the body 14.4 mm thick (its steepest keys lean
-45°) and the plinth 10 to 38 mm under the keys. Swung in's steep thumbs and
+With the Capybara's keycaps as well, it comes out as tall as the Capybara: 62.8 mm
+to the highest cap's top corner (cap tops 28 to 57 mm over the desk at their
+centres), with the body 14.4 mm thick (its steepest keys lean 45°) and the
+plinth 2 to 29 mm under the keys. Swung in's steep thumbs and
 pinky top key leave room for only a 1.5 mm top round.
 
 The body's and the plinth's blanks are each one closed triangle mesh, built
@@ -172,7 +174,10 @@ both. Its underside is the same surface dropped
 straight down by the room every key needs (the socket's bottom and
 `under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
 so the body is as thick under the inner column as under the pinky and every
-wiring channel is the same depth, and flat under each cell as the top is. The tent and the wells live in the plinth
+wiring channel is the same depth, and flat under each cell as the top is.
+Where that would take it below the body's floor (`plate_gap_mm` over the
+plinth's thinnest, `bottom_plate_mm`) it is cut off flat on the floor, as
+under a steep key's low edge. The tent and the wells live in the plinth
 under it. The footprint (`outline_style`) is a convex hull round the finger
 field (its cells, the bays and its wire channels) and another round the thumb
 cluster, joined by a third round the thumb row, the bottom keys nearest it and
@@ -235,9 +240,13 @@ of two posts), and where two meet they merge. Look at them from below (`wiring-b
 before trusting a route; `channels()` in `chassis.py` is the list to edit.
 
 **Plinth.** The bottom plate is a plinth: flat on the desk, its top the body's
-underside `plate_gap_mm` lower, the same outline. It is `bottom_plate_mm` thick
-at its thinnest, under pinky home, and about 14 mm under the inner column and
-the thumbs, so it carries the tent and the wells and the body does not. Under
+underside `plate_gap_mm` lower, the same outline. The keys are lifted so that
+the lowest point of what hangs under any switch (its tile and the tile's parts,
+or its socket, with their clearance, and `under_socket_mm` under that along the
+key's axis) sits on the body's floor, so the plinth is `bottom_plate_mm` thick
+at its thinnest and about 14 mm under the inner column and the thumbs: it
+carries the tent and the wells and the body does not. Where the plinth rises
+under a neighbouring key, what hangs under a key is cut from it too. Under
 each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
 rises to 0.15 mm under the socket and holds it against its ceiling when a
 switch is pushed in. It is screwed from below with M2 screws into heat-set
@@ -282,6 +291,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room or tile's seat; the bay's rooms, well and the knob's room) come within `min_wall_mm` of each other, or a channel or tile shaft comes within it of the bay (unless the bay is under the keys) or of another key's seat | `--set socket_tab_mm=(3.5,2.6)` |
 | Ports | An opening that must go through the wall (the controller's port, the TRRS plug's hole, the reset switch's plunger hole, the knob's bearing pocket) stops inside the outline | `--preset capybara --set mcu_usb_overhang_mm=-6` |
 | Knob | The knob's room outside the wall (grown by `knob_clearance_mm`) reaches the desk, the body or the plinth | `--preset capybara --set knob=True --set knob_z_mm=10` |
+| Parts | A bought part (the controller, jack, reset switch, knob's bearing and sensor, a socket or tile, a diode) runs into the body or the plinth | `--preset capybara --set knob=True --set knob_clearance_mm=-0.3` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set trunk_w_mm=12` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |

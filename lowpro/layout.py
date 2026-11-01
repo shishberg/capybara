@@ -29,7 +29,7 @@ from pathlib import Path
 import numpy as np
 
 from . import params as P
-from .parts import counterbore_d, socket_top_z
+from .parts import box_corners, counterbore_d, hanging_boxes, socket_top_z
 from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
@@ -286,20 +286,22 @@ def floor_drop_in(T):
 
 
 def tented_floor_z(T):
-    """The lowest point any key's cell puts the body's underside, in tented
-    axes: its plane is put back cell_step_mm past its edge (chassis.py body_shell)."""
-    g = P.cell_step_mm
-    zs = [xform(T @ k.frame, [sx * (k.cell[0] / 2 + g), sy * (k.cell[1] / 2 + g), 0])[2]
-          for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1)]
-    return min(zs) - floor_drop_in(T)
+    """The lowest point any key's room reaches, in tented axes: what hangs
+    under its switch (parts.py hanging_boxes) and under_socket_mm under that
+    along the key's axis. The shell under a tilted key's low edge, dropped
+    straight down, would reach lower, but nothing hangs there: the body is
+    cut off over the plinth's floor (chassis.py body_floor) instead."""
+    return min(xform(T @ k.frame, c - (0, 0, P.under_socket_mm))[2]
+               for k in layout_keys() for s, m in hanging_boxes() for c in box_corners(s, m))
 
 
 @cached
 def world_frame():
-    """Layout axes to world: tented, then lifted so the body's lowest point sits
-    bottom_plate_mm over the desk, which is z = 0."""
+    """Layout axes to world: tented, then lifted so the keys' rooms' lowest
+    point sits on the body's floor, plate_gap_mm over the plinth's
+    bottom_plate_mm floor on the desk, which is z = 0."""
     T = tent_frame()
-    return trans([0, 0, P.bottom_plate_mm - tented_floor_z(T)]) @ T
+    return trans([0, 0, P.bottom_plate_mm + P.plate_gap_mm - tented_floor_z(T)]) @ T
 
 
 @cached

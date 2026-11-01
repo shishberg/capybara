@@ -65,8 +65,8 @@ def add(solid, tools):
 # spline through this field sampled every surface_step_mm (top_fit): taking
 # each plane at its cell's nearest point creases the field along the lines
 # that carry the cells' edges out, and the spline smooths those over a step.
-# The body's underside is the same surface floor_drop() lower, the plate's
-# top plate_gap_mm under that.
+# The body's underside is the same surface floor_drop() lower, but never
+# below the body's floor (body_floor); the plate's top plate_gap_mm under that.
 def field(x, y):
     """The key field's height over the world points (x, y) (arrays)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
@@ -93,8 +93,21 @@ def top_z(x, y):
     return float(field([x], [y])[0])
 
 
+def body_floor():
+    """The lowest the body's underside goes: plate_gap_mm over the plinth's
+    bottom_plate_mm floor. The keys are lifted so their rooms reach no lower
+    (layout.py world_frame); the shell dropped straight down from a steep
+    key's low edge would, and is cut off here."""
+    return P.bottom_plate_mm + P.plate_gap_mm
+
+
+def underside(top):
+    """The body's underside under top surface heights `top`."""
+    return np.maximum(top - L.floor_drop(), body_floor())
+
+
 def floor_z(x, y):
-    return top_z(x, y) - L.floor_drop()
+    return float(underside(top_z(x, y)))
 
 
 def plate_z(x, y):
@@ -386,7 +399,7 @@ def body_blank():
     station = np.arange(n)
     ring = [u + station * m + j for j in range(m)]
     top = np.where(ti < n, u + ti * m + m - 1, u + n * m + ti - n)
-    vertices = np.r_[np.c_[vu, top_surface(vu) - L.floor_drop()], rows.reshape(-1, 3),
+    vertices = np.r_[np.c_[vu, underside(top_surface(vu))], rows.reshape(-1, 3),
                      np.c_[vi[n:], top_surface(vi[n:])]]
     triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
     blank = solid_from(vertices, np.concatenate(triangles), "body's blank")
@@ -401,10 +414,7 @@ def plinth_blank():
     n = len(q)
     vu, tu = plan()
     u = len(vu)
-    z = top_surface(vu) - L.floor_drop() - P.plate_gap_mm
-    if z.min() <= 0:
-        x, y = vu[z.argmin()]
-        raise ValueError(f"the plinth's top reaches the desk at ({x:.1f}, {y:.1f})")
+    z = underside(top_surface(vu)) - P.plate_gap_mm
     _, tb = plan_mesh(q, fill=False)
     station = np.arange(n)
     vertices = np.r_[np.c_[vu, z], np.c_[q, np.zeros(n)]]
@@ -475,7 +485,10 @@ def body_shell():
     caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
     caps += [column(g, cut) ^ half_space(g[0].frame, below_plane(g, d) + put_back_mm) for g in plane_groups()]
     blocks = [column(g, block) ^ slab(g[0].frame, 0, below_plane(g, d)) for g in plane_groups()]
-    shell = add(subtract(body_blank(), caps), blocks)
+    # The blocks reach below the floor under a steep key's low edge: cut off
+    # ring_mm under it, clear of the blank's floor (and the plinth's).
+    floor = Manifold.cube((400, 400, 100)).translate((-200, -200, body_floor() - ring_mm - 100))
+    shell = subtract(add(subtract(body_blank(), caps), blocks), [floor])
     stage("the body's shell", t)
     return shell
 
@@ -493,7 +506,11 @@ def plinth_shell():
     floor = Manifold.cube((400, 400, 100)).translate((-200, -200, put_back_mm))
     fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, below_plane(g, d) + put_back_mm) ^ floor
             for g in plane_groups()]
-    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, below_plane(g, d), below=False) for g in plane_groups()]
+    # Never into the floor (whose top is the blank's where the underside is
+    # cut off): ring_mm over it.
+    keep = Manifold.cube((400, 400, 100)).translate((-200, -200, P.bottom_plate_mm + ring_mm))
+    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, below_plane(g, d), below=False) ^ keep
+             for g in plane_groups()]
     shell = subtract(add(plinth_blank(), fill), clear)
     stage("the plinth's shell", t)
     return shell
@@ -764,6 +781,15 @@ def key_room(k):
     return union(place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm))
 
 
+def hang_room(k):
+    """What hangs under key k's switch with its clearance (parts.py
+    hanging_boxes) and under_socket_mm under that along the key's axis, as one
+    cutter: the plinth is lifted to clear it (layout.py world_frame) but cut
+    from it too where the plinth rises under a neighbour."""
+    pts = np.array([xform(k.frame, c) for s, m in R.hanging_boxes() for c in box_corners(s, m)])
+    return Manifold.hull_points(np.r_[pts, pts - P.under_socket_mm * k.frame[:3, 2]])
+
+
 def bay_rooms(plinth=False):
     """The parts' rooms in the well, cut from the plinth (where the switch's
     pocket opens up through the plate's top) and from the body where they reach
@@ -771,6 +797,8 @@ def bay_rooms(plinth=False):
     as the pocket."""
     up = 100 if plinth else 0
     out = place(mcu_frame(), R.mcu_room())
+    if P.knob:
+        out += place(knob_frame(), R.knob_room(knob_slot_reach(), up))
     if P.link == "trrs":
         return out + place(trrs_frame(), R.trrs_room(up)) + place(reset_frame(), R.reset_room(up))
     out += place(battery_frame(), R.battery_room())
@@ -823,12 +851,16 @@ def screw_holes():
 @cached
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
-    cuts = [("the well", well()), ("a bay room", bay_rooms(plinth=True))]
-    if P.knob:
-        cuts.append(("the knob's room", place(knob_frame(), R.knob_room(knob_slot_reach()))))
+    cuts = [("the well", well()), ("a bay room", bay_rooms(plinth=True)),
+            ("a key's hang room", [hang_room(k) for k in keys()])]
     if P.link == "ble":
-        cuts.append(("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()])))
+        cuts.append(("the reset pinhole", pinhole()))
     return cuts
+
+
+def pinhole():
+    """The pinhole over the controller's reset button, when it has one."""
+    return place(mcu_frame(), [R.mcu_reset_hole()]) if P.link == "ble" else []
 
 
 def plate_cutters():
@@ -922,6 +954,19 @@ def closed_ports():
     return [name for name, m, hole in ports if (placed(m, hole) - inside).volume() <= 1e-6]
 
 
+def parts_buried():
+    """The bought parts (the electronics, sockets or tiles, and diodes) that run
+    into the body or the plinth, as (part, which, mm^3); empty when all sit
+    in their rooms."""
+    out = []
+    for p in electronics() + sockets() + diodes():
+        for what, s in (("the body", body()), ("the plinth", bottom_plate())):
+            v = (p.solid ^ s).volume()
+            if v > 1e-3:
+                out.append((p.label, what, v))
+    return out
+
+
 def knob_clashes():
     """What the knob's room outside the wall (parts.py knob_clear) runs into:
     the desk, the body or the plinth; empty when it turns clear."""
@@ -1001,7 +1046,8 @@ def thin_walls():
     tiles = P.key_parts == "tiles"
     rooms = [(k.name, lost(body_shell(), [tile_seat(k)] if tiles else
                            [key_room(k), *solder_wells(k), *diode_rooms(k)], True)) for k in keys()]
-    bay = union([lost(body_shell(), bay_rooms(), True), lost(plinth_shell(), plate_cutters())])
+    bay = union([lost(body_shell(), bay_rooms(), True),
+                 lost(plinth_shell(), well() + bay_rooms(plinth=True) + pinhole())])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
     if tiles:
