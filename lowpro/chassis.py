@@ -265,18 +265,22 @@ def round_sections():
     (q, inward), r = outline_stations(), P.top_round_mm
     if r <= 0:
         return np.c_[q, top_surface(q)][:, None, :]
+    # The top contact under each ball centre a, found by fixed-point steps that
+    # shrink by r times the top's curvature there: they converge while the
+    # top's convex radius is larger than r, and stop shrinking where it isn't.
     a = q + r * inward
-    p = a.copy()
-    for _ in range(200):
+    p, last = a.copy(), np.inf
+    while True:
         g = top_slope(p)
         s = np.sqrt(1 + (g * g).sum(1))
         moved = np.linalg.norm(a - r * g / s[:, None] - p, axis=1)
         p = a - r * g / s[:, None]
         if moved.max() < 1e-9:
             break
-    else:
-        x, y = a[moved.argmax()]
-        raise ValueError(f"the top edge's round: top_round_mm {r} is larger than the top's convex radius near ({x:.1f}, {y:.1f})")
+        if moved.max() >= last:
+            x, y = a[moved.argmax()]
+            raise ValueError(f"the top edge's round: top_round_mm {r} is larger than the top's convex radius near ({x:.1f}, {y:.1f})")
+        last = moved.max()
     g = top_slope(p)
     s = np.sqrt(1 + (g * g).sum(1))
     top = np.c_[p, top_surface(p)]
@@ -656,9 +660,17 @@ def post_points(p, w):
     return [(p[0] + sx * w / 2, p[1] + sy * w / 2, z) for sx in (-1, 1) for sy in (-1, 1) for z in (f, p[2])]
 
 
+def channel_segments():
+    """Every channel's straight runs as (a, b, width)."""
+    return [(a, b, w) for w, pts, _ in channels() for a, b in zip(pts[:-1], pts[1:])]
+
+
+def run_solid(a, b, w):
+    return Manifold.hull_points(post_points(a, w) + post_points(b, w))
+
+
 def channel_solids():
-    return [Manifold.hull_points(post_points(a, w) + post_points(b, w))
-            for w, pts, _ in channels() for a, b in zip(pts[:-1], pts[1:])]
+    return [run_solid(*r) for r in channel_segments()]
 
 
 def diode_frame(k):
@@ -666,10 +678,10 @@ def diode_frame(k):
     return k.frame @ trans([col_x(), (P.socket_tab_y[0] + ne_y()) / 2 + 1, R.socket_top_z() - P.diode_mm[1] / 2 - 0.4])
 
 
-def diode_rooms():
-    """Room for the diode in the column channel, over the column tab."""
+def diode_room(k):
+    """Room for key k's diode in the column channel, over the column tab."""
     d = P.diode_mm
-    return [placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8))) for k in keys()]
+    return placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8)))
 
 
 def swept(m, size, centre, depth=60):
@@ -684,17 +696,21 @@ def socket_shaft(k, grow):
     return [swept(k.frame, s, c) for s, c in R.socket_boxes(grow)]
 
 
-def solder_wells():
-    """Room under each socket tab to solder to it."""
+def solder_wells(k):
+    """Room under each of key k's socket tabs to solder to it: solder_well_mm
+    centred on the tab's tip, cut back in plan to stay min_wall_mm inside the
+    cell at the socket's top, so it keeps that wall from the next key's room
+    (whose -x tab's slot comes within a millimetre of its cell's edge) and from
+    the bay. The -x well then ends about at its tab's tip."""
     s = P.solder_well_mm
-    return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) for k in keys() for side in (-1, 1)]
+    inside = polygon(cell_corners(k, -P.min_wall_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
+    return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) ^ inside for side in (-1, 1)]
 
 
 # ---------------------------------------------------------------- the body
-def key_rooms():
-    """Each key's room (switch, socket and shaft) as one cutter."""
-    rooms = R.mx_switch_room() + R.hotswap_socket_room()
-    return [union(place(k.frame, rooms) + socket_shaft(k, P.socket_clearance_mm)) for k in keys()]
+def key_room(k):
+    """Key k's room (switch, socket and shaft) as one cutter."""
+    return union(place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm))
 
 
 def bay_rooms(plinth=False):
@@ -714,8 +730,9 @@ def insert_holes():
 @cached
 def body_cuts():
     """Everything cut from the body but the screws' insert holes, in named groups."""
-    return [("a key's room", key_rooms()), ("a solder well", solder_wells()), ("a diode's room", diode_rooms()),
-            ("a channel", channel_solids()), ("a bay room", bay_rooms())]
+    ks = keys()
+    return [("a key's room", [key_room(k) for k in ks]), ("a solder well", [w for k in ks for w in solder_wells(k)]),
+            ("a diode's room", [diode_room(k) for k in ks]), ("a channel", channel_solids()), ("a bay room", bay_rooms())]
 
 
 def body_cutters():
@@ -846,16 +863,10 @@ def wire_ends():
 
 def unwired():
     """The wire ends that no path a wire fits through (wire_d_mm), through the
-    spaces cut from the body and the plinth (channels, pockets, the well),
-    joins to the controller's. The spaces are what each part loses (its blank
-    within its cutters, which reach past it); the body's are open at its
-    underside, so they are lowered across the plate gap as well, to meet the
-    plinth's wherever it is cut away under them. The space is then shrunk by
-    the wire's radius along each axis, which closes the slivers where one cut
-    grazes another."""
-    body_space = body_shell() ^ union(body_cutters())
-    space = union([body_space, body_space.translate((0, 0, -P.plate_gap_mm - 0.2)),
-                   plinth_shell() ^ union(plate_cutters())])
+    spaces cut from the body and the plinth (channels, pockets, the well; see
+    lost), joins to the controller's. The space is shrunk by the wire's radius
+    along each axis, which closes the slivers where one cut grazes another."""
+    space = union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
     r = P.wire_d_mm / 2
     for axis in np.eye(3):
         space = space.translate(tuple(r * axis)) ^ space.translate(tuple(-r * axis))
@@ -866,6 +877,36 @@ def unwired():
     *ends, (_, controller) = wire_ends()
     home = next(c for c in space.decompose() if (c ^ probe(controller)).volume() > 0)
     return [name for name, p in ends if (home ^ probe(p)).volume() <= 0]
+
+
+def lost(shell, cutters, open_below=False):
+    """What a part loses to some of its cutters: its shell within them (they
+    reach past it); for the body's, open at its underside, lowered across the
+    plate gap as well, so they meet the plinth's wherever it is cut away under them."""
+    space = shell ^ union(cutters)
+    return union([space, space.translate((0, 0, -P.plate_gap_mm - 0.2))]) if open_below else space
+
+
+def thin_walls():
+    """The walls thinner than min_wall_mm between the rooms of different parts
+    (each key's room, solder wells and diode's room; the bay's rooms and well),
+    and between the bay and every channel but the one into it, as a list of
+    (room, room, wall mm), empty when every wall is thick enough. Channels
+    join keys by design, so they are held only to the bay."""
+    rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), diode_room(k)], True)) for k in keys()]
+    bay = union([lost(body_shell(), bay_rooms(), True), lost(plinth_shell(), plate_cutters())])
+    rooms.append(("the bay", bay))
+    pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
+    pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
+                lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
+              for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
+    out = []
+    for (a, sa), (b, sb) in pairs:
+        if gap(sa, sb) < P.min_wall_mm:
+            d = sa.min_gap(sb, P.min_wall_mm)
+            if d < P.min_wall_mm - 1e-6:
+                out.append((a, b, d))
+    return out
 
 
 def gap(a, b):

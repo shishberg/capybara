@@ -143,6 +143,12 @@ def check():
         ok = False
     else:
         print("screw holes clear")
+    thin = C.thin_walls()
+    if thin:
+        print(f"walls under {C.P.min_wall_mm} mm: " + ", ".join(f"{a} to {b} ({d:.2f} mm)" for a, b, d in thin))
+        ok = False
+    else:
+        print("walls between rooms clear")
     lost = C.unwired()
     if lost:
         print("no path to the controller from: " + ", ".join(lost))

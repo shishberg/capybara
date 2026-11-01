@@ -56,6 +56,7 @@ Each invariant the design must keep is a check in the build, run on the exact cu
 
 - Moving or neighbouring parts don't meet (at rest and at full travel).
 - The wall round each fastener: its holes against every other cutter of that part and against the outline. Check cutters against each other, not only the finished part, since a cut that breaks into another cut leaves a valid-looking solid.
+- The rooms of different parts keep a minimum wall (a `min_wall_mm` parameter): group each part's cutters, take what the part loses to each group, and hold the least gap between groups to it. Lay features out against where the cuts actually reach; a tilted cut leans past a footprint drawn at its top.
 - Mating parts don't overlap.
 - Every wire or hose has a path to where it goes that it fits through. Model the space as what each part actually loses (its blank within its cutters, since cutters reach past the part), then shrink it by the wire's radius so a sliver where one cut grazes another doesn't count as a route.
 - Whatever the user named as must-not-happen.

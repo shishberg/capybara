@@ -161,7 +161,8 @@ ceiling, where the switch's pins reach it; the socket body is modelled as the me
 envelope cut into the two boxes about its pin cups (`socket_body` in
 `parts.py`), with its two solder tabs out of the ±x ends. A solder well under
 each tab reaches up from the underside so a wire can be soldered to the tab
-after the socket is in. There are no LEDs.
+after the socket is in; it stays `min_wall_mm` inside the key's cell, so the −x
+tab's well ends about at the tab's tip. There are no LEDs.
 
 **Wiring channels.** Slots in the underside, from the underside up to the
 sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
@@ -199,14 +200,16 @@ side and front, all edges the trunk channels keep clear of). Each screw sits
 in the middle of the wall, `wall_mm / 2` past the cell's or bay's edge, so its
 counterbore has the same wall on both sides (0.6 mm at a 6 mm wall; the report
 prints the least wall left round any screw). A screw on a cell's −x edge goes
-south of the stem, since the −x tab's solder well overhangs that edge north of
-it. Each screw hole is counterbored from below so that every screw grips
+south of the stem, since the −x tab and its solder well come within about a
+millimetre of that edge north of it. Each screw hole is counterbored from below so that every screw grips
 `screw_grip_mm` of plinth under the body: one screw length (that plus
 `insert_depth_mm`, so M2 × 8) fits the thin side and the thick.
 
 **Bay.** Nothing can sit under a socket, since each socket's shaft is open to
 the underside, so the controller and battery lie in a well in the plinth on the
-inner side of the inner column, open at the top and closed by the body: the
+inner side of the inner column, `min_wall_mm` from the inner column's cells
+(measured down to the body's underside, since a key's cuts lean with it), open
+at the top and closed by the body: the
 board along the column, components down, its USB-C port out of the back wall
 through a chamfered opening; the power switch beside it in the inner side wall,
 its pocket open upward so it drops in from the body's side; the battery in
@@ -229,6 +232,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel | `--set screw_head_d=8` |
 | Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
+| Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--set trunk_w_mm=12` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
@@ -240,8 +244,8 @@ hole, to the outline or to another cut.
 
 Not checked: the hand's reach (the `?hand` prototype's checks don't run on this
 layout), switches and caps against the body (the cells are planar and larger than
-a cap, so a cap can't meet the body, but nothing proves it), channels against
-pockets, wall thickness other than round the screws, and the bay against the key pockets. The Cherry cap, the
+a cap, so a cap can't meet the body, but nothing proves it), and the walls
+between channels and the keys' pockets (channels join keys by design). The Cherry cap, the
 socket's tabs, the controller, the battery and the power switch are nominal sizes.
 
 ## Open questions

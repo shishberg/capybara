@@ -273,10 +273,11 @@ def floor_drop():
     return floor_drop_in(tent_frame())
 
 
-def cell_corners(k, grow=0):
-    """The cell's four corners in world plan, counterclockwise."""
+def cell_corners(k, grow=0, z=0):
+    """The cell's four corners in world plan, counterclockwise, at height z in
+    the key's frame (0 the plate's top)."""
     sx, sy = k.cell[0] / 2 + grow, k.cell[1] / 2 + grow
-    return [xy(xform(k.frame, [cx, cy, 0])) for cx, cy in ((-sx, -sy), (sx, -sy), (sx, sy), (-sx, sy))]
+    return [xy(xform(k.frame, [cx, cy, z])) for cx, cy in ((-sx, -sy), (sx, -sy), (sx, sy), (-sx, sy))]
 
 
 def cap_top(k):
@@ -292,15 +293,14 @@ def cap_top(k):
 # power switch beside it in the inner side wall, and the battery in front of
 # the board. The bay's rectangles are ((x0, y0), (x1, y1)) in plan; the
 # parts' frames here are on z = 0, chassis.py lifts them to the well's floor.
-bay_gap_mm = 1   # between a cell and a pocket
-
-
 def cell_back(k):
     return max(c[1] for c in cell_corners(k))
 
 
 def cell_x0(k):
-    return min(c[0] for c in cell_corners(k))
+    """The cell's least x in plan from the plate's top down to the body's
+    underside (the key's cuts lean with it)."""
+    return min(c[0] for z in (0, -body_depth()) for c in cell_corners(k, z=z))
 
 
 def column_key(col, row):
@@ -317,7 +317,7 @@ def mcu_bay():
     """The controller's bay: beside the inner column's cells, its back at the
     top cell's back, as long as the board, as wide as the board and the switch."""
     c = P.mcu_clearance_mm
-    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - bay_gap_mm
+    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.min_wall_mm
     y1 = cell_back(column_key(0, P.rows_above))
     return ((x1 - P.mcu_board_mm[0] - 2 * c - switch_strip(), y1 - P.mcu_board_mm[1] - 2 * c), (x1, y1))
 
@@ -343,7 +343,7 @@ def battery_bay():
     """The battery's bay: in front of the controller's, the same width, as long
     as the battery, which lies along the column."""
     m, c = mcu_bay(), P.battery_clearance_mm
-    y1 = m[0][1] - bay_gap_mm
+    y1 = m[0][1] - P.min_wall_mm
     return ((m[0][0], y1 - P.battery_mm[0] - 2 * c), (m[1][0], y1))
 
 
@@ -373,9 +373,9 @@ def screw_points():
     on a cell's or a bay's edge carried out to the middle of the wall, so the
     counterbore has the same wall on both sides, on edges the trunk channels
     (chassis.py) keep clear of: the pinky's outer side, the thumb cluster's far
-    side and front, and the bay's inner side and front. The -x tab's solder well
-    overhangs a cell's -x edge north of the stem (both tabs are at +y), so a
-    screw on a -x edge sits south of the stem."""
+    side and front, and the bay's inner side and front. The -x tab and its
+    solder well come within about a millimetre of a cell's -x edge north of the
+    stem (both tabs are at +y), so a screw on a -x edge sits south of the stem."""
     s = P.wall_mm / 2
 
     def edge(k, d):

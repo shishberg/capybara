@@ -106,7 +106,8 @@ socket_centre_mm = (-0.7, 4.0)
 socket_tab_mm = (2.0, 2.6)             # each tab's reach past the body, and its width
 socket_tab_y = (2.54, 5.08)            # the -x tab's y, the +x tab's y
 socket_clearance_mm = 0.25
-# Room under each tab to solder a wire to it, from the floor up to the tab.
+# Room under each tab to solder a wire to it, from the floor up to the tab,
+# centred on the tab's tip and cut back to stay min_wall_mm inside the cell.
 solder_well_mm = (4.5, 5)
 
 # ---------------------------------------------------------------- wiring
@@ -124,6 +125,10 @@ diode_mm = (4.0, 2.0)
 # each row's wire joins the +x tabs along the cells' north edges. See the README.
 
 # ---------------------------------------------------------------- the body and bottom plate
+# The thinnest wall between the rooms of different parts (each key's, the
+# bay's), and between the bay and every channel but the one into it; the
+# build checks every pair.
+min_wall_mm = 1
 wall_mm = 6                 # the body's wall past the key cells; the trunk channels and the screws' inserts sit in it
 # The outline: "hulls" joins a convex hull round the finger field and one
 # round the thumb cluster (straight sides); "closed" follows the cells.
