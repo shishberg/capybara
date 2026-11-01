@@ -37,7 +37,9 @@ def write(shape, path, stl=True):
     export_step(shape, str(path.with_suffix(".step")))
     if stl:
         export_stl(shape, str(path.with_suffix(".stl")), tolerance=0.02, angular_tolerance=0.2)
-    print(f"wrote {path.with_suffix('.step').relative_to(ROOT)}" + (" and .stl" if stl else ""), flush=True)
+    step = path.with_suffix(".step")
+    shown = step.relative_to(ROOT) if step.is_relative_to(ROOT) else step
+    print(f"wrote {shown}" + (" and .stl" if stl else ""), flush=True)
 
 
 def for_half(shape, half):
