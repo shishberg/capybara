@@ -340,16 +340,18 @@ def power_switch_frame():
 
 @cached
 def battery_bay():
-    """The battery's bay: in front of the controller's, the same width."""
+    """The battery's bay: in front of the controller's, the same width, as long
+    as the battery, which lies along the column."""
     m, c = mcu_bay(), P.battery_clearance_mm
     y1 = m[0][1] - bay_gap_mm
-    return ((m[0][0], y1 - P.battery_mm[1] - 2 * c), (m[1][0], y1))
+    return ((m[0][0], y1 - P.battery_mm[0] - 2 * c), (m[1][0], y1))
 
 
 def battery_frame():
-    """The battery's frame: its centre on the well's floor (parts.py battery)."""
+    """The battery's frame: its centre on the well's floor, its length (+x in
+    parts.py battery) along the column."""
     b = battery_bay()
-    return trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0])
+    return trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0]) @ rot_z(90)
 
 
 def bays():
