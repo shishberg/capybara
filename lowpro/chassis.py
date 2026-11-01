@@ -820,6 +820,12 @@ def cap_collisions():
     return hits
 
 
+def part_overlap():
+    """How much the body and the plinth overlap, mm^3 (0 when the plinth stays
+    under the body's underside)."""
+    return (body() ^ bottom_plate()).volume()
+
+
 def gap(a, b):
     """The gap between two solids' bounding boxes (0 when they overlap)."""
     a, b = np.array(a.bounding_box()), np.array(b.bounding_box())

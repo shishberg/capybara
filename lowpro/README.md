@@ -221,7 +221,8 @@ and fails naming the pair if they do, and whether any screw's holes (the
 plinth's screw hole and counterbore, the body's insert hole) break into
 anything else cut from that part, the well, the parts' rooms, a key's pockets,
 a solder well, a diode's room or a channel, and fails naming the screw and what
-it met (`make lowpro-check` runs only these checks). The default layout is
+it met, and whether the body and the plinth overlap anywhere (`make
+lowpro-check` runs only these checks). The default layout is
 clear. It also prints the plate and cap heights over the desk, the shell's
 thickness, the plinth's height under the keys, the well's floor, the fingertip
 reach per column, the plan size, and the least wall left round any screw's

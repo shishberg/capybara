@@ -143,6 +143,12 @@ def check():
         ok = False
     else:
         print("screw holes clear")
+    v = C.part_overlap()
+    if v > 1e-6:
+        print(f"body and plinth overlap ({v:.3f} mm^3)")
+        ok = False
+    else:
+        print("body and plinth clear")
     return ok
 
 
