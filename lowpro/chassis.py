@@ -101,20 +101,11 @@ def plate_z(x, y):
 
 
 @cached
-def bbox():
-    """The plan's bounding box, ((x0, y0), (x1, y1)), with room for the wall."""
-    pts = [c for k in keys() for c in cell_corners(k)] + list(L.screw_points()) + [c for b in L.bays() for c in b]
-    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-    m = P.wall_mm + P.outline_round_mm + 2
-    return ((min(xs) - m, min(ys) - m), (max(xs) + m, max(ys) + m))
-
-
-@cached
 def top_fit():
     """The top surface: a quadratic spline through the field sampled every
-    surface_step_mm over the plan."""
-    (x0, y0), (x1, y1) = bbox()
+    surface_step_mm over the outline's bounds, a step past them all round."""
     st = P.surface_step_mm
+    (x0, y0), (x1, y1) = outline().min(axis=0) - st, outline().max(axis=0) + st
     xs, ys = np.arange(x0, x1 + st, st), np.arange(y0, y1 + st, st)
     X, Y = np.meshgrid(xs, ys, indexing="ij")
     return RectBivariateSpline(xs, ys, field(X.ravel(), Y.ravel()).reshape(X.shape), kx=2, ky=2, s=0)
@@ -246,10 +237,6 @@ def outline():
     return outline_stations()[0]
 
 
-def outline_2d():
-    return polygon(outline())
-
-
 def outline_distance(p):
     """The plan distance from the point p to the outline."""
     a = outline()
@@ -363,66 +350,73 @@ def solid_from(vertices, triangles, what):
     return solid
 
 
-# The body is everything under its top and over its underside: two blanks,
-# intersected once each has its cells put back (body_shell). Under the top:
-# the outline's prism from under the desk up to the top surface, its top edge
-# rounded. Over the underside: the plan's bounding box from the underside up
-# past every key. The plinth is the outline's prism from the desk with
-# everything over the underside, lowered plate_gap_mm, taken away, so its top
-# is the body's underside to the last triangle.
-def under_blank():
-    """Everything within the outline under the top surface, from z = -1: its
-    vertices the bottom's (the outline's stations), the round's sections
-    (the first of each on the outline, level with the ball's centre: the
-    wall), then the top's inside the round."""
+# The body's and the plinth's blanks are each one closed mesh, and their
+# outer walls are built here and nothing cuts them afterwards except what is
+# meant to go through the wall (the USB opening, the power switch's knob):
+# each wall is one vertical quad per outline segment, its corners on the
+# stations, so it is exactly vertical. Both blanks' undersides and tops over
+# the plan are one triangulation of the outline (plan): the body's underside
+# is the top surface floor_drop() lower on it, and the plinth's top the same
+# plate_gap_mm lower, vertex for vertex.
+@cached
+def plan():
+    """The plan inside the outline, triangulated: its vertices (the outline's
+    stations first) and triangles."""
+    return plan_mesh(outline())
+
+
+def body_blank():
+    """The body's blank: its vertices the underside's (the outline's stations
+    first), the round's sections (the first of each on the outline, level with
+    the ball's centre: the wall's top), then the top's inside the round."""
     t = time.time()
     q = outline()
     n = len(q)
     rows = round_sections()
     m = rows.shape[1]
+    vu, tu = plan()
+    u = len(vu)
     vi, ti = plan_mesh(rows[:, -1, :2])
-    _, tb = plan_mesh(q, fill=False)
     station = np.arange(n)
-    ring = [n + station * m + j for j in range(m)]
-    top = np.where(ti < n, n + ti * m + m - 1, n + n * m + ti - n)
-    vertices = np.r_[np.c_[q, np.full(n, -1.0)], rows.reshape(-1, 3), np.c_[vi[n:], top_surface(vi[n:])]]
-    triangles = [tb[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
-    blank = solid_from(vertices, np.concatenate(triangles), "body's top")
-    stage("the top's mesh", t)
+    ring = [u + station * m + j for j in range(m)]
+    top = np.where(ti < n, u + ti * m + m - 1, u + n * m + ti - n)
+    vertices = np.r_[np.c_[vu, top_surface(vu) - L.floor_drop()], rows.reshape(-1, 3),
+                     np.c_[vi[n:], top_surface(vi[n:])]]
+    triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
+    blank = solid_from(vertices, np.concatenate(triangles), "body's blank")
+    stage("the body's blank", t)
     return blank
 
 
-def over_blank():
-    """Everything over the underside (the top surface floor_drop() lower) within
-    the plan's bounding box, up to 100 mm over the desk: the underside a grid
-    of mesh_mm squares, each two triangles."""
-    (x0, y0), (x1, y1) = bbox()
-    nx, ny = math.ceil((x1 - x0) / P.mesh_mm) + 1, math.ceil((y1 - y0) / P.mesh_mm) + 1
-    X, Y = np.meshgrid(np.linspace(x0, x1, nx), np.linspace(y0, y1, ny), indexing="ij")
-    xy = np.c_[X.ravel(), Y.ravel()]
-    index = np.arange(nx * ny).reshape(nx, ny)
-    a, b, c, d = index[:-1, :-1].ravel(), index[1:, :-1].ravel(), index[1:, 1:].ravel(), index[:-1, 1:].ravel()
-    under = np.r_[np.c_[a, c, b], np.c_[a, d, c]]
-    rim = np.r_[index[:-1, 0], index[-1, :-1], index[:0:-1, -1], index[0, :0:-1]]   # counterclockwise
-    lid = nx * ny + np.arange(len(rim))
-    _, tt = plan_mesh(xy[rim], fill=False)
-    vertices = np.r_[np.c_[xy, top_surface(xy) - L.floor_drop()], np.c_[xy[rim], np.full(len(rim), 100.0)]]
-    triangles = np.r_[under, walled(rim, lid), lid[tt]]
-    return solid_from(vertices, triangles, "body's underside")
+def plinth_blank():
+    """The plinth's blank: from the desk up to the body's underside lowered
+    plate_gap_mm."""
+    q = outline()
+    n = len(q)
+    vu, tu = plan()
+    u = len(vu)
+    z = top_surface(vu) - L.floor_drop() - P.plate_gap_mm
+    if z.min() <= 0:
+        x, y = vu[z.argmin()]
+        raise ValueError(f"the plinth's top reaches the desk at ({x:.1f}, {y:.1f})")
+    _, tb = plan_mesh(q, fill=False)
+    station = np.arange(n)
+    vertices = np.r_[np.c_[vu, z], np.c_[q, np.zeros(n)]]
+    return solid_from(vertices, np.r_[tu, u + tb[:, ::-1], walled(u + station, station)], "plinth's blank")
 
 
 # Every cell's plane is put back exactly, cell_step_mm past its edge: over the
-# cell, whatever the blank under the top has above the plane is cut away and
-# a block under the plane added, and whatever the blank over the underside
-# has below the plane floor_drop() lower likewise. Where two cells overlap,
-# so the top steps at the higher cell's edge (with nothing left standing in
-# the gap) and the underside at the lower's. Inside a cell a blank's surface
-# lies on the plane to within rounding, and a boolean between faces that
-# nearly coincide leaves slivers, so the cuts start put_back_mm inside the
-# block, and they are ring_mm narrower than the blocks so that no face of a
-# cut lies on a face of a block: the blocks meet the blanks in volumes, and
-# where a blank stands higher than the plane at the cell's edge the step
-# comes ring_mm inside it. Keys whose plates share a plane share one block.
+# cell, whatever the body's blank has above the plane is cut away and a block
+# under it added, and likewise under the plane floor_drop() lower (the
+# underside), which the plinth's top follows (plinth_shell). Where two cells overlap, so the
+# top steps at the higher cell's edge (with nothing left standing in the gap)
+# and the underside at the lower's. Inside a cell a blank's surface lies on the
+# plane to within rounding, and a boolean between faces that nearly coincide
+# leaves slivers, so the cuts start put_back_mm inside the block, and they are
+# ring_mm narrower than the blocks so that no face of a cut lies on a face of a
+# block: the blocks meet the blanks in volumes, and where a blank stands higher
+# than the plane at the cell's edge the step comes ring_mm inside it. Keys whose
+# plates share a plane share one block.
 put_back_mm = 0.1
 ring_mm = 0.01
 
@@ -457,21 +451,8 @@ def slab(m, z_top, z_bottom, size=200):
 
 
 @cached
-def over_underside():
-    """Everything over the body's underside, every cell's plane put back."""
-    t = time.time()
-    d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
-    caps = [column(g, cut) ^ half_space(g[0].frame, -d + put_back_mm) for g in plane_groups()]
-    blocks = [column(g, block) ^ slab(g[0].frame, -d / 2, -d) for g in plane_groups()]
-    shell = add(subtract(over_blank(), caps), blocks)
-    stage("the underside", t)
-    return shell
-
-
-@cached
 def body_shell():
-    """The body before anything is cut from it: under its top and over its
-    underside, every cell's plane put back."""
+    """The body before anything is cut from it: its blank, every cell's plane put back."""
     t = time.time()
     reach = fused([cell_face(k, P.cell_step_mm) for k in keys()]) - top_contact_2d()
     if reach.area() > 1e-6:
@@ -480,19 +461,30 @@ def body_shell():
                          "top_round_mm is too large for wall_mm")
     d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
     caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
-    blocks = [column(g, block) ^ slab(g[0].frame, 0, -d / 2) for g in plane_groups()]
-    under = add(subtract(under_blank(), caps), blocks)
-    shell = under ^ over_underside()
+    caps += [column(g, cut) ^ half_space(g[0].frame, -d + put_back_mm) for g in plane_groups()]
+    blocks = [column(g, block) ^ slab(g[0].frame, 0, -d) for g in plane_groups()]
+    shell = add(subtract(body_blank(), caps), blocks)
     stage("the body's shell", t)
     return shell
 
 
 @cached
 def plinth_shell():
-    """The plinth before anything is cut from it: the outline's prism from the
-    desk, under the body's underside lowered plate_gap_mm."""
-    prism = outline_2d().extrude(90)
-    return prism - over_underside().translate((0, 0, -P.plate_gap_mm))
+    """The plinth before anything is cut from it: its blank, with every cell's
+    plane under the body put back as the body's underside has it, lowered
+    plate_gap_mm: everything over the underside's blocks taken away and
+    everything under its cuts added (from put_back_mm over the desk), so the
+    plinth's top steps where the underside does."""
+    t = time.time()
+    d = L.floor_drop()
+    z = -d - P.plate_gap_mm
+    floor = Manifold.cube((400, 400, 100)).translate((-200, -200, put_back_mm))
+    fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
+            for g in plane_groups()]
+    clear = [column(g, P.cell_step_mm) ^ slab(g[0].frame, z + d / 2, z) for g in plane_groups()]
+    shell = subtract(add(plinth_blank(), fill), clear)
+    stage("the plinth's shell", t)
+    return shell
 
 
 # ---------------------------------------------------------------- the bay's well
@@ -869,15 +861,14 @@ def screw_walls():
 def report():
     """The board's heights and sizes, as text."""
     ks = keys()
-    (x0, y0), (x1, y1) = bbox()
+    (x0, y0), (x1, y1) = outline().min(axis=0), outline().max(axis=0)
     tops = [L.cap_top(k)[2] for k in ks]
     plates = [origin(k.frame)[2] for k in ks]
     floors = [floor_z(*origin(k.frame)[:2]) for k in ks]
     reach = [r2(L.finger_plate_pitch(i) * L.finger_reach_radius(i) / L.finger_plate_radius(i)) for i in range(4)]
-    m = 2 * (P.outline_round_mm + 2)
     (wall, screw, what), _ = screw_walls()
     return (f"plate tops {r2(min(plates))} to {r2(max(plates))} mm over the desk; cap tops {r2(min(tops))} to "
             f"{r2(max(tops))} mm; body shell {r2(L.floor_drop())} mm thick; plinth {r2(min(floors))} to "
             f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; fingertip reach between rows "
-            f"{reach} mm (index to pinky); plan about {r2(x1 - x0 - m)} x {r2(y1 - y0 - m)} mm; "
+            f"{reach} mm (index to pinky); plan {r2(x1 - x0)} x {r2(y1 - y0)} mm; "
             f"least wall round a screw {r2(wall)} mm ({screw} to {what})")

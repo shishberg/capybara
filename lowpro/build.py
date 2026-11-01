@@ -3,7 +3,7 @@
     python3 -m lowpro.build                      # both halves' bodies and plinths, the right assembly, the check
     python3 -m lowpro.build --half left --part body
     python3 -m lowpro.build --check              # only the checks (exit 1 when caps meet or a screw hole breaks into a pocket)
-    python3 -m lowpro.build --set tent_deg=4 --set thumb_fan=1
+    python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
 
 Any parameter in params.py can be overridden with --set. Files go to
 output/lowpro/ (--out): <half>-body.stl, <half>-plate.stl and
