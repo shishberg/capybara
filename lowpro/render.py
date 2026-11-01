@@ -4,8 +4,9 @@
     python3 -m lowpro.render --set tent_deg=4
 
 Builds the parts in-process (as lowpro.build does, without the checks or the
-files) and writes: the assembly and the body with plinth from above, the body's
-underside, the plinth's top, a close-up of the middle finger's home key from
+files) and writes: the assembly and the body with plinth from above, the
+wiring (channels, sockets, diodes and the bay's parts through a see-through
+body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
 below, sections across and along that key, and a section through the round at
 the outline's front. Needs pyvista. The checks, not these, are what say the
 build is right.
@@ -29,14 +30,18 @@ def poly(solid):
     return pv.PolyData(v, np.hstack([np.full((len(t), 1), 3), t]).ravel())
 
 
-def shot(out, name, solids, eye, focus, up=(0, 0, 1), zoom=1.3, parallel=False, fit=True):
-    """The (solid, colour) pairs seen from eye towards focus, to <out>/<name>.png."""
+def shot(out, name, solids, eye, focus, up=(0, 0, 1), zoom=1.3, parallel=False, fit=True, labels=()):
+    """The (solid, colour) or (solid, colour, opacity) tuples seen from eye
+    towards focus, with (point, text) labels, to <out>/<name>.png."""
     import pyvista as pv
 
     p = pv.Plotter(off_screen=True, window_size=(1600, 1200))
     p.set_background("white")
-    for solid, colour in solids:
-        p.add_mesh(poly(solid), color=colour, specular=0.25)
+    for solid, colour, *opacity in solids:
+        p.add_mesh(poly(solid), color=colour, specular=0.25, opacity=opacity[0] if opacity else 1.0)
+    if labels:
+        p.add_point_labels(np.array([q for q, _ in labels]), [t for _, t in labels], font_size=22,
+                           point_size=12, point_color="black", shape_opacity=0.8, always_visible=True)
     p.camera_position = [tuple(eye), tuple(focus), up]
     if parallel:
         p.enable_parallel_projection()
@@ -47,6 +52,34 @@ def shot(out, name, solids, eye, focus, up=(0, 0, 1), zoom=1.3, parallel=False, 
     p.screenshot(str(path))
     p.close()
     print(f"wrote {path}", flush=True)
+
+
+def wiring(C, body):
+    """The body see-through, the channels coloured (the shared trunks that carry
+    the wires to the bay red, the keys' own column and row channels blue), the
+    sockets, diodes and the bay's parts; and labels for the routes and parts."""
+    from . import params as P
+    from .lib import origin
+
+    shown = [(body, BODY, 0.12)]
+    for w, pts, _ in C.channels():
+        colour = "crimson" if w == P.trunk_w_mm else "royalblue"
+        for a, b in zip(pts[:-1], pts[1:]):
+            shown.append((C.Manifold.hull_points(C.post_points(a, w) + C.post_points(b, w)), colour))
+    shown += [(p.solid, p.colour) for p in C.sockets() + C.diodes() + C.electronics()]
+
+    def mid(pts):
+        return np.array(pts[len(pts) // 2])
+
+    entry = C.bay_entry()
+    bridge = [C.front_pt(C.finger_key(1, -P.rows_below)), C.ne(C.thumb("near"))]
+    labels = [(mid(C.edge_trunk(1)), "back trunk"), (mid(C.edge_trunk(-1)), "front trunk"),
+              ((bridge[0] + 3 * bridge[1]) / 4, "bridge to the thumbs"), (C.ne(C.thumb("home")), "thumb trunk"),
+              (C.c_tab(C.finger_key(0, 0)), "inner column trunk"), (entry, "into the bay"),
+              (origin(C.mcu_frame()), "controller"), (origin(C.battery_frame()), "battery")]
+    if P.power_switch:
+        labels.append((origin(C.power_switch_frame()), "power switch"))
+    return shown, labels
 
 
 def section(solids, normal, at, box=None):
@@ -96,6 +129,9 @@ def main(argv=None):
     shot(out, "underside-body", shell[:1], away((0.25, -0.35, -1)), c, up=(0, 1, 0))
     shot(out, "plinth-top", shell[1:], away((0.2, -0.3, 1)), c, up=(0, 1, 0))
     shot(out, "pocket-closeup", shell[:1], away((0.25, -0.45, -0.8), key, 95), key, up=(0, 1, 0), zoom=1, fit=False)
+    wired, labels = wiring(C, body)
+    shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
+    shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
     shot(out, "section-across", section(shell, (0, 1, 0), key), c + (0, 300, 0), c, parallel=True, zoom=1.4)
     shot(out, "section-along", section(shell, (1, 0, 0), key), c + (300, 0, 0), c, parallel=True, zoom=1.4)
     near = section(shell, (1, 0, 0), front, ((front[0] - 10, front[1] - 5, -1), (front[0] + 1, front[1] + 25, box[5] + 1)))

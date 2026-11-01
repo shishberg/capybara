@@ -41,8 +41,8 @@ right assembly (body, plinth, switches, caps, sockets, diodes and electronics,
 each a coloured, named mesh) as 3MF, and the checks, into `output/lowpro/`.
 The whole build takes about a second (`--verbose` shows the stages). `make lowpro-render`
 writes PNGs of the right half to look over into `output/lowpro/renders/` (the
-assembly, the body and plinth from above, the underside, a pocket close-up and
-sections).
+assembly, the body and plinth from above, the wiring through a see-through
+body, the underside, a pocket close-up and sections).
 One part at a time, or with a parameter changed:
 
 ```sh
@@ -183,8 +183,8 @@ sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
   between the row keys.
 
 The channels are a first cut: each is a straight slot between two points (a hull
-of two posts), and where two meet they merge. Look at them from below before
-trusting a route; `channels()` in `chassis.py` is the list to edit.
+of two posts), and where two meet they merge. Look at them from below (`wiring-below.png`)
+before trusting a route; `channels()` in `chassis.py` is the list to edit.
 
 **Plinth.** The bottom plate is a plinth: flat on the desk, its top the body's
 underside `plate_gap_mm` lower, the same outline. It is `bottom_plate_mm` thick
