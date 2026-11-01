@@ -57,6 +57,7 @@ Each invariant the design must keep is a check in the build, run on the exact cu
 - Moving or neighbouring parts don't meet (at rest and at full travel).
 - The wall round each fastener: its holes against every other cutter of that part and against the outline. Check cutters against each other, not only the finished part, since a cut that breaks into another cut leaves a valid-looking solid.
 - Mating parts don't overlap.
+- Every wire or hose has a path to where it goes that it fits through. Model the space as what each part actually loses (its blank within its cutters, since cutters reach past the part), then shrink it by the wire's radius so a sliver where one cut grazes another doesn't count as a route.
 - Whatever the user named as must-not-happen.
 
 Make each check **red** once: break the design with `--set` (or a one-line edit) so the check must fail, confirm it fails naming the culprit, then confirm green on the defaults. Record the breaking `--set` for each check in the README's checks section, beside what the checks don't cover.

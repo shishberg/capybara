@@ -112,6 +112,9 @@ solder_well_mm = (4.5, 5)
 # ---------------------------------------------------------------- wiring
 # Channels in the body's underside for the wires, closed by the bottom plate.
 channel_w_mm = 2.2
+# The thickest wire (the battery's leads): the wiring check counts only the
+# passages it fits through.
+wire_d_mm = 1.0
 # The trunks (the inner column's channel, which the row wires join, and the
 # one behind the top row that the columns' wires follow to the controller).
 trunk_w_mm = 3.5
@@ -182,6 +185,9 @@ mcu_reset_mm = (0, 14.5)
 # front of the board, its 30 mm along the column.
 battery_mm = (30, 20, 4.2)
 battery_clearance_mm = 0.5
+# The notch in the wall between the battery's bay and the controller's, at the
+# middle of the battery's back end, for its leads.
+battery_lead_notch_mm = 4
 # Power switch: PROVISIONAL MSK-12C02 slide switch, body and its knob's reach.
 power_switch = True
 power_switch_mm = (8.6, 3.7, 3.5)

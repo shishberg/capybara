@@ -517,10 +517,11 @@ def power_switch_frame():
 
 
 def well():
-    """The well: both bays' rectangles, open from the well's floor up through the
-    plate's top (and into the body, where the parts need more than the plate has)."""
+    """The well: both bays' rectangles and the battery's lead notch between
+    them, open from the well's floor up through the plate's top (and into the
+    body, where the parts need more than the plate has)."""
     return [Manifold.cube((b[1][0] - b[0][0], b[1][1] - b[0][1], 100)).translate((b[0][0], b[0][1], bay_z()))
-            for b in L.bays()]
+            for b in L.bays() + [L.lead_notch()]]
 
 
 # ---------------------------------------------------------------- wiring points
@@ -824,6 +825,47 @@ def part_overlap():
     """How much the body and the plinth overlap, mm^3 (0 when the plinth stays
     under the body's underside)."""
     return (body() ^ bottom_plate()).volume()
+
+
+def wire_ends():
+    """Where wires start, by name, each a point just inside the space cut for
+    it (a wire's width in): every key's two socket tabs (in their channels),
+    the battery's leads (out of its back end), the power switch, and the
+    controller."""
+    d = P.wire_d_mm
+    ends = []
+    for k in keys():
+        ends += [(f"{k.name}'s column tab", c_tab(k) - (0, 0, d)), (f"{k.name}'s row tab", r_tab(k) - (0, 0, d))]
+    m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
+    ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
+    if P.power_switch:
+        ends.append(("the power switch", origin(power_switch_frame())))
+    ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
+    return ends
+
+
+def unwired():
+    """The wire ends that no path a wire fits through (wire_d_mm), through the
+    spaces cut from the body and the plinth (channels, pockets, the well),
+    joins to the controller's. The spaces are what each part loses (its blank
+    within its cutters, which reach past it); the body's are open at its
+    underside, so they are lowered across the plate gap as well, to meet the
+    plinth's wherever it is cut away under them. The space is then shrunk by
+    the wire's radius along each axis, which closes the slivers where one cut
+    grazes another."""
+    body_space = body_shell() ^ union(body_cutters())
+    space = union([body_space, body_space.translate((0, 0, -P.plate_gap_mm - 0.2)),
+                   plinth_shell() ^ union(plate_cutters())])
+    r = P.wire_d_mm / 2
+    for axis in np.eye(3):
+        space = space.translate(tuple(r * axis)) ^ space.translate(tuple(-r * axis))
+
+    def probe(p):
+        return Manifold.cube((0.2, 0.2, 0.2), center=True).translate(tuple(float(c) for c in p))
+
+    *ends, (_, controller) = wire_ends()
+    home = next(c for c in space.decompose() if (c ^ probe(controller)).volume() > 0)
+    return [name for name, p in ends if (home ^ probe(p)).volume() <= 0]
 
 
 def gap(a, b):

@@ -358,6 +358,14 @@ def bays():
     return [mcu_bay(), battery_bay()]
 
 
+def lead_notch():
+    """The notch for the battery's leads through the wall between the bays,
+    reaching half a millimetre into each."""
+    m, b = mcu_bay(), battery_bay()
+    x, w = (b[0][0] + b[1][0]) / 2, P.battery_lead_notch_mm
+    return ((x - w / 2, b[1][1] - 0.5), (x + w / 2, m[0][1] + 0.5))
+
+
 # ---------------------------------------------------------------- screws
 @cached
 def screw_points():

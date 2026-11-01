@@ -210,7 +210,8 @@ inner side of the inner column, open at the top and closed by the body: the
 board along the column, components down, its USB-C port out of the back wall
 through a chamfered opening; the power switch beside it in the inner side wall,
 its pocket open upward so it drops in from the body's side; the battery in
-front of the board. The well's floor is `bay_under_mm` below the parts' room
+front of the board, in its own pocket, its leads through a notch in the wall
+between them (`battery_lead_notch_mm`). The well's floor is `bay_under_mm` below the parts' room
 under the lowest point of the body over the bay (6 mm over the desk), never
 less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
 rooms are cut up into the body as well. The back trunk channel runs over the
@@ -227,6 +228,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel | `--set screw_head_d=8` |
+| Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--set trunk_w_mm=12` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |

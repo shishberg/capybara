@@ -143,6 +143,12 @@ def check():
         ok = False
     else:
         print("screw holes clear")
+    lost = C.unwired()
+    if lost:
+        print("no path to the controller from: " + ", ".join(lost))
+        ok = False
+    else:
+        print("every wire reaches the controller")
     v = C.part_overlap()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")
