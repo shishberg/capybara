@@ -545,6 +545,24 @@ def front_pt(k):
     return at(k, (col_x(), -out_y()))
 
 
+def edge_trunk(side):
+    """The back (side 1) or front (side -1) trunk's points, pinky to inner
+    column, past the end cells' edges. Each column's end point is on its -x
+    side, so where the next column in reaches further out than this column's
+    end point, a straight line to its end point would cut across its end cell;
+    there the trunk goes by that cell's +x corner, as far past both edges as
+    the end points are past theirs."""
+    end = back_pt if side > 0 else front_pt
+    row = P.rows_above if side > 0 else -P.rows_below
+    ends = [finger_key(c, row) for c in range(4, -1, -1)]
+    pts = [end(ends[0])]
+    for a, b in zip(ends[:-1], ends[1:]):
+        if side * (rinv(b.frame) @ np.append(end(a), 1))[1] < out_y():
+            pts.append(at(b, (out_y(), side * out_y())))
+        pts.append(end(b))
+    return pts
+
+
 def bay_entry():
     """Where the back trunk reaches the well: just inside its back corner by the column."""
     b = L.mcu_bay()
@@ -573,8 +591,8 @@ def channels():
                     [front_pt(finger_key(c, -P.rows_below))] + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))], "finger"))
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
-    out.append((t, [back_pt(finger_key(c, P.rows_above)) for c in range(4, -1, -1)] + [bay_entry()], "finger"))
-    out.append((t, [front_pt(finger_key(c, -P.rows_below)) for c in range(4, -1, -1)], "finger"))
+    out.append((t, edge_trunk(1) + [bay_entry()], "finger"))
+    out.append((t, edge_trunk(-1), "finger"))
     out.append((t, [front_pt(finger_key(1, -P.rows_below)), ne(thumb("near"))], "bridge"))
     # Each finger row: from each key's tab up to its north edge, across to the
     # next cell's north edge and along it to that key's tab; the inner column's
