@@ -234,7 +234,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
-| One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--set trunk_w_mm=12` |
+| One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set trunk_w_mm=12` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
 
 The build also prints the plate and cap heights over the desk, the shell's

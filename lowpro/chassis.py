@@ -476,16 +476,17 @@ def body_shell():
 def plinth_shell():
     """The plinth before anything is cut from it: its blank, with every cell's
     plane under the body put back as the body's underside has it, lowered
-    plate_gap_mm: everything over the underside's blocks taken away and
-    everything under its cuts added (from put_back_mm over the desk), so the
-    plinth's top steps where the underside does."""
+    plate_gap_mm: everything over each cell's plane taken away and everything
+    under it added (from put_back_mm over the desk), so the plinth's top steps
+    where the underside does, and where two cells' columns overlap it is the
+    lower plane's, as the underside is."""
     t = time.time()
     d = L.floor_drop()
     z = -d - P.plate_gap_mm
     floor = Manifold.cube((400, 400, 100)).translate((-200, -200, put_back_mm))
     fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
             for g in plane_groups()]
-    clear = [column(g, P.cell_step_mm) ^ slab(g[0].frame, z + d / 2, z) for g in plane_groups()]
+    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, z, below=False) for g in plane_groups()]
     shell = subtract(add(plinth_blank(), fill), clear)
     stage("the plinth's shell", t)
     return shell
@@ -520,12 +521,16 @@ def power_switch_frame():
     return trans([0, 0, bay_z()]) @ L.power_switch_frame()
 
 
+def floor_box(r, h):
+    """The plan rectangle r ((x0, y0), (x1, y1)) from the well's floor up h."""
+    return Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h)).translate((r[0][0], r[0][1], bay_z()))
+
+
 def well():
     """The well: both bays' rectangles and the battery's lead notch between
-    them, open from the well's floor up through the plate's top (and into the
-    body, where the parts need more than the plate has)."""
-    return [Manifold.cube((b[1][0] - b[0][0], b[1][1] - b[0][1], 100)).translate((b[0][0], b[0][1], bay_z()))
-            for b in L.bays() + [L.lead_notch()]]
+    them, open from the well's floor up through the plate's top (the body
+    takes the parts' rooms, bay_rooms, where they reach above it)."""
+    return [floor_box(b, 100) for b in L.bays() + [L.lead_notch()]]
 
 
 # ---------------------------------------------------------------- wiring points
@@ -716,8 +721,10 @@ def key_room(k):
 def bay_rooms(plinth=False):
     """The parts' rooms in the well, cut from the plinth (where the switch's
     pocket opens up through the plate's top) and from the body where they reach
-    above the plate's top."""
+    above the plate's top. The battery's lead notch is one of them, as tall
+    as the pocket."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
+    out.append(floor_box(L.lead_notch(), bay_pocket_h()))
     if P.power_switch:
         out += place(power_switch_frame(), R.power_switch_room(100 if plinth else 0))
     return out

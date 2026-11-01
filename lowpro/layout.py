@@ -315,11 +315,14 @@ def switch_strip():
 @cached
 def mcu_bay():
     """The controller's bay: beside the inner column's cells, its back at the
-    top cell's back, as long as the board, as wide as the board and the switch."""
+    top cell's back, as wide as the board and the switch, and reaching as far
+    forward as the board's room (the board sits mcu_usb_overhang_mm back past
+    the bay's back, toward the port's opening: mcu_frame)."""
     c = P.mcu_clearance_mm
     x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.min_wall_mm
     y1 = cell_back(column_key(0, P.rows_above))
-    return ((x1 - P.mcu_board_mm[0] - 2 * c - switch_strip(), y1 - P.mcu_board_mm[1] - 2 * c), (x1, y1))
+    y0 = y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c
+    return ((x1 - P.mcu_board_mm[0] - 2 * c - switch_strip(), y0), (x1, y1))
 
 
 def mcu_frame():
@@ -340,11 +343,11 @@ def power_switch_frame():
 
 @cached
 def battery_bay():
-    """The battery's bay: in front of the controller's, the same width, as long
-    as the battery, which lies along the column."""
+    """The battery's bay: in front of the controller's, against the same inner
+    column, as long and as wide as the battery, which lies along the column."""
     m, c = mcu_bay(), P.battery_clearance_mm
-    y1 = m[0][1] - P.min_wall_mm
-    return ((m[0][0], y1 - P.battery_mm[0] - 2 * c), (m[1][0], y1))
+    x1, y1 = m[1][0], m[0][1] - P.min_wall_mm
+    return ((x1 - P.battery_mm[1] - 2 * c, y1 - P.battery_mm[0] - 2 * c), (x1, y1))
 
 
 def battery_frame():
