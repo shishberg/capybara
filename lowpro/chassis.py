@@ -495,8 +495,10 @@ def plinth_shell():
 # ---------------------------------------------------------------- the bay's well
 def bay_pocket_h():
     """The pocket height the parts need over the well's floor."""
-    return max(P.mcu_parts_mm + P.mcu_board_mm[2] + P.mcu_clearance_mm,
-               P.battery_mm[2] + P.battery_clearance_mm,
+    mcu = P.mcu_parts_mm + P.mcu_board_mm[2] + P.mcu_clearance_mm
+    if P.link == "trrs":
+        return max(mcu, P.trrs_body_mm[2] + 2 * P.trrs_clearance_mm)
+    return max(mcu, P.battery_mm[2] + P.battery_clearance_mm,
                P.power_switch_mm[2] + 0.6 if P.power_switch else 0)
 
 
@@ -521,27 +523,41 @@ def power_switch_frame():
     return trans([0, 0, bay_z()]) @ L.power_switch_frame()
 
 
+def trrs_frame():
+    return trans([0, 0, bay_z()]) @ L.trrs_frame()
+
+
+def reset_frame():
+    return trans([0, 0, bay_z()]) @ L.reset_frame()
+
+
 def floor_box(r, h):
     """The plan rectangle r ((x0, y0), (x1, y1)) from the well's floor up h."""
     return Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h)).translate((r[0][0], r[0][1], bay_z()))
 
 
 def well():
-    """The well: both bays' rectangles and the battery's lead notch between
+    """The well: the bays' rectangles and the battery's lead notch between
     them, open from the well's floor up through the plate's top (the body
     takes the parts' rooms, bay_rooms, where they reach above it)."""
-    return [floor_box(b, 100) for b in L.bays() + [L.lead_notch()]]
+    notch = [L.lead_notch()] if P.link == "ble" else []
+    return [floor_box(b, 100) for b in L.bays() + notch]
 
 
 # ---------------------------------------------------------------- wiring points
 # In a key's frame, at the socket's top: the column line past the -x tab
 # (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
+# A tile's are its north C hole's and east R hole's.
 def col_x():
+    if P.key_parts == "tiles":
+        return P.tile_c_hole[0]
     # Overlapping the socket's shaft, so no sliver is left between them under the tent.
     return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - 0.3
 
 
 def row_x():
+    if P.key_parts == "tiles":
+        return P.tile_r_hole[0]
     return P.socket_centre_mm[0] + P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]
 
 
@@ -559,11 +575,11 @@ def at(k, p):
 
 
 def c_tab(k):
-    return at(k, (col_x(), P.socket_tab_y[0]))
+    return at(k, (col_x(), P.tile_c_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[0]))
 
 
 def r_tab(k):
-    return at(k, (row_x(), P.socket_tab_y[1]))
+    return at(k, (row_x(), P.tile_r_hole[1] if P.key_parts == "tiles" else P.socket_tab_y[1]))
 
 
 def nw(k):
@@ -615,6 +631,14 @@ def thumb(name):
     return key_named(f"thumb_{name}")
 
 
+def bridge():
+    """The trunk from the front trunk to the thumb row's trunk: from the front
+    trunk's point nearest the near thumb key's north-east corner (so it never
+    doubles back along the front trunk) to that corner."""
+    end = ne(thumb("near"))
+    return [min(edge_trunk(-1), key=lambda p: np.linalg.norm(p[:2] - end[:2])), end]
+
+
 @cached
 def channels():
     """The channels as polylines (width, [points...], group) in world; the group
@@ -624,22 +648,29 @@ def channels():
     out = []
     # Each finger column: front trunk point, its keys' column tabs, back trunk point.
     for c in range(5):
-        out.append((t if c == 0 else w,
+        out.append((t if c == 0 else P.column_w_mm,
                     [front_pt(finger_key(c, -P.rows_below))] + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))], "finger"))
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
     out.append((t, edge_trunk(1) + [bay_entry()], "finger"))
     out.append((t, edge_trunk(-1), "finger"))
-    out.append((t, [front_pt(finger_key(1, -P.rows_below)), ne(thumb("near"))], "bridge"))
+    out.append((t, bridge(), "bridge"))
     # Each finger row: from each key's tab up to its north edge, across to the
     # next cell's north edge and along it to that key's tab; the inner column's
-    # feeds its wire into the column channel.
+    # feeds its wire into the column channel. Tiles' shafts are open under the
+    # whole tile, so a row runs straight from one tile's east R hole to the
+    # next one's west R hole, and the inner column's meets its column wire in
+    # its shaft.
     for r in rows:
         k0 = finger_key(0, r)
-        out.append((w, [r_tab(k0), ne(k0), nw(k0)], "finger"))
+        if P.key_parts != "tiles":
+            out.append((w, [r_tab(k0), ne(k0), nw(k0)], "finger"))
         for c in range(4):
             a, b = finger_key(c, r), finger_key(c + 1, r)
-            out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)], "finger"))
+            if P.key_parts == "tiles":
+                out.append((w, [r_tab(a), at(b, P.tile_r_west_hole)], "finger"))
+            else:
+                out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)], "finger"))
     # The thumb row: a trunk along the three keys' north edges (the row wire and
     # the column wires on their way to the front trunk), each key's tabs risen to it.
     out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), nw(thumb(n)))], "thumb"))
@@ -683,10 +714,13 @@ def diode_frame(k):
     return k.frame @ trans([col_x(), (P.socket_tab_y[0] + ne_y()) / 2 + 1, R.socket_top_z() - P.diode_mm[1] / 2 - 0.4])
 
 
-def diode_room(k):
-    """Room for key k's diode in the column channel, over the column tab."""
+def diode_rooms(k):
+    """Room for key k's diode in the column channel, over the column tab (a
+    tile carries its own)."""
+    if P.key_parts == "tiles":
+        return []
     d = P.diode_mm
-    return placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8)))
+    return [placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8)))]
 
 
 def swept(m, size, centre, depth=60):
@@ -706,15 +740,44 @@ def solder_wells(k):
     centred on the tab's tip, cut back in plan to stay min_wall_mm inside the
     cell at the socket's top, so it keeps that wall from the next key's room
     (whose -x tab's slot comes within a millimetre of its cell's edge) and from
-    the bay. The -x well then ends about at its tab's tip."""
+    the bay. The -x well then ends about at its tab's tip. A tile's shaft
+    leaves its holes open from below."""
+    if P.key_parts == "tiles":
+        return []
     s = P.solder_well_mm
     inside = polygon(cell_corners(k, -P.min_wall_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
     return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) ^ inside for side in (-1, 1)]
 
 
 # ---------------------------------------------------------------- the body
+def tile_seat(k):
+    """Key k's switch room and its tile's footprint from the board up to the
+    plate (the ledge over the board, which it is pushed up against when the
+    switch goes in, and the housing's pocket): what locates the key, which
+    keeps a wall from every other key's room. Under the board is wiring space."""
+    s, c = R.tile_board(P.tile_clearance_mm)
+    top = -P.plate_mm
+    bottom = c[2] - s[2] / 2
+    return union(place(k.frame, R.mx_switch_room() + [R.box((s[0], s[1], top - bottom), (c[0], c[1], (top + bottom) / 2))]))
+
+
+def tile_shaft(k):
+    """Key k's tile's shaft, from it down the key's axis through the underside
+    (the tile goes in from below, square to its switch, and the switch plugs
+    into it through the plate): wiring space, which may run into a
+    neighbouring key's shaft but not its seat. Carried straight down instead,
+    a tilted tile's shaft runs past a lower neighbour's ledge."""
+    s, c = R.tile_board(P.tile_clearance_mm)
+    pts = np.array([xform(k.frame, p) for p in box_corners(s, c)])
+    return Manifold.hull_points(np.r_[pts, pts - 2 * L.floor_drop() * k.frame[:3, 2]])
+
+
 def key_room(k):
-    """Key k's room (switch, socket and shaft) as one cutter."""
+    """Key k's room as one cutter: the switch's, and the socket's pocket and
+    shaft or the tile's seat and shaft. A tile hangs from its switch, as on
+    the Capybara, so nothing stands under it."""
+    if P.key_parts == "tiles":
+        return union([tile_seat(k), tile_shaft(k)])
     return union(place(k.frame, R.mx_switch_room() + R.hotswap_socket_room()) + socket_shaft(k, P.socket_clearance_mm))
 
 
@@ -723,10 +786,14 @@ def bay_rooms(plinth=False):
     pocket opens up through the plate's top) and from the body where they reach
     above the plate's top. The battery's lead notch is one of them, as tall
     as the pocket."""
-    out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
+    up = 100 if plinth else 0
+    out = place(mcu_frame(), R.mcu_room())
+    if P.link == "trrs":
+        return out + place(trrs_frame(), R.trrs_room(up)) + place(reset_frame(), R.reset_room(up))
+    out += place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
     if P.power_switch:
-        out += place(power_switch_frame(), R.power_switch_room(100 if plinth else 0))
+        out += place(power_switch_frame(), R.power_switch_room(up))
     return out
 
 
@@ -739,7 +806,8 @@ def body_cuts():
     """Everything cut from the body but the screws' insert holes, in named groups."""
     ks = keys()
     return [("a key's room", [key_room(k) for k in ks]), ("a solder well", [w for k in ks for w in solder_wells(k)]),
-            ("a diode's room", [diode_room(k) for k in ks]), ("a channel", channel_solids()), ("a bay room", bay_rooms())]
+            ("a diode's room", [d for k in ks for d in diode_rooms(k)]), ("a channel", channel_solids()),
+            ("a bay room", bay_rooms())]
 
 
 def body_cutters():
@@ -772,8 +840,10 @@ def screw_holes():
 @cached
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
-    return [("the well", well()), ("a bay room", bay_rooms(plinth=True)),
-            ("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()]))]
+    cuts = [("the well", well()), ("a bay room", bay_rooms(plinth=True))]
+    if P.link == "ble":
+        cuts.append(("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()])))
+    return cuts
 
 
 def plate_cutters():
@@ -786,7 +856,8 @@ def bottom_plate():
     the pinhole over the reset button, and the socket bosses standing on it."""
     shell = plinth_shell()
     t = time.time()
-    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
+    bosses = [] if P.key_parts == "tiles" else [socket_boss(k) for k in keys()]
+    plate = add(subtract(shell, plate_cutters() + screw_holes()), bosses)
     plate.num_tri()
     stage("plinth cuts and bosses", t)
     return plate
@@ -807,17 +878,22 @@ def keycaps(pressed=0):
 
 
 def sockets():
-    return at_keys(R.hotswap_socket())
+    """What hangs under each switch: its socket, or its tile."""
+    return at_keys(R.key_tile() if P.key_parts == "tiles" else R.hotswap_socket())
 
 
 def diodes():
-    return at_keys(R.diode(), diode_frame)
+    return [] if P.key_parts == "tiles" else at_keys(R.diode(), diode_frame)
 
 
 def electronics():
-    parts = [(mcu_frame(), R.mcu_board()), (battery_frame(), R.battery())]
-    if P.power_switch:
-        parts.append((power_switch_frame(), R.power_switch_part()))
+    parts = [(mcu_frame(), R.mcu_board())]
+    if P.link == "trrs":
+        parts += [(trrs_frame(), R.trrs_jack()), (reset_frame(), R.reset_switch())]
+    else:
+        parts.append((battery_frame(), R.battery()))
+        if P.power_switch:
+            parts.append((power_switch_frame(), R.power_switch_part()))
     return [Piece(p.label, p.colour, placed(m, p.solid)) for m, part in parts for p in part]
 
 
@@ -853,17 +929,22 @@ def part_overlap():
 
 def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
-    it (a wire's width in): every key's two socket tabs (in their channels),
-    the battery's leads (out of its back end), the power switch, and the
-    controller."""
+    it (a wire's width in): every key's two socket tabs or tile holes (in
+    their channels), the battery's leads (out of its back end) and the power
+    switch, or the jack and the reset switch; and the controller."""
     d = P.wire_d_mm
     ends = []
     for k in keys():
         ends += [(f"{k.name}'s column tab", c_tab(k) - (0, 0, d)), (f"{k.name}'s row tab", r_tab(k) - (0, 0, d))]
-    m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
-    ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
-    if P.power_switch:
-        ends.append(("the power switch", origin(power_switch_frame())))
+    m, z = L.mcu_bay(), bay_z() + d
+    if P.link == "trrs":
+        ends += [("the TRRS jack", xform(trrs_frame(), [0, -P.trrs_body_mm[0] / 2, P.trrs_body_mm[2] + d])),
+                 ("the reset switch", xform(reset_frame(), [P.reset_body_mm[2] + d, 0, 0]))]
+    else:
+        b = L.battery_bay()
+        ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
+        if P.power_switch:
+            ends.append(("the power switch", origin(power_switch_frame())))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 
@@ -899,11 +980,18 @@ def thin_walls():
     (each key's room, solder wells and diode's room; the bay's rooms and well),
     and between the bay and every channel but the one into it, as a list of
     (room, room, wall mm), empty when every wall is thick enough. Channels
-    join keys by design, so they are held only to the bay."""
-    rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), diode_room(k)], True)) for k in keys()]
+    join keys by design, so they are held only to the bay. A tile's room is
+    its seat (tile_seat), and its shaft, wiring space like a channel, is held
+    to the other keys' seats and to the bay."""
+    tiles = P.key_parts == "tiles"
+    rooms = [(k.name, lost(body_shell(), [tile_seat(k)] if tiles else
+                           [key_room(k), *solder_wells(k), *diode_rooms(k)], True)) for k in keys()]
     bay = union([lost(body_shell(), bay_rooms(), True), lost(plinth_shell(), plate_cutters())])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
+    if tiles:
+        shafts = [(f"{k.name}'s shaft", lost(body_shell(), [tile_shaft(k)], True)) for k in keys()]
+        pairs += [(s, r) for i, s in enumerate(shafts) for j, r in enumerate(rooms) if i != j]
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
                 lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
               for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
@@ -961,10 +1049,13 @@ def report():
     tops = [L.cap_top(k)[2] for k in ks]
     plates = [origin(k.frame)[2] for k in ks]
     floors = [floor_z(*origin(k.frame)[:2]) for k in ks]
-    reach = [r2(L.finger_plate_pitch(i) * L.finger_reach_radius(i) / L.finger_plate_radius(i)) for i in range(4)]
+    reach = ""
+    if P.key_layout == "hand":
+        reach = (f"fingertip reach between rows "
+                 f"{[r2(L.finger_plate_pitch(i) * L.finger_reach_radius(i) / L.finger_plate_radius(i)) for i in range(4)]}"
+                 " mm (index to pinky); ")
     (wall, screw, what), _ = screw_walls()
     return (f"plate tops {r2(min(plates))} to {r2(max(plates))} mm over the desk; cap tops {r2(min(tops))} to "
             f"{r2(max(tops))} mm; body shell {r2(L.floor_drop())} mm thick; plinth {r2(min(floors))} to "
-            f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; fingertip reach between rows "
-            f"{reach} mm (index to pinky); plan {r2(x1 - x0)} x {r2(y1 - y0)} mm; "
+            f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; {reach}plan {r2(x1 - x0)} x {r2(y1 - y0)} mm; "
             f"least wall round a screw {r2(wall)} mm ({screw} to {what})")

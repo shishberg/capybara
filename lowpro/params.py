@@ -2,8 +2,33 @@
 
 The layout (layout.py) reads the hand from hand/left-hand.json; everything else
 is here. Sizes marked PROVISIONAL are from datasheets or memory, not measured
-parts. Override any of them from the command line: see build.py.
+parts. Override any of them from the command line: see build.py. PRESETS at
+the end are named sets of overrides (build.py --preset).
 """
+import json
+from pathlib import Path
+
+# The Capybara's editor project: the parts it shares with this one are read from it.
+_capybara = json.loads((Path(__file__).resolve().parent.parent / "editor" / "src" / "default-config.json").read_text())
+
+# ---------------------------------------------------------------- the design's choices
+# Where the keys come from: "hand", laid out here from the fingertips' resting
+# prints on flat paper (layout.py); or "swung_in", the Capybara's keys as its
+# editor places them (its default project, read through
+# editor/tests/key-frames.ts), its tent included, so tent_deg and pitch_deg
+# and everything under "the key field" and "the thumb" below are the hand
+# layout's alone.
+key_layout = "hand"
+# What sits under each switch: "sockets", a hotswap socket in a pocket with a
+# DO-35 diode in the column channel; or "tiles", a bought RGB key tile (the
+# socket, diode and LED on a small board, tile_* below) hanging from the
+# switch in a shaft open to the underside, its LED's data and power wired
+# down the columns as well (column_w_mm).
+key_parts = "sockets"
+# How the halves talk: "ble", an nRF52840 Pro Micro with a battery and a power
+# switch in each half; or "trrs", an RP2040 Pro Micro on USB with a TRRS jack
+# (trrs_* below) and a reset switch (reset_* below), no battery.
+link = "ble"
 
 # ---------------------------------------------------------------- the key field
 # Tent: the whole hand turned about the Y axis, raising the thumb side. 0 is flat.
@@ -110,9 +135,28 @@ socket_clearance_mm = 0.25
 # centred on the tab's tip and cut back to stay min_wall_mm inside the cell.
 solder_well_mm = (4.5, 5)
 
+# ---------------------------------------------------------------- the key tile (key_parts "tiles")
+# The Capybara's measured tile, from the editor (default-config.json, tile):
+# the board's side, the fit of its shaft round it, the parts under it as
+# (name, size, centre) in the key frame from the board's top, and the holes
+# the column (C) and row (R) wires are soldered into, (x, y) in the key frame
+# (the north C, and the east and west R). Its socket is socket_body_mm at
+# socket_centre_mm, the board's top switch_below_plate_mm under the plate's
+# and its thickness pcb_layer_mm, as they are for "sockets".
+_tile = _capybara["tile"]
+tile_mm = _tile["size_mm"][0]
+tile_clearance_mm = _tile["clearance_mm"]
+tile_parts = [(p["name"], tuple(p["size_mm"]), tuple(p["center_mm"])) for p in _tile["components"]]
+tile_c_hole = next(tuple(p["at_mm"]) for p in _tile["pads"]["list"] if p["name"] == "C" and p["at_mm"][1] > 0)
+tile_r_hole = next(tuple(p["at_mm"]) for p in _tile["pads"]["list"] if p["name"] == "R" and p["at_mm"][0] > 0)
+tile_r_west_hole = next(tuple(p["at_mm"]) for p in _tile["pads"]["list"] if p["name"] == "R" and p["at_mm"][0] < 0)
+
 # ---------------------------------------------------------------- wiring
 # Channels in the body's underside for the wires, closed by the bottom plate.
 channel_w_mm = 2.2
+# The column channels: with tiles they carry the LEDs' data and power along
+# with the column wire, so they are as wide as the trunks.
+column_w_mm = 2.2
 # The thickest wire (the battery's leads): the wiring check counts only the
 # passages it fits through.
 wire_d_mm = 1.0
@@ -198,6 +242,23 @@ power_switch = True
 power_switch_mm = (8.6, 3.7, 3.5)
 power_switch_knob_mm = (1.5, 3.0, 1.5)  # width, travel + width, how far it stands out
 power_switch_back_mm = 8                # along the inner side wall, from the bay's back
+# link "trrs": the Capybara's TRRS jack and reset switch, their sizes the
+# editor's (editor/src/default-config.json, trrs and reset). The jack lies
+# beside the board, lugs up, its barrel out of the back wall: body (along the
+# barrel, across, high), barrel (length, diameter), the plug's diameter, and
+# the fit. The reset switch stands on edge in the inner side wall in front of
+# the jack, its plunger out through the wall: body (high, along the wall,
+# deep), plunger (diameter, how far it stands proud), the legs' span along
+# the wall, and the fit.
+trrs_body_mm = tuple(_capybara["trrs"]["body_mm"])
+trrs_barrel_mm = tuple(_capybara["trrs"]["barrel_mm"])
+trrs_plug_d = _capybara["trrs"]["plug_mm"][0]
+trrs_clearance_mm = _capybara["trrs"]["clearance_mm"]
+reset_body_mm = tuple(_capybara["reset"]["body_mm"])
+reset_plunger_mm = tuple(_capybara["reset"]["plunger_mm"])
+reset_leg_span_mm = _capybara["reset"]["leg_span_mm"]
+reset_clearance_mm = _capybara["reset"]["clearance_mm"]
+reset_skin_mm = 0.6       # the wall left over the switch's plunger face, which the plunger stands through
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
@@ -213,3 +274,36 @@ cell_step_mm = 0.6
 # chords no further than mesh_tol_mm from it.
 mesh_mm = 1
 mesh_tol_mm = 0.01
+
+# ---------------------------------------------------------------- presets
+# Named sets of overrides (build.py and render.py --preset), each built from
+# where its values live.
+_switch, _pro_micro = _capybara["switch"], _capybara["pro_micro"]
+PRESETS = {
+    # The Capybara's choices on this chassis: Swung in's keys and tent, the
+    # key tiles with their LEDs, the Capybara's keycaps (one profile for every
+    # row), an RP2040 Pro Micro with its TRRS jack and reset switch, no battery.
+    "capybara": {
+        "key_layout": "swung_in",
+        "key_parts": "tiles",
+        "link": "trrs",
+        "cap_base_mm": _switch["keycap_mm"][0],
+        "cap_top_mm": tuple(_switch["keycap_top_mm"]),
+        "cap_height_mm": (_switch["keycap_mm"][2],) * 4,
+        "cap_bottom_above_plate_mm": _switch["keycap_bottom_above_plate_mm"],
+        "cap_travel_mm": _switch["travel_mm"],
+        "cap_clearance_mm": _switch["keycap_clearance_mm"],
+        "mcu_board_mm": (_pro_micro["board_mm"][1], _pro_micro["board_mm"][0], _pro_micro["board_mm"][2]),
+        "mcu_usb_mm": (_pro_micro["usb_mm"][1], _pro_micro["usb_mm"][2]),
+        "mcu_parts_mm": _pro_micro["usb_mm"][2],
+        "mcu_usb_overhang_mm": _pro_micro["usb_overhang_mm"],
+        "wire_d_mm": _capybara["wiring"]["power_wire_mm"],
+        # Room under the tiles for the wires off their holes and the rails' stubs.
+        "under_socket_mm": 1.5,
+        "column_w_mm": 5,
+        "trunk_w_mm": 5,
+        # Swung in's steep thumbs and pinky top key curve the top too tightly
+        # at the outline for a 2 mm round.
+        "top_round_mm": 1.5,
+    },
+}

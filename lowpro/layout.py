@@ -22,6 +22,7 @@ Everything is cached; call reset() after changing a parameter.
 import functools
 import json
 import math
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -213,10 +214,50 @@ def extra_keys():
             for name, s, col in (("x1", -0.5, 2), ("x2", 0.5, 0))]
 
 
+# ---------------------------------------------------------------- Swung in
+COLUMNS = ["inner"] + FINGERS
+ROWS = {"top": 1, "home": 0, "bottom": -1}
+THUMB_COLS = {name: col for name, _, col in THUMB_ROW} | {"x1": 2, "x2": 0}
+
+
+@cached
+def swung_in():
+    """Swung in, the Capybara's layout, as its editor places it (its default
+    project, through editor/tests/key-frames.ts): {"tent_deg", "keys": {name:
+    {"frame", "units"}}}, the frames in its layout axes before the tent."""
+    run = subprocess.run(["node", "--import", "tsx", "tests/key-frames.ts"], cwd=ROOT / "editor",
+                         capture_output=True, text=True)
+    if run.returncode:
+        raise RuntimeError(f"editor/tests/key-frames.ts failed (npm --prefix editor install?):\n{run.stderr}")
+    return json.loads(run.stdout)
+
+
+def swung_in_keys():
+    """Swung in's keys, named and grouped as the hand layout's are: the editor's
+    matrix_<column>_<row> become <column>_<row number>, the thumbs keep their
+    names. Each cell is a key unit square, wider along x for a wider cap."""
+    row_keys = [n for n, _, _ in THUMB_ROW]
+    out = []
+    for name, k in swung_in()["keys"].items():
+        u, m = k["units"], np.array(k["frame"], float)
+        cell = (P.cell_mm + (u - 1) * P.cap_unit_mm, P.cell_mm)
+        if name.startswith("matrix_"):
+            _, col, row = name.split("_")
+            r = ROWS[row]
+            out.append(Key(f"{col}_{r}", m, "finger", COLUMNS.index(col), r, row_cap_row(r), u, cell))
+        else:
+            t = name.removeprefix("thumb_")
+            out.append(Key(name, m, "thumb" if t in row_keys else "extra", THUMB_COLS[t],
+                           -2 if t in row_keys else -3, P.cap_row_thumb, u, cell))
+    return out
+
+
 # ---------------------------------------------------------------- all keys, world
 @cached
 def layout_keys():
     """Every key in layout axes."""
+    if P.key_layout == "swung_in":
+        return swung_in_keys()
     keys = list(inner_keys())
     for i in range(4):
         keys += finger_keys(i, i + 1)
@@ -224,7 +265,9 @@ def layout_keys():
 
 
 def tent_frame():
-    """The tent and pitch, about the layout origin."""
+    """The tent and pitch, about the layout origin: Swung in's own tent, or tent_deg and pitch_deg."""
+    if P.key_layout == "swung_in":
+        return rot_y(swung_in()["tent_deg"])
     return rot_x(P.pitch_deg) @ rot_y(P.tent_deg)
 
 
@@ -299,8 +342,10 @@ def cell_back(k):
 
 def cell_x0(k):
     """The cell's least x in plan from the plate's top down to the body's
-    underside (the key's cuts lean with it)."""
-    return min(c[0] for z in (0, -body_depth()) for c in cell_corners(k, z=z))
+    underside (the key's cuts lean with it; a tile's shaft runs down the key's
+    axis until it is floor_drop() under the top)."""
+    depth = floor_drop() / k.frame[2, 2] if P.key_parts == "tiles" else body_depth()
+    return min(c[0] for z in (0, -depth) for c in cell_corners(k, z=z))
 
 
 def column_key(col, row):
@@ -308,7 +353,11 @@ def column_key(col, row):
 
 
 def switch_strip():
-    """The strip beside the board for the power switch."""
+    """The strip beside the board, on its inner side: the TRRS jack's and the
+    reset switch's (which stands on edge, thinner than the jack is wide), or
+    the power switch's."""
+    if P.link == "trrs":
+        return P.trrs_body_mm[1] + 2 * P.trrs_clearance_mm + 0.6
     return P.power_switch_mm[1] + 1.2 if P.power_switch else 0
 
 
@@ -357,7 +406,27 @@ def battery_frame():
     return trans([(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2, 0]) @ rot_z(90)
 
 
+def trrs_frame():
+    """The TRRS jack's frame (parts.py trrs_jack): origin at the middle of its
+    body's barrel end on the well's floor, the barrel along +y into the back
+    wall, centred in the strip beside the board."""
+    b = mcu_bay()
+    return trans([b[0][0] + switch_strip() / 2, b[1][1], 0])
+
+
+def reset_frame():
+    """The reset switch's frame (parts.py reset_switch): origin at the middle of
+    its plunger face, the plunger along -x through the inner side wall, its
+    body in a pocket in the wall reset_skin_mm inside the outer face, in front
+    of the jack, standing on the well's floor."""
+    b, c = mcu_bay(), P.reset_clearance_mm
+    y = b[1][1] - P.trrs_body_mm[0] - 2 * c - 1 - P.reset_leg_span_mm / 2
+    return trans([b[0][0] - P.wall_mm + P.reset_skin_mm, y, P.reset_body_mm[0] / 2 + c])
+
+
 def bays():
+    if P.link == "trrs":
+        return [mcu_bay()]
     return [mcu_bay(), battery_bay()]
 
 
@@ -386,10 +455,15 @@ def screw_points():
         return xy(xform(k.frame, [d[0] * cx + (d[0] * s if abs(d[0]) == 1 else 0),
                                   d[1] * cy + (d[1] * s if abs(d[1]) == 1 else 0), 0]))
 
-    m, b = mcu_bay(), battery_bay()
+    m = mcu_bay()
+    if P.link == "trrs":
+        # In front of the reset switch on the inner side, and the bay's front.
+        bay = [(m[0][0] - s, m[0][1] + 4), ((m[0][0] + m[1][0]) / 2, m[0][1] - s)]
+    else:
+        b = battery_bay()
+        bay = [(m[0][0] - s, (m[0][1] + m[1][1]) / 2 - 6), (b[0][0] - s, (b[0][1] + b[1][1]) / 2),
+               ((b[0][0] + b[1][0]) / 2, b[0][1] - s)]
     return [edge(key_named("pinky_1"), (1, 0.3)), edge(key_named("pinky_-1"), (1, -0.3)),
             edge(key_named("thumb_far"), (-1, -0.3)),
             edge(key_named("thumb_x2" if P.thumb_extra else "thumb_home"), (0, -1)),
-            edge(key_named("thumb_x1" if P.thumb_extra else "thumb_near"), (0, -1)),
-            (m[0][0] - s, (m[0][1] + m[1][1]) / 2 - 6), (b[0][0] - s, (b[0][1] + b[1][1]) / 2),
-            ((b[0][0] + b[1][0]) / 2, b[0][1] - s)]
+            edge(key_named("thumb_x1" if P.thumb_extra else "thumb_near"), (0, -1))] + bay

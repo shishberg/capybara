@@ -50,6 +50,34 @@ python3 -m lowpro.build --half left --part body
 python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
 ```
 
+## The Capybara preset
+
+`python3 -m lowpro.build --preset capybara` (and `lowpro.render --preset
+capybara`) builds this chassis with the Capybara's choices, into
+`output/lowpro/capybara/`: three parameters switch the design and the rest
+come from the editor's project, so they stay the Capybara's
+(`PRESETS` in `params.py`):
+
+- `key_layout = "swung_in"`: Swung in's keys and its 15° tent, as the editor
+  places them (`editor/tests/key-frames.ts` prints them; the build runs it, so
+  it needs the editor's `node_modules`).
+- `key_parts = "tiles"`: the RGB key tiles hang from the switches, each in a
+  shaft open to the underside along its key's axis (straight down, a tilted
+  tile's shaft runs past a lower neighbour's ledge). Shafts are wiring space
+  and may meet; the walls check holds each key's seat (its switch's pocket
+  and the tile's footprint up to the plate) clear of every other key's shaft.
+  Nothing stands under a tile. The column channels and trunks are 5 mm wide
+  for the LEDs' data and power, and a row runs straight from one tile's R hole
+  to the next's.
+- `link = "trrs"`: an RP2040 Pro Micro, its TRRS jack beside it with the
+  barrel out of the back wall, and the reset switch on edge in the inner side
+  wall, its plunger through a `reset_skin_mm` skin. No battery or power switch.
+
+With the Capybara's keycaps as well, it comes out as tall as the Capybara (caps
+37 to 66 mm over the desk), the body 14.4 mm thick (its steepest keys lean
+45°) and the plinth 10 to 38 mm under the keys. Swung in's steep thumbs and
+pinky top key leave room for only a 1.5 mm top round.
+
 The body's and the plinth's blanks are each one closed triangle mesh, built
 from the surfaces' functions: the top surface and the underside over one
 triangulation of the plan, the round's arcs at each station along the outline,

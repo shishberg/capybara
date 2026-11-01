@@ -17,6 +17,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .params import PRESETS
+
 ROOT = Path(__file__).resolve().parent.parent
 BODY, PLATE = "burlywood", "peru"
 
@@ -72,13 +74,17 @@ def wiring(C, body):
         return np.array(pts[len(pts) // 2])
 
     entry = C.bay_entry()
-    bridge = [C.front_pt(C.finger_key(1, -P.rows_below)), C.ne(C.thumb("near"))]
+    bridge = C.bridge()
     labels = [(mid(C.edge_trunk(1)), "back trunk"), (mid(C.edge_trunk(-1)), "front trunk"),
               ((bridge[0] + 3 * bridge[1]) / 4, "bridge to the thumbs"), (C.ne(C.thumb("home")), "thumb trunk"),
               (C.c_tab(C.finger_key(0, 0)), "inner column trunk"), (entry, "into the bay"),
-              (origin(C.mcu_frame()), "controller"), (origin(C.battery_frame()), "battery")]
-    if P.power_switch:
-        labels.append((origin(C.power_switch_frame()), "power switch"))
+              (origin(C.mcu_frame()), "controller")]
+    if P.link == "trrs":
+        labels += [(origin(C.trrs_frame()), "TRRS jack"), (origin(C.reset_frame()), "reset switch")]
+    else:
+        labels.append((origin(C.battery_frame()), "battery"))
+        if P.power_switch:
+            labels.append((origin(C.power_switch_frame()), "power switch"))
     return shown, labels
 
 
@@ -99,10 +105,11 @@ def section(solids, normal, at, box=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default=str(ROOT / "output" / "lowpro" / "renders"))
+    ap.add_argument("--out", help="where to write (default output/lowpro/renders/, or output/lowpro/<preset>/renders/)")
+    ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of overrides (params.py PRESETS)")
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a parameter")
     args = ap.parse_args(argv)
-    out = Path(args.out)
+    out = Path(args.out or ROOT / "output" / "lowpro" / (args.preset or "") / "renders")
     out.mkdir(parents=True, exist_ok=True)
 
     from . import build as B
@@ -110,7 +117,7 @@ def main(argv=None):
     from . import layout as L
     from .lib import origin
 
-    B.set_params(args.set)
+    B.set_params(args.set, args.preset)
     L.reset()
     body, plate = C.body(), C.bottom_plate()
     pieces = [(p.solid, p.colour) for p in B.assembly(body, plate)]

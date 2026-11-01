@@ -4,9 +4,11 @@
     python3 -m lowpro.build --half left --part body
     python3 -m lowpro.build --check              # only the checks (exit 1 when one fails; lowpro/README.md lists them)
     python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
+    python3 -m lowpro.build --preset capybara    # the Capybara's keys, tiles, caps and TRRS
 
-Any parameter in params.py can be overridden with --set. Files go to
-output/lowpro/ (--out): <half>-body.stl, <half>-plate.stl and
+Any parameter in params.py can be overridden with --set, after a --preset's
+(params.py PRESETS). Files go to output/lowpro/ (output/lowpro/<preset>/ with
+a preset; --out): <half>-body.stl, <half>-plate.stl and
 right-assembly.3mf (body, plinth, switches, caps, sockets, diodes and
 electronics, each piece a named, coloured mesh). The left half is the right
 mirrored.
@@ -20,6 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .params import PRESETS
+
 ROOT = Path(__file__).resolve().parent.parent
 PARTS = ("body", "plate", "assembly")
 
@@ -28,9 +32,12 @@ COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "
            "steelblue": "4682B4", "black": "000000", "red": "FF0000"}
 
 
-def set_params(assignments):
+def set_params(assignments, preset=None):
+    """A preset's overrides (params.PRESETS), then each NAME=VALUE."""
     from . import params as P
 
+    for name, value in (P.PRESETS[preset] if preset else {}).items():
+        setattr(P, name, value)
     for assignment in assignments:
         name, _, value = assignment.partition("=")
         if not hasattr(P, name):
@@ -168,7 +175,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--half", choices=("right", "left", "both"), default="both")
     ap.add_argument("--part", action="append", choices=PARTS, help="which parts (default: all)")
-    ap.add_argument("--out", default=str(ROOT / "output" / "lowpro"))
+    ap.add_argument("--out", help="where to write (default output/lowpro/, or output/lowpro/<preset>/)")
+    ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of overrides (params.py PRESETS)")
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a parameter")
     ap.add_argument("--check", action="store_true", help="only run the checks")
     ap.add_argument("--no-check", action="store_true", help="skip the checks")
@@ -176,7 +184,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     parts = args.part or list(PARTS)
     halves = ("right", "left") if args.half == "both" else (args.half,)
-    out = Path(args.out)
+    out = Path(args.out or ROOT / "output" / "lowpro" / (args.preset or ""))
     out.mkdir(parents=True, exist_ok=True)
     t = time.time()
 
@@ -184,7 +192,7 @@ def main(argv=None):
     from . import layout as L
 
     C.VERBOSE = args.verbose
-    set_params(args.set)
+    set_params(args.set, args.preset)
     L.reset()
     print(C.report(), flush=True)
     s = C.stage("report", t)

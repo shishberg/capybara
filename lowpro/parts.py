@@ -167,6 +167,24 @@ def hotswap_socket_room():
     return socket_body(P.socket_clearance_mm) + socket_tabs(P.socket_clearance_mm)
 
 
+# ---------------------------------------------------------------- key tile
+TILE_COLOURS = {"hotswap socket": "dimgray", "RGB LED": "white", "diode": "black"}
+
+
+def tile_board(grow=0):
+    """The tile's board as (size, centre): its top switch_below_plate_mm under the plate's."""
+    s, t = P.tile_mm + 2 * grow, P.pcb_layer_mm + 2 * grow
+    return (s, s, t), (0, 0, -P.switch_below_plate_mm - P.pcb_layer_mm / 2)
+
+
+def key_tile():
+    """The tile as it hangs from the switch: the board and the parts under it."""
+    top = -P.switch_below_plate_mm
+    return (pieces([box(*tile_board())], "darkgreen", "tile")
+            + [p for name, size, (x, y, z) in P.tile_parts
+               for p in pieces([box(size, (x, y, top + z))], TILE_COLOURS.get(name, "black"), name)])
+
+
 # ---------------------------------------------------------------- diode
 def diode():
     """The diode's body, along y about the origin."""
@@ -237,6 +255,60 @@ def power_switch_room(up=0):
              box((k[1] + 2 * c, 10, k[0] + 2 * c), (0, -b[1] / 2 - 5, 0))]
     if up > 0:
         rooms.append(box((b[0] + 2 * c, b[1] + 2 * c, up), (0, 0, up / 2)))
+    return rooms
+
+
+# ---------------------------------------------------------------- TRRS jack
+def along_y(d, length, at):
+    """A cylinder of diameter d along +y from `at` by length."""
+    return cylinder(d, length).rotate((-90, 0, 0)).translate(tuple(map(float, at)))
+
+
+def trrs_jack():
+    """The jack in its frame (layout.py trrs_frame): its body behind the origin
+    (-y), lugs up, the barrel along +y from the origin."""
+    b, (bl, bd) = P.trrs_body_mm, P.trrs_barrel_mm
+    return (pieces([box((b[1], b[0], b[2]), (0, -b[0] / 2, b[2] / 2))], "black", "jack")
+            + pieces([along_y(bd, bl, (0, 0, b[2] / 2))], "silver", "barrel"))
+
+
+def trrs_room(up=0):
+    """The jack's pocket, room over it for the wires on its lugs, the barrel's
+    hole and the plug's through the wall; `up` opens the pocket that far upward
+    (so the jack drops in from the body's side)."""
+    b, (bl, bd), c = P.trrs_body_mm, P.trrs_barrel_mm, P.trrs_clearance_mm
+    h = b[2] + 2 * c + 2
+    rooms = [box((b[1] + 2 * c, b[0] + 2 * c, h), (0, -b[0] / 2, h / 2 - c)),
+             along_y(bd + 2 * c, bl + 0.1, (0, -0.05, b[2] / 2)),
+             along_y(P.trrs_plug_d + 2 * c, P.wall_mm + 5, (0, bl, b[2] / 2))]
+    if up > 0:
+        rooms.append(box((b[1] + 2 * c, b[0] + 2 * c, up), (0, -b[0] / 2, up / 2)))
+    return rooms
+
+
+# ---------------------------------------------------------------- reset switch
+def reset_switch():
+    """The switch on edge in its frame (layout.py reset_frame): origin at the
+    middle of its plunger face, its body behind (+x), the plunger out along -x,
+    the legs out of its sides at the back."""
+    (h, w, d), (pd, pp) = P.reset_body_mm, P.reset_plunger_mm
+    legs = [box((0.6, (P.reset_leg_span_mm - w) / 2, 0.8), (d - 0.4, s * (w + P.reset_leg_span_mm) / 4, 0))
+            for s in (-1, 1)]
+    plunger = cylinder(pd, pp).rotate((0, -90, 0))
+    return (pieces([box((d, w, h), (d / 2, 0, 0))], "silver", "reset")
+            + pieces([plunger], "black", "plunger") + pieces(legs, "silver", "legs"))
+
+
+def reset_room(up=0):
+    """The switch's pocket in the wall, reaching back into the bay for its
+    wires, and the plunger's hole through the skin in front of it; `up` opens
+    the pocket that far upward (so it drops in from the body's side)."""
+    (h, w, d), (pd, pp), c = P.reset_body_mm, P.reset_plunger_mm, P.reset_clearance_mm
+    reach = P.wall_mm + 1
+    rooms = [box((reach, P.reset_leg_span_mm + 2 * c, h + 2 * c), (reach / 2 - c, 0, 0)),
+             cylinder(pd + 2 * c, P.reset_skin_mm + 2).rotate((0, -90, 0)).translate((0.1, 0, 0))]
+    if up > 0:
+        rooms.append(box((reach, P.reset_leg_span_mm + 2 * c, up), (reach / 2 - c, 0, up / 2)))
     return rooms
 
 
