@@ -91,10 +91,15 @@ body and the plinth where they meet, and the knob is a cup over the boss on a
 shaft through the bearing. Standing out lets the rest fit in the wall,
 clear of the inner column's tiles: a diametric magnet in the shaft's end, a
 millimetre past the bearing, and behind it the sensor board in a slot, chip
-toward the magnet, pads down, dropped in from the plinth's top before the
-body goes on. Its three wires (GND, 3.3 V, OUT to an ADC pin) run along a
-slot under its pads into the well. The sizes in `params.py` are provisional,
-taken from the parts in hand.
+toward the magnet, its rounded end (where its pads are) down, dropped in
+from the plinth's top before the body goes on. Its three wires (GND, 3.3 V,
+OUT to an ADC pin) run along a slot under it into the well. The board's two
+holes sit either side of the chip on its line, so two pins through them hold
+the chip on the axis: with the case closed and before the bearing goes in,
+they push in through the empty bearing pocket, through press-fit holes in the
+body, to the board's back. The bearing presses into its pocket in the same
+body, so the alignment doesn't depend on any loose fit. The sizes in
+`params.py` are provisional, taken from the parts in hand.
 
 With the Capybara's keycaps as well, it comes out as tall as the Capybara: 62.8 mm
 to the highest cap's top corner (cap tops 28 to 57 mm over the desk at their

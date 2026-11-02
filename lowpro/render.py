@@ -8,7 +8,7 @@ files) and writes: the assembly and the body with plinth from above, the
 wiring (channels, sockets, diodes and the bay's parts through a see-through
 body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
 below, sections across and along that key, a section through the round at
-the outline's front, and with the knob, the assembly from the inner side and a section across its axis. Needs pyvista. The checks, not these, are what say the
+the outline's front, and with the knob, the assembly from the inner side, sections across its axis (through it and through a pin) and one along the sensor board. Needs pyvista. The checks, not these, are what say the
 build is right.
 """
 import argparse
@@ -149,10 +149,20 @@ def main(argv=None):
     if P.knob:
         # Across the knob's axis, with its parts: from the knob out to the well.
         k = origin(C.knob_frame())
-        cut = [(p.solid, p.colour) for p in C.electronics() if p.label.startswith(("knob", "shaft", "bearing", "magnet", "sensor"))]
+        # Then across it through a pin, and along the sensor board's middle,
+        # looking out from the well at the board, its holes and the pins.
+        from . import parts as R
+        f = C.knob_frame()
+        along, across = f[:3, 0], f[:3, 1]
+        cut = [(p.solid, p.colour) for p in C.electronics()
+               if p.label.startswith(("knob", "shaft", "bearing", "magnet", "sensor", "pins"))]
         lo, hi = (k[0] - 15, k[1] - 20, -1), (k[0] + 30, k[1] + 30, box[5] + 1)
         shot(out, "knob", pieces, away((-1, -0.9, 0.6), k, 300), c)
         shot(out, "section-knob", section(shell + cut, (0, 1, 0), k, (lo, hi)), k + (0, 300, 0), k, parallel=True, zoom=1.1)
+        pin = k + across * P.knob_sensor_holes_mm[0] / 2
+        shot(out, "section-knob-pin", section(shell + cut, across, pin, (lo, hi)), pin + 300 * across, pin, parallel=True, zoom=1.1)
+        board = k + along * (R.knob_sensor_x()[1] - P.knob_sensor_mm[3] / 2)
+        shot(out, "section-knob-board", section(shell + cut, along, board, (lo, hi)), board + 300 * along, board, parallel=True, zoom=2.5)
     return 0
 
 

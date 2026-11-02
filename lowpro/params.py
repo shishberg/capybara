@@ -260,9 +260,17 @@ bay_place = "beside"
 # and stands knob_above_mm over the case's top there, which sets the axis's
 # height (chassis.py knob_frame), so a finger reaching over the edge turns
 # it by its top. PROVISIONAL sizes, from the parts in hand. Knob: its face's
-# thickness in front of the boss, its gap to the boss and the wall. Bearing
-# (608 2RS): bore, outside diameter, width. Magnet: diameter, length, and
-# its gap to the chip. Sensor board: along y, along z, thick (board and chip).
+# thickness in front of the boss, its gap to the boss and the wall (and the
+# room behind the bearing for its inner race). Bearing (608 2RS): bore,
+# outside diameter, width; its pocket is drawn at its size, a press fit.
+# Magnet: diameter, length, and its gap to the chip. Sensor board, from its
+# drawing: wide, high, thick (board and chip), the board alone; its rounded
+# end (its three pads', down) is cut on a circle knob_sensor_r_mm round the
+# chip; two holes, knob_sensor_holes_mm (pitch, diameter), either side of
+# the chip on its line. Two pins, knob_pin_d_mm across, pushed in through
+# the empty bearing pocket into press-fit holes behind it, go through those
+# holes, so the body, which holds the bearing, holds the chip on the axis.
+# The chip: the AS5600's SOIC-8 body, wide and high.
 knob = False
 knob_d_mm = 36
 knob_above_mm = 5
@@ -270,7 +278,11 @@ knob_mm = (3, 0.5)
 knob_boss_wall_mm = 1.5
 knob_bearing_mm = (8, 22, 7)
 knob_magnet_mm = (5, 2, 1)
-knob_sensor_mm = (17, 15, 2.6)
+knob_sensor_mm = (15, 17, 2.6, 1)
+knob_sensor_r_mm = 9
+knob_sensor_holes_mm = (12, 2.2)
+knob_pin_d_mm = 2
+knob_chip_mm = (4.9, 3.9)
 knob_clearance_mm = 0.2
 # link "trrs": the Capybara's TRRS jack and reset switch, their sizes the
 # editor's (editor/src/default-config.json, trrs and reset). The jack lies

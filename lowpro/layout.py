@@ -498,7 +498,7 @@ def reset_y():
 def knob_y():
     """Where along the inner side wall the knob's axis is (chassis.py
     knob_frame): in front of the bay, its bearing's pocket min_wall_mm from it."""
-    return mcu_bay()[0][1] - P.min_wall_mm - P.knob_bearing_mm[1] / 2 - P.knob_clearance_mm
+    return mcu_bay()[0][1] - P.min_wall_mm - P.knob_bearing_mm[1] / 2
 
 
 def bays():

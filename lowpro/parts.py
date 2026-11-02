@@ -344,11 +344,13 @@ def reset_plunger_hole():
 # wall with the bearing in it, flush with its face, and the knob, a cup over
 # the boss, on the shaft. In the wall: the shaft's end a millimetre past the
 # bearing with the magnet in it; the magnet's gap; the sensor board, chip
-# toward the magnet, its pads down, its back min_wall_mm inside the wall's
-# inner face (wall_mm in), clear of the keys' rooms.
-def along_x(d, x0, x1):
-    """A cylinder of diameter d along x from x0 to x1."""
-    return cylinder(d, x1 - x0).rotate((0, 90, 0)).translate((float(x0), 0, 0))
+# toward the magnet and on the axis, its rounded end (its pads') down, its
+# back min_wall_mm inside the wall's inner face (wall_mm in), clear of the
+# keys' rooms; and the two pins through its holes, from the room behind the
+# bearing.
+def along_x(d, x0, x1, at=(0, 0)):
+    """A cylinder of diameter d along x from x0 to x1, its axis at (y, z) `at`."""
+    return cylinder(d, x1 - x0).rotate((0, 90, 0)).translate((float(x0), *map(float, at)))
 
 
 def knob_out():
@@ -368,8 +370,27 @@ def knob_sensor_x():
     return x, x + P.knob_sensor_mm[2]
 
 
+def knob_sensor_z():
+    """The sensor board's bottom (its rounded end's) and top, the chip at 0."""
+    return -P.knob_sensor_r_mm, P.knob_sensor_mm[1] - P.knob_sensor_r_mm
+
+
+def knob_race_x():
+    """The room behind the bearing, clear of its turning inner race: from
+    the pocket's floor to where the pins' holes start."""
+    x = P.knob_bearing_mm[2] - knob_out()
+    return x, x + P.knob_mm[1]
+
+
+def knob_pins():
+    """The two pins, from the room behind the bearing through the board's
+    holes to its back."""
+    h = P.knob_sensor_holes_mm[0] / 2
+    return [along_x(P.knob_pin_d_mm, knob_race_x()[1], knob_sensor_x()[1], (y, 0)) for y in (-h, h)]
+
+
 def knob_boss_d():
-    return P.knob_bearing_mm[1] + 2 * P.knob_clearance_mm + 2 * P.knob_boss_wall_mm
+    return P.knob_bearing_mm[1] + 2 * P.knob_boss_wall_mm
 
 
 def knob_boss():
@@ -386,42 +407,56 @@ def knob_cup(kd, grow=0):
     return along_x(kd + 2 * grow, x0 - grow, -gap + grow) - recess
 
 
+def knob_sensor():
+    """The sensor board, chip toward the magnet: the board, its outline cut on
+    knob_sensor_r_mm round the chip, with its two holes; and the chip."""
+    (w, _, t, board), (hp, hd), (cw, ch) = P.knob_sensor_mm, P.knob_sensor_holes_mm, P.knob_chip_mm
+    (f, b), (z0, z1) = knob_sensor_x(), knob_sensor_z()
+    pcb = (box((board, w, z1 - z0), (b - board / 2, 0, (z0 + z1) / 2))
+           ^ along_x(2 * P.knob_sensor_r_mm, b - board, b))
+    pcb -= union([along_x(hd, b - board - 1, b + 1, (y, 0)) for y in (-hp / 2, hp / 2)])
+    return pcb + box((t - board, cw, ch), (f + (t - board) / 2, 0, 0))
+
+
 def knob(kd):
-    """The knob, kd across, on its shaft, the bearing, magnet and sensor board."""
-    (bore, od, bw), (md, ml, _), s = P.knob_bearing_mm, P.knob_magnet_mm, P.knob_sensor_mm
-    out, end, (f, b) = knob_out(), knob_shaft_end(), knob_sensor_x()
+    """The knob, kd across, on its shaft, the bearing, magnet, sensor board and
+    its pins."""
+    (bore, od, bw), (md, ml, _) = P.knob_bearing_mm, P.knob_magnet_mm
+    out, end = knob_out(), knob_shaft_end()
     ring = along_x(od, -out, -out + bw) - along_x(bore, -out - 1, -out + bw + 1)
     face = -out - P.knob_mm[1] - P.knob_mm[0]
     return (pieces([knob_cup(kd)], "dimgray", "knob")
             + pieces([along_x(bore, face + 1, end) - along_x(md, end - ml, end + 1)], "silver", "shaft")
             + pieces([ring], "lightgray", "bearing") + pieces([along_x(md, end - ml, end)], "firebrick", "magnet")
-            + pieces([box((b - f, s[0], s[1]), ((f + b) / 2, 0, 0))], "purple", "sensor"))
+            + pieces([knob_sensor()], "purple", "sensor") + pieces(knob_pins(), "silver", "pins"))
 
 
 def knob_room(reach, up=0):
     """The knob's rooms: the bearing's pocket open to the outside; room behind
-    it for the shaft's end, clear of the bearing's outer race (the pocket's
-    floor, between the two races, holds that); the sensor's slot; and its
-    wires' slot under the sensor's pads, along its edge and on to `reach`
-    along +y, and then in, a
+    it for its inner race (the pocket's floor, between the two races, holds
+    the outer) and for the shaft's end; the pins' holes, drawn at their size
+    (a press fit); the sensor's slot; and its wires' slot under the board's
+    rounded end, along its edge and on to `reach` along +y, and then in, a
     millimetre past the wall's inner face, into the well. `up` opens the
     slots that far upward (so the board drops in from the body's side)."""
     (bore, od, bw), s, c = P.knob_bearing_mm, P.knob_sensor_mm, P.knob_clearance_mm
-    out, (f, b) = knob_out(), knob_sensor_x()
-    w = P.channel_w_mm
-    sensor_h, wires_h = s[1] + 2 * c + up, 2 * w + up
-    wires_z = wires_h / 2 - s[1] / 2 - w
+    (f, b), (z0, z1), (r0, r1) = knob_sensor_x(), knob_sensor_z(), knob_race_x()
+    w, h = P.channel_w_mm, P.knob_sensor_holes_mm[0] / 2
+    sensor_h, wires_h = z1 - z0 + 2 * c + up, 2 * w + up
     x0, x1 = b + c - w, P.wall_mm + 1
-    return [knob_bearing_pocket(), along_x((bore + od) / 2, -out + bw - 0.1, f),
-            box((b - f + 2 * c, s[0] + 2 * c, sensor_h), ((f + b) / 2, 0, sensor_h / 2 - s[1] / 2 - c)),
-            box((w, reach + s[0] / 2, wires_h), (x0 + w / 2, (reach - s[0] / 2) / 2, wires_z)),
-            box((x1 - x0, w, wires_h), ((x0 + x1) / 2, reach - w / 2, wires_z))]
+    return [knob_bearing_pocket(), along_x((bore + od) / 2, r0 - 0.1, r1),
+            along_x(bore + 2 * c, r1 - 0.1, f),
+            *[along_x(P.knob_pin_d_mm, r1 - 0.1, f, (y, 0)) for y in (-h, h)],
+            box((b - f + 2 * c, s[0] + 2 * c, sensor_h), ((f + b) / 2, 0, z0 - c + sensor_h / 2)),
+            box((w, reach + s[0] / 2, wires_h), (x0 + w / 2, (reach - s[0] / 2) / 2, z0 - w + wires_h / 2)),
+            box((x1 - x0, w, wires_h), ((x0 + x1) / 2, reach - w / 2, z0 - w + wires_h / 2))]
 
 
 def knob_bearing_pocket():
-    """The bearing's pocket in the boss, open to the outside."""
-    (_, od, bw), c = P.knob_bearing_mm, P.knob_clearance_mm
-    return along_x(od + 2 * c, -knob_out() - 1, -knob_out() + bw)
+    """The bearing's pocket in the boss, open to the outside, drawn at the
+    bearing's size (a press fit)."""
+    _, od, bw = P.knob_bearing_mm
+    return along_x(od, -knob_out() - 1, -knob_out() + bw)
 
 
 def knob_clear(kd):

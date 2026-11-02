@@ -1042,7 +1042,7 @@ def wire_ends():
             ends.append(("the power switch", origin(power_switch_frame())))
     if P.knob:
         x, w = R.knob_sensor_x()[1] + P.knob_clearance_mm - P.channel_w_mm / 2, P.channel_w_mm
-        ends.append(("the knob's sensor", xform(knob_frame(), [x, 0, -P.knob_sensor_mm[1] / 2 - w / 2])))
+        ends.append(("the knob's sensor", xform(knob_frame(), [x, 0, R.knob_sensor_z()[0] - w / 2])))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 
