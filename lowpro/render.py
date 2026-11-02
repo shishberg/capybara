@@ -8,7 +8,7 @@ files) and writes: the assembly and the body with plinth from above, the
 wiring (channels, sockets, diodes and the bay's parts through a see-through
 body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
 below, sections across and along that key, a section through the round at
-the outline's front, and with the knob, a section across its axis. Needs pyvista. The checks, not these, are what say the
+the outline's front, and with the knob, the assembly from the inner side and a section across its axis. Needs pyvista. The checks, not these, are what say the
 build is right.
 """
 import argparse
@@ -151,6 +151,7 @@ def main(argv=None):
         k = origin(C.knob_frame())
         cut = [(p.solid, p.colour) for p in C.electronics() if p.label.startswith(("knob", "shaft", "bearing", "magnet", "sensor"))]
         lo, hi = (k[0] - 15, k[1] - 20, -1), (k[0] + 30, k[1] + 30, box[5] + 1)
+        shot(out, "knob", pieces, away((-1, -0.9, 0.6), k, 300), c)
         shot(out, "section-knob", section(shell + cut, (0, 1, 0), k, (lo, hi)), k + (0, 300, 0), k, parallel=True, zoom=1.1)
     return 0
 
