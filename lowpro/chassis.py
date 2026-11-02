@@ -528,11 +528,14 @@ def bay_pocket_h():
 
 @cached
 def bay_z():
-    """The well's floor: bay_under_mm below the parts' room under the lowest point
-    of the body's underside over the bays, but never thinner than the plate's minimum."""
-    lows = [floor_z(b[0][0] + (b[1][0] - b[0][0]) * i / 4, b[0][1] + (b[1][1] - b[0][1]) * j / 4)
-            for b in L.bays() for i in range(5) for j in range(5)]
-    return max(P.bottom_plate_mm, min(lows) - bay_pocket_h() - P.bay_under_mm)
+    """The well's floor: the plinth's thinnest, or higher where a plug's housing
+    (the USB-C plug's, the TRRS plug's) would come within plug_desk_mm of the
+    desk, each centred on its port."""
+    usb = P.mcu_plug_mm[1] / 2 - (R.mcu_pcb_z() - P.mcu_usb_mm[1] / 2)
+    floors = [P.bottom_plate_mm, P.plug_desk_mm + usb]
+    if P.link == "trrs":
+        floors.append(P.plug_desk_mm + P.trrs_plug_d / 2 - P.trrs_body_mm[2] / 2)
+    return max(floors)
 
 
 def mcu_frame():

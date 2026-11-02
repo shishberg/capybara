@@ -270,10 +270,11 @@ board along the column, components down, its USB-C port out of the back wall
 through a chamfered opening; the power switch beside it in the inner side wall,
 its pocket open upward so it drops in from the body's side; the battery in
 front of the board, in its own pocket, its leads through a notch in the wall
-between them (`battery_lead_notch_mm`). The well's floor is `bay_under_mm` below the parts' room
-under the lowest point of the body over the bay (6 mm over the desk), never
-less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
-rooms are cut up into the body as well. The back trunk channel runs over the
+between them (`battery_lead_notch_mm`). The well's floor is as low as the plinth's thinnest
+(`bottom_plate_mm`), or higher where a plug's housing (`mcu_plug_mm`, the
+TRRS plug's) would come within `plug_desk_mm` of the desk; where the body's
+underside comes lower than the parts' room, that room is cut up into the
+body as well. The back trunk channel runs over the
 well's rim at its back corner. The plinth has a pinhole under the board's reset
 button.
 

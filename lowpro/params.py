@@ -226,11 +226,13 @@ mcu_usb_mm = (9.0, 3.3)         # the port's width and height
 mcu_usb_overhang_mm = 1.3
 mcu_usb_opening_mm = (10.5, 5)  # the hole through the back wall for the plug
 mcu_clearance_mm = 0.3
-bay_under_mm = 1
+mcu_plug_mm = (12.5, 7)         # the USB-C plug's housing: width, height
+plug_desk_mm = 1                # how far over the desk a plug's housing stays
 # The board lies in a well in the bottom plate on the inner side of the inner
 # column (layout.py mcu_bay), along the column, its USB-C port out of the
-# back wall; the well's floor sits bay_under_mm below the parts' room under
-# the body (so the port's opening stays in the plate's wall).
+# back wall; the well's floor is as low as the plinth's thinnest
+# (bottom_plate_mm), unless a plug's housing would then come within
+# plug_desk_mm of the desk.
 # mcu_turn_deg turns it in plan about its port end.
 mcu_turn_deg = 0
 # The reset button on the board, from the port end: across (x) and along (y) the board.
@@ -320,6 +322,7 @@ PRESETS = {
         "mcu_usb_mm": (_pro_micro["usb_mm"][1], _pro_micro["usb_mm"][2]),
         "mcu_parts_mm": _pro_micro["usb_mm"][2],
         "mcu_usb_overhang_mm": _pro_micro["usb_overhang_mm"],
+        "mcu_plug_mm": tuple(_pro_micro["plug_mm"][:2]),
         "wire_d_mm": _capybara["wiring"]["power_wire_mm"],
         # Room under the tiles for the wires off their holes and the rails' stubs.
         "under_socket_mm": 1.5,
