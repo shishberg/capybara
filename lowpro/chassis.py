@@ -489,6 +489,8 @@ def body_shell():
     # ring_mm under it, clear of the blank's floor (and the plinth's).
     floor = Manifold.cube((400, 400, 100)).translate((-200, -200, body_floor() - ring_mm - 100))
     shell = subtract(add(subtract(body_blank(), caps), blocks), [floor])
+    if P.knob:
+        shell = add(shell, [knob_boss(False)])
     stage("the body's shell", t)
     return shell
 
@@ -512,6 +514,8 @@ def plinth_shell():
     clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, below_plane(g, d), below=False) ^ keep
              for g in plane_groups()]
     shell = subtract(add(plinth_blank(), fill), clear)
+    if P.knob:
+        shell = add(shell, [knob_boss(True)])
     stage("the plinth's shell", t)
     return shell
 
@@ -576,16 +580,42 @@ def reset_frame():
     return inner_wall_frame(L.reset_y(), bay_z()) @ trans([P.reset_skin_mm, 0, P.reset_body_mm[0] / 2 + P.reset_clearance_mm])
 
 
+@cached
 def knob_frame():
     """The knob's frame (parts.py knob): origin on its axis at the inner side
-    wall's outer face, knob_z_mm over the desk, +x in along the axis."""
-    return inner_wall_frame(L.knob_y(), P.knob_z_mm)
+    wall's outer face, +x in along the axis, the knob's top knob_above_mm
+    over the case's top along the wall across the knob."""
+    f, r = inner_wall_frame(L.knob_y()), P.knob_d_mm / 2
+    edge = top_surface(np.array([xform(f, (0, y, 0))[:2] for y in np.linspace(-r, r, 9)])).max()
+    return inner_wall_frame(L.knob_y(), float(edge) + P.knob_above_mm - r)
+
+
+def plan_points():
+    """The body's and the plinth's plan: the outline, and the knob's boss
+    standing out of it."""
+    if not P.knob:
+        return outline()
+    b = placed(knob_frame(), R.knob_boss()).bounding_box()
+    return np.r_[outline(), [(b[0], b[1]), (b[3], b[4])]]
+
+
+def knob_boss(lower):
+    """The knob's boss (parts.py knob_boss), split where the body meets the
+    plinth at the axis: the body's half, or the plinth's (lower). Inside the
+    outline each keeps only what its own blank has, so it fuses with the wall
+    and stands neither over the case's top nor in the other part."""
+    boss, f = placed(knob_frame(), R.knob_boss()), knob_frame()
+    z, g = floor_z(f[0, 3], f[1, 3]), P.plate_gap_mm
+    inside = polygon(outline()).extrude(400).translate((0, 0, -200))
+    if lower:
+        return boss ^ half_space(np.eye(4), z - g, size=400) - (inside - plinth_blank())
+    return boss ^ half_space(np.eye(4), z, below=False, size=400) - (inside - body_blank())
 
 
 def knob_slot_reach():
-    """How far the sensor's wire slot runs (+y in the knob's frame) to reach
-    the well, a millimetre into it."""
-    return L.mcu_bay()[0][1] - L.knob_y() + 1
+    """How far the sensor's wire slot runs (+y in the knob's frame) before it
+    turns in: far enough that the turn lies a millimetre inside the well's front."""
+    return L.mcu_bay()[0][1] - L.knob_y() + 1 + P.channel_w_mm
 
 
 def floor_box(r, h):
@@ -915,7 +945,7 @@ def electronics():
         if P.power_switch:
             parts.append((power_switch_frame(), R.power_switch_part()))
     if P.knob:
-        parts.append((knob_frame(), R.knob()))
+        parts.append((knob_frame(), R.knob(P.knob_d_mm)))
     return [Piece(p.label, p.colour, placed(m, p.solid)) for m, part in parts for p in part]
 
 
@@ -971,12 +1001,19 @@ def parts_buried():
 
 
 def knob_clashes():
-    """What the knob's room outside the wall (parts.py knob_clear) runs into:
-    the desk, the body or the plinth; empty when it turns clear."""
-    room = placed(knob_frame(), R.knob_clear())
+    """What the knob's room outside the wall (parts.py knob_clear) runs into
+    (the desk, the body or the plinth), and whether its rooms in the case
+    (all but the bearing's pocket, which opens out of the boss) break out of
+    it; empty when it turns clear and its rooms stay in."""
+    room = placed(knob_frame(), R.knob_clear(P.knob_d_mm))
     out = [] if room.bounding_box()[2] > 0 else ["the desk"]
-    return out + [what for what, solid in (("the body", body()), ("the plinth", bottom_plate()))
-                  if (room ^ solid).volume() > 1e-6]
+    out += [what for what, solid in (("the body", body()), ("the plinth", bottom_plate()))
+            if (room ^ solid).volume() > 1e-6]
+    inside = union(place(knob_frame(), R.knob_room(knob_slot_reach())[1:]))
+    case = union([body_shell(), plinth_shell(), plinth_shell().translate((0, 0, P.plate_gap_mm))])
+    if (inside - case).volume() > 1e-6:
+        out.append("the outside, through the case")
+    return out
 
 
 def part_overlap():
@@ -1004,8 +1041,8 @@ def wire_ends():
         if P.power_switch:
             ends.append(("the power switch", origin(power_switch_frame())))
     if P.knob:
-        f, b = R.knob_sensor_x()
-        ends.append(("the knob's sensor", xform(knob_frame(), [(f + b) / 2, 0, P.knob_sensor_mm[1] / 2 + d])))
+        x, w = R.knob_sensor_x()[1] + P.knob_clearance_mm - P.channel_w_mm / 2, P.channel_w_mm
+        ends.append(("the knob's sensor", xform(knob_frame(), [x, 0, -P.knob_sensor_mm[1] / 2 - w / 2])))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 

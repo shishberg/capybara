@@ -83,14 +83,18 @@ moves the controller (`PRESETS` in `params.py`):
 
 `--set knob=True` adds an AS5600 magnetic knob, written to
 `output/lowpro/capybara-knob/` when built with `--out`. Its axis runs across,
-square to the inner side wall in front of the bay, `knob_z_mm` over the desk.
-The knob sits outside the wall on a shaft through a 608 bearing pocketed flush
-in the side wall. Its rooms are cut from the plinth and the body alike (as
-the bay's are), so the bearing is held wherever the two meet across it. A diametric magnet sits in the shaft's end, a millimetre
-past the bearing. The sensor board stands in a slot behind it, chip toward the
-magnet, and drops in from the plinth's top before the body goes on. Its three
-wires (GND, 3.3 V, OUT to an ADC pin) run along a slot into the well. The
-sizes in `params.py` are provisional, taken from the parts in hand.
+square to the inner side wall in front of the bay. The knob (`knob_d_mm`
+across) stands `knob_above_mm` over the case's top there, so a finger
+reaching over the edge turns it by its top; that sets the axis's height. A
+608 bearing sits flush in a boss standing out of the wall, split between the
+body and the plinth where they meet, and the knob is a cup over the boss on a
+shaft through the bearing. Standing out lets the rest fit in the wall,
+clear of the inner column's tiles: a diametric magnet in the shaft's end, a
+millimetre past the bearing, and behind it the sensor board in a slot, chip
+toward the magnet, pads down, dropped in from the plinth's top before the
+body goes on. Its three wires (GND, 3.3 V, OUT to an ADC pin) run along a
+slot under its pads into the well. The sizes in `params.py` are provisional,
+taken from the parts in hand.
 
 With the Capybara's keycaps as well, it comes out as tall as the Capybara: 62.8 mm
 to the highest cap's top corner (cap tops 28 to 57 mm over the desk at their
@@ -112,8 +116,8 @@ every curve is within `mesh_tol_mm` of its chords.
 The files are outputs only: the design is the code and `params.py`, and a
 change is made there and rebuilt. The build refuses to write a part that is not
 one closed manifold solid (a stray piece or a sliver left by a boolean is a
-second solid) or that does not span the outline (a boolean that loses the part
-leaves a fragment behind).
+second solid) or that does not span its plan, the outline and the knob's boss
+(a boolean that loses the part leaves a fragment behind).
 
 ## The layout
 
@@ -291,11 +295,11 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Wiring | A socket tab or tile hole, the battery's leads, the power switch, the jack, the reset switch or the knob's sensor has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room or tile's seat; the bay's rooms, well and the knob's room) come within `min_wall_mm` of each other, or a channel or tile shaft comes within it of the bay (unless the bay is under the keys) or of another key's seat | `--set socket_tab_mm=(3.5,2.6)` |
 | Ports | An opening that must go through the wall (the controller's port, the TRRS plug's hole, the reset switch's plunger hole, the knob's bearing pocket) stops inside the outline | `--preset capybara --set mcu_usb_overhang_mm=-6` |
-| Knob | The knob's room outside the wall (grown by `knob_clearance_mm`) reaches the desk, the body or the plinth | `--preset capybara --set knob=True --set knob_z_mm=10` |
+| Knob | The knob's room outside the wall (grown by `knob_clearance_mm`) reaches the desk, the body or the plinth, or its rooms in the case break out of it | `--preset capybara --set knob=True --set knob_d_mm=58` (the desk), `--set knob_d_mm=20` (out through the top) |
 | Parts | A bought part (the controller, jack, reset switch, knob's bearing and sensor, a socket or tile, a diode) runs into the body or the plinth | `--preset capybara --set knob=True --set knob_clearance_mm=-0.3` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set trunk_w_mm=12` |
-| Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
+| Span | A part does not span its plan, the outline and the knob's boss (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
 
 The build also prints the plate and cap heights over the desk, the shell's
 thickness, the plinth's height under the keys, the well's floor, the fingertip

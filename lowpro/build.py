@@ -54,8 +54,9 @@ def mesh_of(solid):
 
 def refuse_invalid(solid, name):
     """Stop the build on a part that is not one closed manifold solid spanning
-    the outline (a boolean that lost the part leaves a fragment, and a stray
-    piece or a sliver is a second solid)."""
+    its plan (the outline, and the knob's boss: chassis.py plan_points; a
+    boolean that lost the part leaves a fragment, and a stray piece or a
+    sliver is a second solid)."""
     from . import chassis as C
 
     if solid.status().name != "NoError":
@@ -68,10 +69,9 @@ def refuse_invalid(solid, name):
     if solid.volume() <= 0:
         sys.exit(f"{name} has no volume")
     box = solid.bounding_box()
-    q = C.outline()
-    span, want = (box[3] - box[0], box[4] - box[1]), np.ptp(q, axis=0)
+    span, want = (box[3] - box[0], box[4] - box[1]), np.ptp(C.plan_points(), axis=0)
     if abs(span[0] - want[0]) > 0.01 or abs(span[1] - want[1]) > 0.01:
-        sys.exit(f"{name} does not span the outline: {span[0]:.1f} x {span[1]:.1f} mm, not {want[0]:.1f} x {want[1]:.1f}")
+        sys.exit(f"{name} does not span its plan: {span[0]:.1f} x {span[1]:.1f} mm, not {want[0]:.1f} x {want[1]:.1f}")
 
 
 def write_stl(solid, path):

@@ -253,18 +253,24 @@ power_switch_back_mm = 8                # along the inner side wall, from the ba
 # column, or "under" the inner and index columns' top keys, for a plinth tall
 # enough to hold it there.
 bay_place = "beside"
-# An AS5600 magnetic knob in the plinth's inner side wall, in front of the
-# bay, its axis square to the wall (parts.py knob). PROVISIONAL sizes, from
-# the parts in hand. Knob: diameter, how far it stands out of the wall, its gap to the
-# wall. Bearing (608 2RS): bore, outside diameter, width. Magnet: diameter,
-# length, and its gap to the chip. Sensor board: along y, along z, thick
-# (board and chip). knob_z_mm is the axis's height over the desk.
+# An AS5600 magnetic knob on the inner side wall, in front of the bay, its
+# axis square to the wall (parts.py knob), its bearing in a boss out of the
+# wall (knob_boss_wall_mm round the bearing's pocket) so the magnet and
+# sensor fit in the wall. The knob, knob_d_mm across, is a cup over the boss
+# and stands knob_above_mm over the case's top there, which sets the axis's
+# height (chassis.py knob_frame), so a finger reaching over the edge turns
+# it by its top. PROVISIONAL sizes, from the parts in hand. Knob: its face's
+# thickness in front of the boss, its gap to the boss and the wall. Bearing
+# (608 2RS): bore, outside diameter, width. Magnet: diameter, length, and
+# its gap to the chip. Sensor board: along y, along z, thick (board and chip).
 knob = False
-knob_mm = (22, 9, 0.5)
+knob_d_mm = 36
+knob_above_mm = 5
+knob_mm = (3, 0.5)
+knob_boss_wall_mm = 1.5
 knob_bearing_mm = (8, 22, 7)
 knob_magnet_mm = (5, 2, 1)
 knob_sensor_mm = (17, 15, 2.6)
-knob_z_mm = 15
 knob_clearance_mm = 0.2
 # link "trrs": the Capybara's TRRS jack and reset switch, their sizes the
 # editor's (editor/src/default-config.json, trrs and reset). The jack lies
