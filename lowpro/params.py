@@ -267,10 +267,12 @@ bay_place = "beside"
 # drawing: wide, high, thick (board and chip), the board alone; its rounded
 # end (its three pads', down) is cut on a circle knob_sensor_r_mm round the
 # chip; two holes, knob_sensor_holes_mm (pitch, diameter), either side of
-# the chip on its line. Two pins, knob_pin_d_mm across, pushed in through
-# the empty bearing pocket into press-fit holes behind it, go through those
-# holes, so the body, which holds the bearing, holds the chip on the axis.
-# The chip: the AS5600's SOIC-8 body, wide and high.
+# the chip on its line. Two pegs, knob_peg_d_mm across, stand on the body's
+# side of the board's slot, toward the board: with the plinth off, the board
+# drops into the slot behind their tips and slides onto them, and a tongue
+# on the plinth fills the room behind it when the two are screwed together.
+# So the body, which holds the bearing, holds the chip on the axis. The
+# chip: the AS5600's SOIC-8 body, wide and high.
 knob = False
 knob_d_mm = 36
 knob_above_mm = 5
@@ -281,7 +283,7 @@ knob_magnet_mm = (5, 2, 1)
 knob_sensor_mm = (15, 17, 2.6, 1)
 knob_sensor_r_mm = 9
 knob_sensor_holes_mm = (12, 2.2)
-knob_pin_d_mm = 2
+knob_peg_d_mm = 2
 knob_chip_mm = (4.9, 3.9)
 knob_clearance_mm = 0.2
 # link "trrs": the Capybara's TRRS jack and reset switch, their sizes the

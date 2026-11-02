@@ -346,8 +346,8 @@ def reset_plunger_hole():
 # bearing with the magnet in it; the magnet's gap; the sensor board, chip
 # toward the magnet and on the axis, its rounded end (its pads') down, its
 # back min_wall_mm inside the wall's inner face (wall_mm in), clear of the
-# keys' rooms; and the two pins through its holes, from the room behind the
-# bearing.
+# keys' rooms; the two pegs it sits on, through its holes; and the tongue,
+# standing on the plinth into the room behind it, that keeps it there.
 def along_x(d, x0, x1, at=(0, 0)):
     """A cylinder of diameter d along x from x0 to x1, its axis at (y, z) `at`."""
     return cylinder(d, x1 - x0).rotate((0, 90, 0)).translate((float(x0), *map(float, at)))
@@ -355,9 +355,10 @@ def along_x(d, x0, x1, at=(0, 0)):
 
 def knob_out():
     """How far the bearing's face stands out of the wall: as far as keeps the
-    sensor board's back min_wall_mm inside the wall."""
-    bw, c = P.knob_bearing_mm[2], P.knob_clearance_mm
-    return bw + 1 + P.knob_magnet_mm[2] + P.knob_sensor_mm[2] + c + P.min_wall_mm - P.wall_mm
+    back of the board's slot (the room it slides onto its pegs from)
+    min_wall_mm inside the wall."""
+    bw, (_, _, t, board), c = P.knob_bearing_mm[2], P.knob_sensor_mm, P.knob_clearance_mm
+    return bw + 1 + P.knob_magnet_mm[2] + t + board + 2 * c + P.min_wall_mm - P.wall_mm
 
 
 def knob_shaft_end():
@@ -377,16 +378,25 @@ def knob_sensor_z():
 
 def knob_race_x():
     """The room behind the bearing, clear of its turning inner race: from
-    the pocket's floor to where the pins' holes start."""
+    the pocket's floor to the shaft's end's room."""
     x = P.knob_bearing_mm[2] - knob_out()
     return x, x + P.knob_mm[1]
 
 
-def knob_pins():
-    """The two pins, from the room behind the bearing through the board's
-    holes to its back."""
-    h = P.knob_sensor_holes_mm[0] / 2
-    return [along_x(P.knob_pin_d_mm, knob_race_x()[1], knob_sensor_x()[1], (y, 0)) for y in (-h, h)]
+def knob_pegs():
+    """The two pegs the board sits on, standing on the slot's face toward the
+    magnet, through the board's holes to its back."""
+    h, c = P.knob_sensor_holes_mm[0] / 2, P.knob_clearance_mm
+    f, b = knob_sensor_x()
+    return [along_x(P.knob_peg_d_mm, f - c - 0.1, b, (y, 0)) for y in (-h, h)]
+
+
+def knob_tongue():
+    """The plinth's tongue: in the slot behind the board, from the slot's
+    floor to the board's top, so the board can't slide back off its pegs."""
+    (w, _, _, board), c = P.knob_sensor_mm, P.knob_clearance_mm
+    b, (z0, z1) = knob_sensor_x()[1], knob_sensor_z()
+    return box((board, w, z1 - z0 + c), (b + c + board / 2, 0, (z0 - c + z1) / 2))
 
 
 def knob_boss_d():
@@ -419,8 +429,7 @@ def knob_sensor():
 
 
 def knob(kd):
-    """The knob, kd across, on its shaft, the bearing, magnet, sensor board and
-    its pins."""
+    """The knob, kd across, on its shaft, the bearing, magnet and sensor board."""
     (bore, od, bw), (md, ml, _) = P.knob_bearing_mm, P.knob_magnet_mm
     out, end = knob_out(), knob_shaft_end()
     ring = along_x(od, -out, -out + bw) - along_x(bore, -out - 1, -out + bw + 1)
@@ -428,26 +437,28 @@ def knob(kd):
     return (pieces([knob_cup(kd)], "dimgray", "knob")
             + pieces([along_x(bore, face + 1, end) - along_x(md, end - ml, end + 1)], "silver", "shaft")
             + pieces([ring], "lightgray", "bearing") + pieces([along_x(md, end - ml, end)], "firebrick", "magnet")
-            + pieces([knob_sensor()], "purple", "sensor") + pieces(knob_pins(), "silver", "pins"))
+            + pieces([knob_sensor()], "purple", "sensor"))
 
 
 def knob_room(reach, up=0):
     """The knob's rooms: the bearing's pocket open to the outside; room behind
     it for its inner race (the pocket's floor, between the two races, holds
-    the outer) and for the shaft's end; the pins' holes, drawn at their size
-    (a press fit); the sensor's slot; and its wires' slot under the board's
-    rounded end, along its edge and on to `reach` along +y, and then in, a
-    millimetre past the wall's inner face, into the well. `up` opens the
-    slots that far upward (so the board drops in from the body's side)."""
+    the outer) and for the shaft's end; the sensor's slot, round its pegs;
+    and its wires' slot under the board's rounded end, along its edge and on
+    to `reach` along +y, and then in, a millimetre past the wall's inner
+    face, into the well. In the body (`up` 0) the slot runs back far enough
+    for the board to drop in behind the pegs' tips and for the plinth's
+    tongue; in the plinth `up` opens the slots that far upward and the slot
+    is only the board's, seated on its pegs."""
     (bore, od, bw), s, c = P.knob_bearing_mm, P.knob_sensor_mm, P.knob_clearance_mm
     (f, b), (z0, z1), (r0, r1) = knob_sensor_x(), knob_sensor_z(), knob_race_x()
-    w, h = P.channel_w_mm, P.knob_sensor_holes_mm[0] / 2
+    w = P.channel_w_mm
     sensor_h, wires_h = z1 - z0 + 2 * c + up, 2 * w + up
     x0, x1 = b + c - w, P.wall_mm + 1
+    back = b + c if up else b + s[3] + 2 * c
+    slot = box((back - f + c, s[0] + 2 * c, sensor_h), ((f - c + back) / 2, 0, z0 - c + sensor_h / 2))
     return [knob_bearing_pocket(), along_x((bore + od) / 2, r0 - 0.1, r1),
-            along_x(bore + 2 * c, r1 - 0.1, f),
-            *[along_x(P.knob_pin_d_mm, r1 - 0.1, f, (y, 0)) for y in (-h, h)],
-            box((b - f + 2 * c, s[0] + 2 * c, sensor_h), ((f + b) / 2, 0, z0 - c + sensor_h / 2)),
+            along_x(bore + 2 * c, r1 - 0.1, f), slot - union(knob_pegs()),
             box((w, reach + s[0] / 2, wires_h), (x0 + w / 2, (reach - s[0] / 2) / 2, z0 - w + wires_h / 2)),
             box((x1 - x0, w, wires_h), ((x0 + x1) / 2, reach - w / 2, z0 - w + wires_h / 2))]
 

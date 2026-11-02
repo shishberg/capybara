@@ -86,19 +86,19 @@ moves the controller (`PRESETS` in `params.py`):
 square to the inner side wall in front of the bay. The knob (`knob_d_mm`
 across) stands `knob_above_mm` over the case's top there, so a finger
 reaching over the edge turns it by its top; that sets the axis's height. A
-608 bearing sits flush in a boss standing out of the wall, split between the
+608 bearing presses flush into a boss standing out of the wall, split between the
 body and the plinth where they meet, and the knob is a cup over the boss on a
 shaft through the bearing. Standing out lets the rest fit in the wall,
 clear of the inner column's tiles: a diametric magnet in the shaft's end, a
 millimetre past the bearing, and behind it the sensor board in a slot, chip
-toward the magnet, its rounded end (where its pads are) down, dropped in
-from the plinth's top before the body goes on. Its three wires (GND, 3.3 V,
+toward the magnet, its rounded end (where its pads are) down. Its three wires (GND, 3.3 V,
 OUT to an ADC pin) run along a slot under it into the well. The board's two
-holes sit either side of the chip on its line, so two pins through them hold
-the chip on the axis: with the case closed and before the bearing goes in,
-they push in through the empty bearing pocket, through press-fit holes in the
-body, to the board's back. The bearing presses into its pocket in the same
-body, so the alignment doesn't depend on any loose fit. The sizes in
+holes sit either side of the chip on its line, and it sits on two pegs
+through them, standing on the body's side of its slot, so the body, which
+holds the bearing, holds the chip on the axis. With the plinth off and the
+body upside down, the board drops into the slot behind the pegs' tips and
+slides onto them; when the plinth is screwed on, a tongue standing on it
+fills the slot behind the board, so it can't slide back off. The sizes in
 `params.py` are provisional, taken from the parts in hand.
 
 With the Capybara's keycaps as well, it comes out as tall as the Capybara: 62.8 mm

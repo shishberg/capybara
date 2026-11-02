@@ -8,7 +8,7 @@ files) and writes: the assembly and the body with plinth from above, the
 wiring (channels, sockets, diodes and the bay's parts through a see-through
 body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
 below, sections across and along that key, a section through the round at
-the outline's front, and with the knob, the assembly from the inner side, a section across its axis, the case see-through round it from outside and inside, and a cut through a pin. Needs pyvista. The checks, not these, are what say the
+the outline's front, and with the knob, the assembly from the inner side, a section across its axis, the case see-through round it from outside and inside, and a cut through a peg. Needs pyvista. The checks, not these, are what say the
 build is right.
 """
 import argparse
@@ -150,13 +150,13 @@ def main(argv=None):
         # Across the knob's axis, with its parts: from the knob out to the well.
         k = origin(C.knob_frame())
         # Then, cropped to the knob's surroundings: the case see-through from
-        # outside and from inside, and cut through a pin, seen at an angle.
+        # outside and from inside, and cut through a peg, seen at an angle.
         from manifold3d import Manifold
         f = C.knob_frame()
         along, across, up = f[:3, 0], f[:3, 1], f[:3, 2]
         crop = Manifold.cube((70, 70, 70), center=True).translate(tuple(k))
         parts = [(p.solid ^ crop, p.colour) for p in C.electronics()
-                 if p.label.startswith(("shaft", "bearing", "magnet", "sensor", "pins"))]
+                 if p.label.startswith(("shaft", "bearing", "magnet", "sensor"))]
         cup = [(p.solid, p.colour, 0.25) for p in C.electronics() if p.label.startswith("knob")]
         seen = [(body ^ crop, BODY, 0.2), (plate ^ crop, PLATE, 0.2)] + cup + parts
 
@@ -165,9 +165,9 @@ def main(argv=None):
 
         shot(out, "knob-xray-out", seen, look((-1, 0.7, 0.5)), k, zoom=1.0)
         shot(out, "knob-xray-in", seen, look((1, 0.7, 0.6)), k, zoom=1.0)
-        pin = k + across * P.knob_sensor_holes_mm[0] / 2
-        cut = section([(body ^ crop, BODY), (plate ^ crop, PLATE)] + parts, across, pin)
-        shot(out, "section-knob-pin", cut, look((-0.5, 1, 0.6), pin), pin, zoom=1.0)
+        peg = k + across * P.knob_sensor_holes_mm[0] / 2
+        cut = section([(body ^ crop, BODY), (plate ^ crop, PLATE)] + parts, across, peg)
+        shot(out, "section-knob-peg", cut, look((-0.5, 1, 0.6), peg), peg, zoom=1.0)
     return 0
 
 

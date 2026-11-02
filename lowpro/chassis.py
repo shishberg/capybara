@@ -903,10 +903,13 @@ def plate_cutters():
 @cached
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
-    the pinhole over the reset button, and the socket bosses standing on it."""
+    the pinhole over the reset button, and the socket bosses (and the knob's
+    tongue) standing on it."""
     shell = plinth_shell()
     t = time.time()
     bosses = [] if P.key_parts == "tiles" else [socket_boss(k) for k in keys()]
+    if P.knob:
+        bosses += place(knob_frame(), [R.knob_tongue()])
     plate = add(subtract(shell, plate_cutters() + screw_holes()), bosses)
     plate.num_tri()
     stage("plinth cuts and bosses", t)
