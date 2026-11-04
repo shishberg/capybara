@@ -26,9 +26,11 @@ export const JIG = {
   bar: 1.75,
   /** How deep the bars, rails and webs are. */
   depth: 5,
-  /** How far the rails stand clear of a tile's left and right edges. */
+  /** How far the rails stand clear of a tile's left and right edges, and how close they may
+   * come in a gap too narrow for that. A gap narrower still has no rail. */
   side: 0.8,
-  /** The narrowest rail, and the widest. A gap with no room for the narrowest has none. */
+  tight: 0.4,
+  /** The narrowest rail, and the widest. */
   strip: 1,
   wide: 3,
   /** Tiles this close along their y are joined by a web. */
@@ -185,13 +187,17 @@ function barCorners(cfg: Config, p: Pocket, sign: number) {
   );
 }
 
+/** How far a rail in this gap stands clear of the tile. */
+const clearOf = (room: Room) => Math.min(JIG.side, (room.gap - JIG.strip) / 2);
+
 /** The rail at a tile's side `k`, from bar to bar, if there is room: the two tiles either side
  * of a gap fill the same space, so their rails are one stringer along it. */
 function rail(M: Factory, cfg: Config, p: Pocket, rooms: Room[], k: number) {
   const { half, top } = sizes(cfg),
-    w = Math.min(rooms[k].gap - 2 * JIG.side, JIG.wide),
-    x = SIDES[k][0] * (half + JIG.side + w / 2);
-  return w < JIG.strip
+    clear = clearOf(rooms[k]),
+    w = Math.min(rooms[k].gap - 2 * clear, JIG.wide),
+    x = SIDES[k][0] * (half + clear + w / 2);
+  return clear < JIG.tight
     ? []
     : [place(box(M, [w, 2 * (half + JIG.bar), JIG.depth], [x, 0, top + JIG.depth / 2]), p.frame)];
 }
@@ -232,12 +238,12 @@ function webs(M: Factory, cfg: Config, p: Pocket, rooms: Room[]) {
 }
 
 /** The way under a tile, square to it: between its ledges and up to its rails. */
-function under(M: Factory, cfg: Config, p: Pocket) {
+function under(M: Factory, cfg: Config, p: Pocket, rooms: Room[]) {
   const { half, top } = sizes(cfg),
-    x = half + JIG.side - JIG.overlap,
+    [right, left] = [0, 1].map((k) => half + clearOf(rooms[k]) - JIG.overlap),
     y = JIG.ledge - JIG.overlap,
     h = JIG.below + 1;
-  return place(box(M, [2 * x, 2 * y, h], [0, 0, top - 1 + h / 2]), p.frame);
+  return place(box(M, [right + left, 2 * y, h], [(right - left) / 2, 0, top - 1 + h / 2]), p.frame);
 }
 
 /** The tile and the space over it. */
@@ -358,7 +364,7 @@ export function buildJig(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[])
   )
     .subtract(M.union(pockets.map((p) => room(M, cfg, p))))
     .add(perimeter(wasm, ring(wasm, cfg, pockets)))
-    .subtract(M.union(pockets.map((p) => under(M, cfg, p))))
+    .subtract(M.union(pockets.map((p) => under(M, cfg, p, beside.get(p)!))))
     .add(M.union(pockets.map((p) => posts(M, cfg, p))));
 }
 

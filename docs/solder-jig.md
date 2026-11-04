@@ -9,7 +9,7 @@ A printed frame that holds a hand's key tiles in their real places, parts side u
 The chassis is turned over, not mirrored, and levelled on the keys' average normal. The tiles keep their relative positions but not the chassis's tent.
 
 - **Bars:** each tile lies on two ledges on the unused edge-pad bands, past every hole's copper ring, with a post in each corner notch.
-- **Stringers:** rails run along a tile's left and right wherever the gap to the next column leaves room, and share the gap with the next tile's rails. Tilted rails that cross are filled out to one stringer, so their corners are tied. Gaps too narrow for a rail stay open.
+- **Stringers:** rails run along each tile's left and right, sharing the gap with the next tile's rails. They stand 0.8 mm clear of the tile, or closer in the narrowest gaps, so every tile's bars are tied at both ends. Tilted rails that cross are filled out to one stringer, so their corners are tied too.
 - **Webs:** these join the bars of tiles next to each other along a column.
 - **Frame:** a chord runs round the outer edge of the tiles, with triangular struts down to a rail on the bed. Nothing else stands under the tiles.
 
