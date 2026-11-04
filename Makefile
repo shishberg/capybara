@@ -19,7 +19,11 @@ editor:
 editor-test:
 	npm --prefix editor test
 
-.PHONY: editor editor-test
+# The soldering jig's STLs; see docs/solder-jig.md.
+jig:
+	npm --prefix editor run jig
+
+.PHONY: editor editor-test jig
 
 # Firmware (RMK); see firmware/README.md.
 FIRMWARE_ELF = firmware/target/thumbv6m-none-eabi/release

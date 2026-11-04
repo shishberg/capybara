@@ -185,17 +185,34 @@ function barCorners(cfg: Config, p: Pocket, sign: number) {
   );
 }
 
-/** The rails at a tile's left and right, from bar to bar, where there is room: the two tiles
- * either side of a gap fill the same space, so their rails are one stringer along it. */
-function rails(M: Factory, cfg: Config, p: Pocket, rooms: Room[]) {
-  const { half, top } = sizes(cfg);
+/** The rail at a tile's side `k`, from bar to bar, if there is room: the two tiles either side
+ * of a gap fill the same space, so their rails are one stringer along it. */
+function rail(M: Factory, cfg: Config, p: Pocket, rooms: Room[], k: number) {
+  const { half, top } = sizes(cfg),
+    w = Math.min(rooms[k].gap - 2 * JIG.side, JIG.wide),
+    x = SIDES[k][0] * (half + JIG.side + w / 2);
+  return w < JIG.strip
+    ? []
+    : [place(box(M, [w, 2 * (half + JIG.bar), JIG.depth], [x, 0, top + JIG.depth / 2]), p.frame)];
+}
+
+const rails = (M: Factory, cfg: Config, p: Pocket, rooms: Room[]) =>
+  [0, 1].flatMap((k) => rail(M, cfg, p, rooms, k));
+
+/** Where two tiles' rails meet in a gap, tilted apart they cross and splay to their corners: the
+ * hull of the two ties those corners in. Rails that miss are too far apart, and the frame has them. */
+function bridges(M: Factory, cfg: Config, p: Pocket, beside: Map<Pocket, Room[]>) {
+  const rooms = beside.get(p)!;
   return [0, 1].flatMap((k) => {
-    const w = Math.min(rooms[k].gap - 2 * JIG.side, JIG.wide);
-    if (w < JIG.strip) return [];
-    const x = SIDES[k][0] * (half + JIG.side + w / 2);
-    return [
-      place(box(M, [w, 2 * (half + JIG.bar), JIG.depth], [x, 0, top + JIG.depth / 2]), p.frame),
-    ];
+    const who = rooms[k].who;
+    if (!who) return [];
+    const theirRooms = beside.get(who)!,
+      facing = [0, 1].find((j) => theirRooms[j].who === p);
+    if (facing === undefined) return [];
+    const [mine] = rail(M, cfg, p, rooms, k),
+      [theirs] = rail(M, cfg, who, theirRooms, facing);
+    if (!mine || !theirs || mine.intersect(theirs).volume() === 0) return [];
+    return [M.hull([mine, theirs])];
   });
 }
 
@@ -335,6 +352,7 @@ export function buildJig(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[])
     pockets.flatMap((p) => [
       bars(M, cfg, p),
       ...rails(M, cfg, p, beside.get(p)!),
+      ...bridges(M, cfg, p, beside),
       ...webs(M, cfg, p, beside.get(p)!),
     ]),
   )
