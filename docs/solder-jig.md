@@ -10,7 +10,7 @@ The chassis is turned over, not mirrored, and levelled on the keys' average norm
 
 - **Bars:** each tile lies on two ledges on the unused edge-pad bands, past every hole's copper ring, with a post in each corner notch.
 - **Stringers:** rails run along each tile's left and right, sharing the gap with the next tile's rails. They stand 0.8 mm clear of the tile, or closer in the narrowest gaps, so every tile's bars are tied at both ends. Tilted rails that cross are filled out to one stringer, so their corners are tied too.
-- **Webs:** these join the bars of tiles next to each other along a column.
+- **Webs:** these join the bars of tiles next to each other along a column. The fingers and thumbs are joined only by the frame.
 - **Frame:** a chord runs round the outer edge of the tiles, with triangular struts down to a rail on the bed. Nothing else stands under the tiles.
 
 The build checks that the jig is one piece, each tile and the space over it are clear, every hole has a clear line through it, and both ledges are whole.

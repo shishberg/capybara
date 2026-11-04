@@ -222,13 +222,15 @@ function bridges(M: Factory, cfg: Config, p: Pocket, beside: Map<Pocket, Room[]>
   });
 }
 
-/** A web from each of a tile's bars to the nearest bar of the tile next to it along y. */
+/** A web from each of a tile's bars to the nearest bar of the tile next to it along y. The
+ * fingers and thumbs turn too far from each other for a web, and the frame joins them. */
 function webs(M: Factory, cfg: Config, p: Pocket, rooms: Room[]) {
   const centre = (ps: Vec3[]) =>
-    ps.reduce((a, c) => a.add(new Vector3(...c)), new Vector3()).divideScalar(ps.length);
+      ps.reduce((a, c) => a.add(new Vector3(...c)), new Vector3()).divideScalar(ps.length),
+    finger = (q: Pocket) => q.name.startsWith('matrix_');
   return [2, 3].flatMap((k) => {
     const { gap, who } = rooms[k];
-    if (!who || gap > JIG.web) return [];
+    if (!who || gap > JIG.web || finger(who) !== finger(p)) return [];
     const mine = barCorners(cfg, p, SIDES[k][1]),
       theirs = [1, -1]
         .map((sign) => barCorners(cfg, who, sign))
