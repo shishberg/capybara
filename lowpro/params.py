@@ -137,6 +137,11 @@ trunk_sink_mm = 5.5
 # The per-key diode (DO-35, 1N4148): body length and diameter.
 diode_mm = (4.0, 2.0)
 diode_room_mm = 0.4         # the diode's room round it
+diode_lead_mm = 1.5         # the straight lead its glass keeps before any bend
+# A thumb diode's north leg with its wire's end soldered along it and sleeved,
+# made up on the bench: how far it runs along the key from the diode's line, and
+# how wide it is across the leg and the wire's core in their sleeve.
+thumb_joint_mm = (6.0, 1.5)
 # Each finger key's diode sits south of its socket, its north leg on the -x tab
 # and its south leg on the column wire, which runs beside the tabs' tips; each
 # row's wire joins the +x tabs along the cells' north edges. See the README.

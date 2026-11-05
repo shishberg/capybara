@@ -629,6 +629,25 @@ def diode_y():
     return -P.switch_side_post_d / 2 - P.socket_clearance_mm - P.diode_room_mm - P.diode_mm[0] / 2
 
 
+def thumb_diode_y():
+    """A thumb key's diode's centre, in its riser over the column tab."""
+    return (P.socket_tab_y[0] + ne_y()) / 2 + 1
+
+
+def thumb_leg_y():
+    """The line a thumb diode's north leg turns along: its straight lead past the
+    diode's end, and the bend."""
+    return thumb_diode_y() + P.diode_mm[0] / 2 + P.diode_lead_mm + 0.35
+
+
+def thumb_joint():
+    """A thumb diode's north leg and its sleeved joint to the wire, along the key
+    from the diode's line, as a box's size and centre: the leg lies along its
+    north side, the wire's core south of that."""
+    n, w = P.thumb_joint_mm
+    return (n, w, w), (diode_x() + n / 2, thumb_leg_y() + 0.4 - w / 2, R.socket_top_z() - P.diode_mm[1] / 2 - P.diode_room_mm)
+
+
 def column_w():
     """A column channel's width: from the socket's shaft, overlapping it so no
     sliver is left between them under the tent, out past the wire beside the tip."""
@@ -687,6 +706,13 @@ def riser_x(k):
 def riser(k):
     """A thumb key's column channel, from its terminal to its north edge."""
     return [at(k, (riser_x(k), P.socket_tab_y[0])), at(k, (riser_x(k), ne_y()))]
+
+
+def joint_run(k):
+    """A channel along a thumb key's north edge, north enough to hold the diode's
+    leg and sleeved joint (see thumb_joint)."""
+    y = thumb_leg_y() + 0.4 - P.channel_w_mm / 2
+    return [at(k, (riser_x(k), y)), at(k, (riser_x(k) + P.thumb_joint_mm[0], y))]
 
 
 def nw(k):
@@ -800,6 +826,7 @@ def channels():
             g = (riser(thumb(left))[1] + ne(thumb(right))) / 2
             out.append((w, [r_tab(k), ne(k), *riser(k)[::-1]]))
             out.append((w, [(ne(k) + riser(k)[1]) / 2, g]))
+    out += [(w, joint_run(k)) for k in keys() if k.group != "finger"]
     return out
 
 
@@ -844,7 +871,7 @@ def diode_frame(k):
     z = R.socket_top_z() - d[1] / 2 - r
     if k.group == "finger":
         return k.frame @ trans([R.socket_tab_tip(-1)[0] + d[1] / 2 + r, diode_y(), z])
-    return k.frame @ trans([diode_x(), (P.socket_tab_y[0] + ne_y()) / 2 + 1, z])
+    return k.frame @ trans([diode_x(), thumb_diode_y(), z])
 
 
 def diode_room(k):
@@ -1095,6 +1122,20 @@ def crowded_keys():
         seen = CrossSection.batch_boolean([p.transform(across).project() for p in solids], OpType.Add)
         if (window - seen).offset(-P.wire_d_mm / 2, JoinType.Round, 2.0, 32).is_empty():
             out.append(k.name)
+    return out
+
+
+def cramped_thumbs():
+    """The thumb keys where the diode's leg and sleeved joint meet the body or
+    the plinth: they go in as one piece, so nothing there can give."""
+    solid = union([body(), bottom_plate()])
+    size, centre = thumb_joint()
+    out = []
+    for k in keys():
+        if k.group != "finger":
+            s = solid.transform(np.asarray(rinv(k.frame)[:3, :4], float))
+            if (s ^ R.box(size, centre)).volume() > 1e-3:
+                out.append(k.name)
     return out
 
 

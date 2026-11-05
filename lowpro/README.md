@@ -195,7 +195,11 @@ without adding height or footprint:
 - in the thumb cluster, a trunk along the three row keys' north edges (the
   thumb row's wire and the thumb keys' column wires on their way to the front
   trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps
-  between the row keys.
+  between the row keys. Each thumb key's diode sits in its riser, and a channel
+  along the key's north edge holds that diode's north leg and its sleeved joint
+  to the wire (`thumb_joint_mm`). No wire passes a thumb key's terminal: its
+  column wire starts at the joint, and the wires from further out run under the
+  diode, in the trunk's sink.
 
 The channels are a first cut: each is a straight slot between two points (a hull
 of two posts), and where two meet they merge. Look at them from below (`wiring-below.png`)
@@ -254,6 +258,29 @@ rooms are cut up into the body as well. The back trunk channel runs over the
 well's rim at its back corner. The plinth has a pinhole under the board's reset
 button.
 
+## Wiring the thumb keys
+
+Wire the body upside down with the plinth off. Everything soldered is then at
+the bottom of a slot about 3 mm deep, open towards you; the trunk's depth is
+mostly the plinth's sink, which only takes the finished bundle.
+
+1. On the bench, for each of the five keys: bend the diode's banded leg sideways
+   `diode_lead_mm` from the glass, thread 2 mm heat-shrink onto the column wire,
+   solder the wire's stripped end along the leg, and shrink the sleeve over the
+   joint up to the bend. Trim the other leg to reach the terminal.
+2. Fit the sockets.
+3. Drop each diode into its riser, the sleeved joint along the north edge, and
+   solder its bare leg to the column terminal's north face. That is the diode's
+   only joint in the case, and the leg's only bare metal is on its own terminal.
+4. Lay the column wires along the trunk towards the front trunk in the order
+   near, x1, home, x2, far, each on top of the last, so that none has to go
+   under anything already in place.
+5. Lay the row wire last, on top, and take it down each key's row channel to
+   its +x terminal.
+6. Tape the bundle every 20 to 30 mm so that it stays inside the trunk's width.
+   Close the plinth without force: if it rocks, a wire is outside a sink and
+   being pinched.
+
 ## Checks and what they don't cover
 
 The build runs these checks before it writes anything, fails naming what met
@@ -264,7 +291,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head; or a counterbore breaks out through the plinth's top beside its pad | `--set screw_head_d=8`, `--set bottom_plate_mm=1`, `--set screw_grip_mm=0.6` |
-| Wiring | A socket terminal, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well and past the terminals; or a straight wire can't lie along a finger key's column channel past its terminal and diode, with nothing counted under the terminal | `--set battery_lead_notch_mm=0.6`, `--set wire_gap_mm=-0.5` |
+| Wiring | A socket terminal, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well and past the terminals; or a straight wire can't lie along a finger key's column channel past its terminal and diode, with nothing counted under the terminal; or a thumb diode's leg and sleeved joint meet the body or the plinth | `--set battery_lead_notch_mm=0.6`, `--set wire_gap_mm=-0.5`, `--set "thumb_joint_mm=(6,3)"` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, a channel other than the one into the bay comes within it of the bay, or a finger column's channel comes within it of another column's key | `--set socket_tab_mm=(3.5,1.68,1.85)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
