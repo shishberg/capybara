@@ -224,8 +224,8 @@ def mcu_room():
     """The board's pocket: from the well's floor up over the board, with the
     wall's opening for the plug, chamfered outward."""
     b, c, o = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_opening_mm
-    h = mcu_pcb_z() + b[2] + c + 1
-    pocket = box((b[0] + 2 * c, b[1] + 2 * c, h), (0, b[1] / 2, h / 2 - 1))
+    h = mcu_pcb_z() + b[2] + c
+    pocket = box((b[0] + 2 * c, b[1] + 2 * c, h), (0, b[1] / 2, h / 2))
     # The opening runs along -y through the back wall: drawn along z, then
     # turned so that its z runs along +y from wall_mm + 5 out.
     opening = frustum((o[0] + 2, o[1] + 2), o, 0, P.wall_mm + 5)
@@ -235,12 +235,12 @@ def mcu_room():
 
 # ---------------------------------------------------------------- battery
 def battery():
-    return pieces([box(P.battery_mm, (0, 0, P.battery_mm[2] / 2 + 0.2))], "steelblue", "battery")
+    return pieces([box(P.battery_mm, (0, 0, P.battery_mm[2] / 2))], "steelblue", "battery")
 
 
 def battery_room():
     c, b = P.battery_clearance_mm, P.battery_mm
-    return [box((b[0] + 2 * c, b[1] + 2 * c, b[2] + c + 2), (0, 0, (b[2] + c) / 2 - 1))]
+    return [box((b[0] + 2 * c, b[1] + 2 * c, b[2] + c), (0, 0, (b[2] + c) / 2))]
 
 
 # ---------------------------------------------------------------- power switch
