@@ -51,7 +51,7 @@ For each half, so double it for the pair:
 | M2 × 3 heat-set insert | 5 | For a 3.2 mm hole |
 | M2 × 5 socket-head screw | 5 | |
 | Thin double-sided foam tape | a little | Takes up the battery's play in its bay. |
-| Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, but it's a struggle at every terminal and over the board. |
+| Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal, and it doesn't fit over the south end of the left half's board. |
 
 You also need a soldering iron with a fine tip, flush cutters, wire strippers,
 tweezers, a multimeter and a long-armed 1.5 mm hex key: the screw by the USB port is
@@ -70,6 +70,11 @@ parameter in `lowpro/params.py` before printing:
 | Reset switch | Body, plunger and legs | `reset_button_mm`, `reset_plunger_mm`, `reset_leg_mm` |
 | Keycaps | Base, top and height of each row | `cap_base_mm`, `cap_top_mm`, `cap_height_mm` |
 | Sockets | The terminals, which vary between batches | `socket_tab_mm` |
+
+The board has to pass under a lip of the plinth to reach its opening. The USB-C
+shell and the board together can be 4.3 mm thick, and the lip leaves 4.6 mm over the
+well's floor, less whatever the lip sags in printing. Check that on the one-key print's
+plinth, or file the lip to fit.
 
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
@@ -233,7 +238,7 @@ level but the surface round them isn't.
    battery − to B−, and battery + to the slide switch's other wire, with the switch
    off, and insulate the joint. Stick the battery in its bay with foam tape, leads
    through the notch.
-5. Feed the board in nose first, components down: tilt its south end up about 15°,
+5. Feed the board in nose first, components down: tilt its south end up 5 to 8°, no more,
    slip the port into its opening and under the plinth's lip, then lower the south
    end, with the leads under it. Try this dry before soldering anything to the board,
    since it's harder with the wires on.
@@ -271,8 +276,8 @@ proud gets pinched at the seam.
 1. Cut the nine wires to reach their pins with enough slack to open the case. Trim
    the plinth's slack as well.
 2. Solder the nine wires to the board's top face. The board is in its bay, so the
-   wires reach it from above. There's only about 2 mm over the board's south end, so
-   keep those joints flat, trim the stubs flush, and lay the wires side by side, not
+   wires reach it from above. There's only 1.5 to 2 mm over the board's south end, and
+   1.5 mm at the left half's RH, RB and RX holes, so keep those joints flat, trim the stubs flush, and lay the wires side by side, not
    crossed.
 3. Close the body over the plinth. The plinth's steps locate it under the body. Tuck
    the slack into the trunks as it closes, and check that no wire sits on the seam.
@@ -291,14 +296,18 @@ bottom row, R3 thumbs.
 
 ### 6. Left half
 
-The left half's case is the mirror image of the right's, but its switches, sockets
-and controller are the same parts, the same way round. Use the left STLs and the left
-column of the [pin table](#pins).
+The left half's case is close to the mirror image of the right's, but its switches,
+sockets and controller are the same parts, the same way round. Use the left STLs and
+the left column of the [pin table](#pins). The pictures show the right half only.
 
 - **Sockets:** a socket's terminals sit at different distances from the key's middle
   on each side, so the left half's are the other way about to the mirror image of the
   right's. The terminals' roles don't change: the row wire still goes to the inner-side
-  terminal of a finger key, and the diode to the pinky-side one.
+  terminal of a finger key and the diode to the pinky-side one, and on a thumb key the
+  row wire to the near side and the diode to the far side.
+- **Channels:** they follow the terminals. The thumb keys' column channels stand about
+  1.2 mm further out than the mirror's, and the wider exit into the well is about
+  2.5 mm further north.
 - **Controller:** B+ and B− stay in the same corners of the board, while the strip
   and the keys swap sides.
 
@@ -326,7 +335,9 @@ matrix, with these changes:
   nothing else on the board to power: no LEDs, no display.
 - **The slide switch** disconnects the battery alone. Off, the half is dead on
   battery, and it can't charge either.
-- **USB-C** is for charging and for flashing, not typing. A half with USB-C plugged
+- **USB-C** is for charging and for flashing, not typing. The port sits 1 to 2 mm back
+  from the wall's face in a 10.7 × 5.2 mm opening, so a cable with a slim moulding is
+  safest: a fat one may not seat. A half with USB-C plugged
   in runs from it, and charges its battery if its slide switch is on, at about
   100 mA, so about two hours from flat. Check the rate on the bought board.
 - **Turning on:** switch both halves on. The right half connects to the left, and
