@@ -172,6 +172,11 @@ wall_mm = 3                 # the body's wall past the key cells and the bays
 outline_style = "closed"
 outline_round_mm = 3        # round of the outline's convex corners
 outline_close_mm = 6        # gaps narrower than twice this are filled, with a round of this radius
+# The notch between the battery and the thumb is one arc of this radius, which leaves
+# the wall for the screw there. The notch's sides are nearly parallel, so a little more
+# moves the arc a long way: 7 leaves too little wall and 7.5 fills in 2 mm more.
+neck_round_mm = 7.2
+ring_corner_round_mm = 4    # the corner at the ring column's foot: the one arc that takes in both the cell's round and the trunk's end
 cell_mm = 19.05             # the cell each key owns in plan, square
 # The body's top edge is rounded (a rolling-ball fillet) to this radius; 0 leaves
 # it sharp. It must leave room at the outline's convex corners: outline_round_mm

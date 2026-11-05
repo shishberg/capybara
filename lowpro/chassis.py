@@ -164,11 +164,14 @@ def channel_points():
             for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
-def neck_lobe():
-    """The outline's lobe round the screw south of the battery: min_wall_mm round its
-    counterbore, and mesh_tol_mm over it for the outline's chords to cut across."""
-    r = R.counterbore_d() / 2 + P.min_wall_mm + P.mesh_tol_mm
-    return polygon(circle_points(L.neck_screw(), r))
+def ring_corner():
+    """A disc in the corner where the ring column's foot meets the notch beside it,
+    touching the wall down that side and the wall along the front trunk, so that the
+    corner is one arc and not the cell's round with the trunk's end standing out of it."""
+    c = np.array(cell_corners(L.key_named("ring_-1"))[0][:2])
+    foot = min(p[1] for pts in channel_points() for p in pts if np.hypot(*(np.array(p) - c)) < 2 * P.wall_mm)
+    r = P.ring_corner_round_mm
+    return polygon(circle_points((c[0] - P.wall_mm + r, foot + r), r, 144))
 
 
 def cells_2d():
@@ -227,6 +230,7 @@ def outline_curve():
     the inside corners are rounded to what the wall leaves of outline_close_mm
     and the convex ones to outline_round_mm, and the channels are kept
     min_wall_mm inside, after the rounding so that it can't cut into their wall.
+    The notch south of the battery is then rolled out to neck_round_mm.
     The offsets leave a polygon of straight
     sides and arcs (as chords four times finer than mesh_tol_mm asks, or the
     spline bends too tightly at each chord's end for the top edge's round);
@@ -240,13 +244,15 @@ def outline_curve():
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
     channel_walls = [hull_of(pts) for pts in channel_points()]
-    s = fused([s, back_edge(), neck_lobe()] + channel_walls)
+    s = fused([s, back_edge(), ring_corner()] + channel_walls)
     inside = P.outline_close_mm - P.wall_mm
     for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
         s = offset(s, amount)
     s = fused([s] + channel_walls)
     for amount in (inside, -inside):
         s = offset(s, amount)
+    neck = polygon(circle_points(L.neck_screw(), 3 * P.neck_round_mm))
+    s = fused([s, offset(offset(s, P.neck_round_mm), -P.neck_round_mm) ^ neck])
     piece = max(s.decompose(), key=lambda c: c.area())
     pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
     pts = np.r_[pts, pts[:1]]

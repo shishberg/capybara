@@ -391,8 +391,8 @@ def lead_notch():
 
 # ---------------------------------------------------------------- screws
 def neck_screw():
-    """The screw south of the battery, in the outline's lobe for it, past where the
-    underside falls away from the battery's end, so that it has a level pad."""
+    """The screw south of the battery, in the wall that the notch's round leaves, past
+    where the underside falls away from the battery's end, so that it has a level pad."""
     (_, y0), (x1, _) = battery_bay()
     return (x1 - P.neck_screw_mm[0], y0 - P.neck_screw_mm[1])
 
