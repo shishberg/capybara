@@ -73,8 +73,8 @@ parameter in `lowpro/params.py` before printing:
 
 The board has to pass under a lip of the plinth to reach its opening. The USB-C
 shell and the board together can be 4.3 mm thick, and the lip leaves 4.6 mm over the
-well's floor, less whatever the lip sags in printing. Check that on the one-key print's
-plinth, or file the lip to fit.
+well's floor, less whatever the lip sags in printing. Once the plinth is printed, try
+the bare board under the lip, and file the lip to fit if it won't pass.
 
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
