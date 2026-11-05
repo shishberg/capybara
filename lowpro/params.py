@@ -164,7 +164,8 @@ boss_inset_mm = 0.6         # the boss is this much smaller than the socket body
 # plate every screw grips under the body (the counterbore goes up to it, so one
 # screw length fits everywhere: screw_grip_mm + the insert's 3 mm, M2 x 5). The
 # build checks the holes against everything else and that each head sinks into
-# the plinth. Where they stand: screw_points() in layout.py.
+# the plinth. Each stands on a level pad screw_pad_d across, flat in both parts
+# (chassis.py screw_seats). Where they stand: screw_points() in layout.py.
 insert_d = 3.2
 insert_depth_mm = 3.5
 screw_d = 2.4
@@ -172,6 +173,7 @@ screw_head_d = 3.8
 screw_head_h_mm = 2
 screw_head_clearance_mm = 0.4
 screw_grip_mm = 2
+screw_pad_d = 4.2
 
 # ---------------------------------------------------------------- controller, battery, switch
 # PROVISIONAL: a Pro Micro form factor nRF52840 (nice!nano v2 / SuperMini):

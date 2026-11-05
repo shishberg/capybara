@@ -832,8 +832,31 @@ def bay_rooms(plinth=False):
     return out
 
 
+@cached
+def screw_seats():
+    """The level of each screw's pad: the plinth's highest point under it. The
+    underside tilts and steps, so the pad levels it for the screw: the plinth
+    comes up to this level over the pad and the body is cut back plate_gap_mm
+    above it, so every insert's mouth is flat and square to its hole, and the
+    screw clamps flat on flat."""
+    shell = plinth_shell()
+    return [float((R.cylinder(P.screw_pad_d, 100, (p[0], p[1], -1)) ^ shell).bounding_box()[5]) for p in L.screw_points()]
+
+
+def screw_pad(p, seat):
+    """Screw p's pad as the body loses it: a little wider than the plinth's, up
+    to plate_gap_mm over the seat."""
+    z = seat + P.plate_gap_mm
+    return R.cylinder(P.screw_pad_d + 2 * P.boss_clearance_mm, z + 1, (p[0], p[1], -1))
+
+
+def insert_hole_at(p, seat):
+    return R.insert_hole().translate((p[0], p[1], seat + P.plate_gap_mm))
+
+
 def insert_holes():
-    return [R.insert_hole().translate((p[0], p[1], floor_z(p[0], p[1]))) for p in L.screw_points()]
+    """The insert holes and the pads they open from."""
+    return [c for p, z in zip(L.screw_points(), screw_seats()) for c in (screw_pad(p, z), insert_hole_at(p, z))]
 
 
 @cached
@@ -868,7 +891,7 @@ def socket_boss(k):
 
 
 def screw_holes():
-    return [h.translate((p[0], p[1], 0)) for p in L.screw_points() for h in R.screw_hole(plate_z(p[0], p[1]))]
+    return [h.translate((p[0], p[1], 0)) for p, z in zip(L.screw_points(), screw_seats()) for h in R.screw_hole(z)]
 
 
 @cached
@@ -884,9 +907,12 @@ def plate_cutters():
 
 @cached
 def bottom_plate():
-    """The plinth: up to the body's underside, with the well, the screw holes and
-    the pinhole over the reset button, and the socket bosses standing on it."""
-    shell = plinth_shell()
+    """The plinth: up to the body's underside and the screws' pads, with the well,
+    the screw holes and the pinhole over the reset button, and the socket bosses
+    standing on it."""
+    pads = [R.cylinder(P.screw_pad_d, z + 1, (p[0], p[1], -1)) ^ Manifold.cube((400, 400, 100)).translate((-200, -200, 0))
+            for p, z in zip(L.screw_points(), screw_seats())]
+    shell = add(plinth_shell(), pads)
     t = time.time()
     plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
     plate.num_tri()
@@ -1032,15 +1058,14 @@ def screw_walls():
     and the clashes as a list of (screw, what, overlap mm^3), empty when every
     hole is clear."""
     least, hits = (float("inf"), None, None), []
-    for i, p in enumerate(L.screw_points()):
+    for i, (p, h) in enumerate(zip(L.screw_points(), screw_seats())):
         x, y = float(p[0]), float(p[1])
         name = f"screw {i + 1} ({x:.1f}, {y:.1f})"
-        h = float(plate_z(x, y))
         if h < P.screw_grip_mm + P.screw_head_h_mm:
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
         holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]
-        holes.append((R.insert_hole().translate((x, y, floor_z(x, y))), body_cuts()))
+        holes += [(insert_hole_at(p, h), body_cuts()), (screw_pad(p, h), body_cuts())]
         for hole, cuts in holes:
             box = hole.bounding_box()
             walls = [(outline_distance((x, y)) - (box[3] - box[0]) / 2, "the outline")]

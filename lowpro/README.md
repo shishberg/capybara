@@ -210,7 +210,11 @@ pocket where a key's tilt would bring it too close. One is in the strip beside
 the board, which is narrower than the battery, near the USB port, and one in the neck in front of the battery. The pinky column has none: its
 keys' cells are the most tilted and leave the least wall, and the thin plinth
 under them lies on the desk. The report prints the least wall left round any
-screw. Each screw hole is counterbored from below so that every screw
+screw. The underside tilts and steps under most of them, so each stands on a
+level pad `screw_pad_d` across (`screw_seats`): the plinth comes up flat to its
+highest point there and the body is cut back flat `plate_gap_mm` above it, so
+every insert's mouth is square to its hole. Each screw hole is counterbored from
+below so that every screw
 grips `screw_grip_mm` of plinth under the body: one screw length (M2 × 5) fits
 the thin side and the thick, and the plinth must be thick enough under each to
 sink the head (`screw_head_h_mm`), which keeps them off the thin pinky side.
