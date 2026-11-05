@@ -798,8 +798,11 @@ def thumb_routes():
     w, t = P.channel_w_mm, P.trunk_w_mm
     near, home, far = (thumb(n) for n in ("near", "home", "far"))
     foot = [front_pt(finger_key(c, -P.rows_below)) for c in range(3)]
+    # Far's turn is off the end of the inner key, whose frame climbs there as the
+    # top falls away, so it stays level with the foot.
     inner = finger_key(0, -P.rows_below)
-    routes = [(w, [nw(home), at(inner, (col_x(), trunk_y(-1) - 6)), foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
+    turn = np.r_[at(inner, (col_x(), trunk_y(-1) - 6))[:2], foot[0][2]]
+    routes = [(w, [nw(home), turn, foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
     if P.thumb_extra:
         x1, x2 = thumb("x1"), thumb("x2")
         corner = at(near, (out_y(), -P.cell_mm / 2))
@@ -838,14 +841,14 @@ def channels():
     out.append((w, [ne(near), nw(near), ne(home)]))
     out.append((w, [nw(home), ne(far)]))
     out += thumb_routes()
-    # The extra keys join up between the row keys, x1's to the gap by near and
-    # x2's round far's east corner, so the row wire can go on from far without
-    # doubling back.
+    # The extra keys join up between the row keys, x1's to home's column joint and
+    # x2's round far's east corner, so the row wire can go on from far to x2, x1,
+    # home and near without doubling back.
     if P.thumb_extra:
         x1, x2 = thumb("x1"), thumb("x2")
         out.append((w, [ne(x1), nw(x1)]))
         out.append((w, [ne(x2), edge_mid(x2)]))
-        out.append((w, [edge_mid(x1), (nw(near) + ne(home)) / 2]))
+        out.append((w, [edge_mid(x1), thumb_column(home)[0]]))
         out.append((w, [edge_mid(x2), at(far, (out_y(), ne_y())), ne(far)]))
     for k in keys():
         if k.group != "finger":
@@ -1220,9 +1223,9 @@ def thin_walls():
     and between the bay and every channel but the one into it, between a finger
     column's channel and the keys of other columns, between a diode's pocket and
     every channel but its own column wire's, and between a channel and the
-    outside, as a list of (room, room, wall mm), empty when every wall is thick
-    enough. The other channels join keys by design, so they are held only to
-    these."""
+    outside and the top, as a list of (room, room, wall mm), empty when every
+    wall is thick enough. The other channels join keys by design, so they are
+    held only to these."""
     rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
     bay = union([lost(body_shell(), bay_rooms(), True),
@@ -1248,9 +1251,11 @@ def thin_walls():
             if d < P.min_wall_mm - 1e-6:
                 out.append((a, b, d))
     for a, b, w in channel_segments():
-        d = min(outline_distance(a + (b - a) * t) for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))) - w / 2
-        if d < P.min_wall_mm - 1e-6:
-            out.append((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", "the outside", d))
+        along = [a + (b - a) * t for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))]
+        name = f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})"
+        side = min(outline_distance(p) for p in along) - w / 2
+        roof = min(float(top_surface(np.array(circle_points(p, w / 2))).min()) - p[2] for p in along)
+        out += [(name, wall, d) for wall, d in (("the outside", side), ("the top", roof)) if d < P.min_wall_mm - 1e-6]
     return out
 
 
