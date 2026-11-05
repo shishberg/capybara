@@ -135,7 +135,7 @@ column the back is one arc, the flattest that clears the stagger and the trunk (
 Inside corners are rounded to what the wall leaves of `outline_close_mm`, convex
 ones to `outline_round_mm`, and the result is smoothed into one closed spline. ("hulls"
 instead takes a convex hull round the finger field and bays, another round the
-thumb cluster and a third joining them: straight sides, about 1,600 mm² more.)
+thumb cluster and a third joining them: straight sides, about 1,450 mm² more.)
 The wall holds nothing but channels' edges: the screws stand inside the key
 field (see Plinth). The walls are vertical, and
 the top edge is rounded to `top_round_mm` (1.5 mm; 0 leaves it sharp): a true
