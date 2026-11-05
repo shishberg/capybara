@@ -154,9 +154,12 @@ def circle_points(p, r, n=36):
 
 def channel_points():
     """The channel paths in plan with min_wall_mm of wall round them, as the
-    point sets of a stadium per segment."""
-    r = P.min_wall_mm
-    return [circle_points(a, w / 2 + r) + circle_points(b, w / 2 + r)
+    point sets of a stadium per segment: its polygon's sides, not its corners, at
+    that wall, and mesh_tol_mm over it for the outline's chords to cut across."""
+    n = 36
+    r = P.min_wall_mm + P.mesh_tol_mm
+    around = lambda p, w: circle_points(p, (w / 2 + r) / np.cos(np.pi / n), n)
+    return [around(a, w) + around(b, w)
             for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
@@ -184,7 +187,7 @@ def back_edge():
     cell, its wall included, under one full-height arc: from the bay's back
     corner to the rearmost point of what it covers, the flattest arc between
     them that clears the column stagger and the back trunk, so nothing behind
-    it leaves a crease."""
+    it leaves a crease: a straight line if nothing stands over it."""
     (x0, _), (x1, y1) = L.bay_rect()
     corners = [(x0, y1), (x1, y1)] + [c for col in (0, 1, 2) for c in cell_corners(L.column_key(col, P.rows_above))[2:]]
     walls = [p for c in corners for p in circle_points(c, P.wall_mm)]
@@ -195,6 +198,8 @@ def back_edge():
     up = np.array((-along[1], along[0]))
     u, v = (under - mid) @ along, (under - mid) @ up
     over = (np.abs(u) < half) & (v > 0)
+    if not over.any():
+        return hull_of(walls + [tuple(b)])
     centre = mid + up * ((u[over] ** 2 + v[over] ** 2 - half ** 2) / (2 * v[over])).max()
     r = np.linalg.norm(a - centre)
     turn = np.linspace(*(np.arctan2(*(p - centre)[::-1]) for p in (a, b)), 64)
@@ -212,9 +217,10 @@ def outline_curve():
     hulls joined, "closed" the cells and bays closed up (gaps narrower than
     2 * outline_close_mm filled). Either way the gaps that remain get a round
     of outline_close_mm, the wall goes round it, the back edge is laid over it,
-    the channels are kept min_wall_mm inside, the inside corners are rounded
-    to what the wall leaves of outline_close_mm and the convex ones to
-    outline_round_mm. The offsets leave a polygon of straight
+    the inside corners are rounded to what the wall leaves of outline_close_mm
+    and the convex ones to outline_round_mm, and the channels are kept
+    min_wall_mm inside, after the rounding so that it can't cut into their wall.
+    The offsets leave a polygon of straight
     sides and arcs (as chords four times finer than mesh_tol_mm asks, or the
     spline bends too tightly at each chord's end for the top edge's round);
     the curve is a periodic cubic spline through points along it a tenth of
@@ -226,9 +232,13 @@ def outline_curve():
 
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
-    s = fused([s, back_edge()] + [hull_of(pts) for pts in channel_points()])
+    channel_walls = [hull_of(pts) for pts in channel_points()]
+    s = fused([s, back_edge()] + channel_walls)
     inside = P.outline_close_mm - P.wall_mm
     for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
+        s = offset(s, amount)
+    s = fused([s] + channel_walls)
+    for amount in (inside, -inside):
         s = offset(s, amount)
     piece = max(s.decompose(), key=lambda c: c.area())
     pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
@@ -615,8 +625,9 @@ def well():
 
 # ---------------------------------------------------------------- wiring points
 # In a key's frame, at the socket's top: the column channel's centre (col_x),
-# the column wire's line past the -x tab (lane_x), a thumb diode's line (diode_x),
-# the line over the +x tab (row_x), and the north edge (ne_y).
+# the column wire's line past the -x tab (lane_x), a thumb key's column wire's
+# line past the +x tab (thumb_col_x), the line over the +x tab (row_x), and the
+# north edge (ne_y).
 def socket_end_x():
     return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2
 
@@ -626,38 +637,14 @@ def lane_x():
     return socket_end_x() - P.socket_tab_mm[0] - P.wire_gap_mm - P.wire_d_mm / 2
 
 
-def diode_x():
-    """A thumb key's diode's line, as close to the socket as its room's clearance allows."""
-    return socket_end_x() - P.socket_clearance_mm - P.diode_mm[1] / 2
-
-
 def diode_y():
-    """A finger key's diode's line across the key, south of the centre post's hole."""
+    """A diode's line across its key, south of the centre post's hole."""
     return -P.switch_centre_post_d / 2 - P.post_clearance_mm - P.socket_clearance_mm - P.diode_room_mm - P.diode_mm[1] / 2
 
 
 def leg_x():
-    """The line a finger diode's +x leg runs north along, past the side post's hole."""
+    """How far off the key's middle a diode's leg runs north to its terminal, past the side post's hole."""
     return P.switch_side_post_x + P.switch_side_post_d / 2 + P.post_clearance_mm + P.diode_room_mm + P.diode_leg_slot_mm / 2
-
-
-def thumb_diode_y():
-    """A thumb key's diode's centre, in its riser over the column tab."""
-    return (P.socket_tab_y[0] + ne_y()) / 2 + 1
-
-
-def thumb_leg_y():
-    """The line a thumb diode's north leg turns along: its straight lead past the
-    diode's end, and the bend."""
-    return thumb_diode_y() + P.diode_mm[0] / 2 + P.diode_lead_mm + 0.35
-
-
-def thumb_joint():
-    """A thumb diode's north leg and its sleeved joint to the wire, along the key
-    from the diode's line, as a box's size and centre: the leg lies along its
-    north side, the wire's core south of that."""
-    n, w = P.thumb_joint_mm
-    return (n, w, w), (diode_x() + n / 2, thumb_leg_y() + 0.4 - w / 2, R.socket_top_z() - P.diode_mm[1] / 2 - P.diode_room_mm)
 
 
 def column_w():
@@ -672,6 +659,11 @@ def shaft_edge_x():
 
 def col_x():
     return shaft_edge_x() - column_w() / 2
+
+
+def thumb_col_x():
+    """A thumb key's column wire's line, beside the +x tab's tip."""
+    return row_x() + P.wire_gap_mm + P.wire_d_mm / 2
 
 
 def row_x():
@@ -709,25 +701,6 @@ def c_tab(k):
 def x_tab(k):
     """The +x tab: a thumb key's row wire comes to it."""
     return at(k, (row_x(), P.socket_tab_y[1]))
-
-
-def riser_x(k):
-    """Key k's column line at its terminal: a thumb key's is the diode's, as no wire passes it."""
-    return col_x() if k.group == "finger" else diode_x()
-
-
-def riser(k):
-    """A thumb key's column channel, from its terminal to its north edge."""
-    return [at(k, (riser_x(k), P.socket_tab_y[0])), at(k, (riser_x(k), ne_y()))]
-
-
-def joint_run(k):
-    """A channel along a thumb key's north edge, north enough to hold the diode's
-    leg and sleeved joint (see thumb_joint), then easing the wire over to the
-    edge's own line."""
-    y = thumb_leg_y() + 0.4 - P.channel_w_mm / 2
-    x = riser_x(k) + P.thumb_joint_mm[0]
-    return [at(k, (riser_x(k), y)), at(k, (x, y)), at(k, (x + P.thumb_ease_mm, ne_y()))]
 
 
 def nw(k):
@@ -805,7 +778,13 @@ def thumb(name):
 
 def edge_mid(k):
     """Halfway along a thumb key's north edge."""
-    return (ne(k) + riser(k)[1]) / 2
+    return (ne(k) + nw(k)) / 2
+
+
+def thumb_column(k):
+    """A thumb key's column wire's way out: from its joint to the diode's +x leg,
+    north past the +x tab's tip to the key's north-east corner."""
+    return [at(k, (thumb_col_x(), diode_y())), at(k, (thumb_col_x(), ne_y())), ne(k)]
 
 
 @cached
@@ -820,11 +799,11 @@ def thumb_routes():
     near, home, far = (thumb(n) for n in ("near", "home", "far"))
     foot = [front_pt(finger_key(c, -P.rows_below)) for c in range(3)]
     inner = finger_key(0, -P.rows_below)
-    routes = [(w, [riser(home)[1], at(inner, (col_x(), trunk_y(-1) - 6)), foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
+    routes = [(w, [nw(home), at(inner, (col_x(), trunk_y(-1) - 6)), foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
     if P.thumb_extra:
         x1, x2 = thumb("x1"), thumb("x2")
         corner = at(near, (out_y(), -P.cell_mm / 2))
-        routes += [(w, [ne(x2), riser(x1)[1]]), (w, [ne(x1), corner]), (t, [corner, foot[2]]),
+        routes += [(w, [ne(x2), nw(x1)]), (w, [ne(x1), corner]), (t, [corner, foot[2]]),
                    (w, [edge_mid(x1), at(near, (-P.cell_mm / 2, trunk_y(-1))), corner])]
     return routes
 
@@ -852,34 +831,36 @@ def channels():
         for c in range(4):
             a, b = finger_key(c, r), finger_key(c + 1, r)
             out.append((w, [nw(a), ne(a), nw(b)]))
-    # The thumb row: a channel along the three keys' north edges, each key's tabs
-    # risen to it.
+    # Every thumb key's wires leave from its north-east corner: the row wire from
+    # the +x tab, the column wire past that tab's tip. The corners are joined
+    # along the keys' north edges, clear of the diodes in the middle of the keys.
     near, home, far = (thumb(n) for n in ("near", "home", "far"))
-    out.append((w, [ne(near), riser(near)[1], ne(home), riser(home)[1], ne(far), riser(far)[1]]))
-    for k in (near, home, far):
-        out.append((w, [x_tab(k), ne(k)]))
-        out.append((w, riser(k)))
+    out.append((w, [ne(near), nw(near), ne(home)]))
+    out.append((w, [nw(home), ne(far)]))
     out += thumb_routes()
-    # The extra keys: their tabs risen to their north edges, each joined up between
-    # the row keys, x1's to the gap by near and x2's round far's east corner to its
-    # tab's riser, so the row wire can go on from far without doubling back.
+    # The extra keys join up between the row keys, x1's to the gap by near and
+    # x2's round far's east corner, so the row wire can go on from far without
+    # doubling back.
     if P.thumb_extra:
         x1, x2 = thumb("x1"), thumb("x2")
-        for k in (x1, x2):
-            out.append((w, [x_tab(k), ne(k), *riser(k)[::-1]]))
-        out.append((w, [edge_mid(x1), (riser(near)[1] + ne(home)) / 2]))
+        out.append((w, [ne(x1), nw(x1)]))
+        out.append((w, [ne(x2), edge_mid(x2)]))
+        out.append((w, [edge_mid(x1), (nw(near) + ne(home)) / 2]))
         out.append((w, [edge_mid(x2), at(far, (out_y(), ne_y())), ne(far)]))
-    out += [(w, joint_run(k)) for k in keys() if k.group != "finger"]
+    for k in keys():
+        if k.group != "finger":
+            out += [(w, [x_tab(k), ne(k)]), (w, thumb_column(k))]
     return out
 
 
 def post_points(p, w):
-    """A channel post's corners at a world point: a square of w from 3 mm under
-    the deepest sink below the body's underside up to the point (so the hull
+    """A channel post's points at a world point: a circle of w, so a channel is w
+    wide whichever way it runs and keeps the wall the outline allows it, from 3 mm
+    under the deepest sink below the body's underside up to the point (so the hull
     between two posts stays open to the underside where that curves up between
     them, and reaches the sink's floor)."""
     f = floor_z(p[0], p[1]) - 3 - P.trunk_sink_mm
-    return [(p[0] + sx * w / 2, p[1] + sy * w / 2, z) for sx in (-1, 1) for sy in (-1, 1) for z in (f, p[2])]
+    return [(x, y, z) for x, y in circle_points(p, w / 2) for z in (f, p[2])]
 
 
 def channel_segments():
@@ -913,34 +894,34 @@ def diode_z():
 
 
 def diode_frame(k):
-    """The diode's frame. A finger key's lies across the key in its own pocket,
-    south of the centre post; a thumb key's in its riser over the column tab."""
-    if k.group == "finger":
-        return k.frame @ trans([0, diode_y(), diode_z()]) @ rot_z(90)
-    return k.frame @ trans([diode_x(), thumb_diode_y(), diode_z()])
+    """The diode's frame, across the key in its own pocket south of the centre
+    post, its band toward the column wire."""
+    return k.frame @ trans([0, diode_y(), diode_z()]) @ rot_z(90 if k.group == "finger" else -90)
 
 
-def leg_slots():
-    """A finger diode's legs' slots as (size, centre) in the key's frame: the -x
-    leg's out to the column channel, the +x leg's out past the side post's hole
-    and north into the +x tab's solder well."""
+def leg_slots(k):
+    """Key k's diode's legs' slots as (size, centre) in the key's frame: one leg's
+    out to the column wire, the other's out past the side post's hole and north
+    into its terminal's solder well. A finger key's terminal is the +x tab and
+    its column wire on the -x side; a thumb key's are the other way round."""
     s, x0, y, z = P.diode_leg_slot_mm, P.diode_mm[0] / 2, diode_y(), diode_z()
-    west, east, well = shaft_edge_x(), leg_x() + s / 2, P.socket_tab_y[1] - P.solder_well_mm[1] / 2 + s
-    return [((-x0 - west, s, s), ((west - x0) / 2, y, z)), ((east - x0, s, s), ((east + x0) / 2, y, z)),
-            ((s, well - y, s), (leg_x(), (well + y) / 2, z))]
+    side, wire, tab = (1, shaft_edge_x(), P.socket_tab_y[1]) if k.group == "finger" else (-1, thumb_col_x(), P.socket_tab_y[0])
+    well = tab - P.solder_well_mm[1] / 2 + s
+
+    def across(a, b):
+        return (abs(b - a), s, s), ((a + b) / 2, y, z)
+    return [across(-side * x0, wire), across(side * x0, side * (leg_x() + s / 2)),
+            ((s, well - y, s), (side * leg_x(), (well + y) / 2, z))]
 
 
 def diode_room(k):
-    """Room for key k's diode, open down to the underside to put it in, as a
-    list of cutters. A finger key's, with its legs' slots, goes down the key's
-    normal, not to the desk, so on a leaning key it stays out from under the
+    """Room for key k's diode, its pocket and then its legs' slots, open down to
+    the underside to put it in, as a list of cutters. They go down the key's
+    normal, not to the desk, so on a leaning key they stay out from under the
     post holes."""
     d, r = P.diode_mm, P.diode_room_mm
-    size = (d[1] + 2 * r, d[0] + 2 * r, d[1] + 2 * r)
-    if k.group == "finger":
-        size = (size[1], size[0], size[2])
-        return [normal_swept(k.frame, *b) for b in [(size, (0, diode_y(), diode_z())), *leg_slots()]]
-    return [swept(diode_frame(k), size, (0, 0, 0))]
+    size = (d[0] + 2 * r, d[1] + 2 * r, d[1] + 2 * r)
+    return [normal_swept(k.frame, *b) for b in [(size, (0, diode_y(), diode_z())), *leg_slots(k)]]
 
 
 def swept(m, size, centre, depth=60):
@@ -1139,20 +1120,16 @@ def part_overlap():
 
 def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
-    it (a wire's width in): every key's row and column ends (a wire's width off
-    a terminal's north face in its channel, or for a finger key's column wire
-    its joint to the diode's leg), the battery's leads (out of its back end),
+    it (a wire's width in): every key's row end (a wire's width off its terminal's
+    north face in its channel) and column end (its joint to the diode's leg), the
+    battery's leads (out of its back end),
     the power switch's pins (in their notch), and the controller."""
     d = P.wire_d_mm
     off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        x_end = at(k, (row_x(), P.socket_tab_y[1] + off)) - (0, 0, d)
-        minus_end = at(k, (riser_x(k), P.socket_tab_y[0] + off)) - (0, 0, d)
-        if k.group == "finger":
-            ends += [(f"{k.name}'s row tab", minus_end), (f"{k.name}'s diode joint", at(k, (col_x(), diode_y())) - (0, 0, d))]
-        else:
-            ends += [(f"{k.name}'s column tab", minus_end), (f"{k.name}'s row tab", x_end)]
+        row, joint = ((col_x(), P.socket_tab_y[0] + off), col_x()) if k.group == "finger" else ((row_x(), P.socket_tab_y[1] + off), thumb_col_x())
+        ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", at(k, (joint, diode_y())) - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
     if P.power_switch:
@@ -1197,17 +1174,16 @@ def crowded_keys():
 
 
 def cramped_diodes():
-    """The keys where the diode and its legs meet the body or the plinth: a
-    finger key's glass and the line of each leg, a thumb key's north leg and
-    sleeved joint, which go in as one piece, so nothing there can give."""
+    """The keys where the diode and its legs meet the body or the plinth: the
+    glass and the line of each leg."""
     solid = union([body(), bottom_plate()])
     d, leg = P.diode_mm, P.diode_leg_d_mm
-    finger = [((d[0], d[1], d[1]), (0, diode_y(), diode_z()))] + [
-        (tuple(leg if a == min(size) else a - P.diode_leg_slot_mm for a in size), centre) for size, centre in leg_slots()]
+    glass = ((d[0], d[1], d[1]), (0, diode_y(), diode_z()))
     out = []
     for k in keys():
         s = solid.transform(np.asarray(rinv(k.frame)[:3, :4], float))
-        if any((s ^ R.box(*b)).volume() > 1e-3 for b in (finger if k.group == "finger" else [thumb_joint()])):
+        legs = [(tuple(leg if a == min(size) else a - P.diode_leg_slot_mm for a in size), centre) for size, centre in leg_slots(k)]
+        if any((s ^ R.box(*b)).volume() > 1e-3 for b in [glass, *legs]):
             out.append(k.name)
     return out
 
@@ -1241,10 +1217,12 @@ def lost(shell, cutters, open_below=False):
 def thin_walls():
     """The walls thinner than min_wall_mm between the rooms of different parts
     (each key's room, solder wells and diode's room; the bay's rooms and well),
-    and between the bay and every channel but the one into it, and between a
-    finger column's channel and the keys of other columns, as a list of (room,
-    room, wall mm), empty when every wall is thick enough. The other channels
-    join keys by design, so they are held only to the bay."""
+    and between the bay and every channel but the one into it, between a finger
+    column's channel and the keys of other columns, between a diode's pocket and
+    every channel but its own column wire's, and between a channel and the
+    outside, as a list of (room, room, wall mm), empty when every wall is thick
+    enough. The other channels join keys by design, so they are held only to
+    these."""
     rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
     bay = union([lost(body_shell(), bay_rooms(), True),
@@ -1257,12 +1235,22 @@ def thin_walls():
     for c, (w, pts) in enumerate(channels()[:5]):
         run = (f"column {c}'s channel", lost(body_shell(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
         pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
+    for k in keys():
+        pts = channels()[k.col][1] if k.group == "finger" else thumb_column(k)
+        own = {(tuple(a), tuple(b)) for a, b in zip(pts[:-1], pts[1:])}
+        pocket = (f"{k.name}'s diode pocket", lost(body_shell(), diode_room(k)[:1], True))
+        pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_shell(), [run_solid(a, b, w)], True)))
+                  for a, b, w in channel_segments() if (tuple(a), tuple(b)) not in own]
     out = []
     for (a, sa), (b, sb) in pairs:
         if gap(sa, sb) < P.min_wall_mm:
             d = sa.min_gap(sb, P.min_wall_mm)
             if d < P.min_wall_mm - 1e-6:
                 out.append((a, b, d))
+    for a, b, w in channel_segments():
+        d = min(outline_distance(a + (b - a) * t) for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))) - w / 2
+        if d < P.min_wall_mm - 1e-6:
+            out.append((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", "the outside", d))
     return out
 
 

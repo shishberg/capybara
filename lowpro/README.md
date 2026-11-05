@@ -73,8 +73,8 @@ lands on x2.
 column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
 [firmware's](../firmware/README.md) matrix carries over, though it needs an
 nRF52840 build, with its own pins. The same board goes in both hands and the
-bay is mirrored, so each half has its own pins, on the edge nearest the keys
-where it can, named as they're printed on the board (008 is P0.08):
+bay is mirrored, so each half has its own pins, named as they're printed on the
+board (008 is P0.08):
 
 | Net | Right | Left |
 |---|---|---|
@@ -86,13 +86,12 @@ where it can, named as they're printed on the board (008 is P0.08):
 | C1 | 100 | 111 |
 | C2 | 011 | 010 |
 | C3 | 104 | 009 |
-| C4 | 106 | 107 |
+| C4 | 106 | 106 |
 
 The right half skips 024 because the board's battery divider is on it. The left
 edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its C4 goes
-under the board to 107, in the row of three holes near the south end. 009 and
-010 are the chip's NFC pins, so the left half's firmware has to set them as
-GPIOs.
+under the board's south end to 106, the last hole on the far edge. 009 and 010
+are the chip's NFC pins, so the left half's firmware has to set them as GPIOs.
 
 The board has no reset button, so a tact switch in the plinth, north of the
 power switch, is wired to RST and GND and pressed with a pin through the

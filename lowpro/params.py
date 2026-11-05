@@ -137,21 +137,19 @@ trunk_sink_mm = 5.5
 # The per-key diode (DO-35, 1N4148): body length and diameter.
 diode_mm = (4.0, 2.0)
 diode_room_mm = 0.4         # the diode's room round it
-diode_lead_mm = 1.5         # the straight lead its glass keeps before any bend
-# A thumb diode's north leg with its wire's end soldered along it and sleeved,
-# made up on the bench: how far it runs along the key from the diode's line, and
-# how wide it is across the leg and the wire's core in their sleeve.
-thumb_joint_mm = (6.0, 1.5)
-thumb_ease_mm = 3.0         # how far along the key its wire eases over to the north edge's line
-# Each finger key's diode has its own pocket across the key, south of the centre
-# post, with a slot for each leg: its +x leg goes round the side post's hole to
-# the +x tab and its -x leg out to the column wire, which runs beside the tabs'
-# tips. Each row's wire joins the -x tabs along the cells' north edges.
+# Each key's diode has its own pocket across the key, south of the centre post,
+# with a slot for each leg, so no wire runs past it. On a finger key its +x leg
+# goes round the side post's hole to the +x tab and its -x leg out to the column
+# wire, which runs beside the tabs' tips; each row's wire joins the -x tabs along
+# the cells' north edges. A thumb key's is the other way round: its -x leg goes to
+# the -x tab and its +x leg out to the column wire, which runs past the +x tab's
+# tip to the corner where the row wire joins that tab.
 diode_leg_d_mm = 0.5
 diode_leg_slot_mm = 1.0
 # The wall between a bottom-row diode's pocket and the front trunk, in the key's
-# frame at the socket's top: the end rows lean, so the trunk comes closer below.
-front_trunk_wall_mm = 1.5
+# frame at the socket's top: the end rows lean, so the trunk comes closer below,
+# and this leaves min_wall_mm at the pocket's bottom.
+front_trunk_wall_mm = 1.95
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the
