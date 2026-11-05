@@ -207,7 +207,8 @@ the outer wall. Three are in key cells (ring home, middle top and the thumb
 cluster's front), in the web south of the switch's pocket, where no socket, tab
 or channel comes: the insert's hole stops under the PCB layer, or beside the
 pocket where a key's tilt would bring it too close. One is in the strip beside
-the board, which is narrower than the battery, near the USB port. The neck in
+the board, which is narrower than the battery, near the USB port; the inner side
+wall stands far enough out to leave `min_wall_mm` either side of its counterbore. The neck in
 front of the battery has none: its underside falls too steeply for a level pad.
 The pinky column has none either: its
 keys' cells are the most tilted and leave the least wall, and the thin plinth

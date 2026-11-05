@@ -173,7 +173,7 @@ screw_head_d = 3.8
 screw_head_h_mm = 2
 screw_head_clearance_mm = 0.4
 screw_grip_mm = 2
-screw_pad_d = 4.2
+screw_pad_d = 3.8
 
 # ---------------------------------------------------------------- controller, battery, switch
 # PROVISIONAL: a Pro Micro form factor nRF52840 (nice!nano v2 / SuperMini):

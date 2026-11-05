@@ -358,9 +358,12 @@ def bays():
 
 def bay_rect():
     """The plan rectangle round both bays, which the outline follows: as wide
-    as the wider one, so the inner side wall runs straight past the narrower."""
+    as the wider one, so the inner side wall runs straight past the narrower,
+    and wide enough that the strip beside the board, with the outline's wall,
+    leaves min_wall_mm either side of the screw's counterbore there."""
     m, b = mcu_bay(), battery_bay()
-    return ((min(m[0][0], b[0][0]), b[0][1]), (m[1][0], m[1][1]))
+    strip = P.screw_head_d + P.screw_head_clearance_mm + 2 * P.min_wall_mm
+    return ((min(m[0][0] - strip + P.wall_mm, b[0][0]), b[0][1]), (m[1][0], m[1][1]))
 
 
 def lead_notch():
