@@ -78,6 +78,7 @@ switch_centre_post_d = 4
 switch_side_post_d = 1.7
 switch_side_post_x = 5.08
 switch_pin_d = 1.5
+switch_post_mm = 3.3              # how far the posts and pins reach below the housing
 switch_pins = [(2.54, 5.08), (-3.81, 2.54)]
 post_clearance_mm = 0.3
 # The layer a PCB would be (the pins pass through it into the socket).
@@ -176,6 +177,10 @@ top_round_mm = 1.5
 under_socket_mm = 0.6
 bottom_plate_mm = 2
 plate_gap_mm = 0.1
+# Where the underside steps between the cells' planes, the plinth's top steps
+# too, and stands this far off it sideways (on the steepest slopes as well).
+# The steps are what locates the plinth under the body.
+step_clearance_mm = 0.15
 # The plinth's skirt, past the outline in its concave stretches: the radius of
 # the arcs that bridge them, its height over the desk, and the cove where it
 # meets the plinth's wall (less than outline_close_mm - wall_mm - 0.5).

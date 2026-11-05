@@ -173,6 +173,18 @@ def check():
         ok = False
     else:
         print("body and plinth clear")
+    binds = C.seam_binds()
+    if binds:
+        print(f"the plinth can't slide {C.P.step_clearance_mm} mm against the body at: " + ", ".join(f"{a} deg" for a in binds))
+        ok = False
+    else:
+        print("the seam's steps stand clear")
+    clashes = C.part_clashes()
+    if clashes:
+        print("parts meet the case: " + ", ".join(f"{p} and {w} ({v:.2f} mm^3)" for p, w, v in clashes))
+        ok = False
+    else:
+        print("switches, sockets, electronics and caps at full travel clear the case")
     return ok
 
 

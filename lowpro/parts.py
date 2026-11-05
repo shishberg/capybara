@@ -66,12 +66,12 @@ def pieces(solids, colour, label):
 def mx_switch():
     """The switch as it stands in the plate: housing over and under the plate,
     posts and pins below."""
-    b, pins = P.switch_below_plate_mm, P.switch_pins
+    b, pins, post = P.switch_below_plate_mm, P.switch_pins, P.switch_post_mm
     grey = [box((P.switch_rim_mm, P.switch_rim_mm, P.switch_top_above_plate_mm), (0, 0, P.switch_top_above_plate_mm / 2)),
             box((P.switch_cutout_mm, P.switch_cutout_mm, b), (0, 0, -b / 2)),
-            cylinder(P.switch_centre_post_d, 3.3, (0, 0, -b - 3.3))]
-    grey += [cylinder(P.switch_side_post_d, 3.3, (sx * P.switch_side_post_x, 0, -b - 3.3)) for sx in (-1, 1)]
-    gold = [cylinder(P.switch_pin_d, 3.3, (p[0], p[1], -b - 3.3)) for p in pins]
+            cylinder(P.switch_centre_post_d, post, (0, 0, -b - post))]
+    grey += [cylinder(P.switch_side_post_d, post, (sx * P.switch_side_post_x, 0, -b - post)) for sx in (-1, 1)]
+    gold = [cylinder(P.switch_pin_d, post, (p[0], p[1], -b - post)) for p in pins]
     return pieces(grey, "gray", "housing") + pieces(gold, "gold", "pins")
 
 
@@ -87,8 +87,8 @@ def mx_switch_room():
     d = P.switch_clip_relief_mm + P.switch_cutout_clearance_mm + 0.1
     rooms += [box((P.switch_clip_width_mm, d, b - P.plate_mm),
                   (0, sy * (hole / 2 + d / 2 - 0.1), -P.plate_mm - (b - P.plate_mm) / 2)) for sy in (-1, 1)]
-    # Through the PCB layer, to just above the socket's bottom.
-    depth = P.pcb_layer_mm + P.socket_body_mm[2] - 0.2
+    # Through the PCB layer, past the posts' tips.
+    depth = P.switch_post_mm + P.post_clearance_mm
     z, c = -b - depth, 2 * P.post_clearance_mm
     rooms.append(cylinder(P.switch_centre_post_d + c, depth + 0.1, (0, 0, z)))
     rooms += [cylinder(P.switch_side_post_d + c, depth + 0.1, (sx * P.switch_side_post_x, 0, z)) for sx in (-1, 1)]
@@ -110,6 +110,12 @@ def keycap(r, u=1, pressed=0, grow=0):
 def keycap_probe(r, u=1, pressed=0):
     """The cap grown by the clearance caps must keep: the collision probe."""
     return keycap(r, u, pressed, P.cap_clearance_mm / 2)
+
+
+def keycap_room(r, u=1):
+    """The room the cap takes from whatever stands near it: its sweep from rest
+    to the bottom of its travel, with the clearance caps keep."""
+    return (keycap_probe(r, u) + keycap_probe(r, u, P.cap_travel_mm)).hull()
 
 
 # ---------------------------------------------------------------- hotswap socket

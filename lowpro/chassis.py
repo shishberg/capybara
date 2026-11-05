@@ -514,7 +514,10 @@ def plinth_shell():
     plate_gap_mm: everything over each cell's plane taken away and everything
     under it added (from put_back_mm over the desk), so the plinth's top steps
     where the underside does, and where two cells' columns overlap it is the
-    lower plane's, as the underside is."""
+    lower plane's, as the underside is. It then loses what stands within
+    step_clearance_mm of the underside lowered plate_gap_mm, sideways: at the
+    steps' faces and on the steepest slopes that's what stands them off, and on
+    a key's tilted plane it only widens the gap a little."""
     t = time.time()
     d = L.floor_drop()
     z = -d - P.plate_gap_mm
@@ -522,7 +525,9 @@ def plinth_shell():
     fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
             for g in plane_groups()]
     clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, z, below=False) for g in plane_groups()]
-    shell = add(subtract(add(plinth_blank(), fill), clear), [skirt()])
+    c = P.step_clearance_mm
+    beside = [body_shell().translate((c * math.cos(a), c * math.sin(a), -P.plate_gap_mm)) for a in np.radians(range(0, 360, 45))]
+    shell = subtract(add(subtract(add(plinth_blank(), fill), clear), [skirt()]), beside)
     stage("the plinth's shell", t)
     return shell
 
@@ -1046,11 +1051,17 @@ def body_cutters():
     return [s for _, group in body_cuts() for s in group]
 
 
+def cap_rooms():
+    """Each cap's sweep. A key lower than its neighbour has its cap come down
+    past the neighbour's plate, so it takes a notch out of the plate's edge."""
+    return [placed(k.frame, R.keycap_room(k.cap_row, k.units)) for k in keys()]
+
+
 @cached
 def body():
     shell = body_shell()
     t = time.time()
-    body = subtract(shell, body_cutters() + insert_holes())
+    body = subtract(shell, body_cutters() + cap_rooms() + insert_holes())
     body.num_tri()   # Manifold evaluates lazily: make the cut happen here
     stage("body cuts", t)
     return body
@@ -1150,6 +1161,27 @@ def part_overlap():
     """How much the body and the plinth overlap, mm^3 (0 when the plinth stays
     under the body's underside)."""
     return (body() ^ bottom_plate()).volume()
+
+
+def seam_binds():
+    """The directions, in degrees, in which the plinth can't slide
+    step_clearance_mm against the body (a hair less, for the chords)."""
+    d = 0.95 * P.step_clearance_mm
+    return [a for a in range(0, 360, 45)
+            if (body() ^ bottom_plate().translate((d * math.cos(math.radians(a)), d * math.sin(math.radians(a)), 0))).volume() > 1e-3]
+
+
+def part_clashes():
+    """The bought parts that meet the body or the plinth, as (part, which, overlap
+    mm^3): the switches, sockets and electronics in place and the caps at the
+    bottom of their travel."""
+    groups = [switches(), sockets(), electronics(), keycaps(P.cap_travel_mm)]
+    out = []
+    for solid, which in ((body(), "the body"), (bottom_plate(), "the plinth")):
+        for group in groups:
+            if (union([p.solid for p in group]) ^ solid).volume() > 1e-3:
+                out += [(p.label, which, v) for p in group for v in [(p.solid ^ solid).volume()] if v > 1e-3]
+    return out
 
 
 def wire_ends():
