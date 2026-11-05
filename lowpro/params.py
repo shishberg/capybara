@@ -227,10 +227,17 @@ mcu_usb_overhang_mm = 1.3
 mcu_usb_opening_mm = (10.5, 5)  # the hole through the back wall for the plug
 mcu_clearance_mm = 0.3
 bay_under_mm = 1
-# The board lies in a well in the bottom plate on the inner side of the inner
-# column (layout.py mcu_bay), along the column, its USB-C port out of the
-# back wall; the well's floor sits bay_under_mm below the parts' room under
-# the body (so the port's opening stays in the plate's wall).
+# The board lies in a well on the inner side of the inner column (layout.py
+# mcu_bay), along the column, its USB-C port out of the back wall; the well's
+# floor sits bay_under_mm below the parts' room under the body. The well's walls
+# and ceiling are the body's and its floor is the plinth's top, so all the
+# electronics are in the body and the plinth comes away free of them.
+# A strip stands down from the ceiling along the middle of the board, clear of the
+# wires, and foam on it holds the board down: wide, long, how far from the port
+# end it starts, and the gap the foam takes up.
+mcu_press_mm = (6, 18)
+mcu_press_start_mm = 6
+mcu_press_gap_mm = 0.7
 # mcu_turn_deg turns it in plan about its port end.
 mcu_turn_deg = 0
 # Battery: PROVISIONAL 402030 LiPo (about 200 mAh), lying flat in the bay in
@@ -242,7 +249,7 @@ battery_clearance_mm = 0.5
 battery_lead_notch_mm = 4
 # Power switch: PROVISIONAL MSK-12C02 slide switch, its body and handle as the
 # distributors list them; the rest is unmeasured until it is checked on a real part.
-# It sits in the plinth beside the board (layout.py power_switch_frame).
+# It sits on the well's floor beside the board (layout.py power_switch_frame).
 power_switch = True
 power_switch_mm = (8.0, 2.8, 1.4)
 power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out

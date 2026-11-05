@@ -1,7 +1,8 @@
 """The body: the key field's top surface blended from the key cells, walled,
 a shell of one thickness, with the switch and socket pockets and the wire
-channels; and the bottom plate: a plinth up to the body's underside, with
-the socket bosses and the well for the controller and battery.
+channels, reaching down round the well for the controller and battery; and the
+bottom plate: a plinth up to the body's underside and the well's floor, with the
+socket bosses.
 
 Everything here is in world axes (layout.py). The body's and the plinth's
 blanks are meshes built here (the top surface, the underside and the round
@@ -601,21 +602,15 @@ def battery_frame():
     return trans([0, 0, bay_z()]) @ L.battery_frame()
 
 
-def strip_frame(m, s, c):
-    """A part of size s at plan frame m in the plinth, c under the body's underside over all of it."""
-    z = min(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
-    return trans([0, 0, z - s[2] / 2 - c]) @ m
-
-
 def power_switch_frame():
-    return strip_frame(L.power_switch_frame(), P.power_switch_mm, P.power_switch_clearance_mm)
+    """The switch's frame, a clearance over the well's floor, which holds it in its pocket."""
+    return trans([0, 0, bay_z() + P.power_switch_mm[2] / 2 + P.power_switch_clearance_mm]) @ L.power_switch_frame()
 
 
 def reset_button_frame():
     """The switch's frame, its plunger's centre on the seam between the plinth
     and the body, so the hole in the wall is half in each."""
-    m = L.reset_button_frame()
-    return trans([0, 0, floor_z(*xform(m, [0, -P.reset_button_mm[1] / 2, 0])[:2])]) @ m
+    return trans([0, 0, bay_z()]) @ L.reset_button_frame()
 
 
 def floor_box(r, h):
@@ -623,11 +618,47 @@ def floor_box(r, h):
     return Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h)).translate((r[0][0], r[0][1], bay_z()))
 
 
+def bay_block(grow=0):
+    """Everything round the bays over the well's floor, `grow` past the step where
+    the seam comes up to the underside: min_wall_mm past the bays toward the keys,
+    and past the wall in front of the battery. It's the body's, not the plinth's,
+    so that all the electronics and their wires are in the body and the plinth
+    comes away free of them."""
+    (_, y0), (x1, _) = L.bay_rect()[0], L.bay_rect()[1]
+    x1, y0 = x1 + P.min_wall_mm + grow, y0 - P.wall_mm - grow
+    return Manifold.cube((400, 400, 100)).translate((x1 - 400, y0, bay_z()))
+
+
+@cached
+def body_mass():
+    """The body before anything is cut from it: its shell, and the block round
+    the bays down to plate_gap_mm over the well's floor."""
+    return add(body_shell(), [plinth_blank().translate((0, 0, 1)) ^ bay_block().translate((0, 0, P.plate_gap_mm))])
+
+
+@cached
+def plinth_mass():
+    """The plinth before anything is cut from it: its shell, less the block round
+    the bays, step_clearance_mm past it."""
+    return subtract(plinth_shell(), [bay_block(P.step_clearance_mm)])
+
+
 def well():
     """The well: both bays' rectangles and the battery's lead notch between
-    them, open from the well's floor up through the plate's top (the body
-    takes the parts' rooms, bay_rooms, where they reach above it)."""
-    return [floor_box(b, 100) for b in L.bays() + [L.lead_notch()]]
+    them, cut from the block up to the body's underside."""
+    ceiling = plinth_blank().translate((0, 0, P.plate_gap_mm + ring_mm))
+    return [floor_box(b, 100) ^ ceiling for b in L.bays() + [L.lead_notch()]]
+
+
+def press_strip():
+    """The strip down from the well's ceiling along the middle of the board, over
+    the board by mcu_press_gap_mm, which foam takes up. The wires reach the board
+    either side of it and past its south end."""
+    (w, length), y0 = P.mcu_press_mm, P.mcu_press_start_mm
+    corners = [xform(mcu_frame(), [i * w / 2, y, 0])[:2] for i in (-1, 1) for y in (y0, y0 + length)]
+    z = R.mcu_pcb_z() + P.mcu_board_mm[2] + P.mcu_press_gap_mm
+    h = max(floor_z(*c) for c in corners) + 1 - bay_z() - z
+    return placed(mcu_frame(), R.box((w, length, h), (0, y0 + length / 2, z + h / 2)))
 
 
 # ---------------------------------------------------------------- wiring points
@@ -789,6 +820,15 @@ def well_exits():
     tab = c_tab(finger_key(0, 0))
     joint = at(finger_key(0, P.rows_above), (col_x(), diode_y()))
     return [(P.trunk_w_mm, [tab, well_point(tab[1])]), (P.channel_w_mm, [joint, well_point(joint[1])])]
+
+
+def well_ways():
+    """The runs into the well, carried on down through the block's wall, so that
+    a wire lies into them from below."""
+    ends = [bay_entry()] + [pts[-1] for _, pts in well_exits()]
+    down = np.array([0, 0, 30])
+    return [Manifold.hull_points(post_points(a, w) + post_points(b, w) + post_points(a - down, w) + post_points(b - down, w))
+            for a, b, w in channel_segments() if any(np.array_equal(b, p) for p in ends)]
 
 
 def finger_key(col, row):
@@ -1002,18 +1042,15 @@ def key_room(k):
 
 
 def bay_rooms(plinth=False):
-    """The parts' rooms in the well, cut from the plinth and from the body where
-    they reach above the plate's top. The battery's lead notch is one of them,
-    as tall as the pocket; the power switch's is the plinth's alone, and the reset
+    """The parts' rooms in the well, cut from the body, and from the plinth where
+    they reach under the well's floor. The battery's lead notch is one of them,
+    as tall as the pocket; the power switch's is the body's alone, and the reset
     button's is half in each."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
-    if P.power_switch and plinth:
+    if P.power_switch and not plinth:
         out += place(power_switch_frame(), R.power_switch_room())
-    out += place(reset_button_frame(), R.reset_button_room())
-    if plinth:
-        out += place(reset_button_frame(), R.reset_plunger_slot())
-    return out
+    return out + place(reset_button_frame(), R.reset_button_room())
 
 
 @cached
@@ -1023,7 +1060,7 @@ def screw_seats():
     comes up to this level over the pad and the body is cut back plate_gap_mm
     above it, so every insert's mouth is flat and square to its hole, and the
     screw clamps flat on flat."""
-    shell = plinth_shell()
+    shell = plinth_mass()
     return [float((R.cylinder(P.screw_pad_d, 100, (p[0], p[1], -1)) ^ shell).bounding_box()[5]) for p in L.screw_points()]
 
 
@@ -1048,7 +1085,8 @@ def body_cuts():
     """Everything cut from the body but the screws' insert holes, in named groups."""
     ks = keys()
     return [("a key's room", [key_room(k) for k in ks]), ("a solder well", [w for k in ks for w in solder_wells(k)]),
-            ("a diode's room", [s for k in ks for s in diode_room(k)]), ("a channel", channel_solids()), ("a bay room", bay_rooms())]
+            ("a diode's room", [s for k in ks for s in diode_room(k)]), ("a channel", channel_solids()), ("the well", well()), ("a way into the well", well_ways()),
+            ("a bay room", bay_rooms())]
 
 
 def body_cutters():
@@ -1063,9 +1101,9 @@ def cap_rooms():
 
 @cached
 def body():
-    shell = body_shell()
+    shell = body_mass()
     t = time.time()
-    body = subtract(shell, body_cutters() + cap_rooms() + insert_holes())
+    body = add(subtract(shell, body_cutters() + cap_rooms() + insert_holes()), [press_strip()])
     body.num_tri()   # Manifold evaluates lazily: make the cut happen here
     stage("body cuts", t)
     return body
@@ -1087,7 +1125,7 @@ def screw_holes():
 @cached
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
-    return [("the well", well()), ("a bay room", bay_rooms(plinth=True)), ("a channel", channel_sinks())]
+    return [("a bay room", bay_rooms(plinth=True)), ("a channel", channel_sinks())]
 
 
 def plate_cutters():
@@ -1096,11 +1134,11 @@ def plate_cutters():
 
 @cached
 def bottom_plate():
-    """The plinth: up to the body's underside and the screws' pads, with the well
-    and the screw holes, and the socket bosses standing on it."""
+    """The plinth: up to the body's underside, the well's floor and the screws'
+    pads, with the screw holes, and the socket bosses standing on it."""
     pads = [R.cylinder(P.screw_pad_d, z + 1, (p[0], p[1], -1)) ^ Manifold.cube((400, 400, 100)).translate((-200, -200, 0))
             for p, z in zip(L.screw_points(), screw_seats())]
-    shell = add(plinth_shell(), pads)
+    shell = add(plinth_mass(), pads)
     t = time.time()
     plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
     plate.num_tri()
@@ -1188,6 +1226,15 @@ def part_clashes():
     return out
 
 
+def blocked_parts():
+    """The electronics that can't go straight into the well with the body upside
+    down: what each meets of the body on its way past the seam, as (part, overlap
+    mm^3)."""
+    steps = np.arange(0, 12.25, 0.25)
+    swept = [(p.label, Manifold.batch_boolean([p.solid.translate((0, 0, -d)) for d in steps], OpType.Add)) for p in electronics()]
+    return [(label, v) for label, s in swept for v in [(s ^ body()).volume()] if v > 1e-3]
+
+
 def true_part_clashes():
     """The keys of the left half where a real switch or socket, the same parts as
     the right half's and not mirrored, meets the finished body as it's written:
@@ -1220,7 +1267,7 @@ def wire_ends():
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
     if P.power_switch:
         notch = P.power_switch_mm[1] / 2 + P.power_switch_pins_mm[1] / 2
-        ends.append(("the power switch", xform(power_switch_frame(), [0, notch, -d / 2])))
+        ends.append(("the power switch", xform(power_switch_frame(), [0, notch, d / 2])))
     ends += [("the reset button", xform(reset_button_frame(), [x, y, 0])) for x, y in R.reset_wire_ways()]
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
@@ -1228,7 +1275,7 @@ def wire_ends():
 
 def wire_space():
     """The spaces cut from the body and the plinth (channels, pockets, the well; see lost)."""
-    return union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
+    return union([lost(body_mass(), body_cutters(), True), lost(plinth_mass(), plate_cutters())])
 
 
 def crowded_keys():
@@ -1309,24 +1356,23 @@ def thin_walls():
     outside and the top, as a list of (room, room, wall mm), empty when every
     wall is thick enough. The other channels join keys by design, so they are
     held only to these."""
-    rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
+    rooms = [(k.name, lost(body_mass(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
-    bay = union([lost(body_shell(), bay_rooms(), True),
-                 lost(plinth_shell(), [s for name, group in plate_cuts() if name != "a channel" for s in group])])
+    bay = union([lost(body_mass(), bay_rooms() + well(), True), lost(plinth_mass(), bay_rooms(plinth=True))])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
     into_well = [bay_entry()] + [pts[-1] for _, pts in well_exits()]
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
-                lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
+                lost(body_mass(), [run_solid(a, b, w)], True)), ("the bay", bay))
               for a, b, w in channel_segments() if not any(np.array_equal(b, p) for p in into_well)]
     for c, (w, pts) in enumerate(channels()[:5]):
-        run = (f"column {c}'s channel", lost(body_shell(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
+        run = (f"column {c}'s channel", lost(body_mass(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
         pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
     for k in keys():
         pts = channels()[k.col][1] if k.group == "finger" else thumb_column(k)
         own = {(tuple(a), tuple(b)) for a, b in zip(pts[:-1], pts[1:])}
-        pocket = (f"{k.name}'s diode pocket", lost(body_shell(), diode_room(k)[:1], True))
-        pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_shell(), [run_solid(a, b, w)], True)))
+        pocket = (f"{k.name}'s diode pocket", lost(body_mass(), diode_room(k)[:1], True))
+        pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_mass(), [run_solid(a, b, w)], True)))
                   for a, b, w in channel_segments() if (tuple(a), tuple(b)) not in own]
     out = []
     for (a, sa), (b, sb) in pairs:
@@ -1364,7 +1410,7 @@ def screw_walls():
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
         round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, 0))
-        under = h - P.screw_grip_mm - (round_it - plinth_shell()).bounding_box()[2]
+        under = h - P.screw_grip_mm - (round_it - plinth_mass()).bounding_box()[2]
         if under > 0:
             hits.append((name, "the plinth's top (the counterbore breaks out through it)", np.pi * (R.counterbore_d() / 2) ** 2 * under))
         holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]

@@ -252,18 +252,18 @@ def power_switch_part():
 
 
 def power_switch_room():
-    """The switch's pocket in the plinth, a close fit round it, with the knob's
+    """The switch's pocket in the body, a close fit round it, with the knob's
     slot through the wall and a notch behind for the pins and their wires into
-    the well, a wire deeper than the pocket, all open up through the plinth's
-    top: it drops in from above, knob in its slot, and the body's underside
-    closes over it."""
+    the well, a wire deeper than the pocket, all open down through the body's
+    underside: with the body turned over it drops in, knob in its slot, and the
+    plinth closes under it."""
     b, k, c = P.power_switch_mm, P.power_switch_knob_mm, P.power_switch_clearance_mm
     pins = P.power_switch_pins_mm
     h = b[2] + 2 * c + 20
-    z = h / 2 - b[2] / 2 - c
+    z = b[2] / 2 + c - h / 2
     return [box((b[0] + 2 * c, b[1] + 2 * c, h), (0, 0, z)),
             box((k[1] + 2 * c, 10, h), (0, -b[1] / 2 - 5, z)),
-            box((pins[0], pins[1] + c, h + P.wire_d_mm), (0, b[1] / 2 + (pins[1] + c) / 2, z - P.wire_d_mm / 2))]
+            box((pins[0], pins[1] + c, h + P.wire_d_mm), (0, b[1] / 2 + (pins[1] + c) / 2, z + P.wire_d_mm / 2))]
 
 
 # ---------------------------------------------------------------- reset button
@@ -298,13 +298,6 @@ def reset_button_room():
              box((span + 2 * c, t + c, h), (0, b[1] / 2 + (c - t) / 2, 0)),
              cylinder(d + 2 * c, 10).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0))]
             + [box((way, deep + 1, h), (x, y - 0.5, 0)) for x, y in reset_wire_ways()])
-
-
-def reset_plunger_slot():
-    """The plinth's half of the hole, opened upward so that the plunger drops
-    in from above wherever the seam, which slopes, is over the frame's middle."""
-    b, c, d = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm[0]
-    return [box((d + 2 * c, 10, b[2] / 2), (0, -b[1] / 2 - 5, b[2] / 4))]
 
 
 # ---------------------------------------------------------------- screws

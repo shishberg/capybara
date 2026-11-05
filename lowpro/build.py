@@ -186,6 +186,12 @@ def check():
         ok = False
     else:
         print("switches, sockets, electronics and caps at full travel clear the case")
+    blocked = C.blocked_parts()
+    if blocked:
+        print("parts can't drop into the well: " + ", ".join(f"{p} ({v:.2f} mm^3)" for p, v in blocked))
+        ok = False
+    else:
+        print("every part drops into the well")
     wrong = C.true_part_clashes()
     if wrong:
         print("a real switch or socket doesn't fit the mirrored half at: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in wrong))

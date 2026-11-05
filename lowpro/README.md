@@ -88,8 +88,11 @@ straight down, so every wiring channel is the same depth and the plinth takes up
 the height to the desk. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
-button and power switch lie in a well in the plinth beside the inner column, and the only
-wires between plinth and body are the keys'. The wires run in channels in the
+button and power switch lie in a well beside the inner column. The seam drops to the
+well's floor round it, so the well's walls and ceiling are the body's and its floor is
+the plinth's top. All the electronics are then in the body with the keys, and no wire
+crosses the seam: the plinth is a lid that goes on last and comes off with everything
+still wired. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by
 side without adding height or footprint. Use insulated wire for the rows, which
 cross the column wires. The channels are a first cut, straight slots that merge
@@ -98,8 +101,9 @@ where they meet: look at `wiring-below.png` before trusting a route, and edit
 tilted, so it prints on support or a raft, laid on the tent plane. The plinth
 prints flat.
 
-The plinth's top steps where the underside does, standing `step_clearance_mm` off
-it sideways, and those steps are what locate the plinth under the body. A pinky
+The plinth's top steps where the underside does, and down to the well's floor round
+the well, standing `step_clearance_mm` off it sideways, and those steps are what
+locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap's
 sweep its room, which notches that plate's edge.
 

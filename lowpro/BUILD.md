@@ -50,12 +50,12 @@ For each half, so double it for the pair:
 | 6.5 × 6.5 mm SMD tactile switch, 2 mm body | 1 | Pick a firm one, so that a knock doesn't reset the board. |
 | M2 × 3 heat-set insert | 5 | For a 3.2 mm hole |
 | M2 × 5 socket-head screw | 5 | |
-| Thin double-sided foam tape | a little | Takes up the battery's play in its bay. |
+| Double-sided foam tape, about 1 mm thick | a little | Holds the battery in its bay and pads the strip over the board. |
 | Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal, and it doesn't fit over the south end of the left half's board. |
 
 You also need a soldering iron with a fine tip, flush cutters, wire strippers,
-tweezers, a multimeter and a long-armed 1.5 mm hex key: the screw by the USB port is
-11 mm up its hole.
+tweezers, a multimeter and a long-armed 1.5 mm hex key: the deepest screw is 8.5 mm up
+its hole.
 
 ## Measure first
 
@@ -71,10 +71,6 @@ parameter in `lowpro/params.py` before printing:
 | Keycaps | Base, top and height of each row | `cap_base_mm`, `cap_top_mm`, `cap_height_mm` |
 | Sockets | The terminals, which vary between batches | `socket_tab_mm` |
 
-The board's end goes 1.3 mm into the USB-C hole. The USB-C shell and the board together
-can be 4.3 mm thick, and the hole is 4.6 mm high there. Once the plinth is printed, try
-the bare board in the hole, and file the top of the hole to fit if it won't go.
-
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
 where B+, B−, RST and GND are, and that nothing else on the board uses a pin in the
@@ -87,10 +83,11 @@ slots before printing the rest.
 
 ## Printing
 
-- **Plinth:** flat on its base, top up, with supports under the top of the USB-C hole
-  and the screws' seats.
+- **Plinth:** flat on its base, top up, with supports under the screws' seats.
 - **Body:** its top surface faces up, laid on the 6° tent plane, on supports or a
-  raft. The underside is curved and tilted, so it has no flat face to stand on.
+  raft. The underside is curved and tilted, so it has no flat face to stand on. The
+  well fills with support too. Take care clearing it from the well's wall on the keys'
+  side, which is 1 mm thick and stands up to 14 mm tall.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
   PLA, since several walls near solder joints are about 1 mm thick. The fin between a
 socket's pocket and the row channel north of it is only 0.2 to 0.3 mm, and a slicer
@@ -191,29 +188,34 @@ joint.
 
 ### The well
 
+The well's walls and ceiling are the body's and its floor is the plinth's top, so all
+the electronics are in the body and no wire crosses the seam. The key wires come in
+through three slots in the wall on the keys' side.
+
 - **Battery:** in the south bay, leads at its north end, through the notch in the
   wall into the controller's bay.
 - **Controller:** in the north bay, components down, USB-C port out through the back
   wall. The battery's leads run north under the board to its north end. The top of the
   USB-C hole clears the north end of the board by 0.3 mm, so nothing there can stand
-  proud of the board's top.
-- **Power switch:** in its pocket in the strip on the board's inner side, knob in a
-  slot through the inner side wall. The knob's tip is flush with the outside of the
+  proud of the board's top. A strip down the middle of the ceiling, padded with foam,
+  holds the board against the floor. The wires clear it either side and past its south
+  end.
+- **Power switch:** in its pocket in the strip on the board's inner side, on the
+  plinth's top, knob in a slot through the inner side wall. The knob's tip is flush with the outside of the
   wall, so you slide it with a fingernail.
 - **Reset button:** in the same strip, north of the power switch, on edge, plunger
   out through a round hole in the inner side wall. It sits on the seam, so the plinth
-  has half its pocket and the body the other half.
+  has half its pocket and the body the other half, and the wires stay in the body's.
 
 Power runs battery + → slide switch → B+, and battery − → B−. Seen from above in
 the well, B+ is the board's north-west corner and B− its north-east. Solder both
-from the board's underside, the way the leads come, and keep the top flat to fit
-into the USB-C hole. Reset is one leg of the button to RST and another to GND: check with
+from the board's underside, the way the leads come, and keep the top flat. Reset is one leg of the button to RST and another to GND: check with
 a meter which two legs a press joins, usually the diagonal pair.
 
 ## Assembly
 
-Do each half in this order. Nothing can be reached once the plinth is on, so test
-at each step.
+Do each half in this order, with the body upside down from step 2 until the plinth
+is on.
 
 ### 1. Inserts
 
@@ -221,78 +223,80 @@ Press the five heat-set inserts into the body's underside, in the five holes wit
 round flat pads round them, until flush with the pad. Keep them square: the pads are
 level but the surface round them isn't.
 
-### 2. Plinth electronics
-
-1. Solder about 60 mm of wire to the slide switch's middle pin and one outer pin,
-   and drop it into its pocket from above with its knob in its slot and its pins
-   facing the well. Wire to the pin that makes knob-north "on". Its pins are about
-   1.5 mm apart, so tin the wires first and check for a bridge with a meter.
-2. Solder about 60 mm of wire to the two legs of the reset button that a press
-   joins. Drop it into the plinth's half of its pocket with its plunger in the half
-   hole, and its wires through the two ways either side of the stop behind it. On a
-   diagonal pair one leg stands above the plinth's top, in the body's half of the
-   pocket: bring its wire down into its way, so that it doesn't sit on the seam.
-3. Fit the board's wires. With the board out of the well, solder the switch's free
-   wire to B+, one reset wire to RST and the other to GND.
-4. Check the battery's polarity with a meter: lead colours aren't reliable. Solder
-   battery − to B−, and battery + to the slide switch's other wire, with the switch
-   off, and insulate the joint. Stick the battery in its bay with foam tape, leads
-   through the notch.
-5. Feed the board in nose first, components down: tilt its south end up 5 to 8°, no more,
-   slip its end into the USB-C hole, then lower the south
-   end, with the leads under it. Try this dry before soldering anything to the board,
-   since it's harder with the wires on.
-6. Turn the switch on. Hold the board down and plug in USB-C. Press reset twice,
-   holding the button in with a finger, as the other half of its pocket is in the
-   body. The board should mount as a drive: flash the firmware now, while everything
-   can still be reached. Then unplug it and turn the switch off, and leave it off:
-   the rest is soldered with the board dead.
-
-### 3. Sockets, diodes and matrix
+### 2. Sockets and switches
 
 Put the body upside down on something soft, so that gravity holds each socket
 against its ceiling.
 
 1. Drop a socket down each shaft, its collars in their holes, until it sits flat.
    Check every one against `pocket-closeup.png`.
-2. Bend each diode's legs. Put each diode in its pocket with its band to the correct
+2. Press each switch in from the top, pins straight, holding its socket against the
+   ceiling with a finger from below, since the plinth's boss isn't there yet to take
+   the push. The switch then holds the socket, so the body can be turned either way up.
+
+### 3. Diodes and matrix
+
+1. Bend each diode's legs. Put each diode in its pocket with its band to the correct
    side: toward the column wire on every key, which is the inner side on a finger key
    and the near side on a thumb key. Lay the other leg in its slot and solder it to
    its terminal.
-3. Run the columns, each from its start key. Don't strip a window in place, down in
+2. Run the columns, each from its start key. Don't strip a window in place, down in
    a channel: mark each diode's place on the wire against the body and strip it on the
    bench, or cut the wire at each diode and join the two ends on the leg, as the rows
    do. Solder the band end's leg to it, and leave a tail at the well end.
-4. Run the rows, each from the well end to its last key, one length between each
+3. Run the rows, each from the well end to its last key, one length between each
    pair of keys, two wires on each terminal.
-5. Check each joint with a meter, using the diode test: touching a row and a column
-   with the socket's contacts shorted should show one key's diode, only one way round.
+4. Check each joint with a meter, using the diode test: holding a key down, a row and
+   a column should show that key's diode, only one way round.
 
 Keep every wire below the underside's surface, in its channel. A wire left standing
 proud gets pinched at the seam.
 
-### 4. Join the halves of the case
+### 4. Electronics
 
-1. Cut the nine wires to reach their pins with enough slack to open the case. Trim
-   the plinth's slack as well.
-2. Solder the nine wires to the board's top face. The board is in its bay, so the
-   wires reach it from above. There's only 1.5 to 2 mm over the board's south end, and
-   1.5 mm at the left half's RH, RB and RX holes, so keep those joints flat, trim the stubs flush, and lay the wires side by side, not
-   crossed.
-3. Close the body over the plinth. The plinth's steps locate it under the body. Tuck
-   the slack into the trunks as it closes, and check that no wire sits on the seam.
-   **This step isn't solved yet:** nothing holds the sockets, diodes and wires in the
-   body once it turns over, or the parts in the plinth if that turns over instead, and
-   a part that drops out gets crushed against its boss.
-4. Fit the five screws from below and tighten them gently. The seam should close
-   without forcing, and stop and look if it doesn't. The parts are designed 0.1 mm
-   apart across the seam, so a hair of a gap away from the screws is expected.
+Everything from here goes into the well with the body upside down, so each part
+drops straight in. Try each one dry first.
 
-### 5. Switches and caps
+1. Solder about 60 mm of wire to the slide switch's middle pin and one outer pin, and
+   drop it into its pocket with its knob in its slot and its pins facing the well. Wire
+   to the pin that makes knob-north "on". Its pins are about 1.5 mm apart, so tin the
+   wires first and check for a bridge with a meter.
+2. Solder about 60 mm of wire to the two legs of the reset button that a press joins.
+   Drop it into the body's half of its pocket with its plunger in the half hole, and
+   its wires through the two ways either side of the stop behind it. It stands half
+   out of the pocket: the plinth's half takes the rest.
+3. With the board on the bench, solder the switch's free wire to B+, one reset wire to
+   RST and the other to GND.
+4. Check the battery's polarity with a meter: lead colours aren't reliable. Solder
+   battery − to B−, and battery + to the slide switch's other wire, with the switch
+   off, and insulate the joint. Stick the battery to the ceiling of its bay with foam
+   tape, leads through the notch.
+5. Stick foam tape along the strip that stands down from the ceiling of the board's
+   bay, and leave its liner on so that the board can move on it.
+6. Cut the nine key wires to reach their holes with about 20 mm to spare. Feed each one
+   through its hole from the board's top face, and lay the board in its bay, top face
+   down on the strip, port in its notch. The wires then lie between the board and the
+   ceiling, either side of the strip and past its south end.
+7. Solder the nine wires from the side now facing you and trim them flush. There's
+   only 1.5 to 2 mm over the board's top face at its south end, and 1.5 mm at the left
+   half's RH, RB and RX holes, so lay the wires side by side, not crossed.
+8. Turn the switch on. Hold the board down and plug in USB-C. Press reset twice,
+   holding the button in with a finger, as the other half of its pocket is in the
+   plinth. The board should mount as a drive: flash the firmware, then press every
+   key. Everything can still be reached, so fix anything that's wrong now. Then
+   unplug it and turn the switch off.
 
-Press each switch in from the top, pins straight, holding the body. The boss on the
-plinth under each socket takes the push. Fit the caps: R2 top row, R3 home row, R4
-bottom row, R3 thumbs.
+### 5. Close the case
+
+1. Lay the plinth on the upside-down body. No wire joins them, so it goes straight on,
+   and its steps locate it. Check that no wire sits on the seam.
+2. Fit the five screws and tighten them gently. The seam should close without forcing,
+   and stop and look if it doesn't. The parts are designed 0.1 mm apart across the
+   seam, so a hair of a gap away from the screws is expected.
+3. Turn it over and fit the caps: R2 top row, R3 home row, R4 bottom row, R3 thumbs.
+
+To get back in, undo the screws and lift the plinth off with the body upside down.
+Everything stays wired.
 
 ### 6. Left half
 
