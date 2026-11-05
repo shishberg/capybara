@@ -178,7 +178,8 @@ without adding height or footprint:
   tabs' tips by a wire and `wire_gap_mm`, so a straight column wire runs beside
   each terminal and not under it. Each finger key's diode (DO-35) has a pocket
   south of its socket, off the wire's line: its north leg goes to the −x tab's
-  south face and its south leg out to the column wire;
+  south face and its south leg out to the column wire (at the pinky's bottom
+  key, where that wire ends, the leg turns back beside the diode to reach it);
 - a row channel from each key's +x tab along the next cell's north edge to its
   +x tab, crossing that key's column channel on the way (use insulated wire for
   the rows);
@@ -190,7 +191,7 @@ without adding height or footprint:
   switches' pockets, that joins the thumb cluster; where a column reaches
   further forward than the next one in, this trunk goes straight into that
   column's channel rather than round the stagger, so the pinky's column ends at
-  its bottom key's tab;
+  its bottom key's diode;
 - in the thumb cluster, a trunk along the three row keys' north edges (the
   thumb row's wire and the thumb keys' column wires on their way to the front
   trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps

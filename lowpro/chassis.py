@@ -765,9 +765,11 @@ def channels():
     rows = range(-P.rows_below, P.rows_above + 1)
     out = []
     # Each finger column: front trunk point (the pinky's, the longest, joins it
-    # higher up), its keys' column tabs, back trunk point.
+    # higher up, so it starts at its bottom key's diode), its keys' column tabs,
+    # back trunk point.
     for c in range(5):
-        start = [front_pt(finger_key(c, -P.rows_below))] if c < 4 else []
+        bottom = finger_key(c, -P.rows_below)
+        start = [front_pt(bottom) if c < 4 else at(bottom, (col_x(), diode_y()))]
         out.append((t if c == 0 else column_w(),
                     start + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))]))
@@ -1068,23 +1070,28 @@ def crowded_keys():
     diode's south end to the north edge: in the key's frame, the body, the plinth,
     the terminal (carried on down, so nothing counts that goes under it) and the
     diode over that span, seen along y, leave no room for a circle of wire_d_mm
-    in the channel. The pinky's bottom key is left out: its wires join north of it."""
+    in the channel. The pinky's column wire ends at its bottom key, so there the
+    span starts at the diode's north end: nothing has to pass the diode."""
     solid = union([body(), bottom_plate()])
     (size, centre), _ = R.socket_tab_boxes()
     tab = R.box((size[0], size[1], 40), (centre[0], centre[1], -20))
     d = P.diode_mm
-    y0, y1 = diode_y() - d[0] / 2 - 0.2, ne_y()
-    span = R.box((12, y1 - y0, 12), (-8, (y0 + y1) / 2, -9.5))
+
+    def span(y0):
+        return R.box((12, ne_y() - y0, 12), (-8, (y0 + ne_y()) / 2, -9.5))
+
     x0 = lane_x() - 2 * P.wire_d_mm
     window = CrossSection.square((socket_end_x() - x0, 12)).translate((x0, -15.5))
     across = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0]], float)
     out = []
     for k in keys():
-        if k.group != "finger" or (k.col == 4 and k.row == -P.rows_below):
+        if k.group != "finger":
             continue
         to_key = rinv(k.frame)
         m = np.asarray(to_key[:3, :4], float)
-        solids = [solid.transform(m) ^ span, tab ^ span, placed(to_key @ diode_frame(k), R.diode_body())]
+        last = k.col == 4 and k.row == -P.rows_below
+        s = span(diode_y() + (d[0] / 2 if last else -d[0] / 2 - 0.2))
+        solids = [solid.transform(m) ^ s, tab ^ s, placed(to_key @ diode_frame(k), R.diode_body()) ^ s]
         seen = CrossSection.batch_boolean([p.transform(across).project() for p in solids], OpType.Add)
         if (window - seen).offset(-P.wire_d_mm / 2, JoinType.Round, 2.0, 32).is_empty():
             out.append(k.name)
