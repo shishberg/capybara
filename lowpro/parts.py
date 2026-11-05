@@ -159,7 +159,7 @@ def socket_collars():
 
 
 def socket_tab_tip(side):
-    """The position of the -x (column) and +x (row) tabs' tips in the key frame."""
+    """The position of the -x and +x tabs' tips in the key frame."""
     return np.array([P.socket_centre_mm[0] + side * (P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]),
                      P.socket_tab_y[0] if side < 0 else P.socket_tab_y[1], socket_top_z()])
 

@@ -161,12 +161,12 @@ def check():
         ok = False
     else:
         print("every column's wire runs straight beside its terminals")
-    cramped = C.cramped_thumbs()
+    cramped = C.cramped_diodes()
     if cramped:
-        print("no room for the diode's leg and joint at: " + ", ".join(cramped))
+        print("no room for the diode and its legs at: " + ", ".join(cramped))
         ok = False
     else:
-        print("every thumb diode's leg and joint fit")
+        print("every diode and its legs fit")
     v = C.part_overlap()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")

@@ -143,9 +143,15 @@ diode_lead_mm = 1.5         # the straight lead its glass keeps before any bend
 # how wide it is across the leg and the wire's core in their sleeve.
 thumb_joint_mm = (6.0, 1.5)
 thumb_ease_mm = 3.0         # how far along the key its wire eases over to the north edge's line
-# Each finger key's diode sits south of its socket, its north leg on the -x tab
-# and its south leg on the column wire, which runs beside the tabs' tips; each
-# row's wire joins the +x tabs along the cells' north edges. See the README.
+# Each finger key's diode has its own pocket across the key, south of the centre
+# post, with a slot for each leg: its +x leg goes round the side post's hole to
+# the +x tab and its -x leg out to the column wire, which runs beside the tabs'
+# tips. Each row's wire joins the -x tabs along the cells' north edges. See the README.
+diode_leg_d_mm = 0.5
+diode_leg_slot_mm = 1.0
+# The wall between a bottom-row diode's pocket and the front trunk, in the key's
+# frame at the socket's top: the end rows lean, so the trunk comes closer below.
+front_trunk_wall_mm = 1.5
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the

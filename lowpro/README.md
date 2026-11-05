@@ -107,7 +107,26 @@ key 1.5u, lying along the row.
 **Matrix.** The same 4 × 5 as the Capybara: each thumb key chains onto a finger
 column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
 [firmware's](../firmware/README.md) matrix carries over, though it needs an
-nRF52840 build.
+nRF52840 build, with its own pins. The same board goes in both hands and the
+bay is mirrored, so each half has its own pins, on the edge nearest the keys
+where it can (Pro Micro pin number, then GPIO):
+
+| Net | Right | Left |
+|---|---|---|
+| RT | 2, P0.08 | 20, P0.31 |
+| RH | 5, P0.17 | 19, P0.29 |
+| RB | 6, P0.20 | 18, P0.02 |
+| RX | 7, P0.22 | 17, P1.15 |
+| C0 | 8, P0.24 | 16, P1.13 |
+| C1 | 9, P1.00 | 15, P1.11 |
+| C2 | 10, P0.11 | 14, P0.10 |
+| C3 | 11, P1.04 | 13, P0.09 |
+| C4 | 12, P1.06 | 12, P1.06 |
+
+That left edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so
+its C4 goes to pin 12 on the far edge, under the board's south end. P0.09 and
+P0.10 are the chip's NFC pins, so the left half's firmware has to set them as
+GPIOs.
 
 ## The chassis
 
@@ -176,22 +195,31 @@ its bundle two wires wide, without adding height or footprint:
 
 - a column channel up each column, from the socket's shaft out past the −x
   tabs' tips by a wire and `wire_gap_mm`, so a straight column wire runs beside
-  each terminal and not under it. Each finger key's diode (DO-35) has a pocket
-  south of its socket, off the wire's line: its north leg goes to the −x tab's
-  south face and its south leg out to the column wire (at the pinky's bottom
-  key, where that wire ends, the leg turns back beside the diode to reach it);
-- a row channel from each key's +x tab along the next cell's north edge to its
-  +x tab, crossing that key's column channel on the way (use insulated wire for
-  the rows);
+  each terminal and not under it;
+- on a finger key the row wire goes to the −x tab and the diode (DO-35) between
+  the +x tab and the column wire, a switch not minding which way round it is
+  wired. The diode has its own pocket across the key, south of the centre post,
+  with no wire in it. Its band leg goes out a slot (`diode_leg_slot_mm`) to the
+  column wire, and its other leg out a slot past the side post's hole, north
+  into the +x tab's solder well and in to the tab's tip. The pocket and slots go
+  down the key's normal, so on a leaning key they stay out from under the post
+  holes. Where the columns stagger, the leg's slot opens into a row channel or
+  the front trunk near the well (at the ring column and the middle column's
+  bottom key), so the leg is bare beside an insulated wire there;
+- a row channel along each key's north edge from its column channel to the next
+  key's, crossing that key's column wire on the way (use insulated wire for the
+  rows). The row wire's two ends share the column channel from there down to the
+  −x tab's north face, beside the column wire;
 - the inner column's channel is a wider trunk (`trunk_w_mm`): the three row
   wires join it;
 - a trunk along the top row just north of its sockets, from the pinky column's
   top to the inner column and on over the well's rim, which the columns' wires
-  follow, and one inside the bottom row's cells, under the south edge of the
-  switches' pockets, from the pinky's column to the index column's; where a
+  follow, and one along the bottom row's cells, south of the diodes' pockets by
+  `front_trunk_wall_mm`, from the pinky's column to the index column's; where a
   column reaches further forward than the next one in, this trunk goes straight
   into that column's channel rather than round the stagger, so the pinky's
-  column ends at its bottom key's diode;
+  column ends level with its bottom key's diode, and where it reaches less far
+  the trunk goes by the next cell's +x corner;
 - in the thumb cluster, separate channels that hold at most two wires each
   (`thumb_routes`, which count towards the outline and so get the full wall). A
   channel runs along the three row keys' north edges, each key's tabs risen to
@@ -294,7 +322,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head; or a counterbore breaks out through the plinth's top beside its pad | `--set screw_head_d=8`, `--set bottom_plate_mm=1`, `--set screw_grip_mm=0.6` |
-| Wiring | A socket terminal, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well and past the terminals; or a straight wire can't lie along a finger key's column channel past its terminal and diode, with nothing counted under the terminal; or a thumb diode's leg and sleeved joint meet the body or the plinth | `--set battery_lead_notch_mm=0.6`, `--set wire_gap_mm=-0.5`, `--set "thumb_joint_mm=(6,3)"` |
+| Wiring | A socket terminal, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well and past the terminals; or a straight wire can't lie along a finger key's column channel past its terminal, with nothing counted under the terminal; or a finger diode or its legs, or a thumb diode's leg and sleeved joint, meet the body or the plinth | `--set battery_lead_notch_mm=0.6`, `--set wire_gap_mm=-0.5`, `--set "thumb_joint_mm=(6,3)"`, `--set diode_leg_slot_mm=0.3` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, a channel other than the one into the bay comes within it of the bay, or a finger column's channel comes within it of another column's key | `--set socket_tab_mm=(3.5,1.68,1.85)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
