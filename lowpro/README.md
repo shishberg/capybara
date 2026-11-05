@@ -26,6 +26,7 @@ and the way it moves. What changes:
 
 | File | What it is |
 |---|---|
+| `BUILD.md` | How to build a pair of halves, the pins, and what they do when running. |
 | `build.py` | The command: builds the parts to STL and the assembly to 3MF; see its header. |
 | `render.py` | PNGs of the right half for a person to look over; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
@@ -72,42 +73,8 @@ lands on x2.
 **Matrix.** The same 4 × 5 as the Capybara: each thumb key chains onto a finger
 column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
 [firmware's](../firmware/README.md) matrix carries over, though it needs an
-nRF52840 build, with its own pins. The same board goes in both hands and the
-bay is mirrored, so each half has its own pins, named as they're printed on the
-board (008 is P0.08):
-
-| Net | Right | Left |
-|---|---|---|
-| RT | 006 | 029 |
-| RH | 011 | 010 |
-| RB | 104 | 106 |
-| RX | 106 | 009 |
-| C0 | 100 | 111 |
-| C1 | 022 | 113 |
-| C2 | 020 | 115 |
-| C3 | 008 | 002 |
-| C4 | 017 | 031 |
-
-The pins follow the wires' three ways into the well. RH, RB and RX cross straight
-from the inner column level with the home key to the board's south end, C4 goes
-straight from the top inner key's diode to the pin beside it, and RT and the other
-columns come round the back trunk to the board's north end.
-
-The right half skips 024 because the board's battery divider is on it. The left
-edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its RB goes
-under the board's south end to 106, the last hole on the far edge. 009 and 010
-are the chip's NFC pins, so the left half's firmware has to set them as GPIOs.
-
-The board has no reset button, so the main build's
-[tactile switch](../docs/pro-micro.md) is wired to RST and GND. It stands on edge
-north of the power switch, its plunger out through the inner side wall to press
-with a fingertip. The plunger sits on the seam between the plinth and the body, so
-the hole is half in each: the switch drops into the plinth's half of its pocket and
-the body closes over it. The wall of the pocket behind it takes the press.
-
-B+ and B− are in line with the header pins at the board's north end, B+ in the
-north-west corner and B− in the north-east, so the battery's wires run its
-length under it.
+nRF52840 build, with its own pins. [Building it](BUILD.md) has the pins, the
+wiring and how it should behave when running.
 
 ## The chassis
 
