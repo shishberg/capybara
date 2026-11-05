@@ -738,12 +738,18 @@ def col_x():
 
 
 def thumb_col_x():
-    """A thumb key's column wire's line, beside the +x tab's tip."""
-    return row_x() + P.wire_gap_mm + P.wire_d_mm / 2
+    """A thumb key's column wire's line, beside the +x tab's tip. The left half's
+    tip reaches further toward the next key, so there the channel stops as soon
+    as it holds the wire, for min_wall_mm to that key's solder well."""
+    return min(R.socket_tab_tip(1)[0] + P.wire_gap_mm + P.wire_d_mm / 2,
+               P.socket_tab_mm[0] - socket_end_x() + P.wire_gap_mm + P.wire_d_mm - P.channel_w_mm / 2)
 
 
 def row_x():
-    return R.socket_tab_tip(1)[0]
+    """Over the +x tab's tip, but no further out than a channel overlapping the
+    left half's shaft. That half's +x tab is the south one, so its solder well
+    stops short of the shaft's north end, where the right half's cuts the wall away."""
+    return min(R.socket_tab_tip(1)[0], P.channel_w_mm / 2 - shaft_edge_x())
 
 
 def shaft_edge_y():
@@ -1448,8 +1454,10 @@ def thin_walls():
     column's channel and the keys of other columns, between a diode's pocket and
     every channel but its own column wire's, and between a channel and the
     outside and the top, as a list of (room, room, wall mm), empty when every
-    wall is thick enough. The other channels join keys by design, so they are
-    held only to these, and a row channel to opening into the shaft it runs along."""
+    wall is thick enough. A thumb key's column channel is held to the other keys
+    as a finger column's is. The other channels join keys by design, so they are
+    held only to these, and a row channel to opening into the shaft it runs along,
+    wherever a solder well hasn't already cut that wall away."""
     rooms = [(k.name, lost(body_mass(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
     bay = union([lost(body_mass(), bay_rooms() + well(), True), lost(plinth_mass(), bay_rooms(plinth=True))])
@@ -1464,6 +1472,9 @@ def thin_walls():
         pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
     for k in keys():
         pts = channels()[k.col][1] if k.group == "finger" else thumb_column(k)
+        if k.group != "finger":
+            run = (f"{k.name}'s column channel", lost(body_mass(), [run_solid(*pts, P.channel_w_mm)], True))
+            pairs += [(run, named[j.name]) for j in keys() if j is not k]
         own = {(tuple(a), tuple(b)) for a, b in zip(pts[:-1], pts[1:])}
         pocket = (f"{k.name}'s diode pocket", lost(body_mass(), diode_room(k)[:1], True))
         pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_mass(), [run_solid(a, b, w)], True)))
@@ -1474,9 +1485,13 @@ def thin_walls():
             d = sa.min_gap(sb, P.min_wall_mm)
             if d < P.min_wall_mm - 1e-6:
                 out.append((a, b, d))
-    for k in row_keys():
+    beside = [(k, nw(k), ne(k)) for k in row_keys()]
+    well_y = R.socket_tab_tip(1)[1] + P.solder_well_mm[1] / 2
+    if well_y < shaft_edge_y():
+        beside += [(k, at(k, (row_x(), well_y)), at(k, (row_x(), shaft_edge_y()))) for k in keys() if k.group != "finger"]
+    for k, a, b in beside:
         shaft = lost(body_mass(), socket_shaft(k, P.socket_clearance_mm), True)
-        d = shaft.min_gap(lost(body_mass(), [run_solid(nw(k), ne(k), P.channel_w_mm)], True), P.min_wall_mm)
+        d = shaft.min_gap(lost(body_mass(), [run_solid(a, b, P.channel_w_mm)], True), P.min_wall_mm)
         if 1e-6 < d < P.min_wall_mm:
             out.append((f"{k.name}'s shaft", "its row channel", d))
     for a, b, w in channel_segments():

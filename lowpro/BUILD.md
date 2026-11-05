@@ -307,7 +307,7 @@ the left column of the [pin table](#pins). The pictures show the right half only
   terminal of a finger key and the diode to the pinky-side one, and on a thumb key the
   row wire to the near side and the diode to the far side.
 - **Channels:** they follow the terminals. The thumb keys' column channels stand about
-  1.2 mm further out than the mirror's, and the wider exit into the well is about
+  1 mm further out than the mirror's, and the wider exit into the well is about
   2.5 mm further north.
 - **Controller:** B+ and B− stay in the same corners of the board, while the strip
   and the keys swap sides.
