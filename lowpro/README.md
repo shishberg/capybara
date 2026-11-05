@@ -197,15 +197,16 @@ the thumbs, so it carries the tent and the wells and the body does not. Under
 each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
 rises to 0.15 mm under the socket and holds it against its ceiling when a
 switch is pushed in. It is screwed from below with M2 socket-head screws into
-M2 × 3 heat-set inserts at nine points (`screw_points` in `layout.py`), none in
-the outer wall. Seven are in key cells (both pinky ends, ring home, middle top
-and the thumb cluster's far end and front), in the web south of the switch's
-pocket, where no socket, tab or channel comes: the insert's hole stops
-under the PCB layer, or beside the pocket where a key's tilt would bring it too
-close. One is in the strip beside the board, where the plinth stays forward of
-the power switch, and one in the neck in front of the battery. The report prints
-the least wall left round any screw (0.66 mm, at the pinky's bottom key, the most
-tilted). Each screw hole is counterbored from below so that every screw
+M2 × 3 heat-set inserts at five points (`screw_points` in `layout.py`), none in
+the outer wall. Three are in key cells (ring home, middle top and the thumb
+cluster's front), in the web south of the switch's pocket, where no socket, tab
+or channel comes: the insert's hole stops under the PCB layer, or beside the
+pocket where a key's tilt would bring it too close. One is in the strip beside
+the board, where the plinth stays forward of the power switch and near the USB
+port, and one in the neck in front of the battery. The pinky column has none: its
+keys' cells are the most tilted and leave the least wall, and the thin plinth
+under them lies on the desk. The report prints the least wall left round any
+screw. Each screw hole is counterbored from below so that every screw
 grips `screw_grip_mm` of plinth under the body: one screw length (M2 × 5) fits
 the thin side and the thick, and the plinth must be thick enough under each to
 sink the head (`screw_head_h_mm`), which keeps them off the thin pinky side.

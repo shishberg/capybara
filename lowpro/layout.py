@@ -391,8 +391,7 @@ def screw_points():
     too thin to hold an insert, so the screws stand inside the field: in a
     key's cell, in the web south of its switch's pocket and under its PCB
     layer, where no socket, tab or channel comes (the (x, y) in the key's frame
-    are picked for the wall they leave, which the top and bottom rows' lean
-    moves); and round the bays, one in the strip by the board that the power
+    are picked for the wall they leave, which a key's lean moves); and round the bays, one in the strip by the board that the power
     switch leaves empty, midway between the board's room and the outline, and
     one in the neck in front of the battery."""
     def cell(name, x, y):
@@ -401,6 +400,5 @@ def screw_points():
     m, b = mcu_bay(), battery_bay()
     strip = m[0][0] + (switch_strip() - P.wall_mm) / 2, (m[0][1] + power_switch_front()) / 2
     neck = b[1][0] + 3, b[0][1] - 4
-    return [cell("pinky_1", -3, -7), cell("pinky_-1", 8, -9), cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_far", -7, -9.5), cell("thumb_x2" if P.thumb_extra else "thumb_home", 8, -9.5),
-            cell("thumb_x1" if P.thumb_extra else "thumb_near", 8, -9.5), strip, neck]
+    return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
+            cell("thumb_x2" if P.thumb_extra else "thumb_home", 8, -9.5), strip, neck]
