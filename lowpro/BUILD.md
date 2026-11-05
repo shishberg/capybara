@@ -89,9 +89,7 @@ slots before printing the rest.
   well fills with support too. Take care clearing it from the well's wall on the keys'
   side, which is 1 mm thick and stands up to 14 mm tall.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
-  PLA, since several walls near solder joints are about 1 mm thick. The fin between a
-socket's pocket and the row channel north of it is only 0.2 to 0.3 mm, and a slicer
-may drop it. That does no harm: the collars locate the socket.
+  PLA, since several walls near solder joints are about 1 mm thick.
 - Clear all the support out of the channels, shafts and diode pockets. A wire has to
   lie in every channel, and the socket has to reach its ceiling.
 

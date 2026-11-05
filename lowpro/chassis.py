@@ -700,7 +700,7 @@ def press_strip():
 # In a key's frame, at the socket's top: the column channel's centre (col_x),
 # the column wire's line past the -x tab (lane_x), a thumb key's column wire's
 # line past the +x tab (thumb_col_x), the line over the +x tab (row_x), and the
-# north edge (ne_y).
+# row channel's line north of the socket (ne_y).
 def socket_end_x():
     """The -x end of the right half's socket. The column channels stand off it in
     both halves: the left half's socket stops short of it, so that half's -x tab
@@ -746,8 +746,14 @@ def row_x():
     return R.socket_tab_tip(1)[0]
 
 
+def shaft_edge_y():
+    """The channels north of a socket overlap its shaft, as a column channel does,
+    because a wall between them would be too thin to print."""
+    return P.socket_centre_mm[1] + P.socket_body_mm[1] / 2 + P.socket_clearance_mm - 0.1
+
+
 def ne_y():
-    return P.cell_mm / 2 - P.channel_w_mm / 2
+    return shaft_edge_y() + P.channel_w_mm / 2
 
 
 def out_y():
@@ -762,7 +768,7 @@ def trunk_y(side):
     depth these lines lie further out in plan than they do in the frame, and
     the trunk, which stands square to the desk, leans in under the pocket."""
     if side > 0:
-        return P.socket_centre_mm[1] + P.socket_body_mm[1] / 2 + P.socket_clearance_mm + P.trunk_w_mm / 2
+        return shaft_edge_y() + P.trunk_w_mm / 2
     return diode_y() - P.diode_mm[1] / 2 - P.diode_room_mm - P.front_trunk_wall_mm - P.trunk_w_mm / 2
 
 
@@ -820,14 +826,16 @@ def column_line(c):
 
 
 def column_meet(k, p, q):
-    """Where the line through p and q crosses k's column channel in plan, at the
+    """Where the line through p and q comes to the wire's lane in k's column
+    channel, short of the channel's middle (a terminal can stand there), at the
     channel's own height: a key's plane, carried on past the key, falls away from
     the channel, and a run ending on it dives out of the body's underside."""
     pts = column_line(k.col)
+    along = (q - p)[:2] / np.linalg.norm((q - p)[:2])
     for a, b in zip(pts[:-1], pts[1:]):
         t = np.linalg.solve(np.c_[(b - a)[:2], (p - q)[:2]], (p - a)[:2])[0]
         if 0 <= t <= 1:
-            return a + (b - a) * t
+            return a + (b - a) * t - np.r_[along * (col_x() - lane_x()), 0]
     raise ValueError(f"the line from {p} to {q} misses {k.name}'s column")
 
 
@@ -889,6 +897,12 @@ def well_ways():
 
 def finger_key(col, row):
     return L.column_key(col, row)
+
+
+def row_keys():
+    """The finger keys a row channel leaves for the next column: all but the top
+    row and the pinky."""
+    return [finger_key(c, r) for r in range(-P.rows_below, P.rows_above) for c in range(4)]
 
 
 def thumb(name):
@@ -975,10 +989,8 @@ def channels():
     # Each finger row but the top one, whose wire runs in the back trunk: straight
     # along each key's north edge and on into the next column, whose channel the
     # wire then shares to that key's -x tab.
-    for r in rows[:-1]:
-        for c in range(4):
-            a, b = finger_key(c, r), finger_key(c + 1, r)
-            out.append((w, [nw(a), column_meet(b, nw(a), ne(a))]))
+    for a in row_keys():
+        out.append((w, [nw(a), column_meet(finger_key(a.col + 1, a.row), nw(a), ne(a))]))
     return out + thumb_channels()
 
 
@@ -1437,7 +1449,7 @@ def thin_walls():
     every channel but its own column wire's, and between a channel and the
     outside and the top, as a list of (room, room, wall mm), empty when every
     wall is thick enough. The other channels join keys by design, so they are
-    held only to these."""
+    held only to these, and a row channel to opening into the shaft it runs along."""
     rooms = [(k.name, lost(body_mass(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
     bay = union([lost(body_mass(), bay_rooms() + well(), True), lost(plinth_mass(), bay_rooms(plinth=True))])
@@ -1462,6 +1474,11 @@ def thin_walls():
             d = sa.min_gap(sb, P.min_wall_mm)
             if d < P.min_wall_mm - 1e-6:
                 out.append((a, b, d))
+    for k in row_keys():
+        shaft = lost(body_mass(), socket_shaft(k, P.socket_clearance_mm), True)
+        d = shaft.min_gap(lost(body_mass(), [run_solid(nw(k), ne(k), P.channel_w_mm)], True), P.min_wall_mm)
+        if 1e-6 < d < P.min_wall_mm:
+            out.append((f"{k.name}'s shaft", "its row channel", d))
     for a, b, w in channel_segments():
         along = [a + (b - a) * t for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))]
         name = f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})"

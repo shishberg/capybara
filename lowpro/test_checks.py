@@ -53,5 +53,18 @@ class PinchedRuns(unittest.TestCase):
                           [name for name, _, _ in C.pinched_runs()])
 
 
+class SocketWalls(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        L.reset()
+
+    def test_a_channel_leaving_a_fin_beside_a_socket_is_caught(self):
+        """The row channel along the cell's north edge left 0.2 to 0.3 mm of wall
+        between it and the socket's shaft, too thin to print."""
+        with mock.patch.object(C, "ne_y", lambda: P.cell_mm / 2 - P.channel_w_mm / 2):
+            L.reset()
+            self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's shaft"])
+
+
 if __name__ == "__main__":
     unittest.main()
