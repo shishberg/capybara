@@ -71,11 +71,10 @@ parameter in `lowpro/params.py` before printing:
 | Keycaps | Base, top and height of each row | `cap_base_mm`, `cap_top_mm`, `cap_height_mm` |
 | Sockets | The terminals, which vary between batches | `socket_tab_mm` |
 
-The board's port end tucks 1.3 mm into a slot in the plinth's back wall, so that the
-port meets its opening. The roof of that slot is the lip these instructions mention. The
-USB-C shell and the board together can be 4.3 mm thick, and the lip leaves 4.6 mm over
-the well's floor, less whatever the lip sags in printing. Once the plinth is printed, try
-the bare board under the lip, and file the lip to fit if it won't pass.
+The board's end goes 1.3 mm into the USB-C hole. The USB-C shell and the board together
+can be 4.3 mm thick, and the hole is 4.6 mm high there, less whatever its top sags in
+printing. Once the plinth is printed, try the bare board in the hole, and file the top
+of the hole to fit if it won't go.
 
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
@@ -195,9 +194,9 @@ joint.
 - **Battery:** in the south bay, leads at its north end, through the notch in the
   wall into the controller's bay.
 - **Controller:** in the north bay, components down, USB-C port out through the back
-  wall. The battery's leads run north under the board to its north end. A lip of the
-  plinth comes over the north end of the board and clears it by 0.3 mm, so nothing
-  there can stand proud of the board's top.
+  wall. The battery's leads run north under the board to its north end. The top of the
+  USB-C hole clears the north end of the board by 0.3 mm, so nothing there can stand
+  proud of the board's top.
 - **Power switch:** in its pocket in the strip on the board's inner side, knob in a
   slot through the inner side wall. The knob's tip is flush with the outside of the
   wall, so you slide it with a fingernail.
@@ -207,8 +206,8 @@ joint.
 
 Power runs battery + → slide switch → B+, and battery − → B−. Seen from above in
 the well, B+ is the board's north-west corner and B− its north-east. Solder both
-from the board's underside, the way the leads come, and keep the top flat to pass
-under the lip. Reset is one leg of the button to RST and another to GND: check with
+from the board's underside, the way the leads come, and keep the top flat to fit
+into the USB-C hole. Reset is one leg of the button to RST and another to GND: check with
 a meter which two legs a press joins, usually the diagonal pair.
 
 ## Assembly
@@ -240,7 +239,7 @@ level but the surface round them isn't.
    off, and insulate the joint. Stick the battery in its bay with foam tape, leads
    through the notch.
 5. Feed the board in nose first, components down: tilt its south end up 5 to 8°, no more,
-   slip the port into its opening and under the plinth's lip, then lower the south
+   slip its end into the USB-C hole, then lower the south
    end, with the leads under it. Try this dry before soldering anything to the board,
    since it's harder with the wires on.
 6. Turn the switch on. Hold the board down and plug in USB-C. Press reset twice,
