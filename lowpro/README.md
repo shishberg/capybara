@@ -15,7 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | 132 × 131 mm, 11,900 mm² |
+| Plan per half | | 132 × 131 mm, 11,870 mm² |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
@@ -123,7 +123,7 @@ of different heights abut (the bottom row's ring and pinky keys differ by
 5 mm) the surface steps at the higher cell's edge rather than ramping across
 both. Its underside is the same surface dropped
 straight down by the room every key needs (the socket's bottom and
-`under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
+`under_socket_mm` under it, taken along the most tilted key's normal: 9.6 mm),
 so the body is as thick under the inner column as under the pinky and every
 wiring channel is the same depth, and flat under each cell as the top is. The tent and the wells live in the plinth
 under it. The footprint (`outline_style`) follows the cells and the bays, with the gaps
@@ -153,17 +153,19 @@ at most a few millimetres tall; the plinth prints flat.
 **Keys.** Each key gets the 14 mm switch hole with 0.15 mm clearance through a
 1.5 mm plate, the clip reliefs on its ±y sides, the housing's pocket to 5 mm
 below the plate, then a 1.6 mm layer in place of a PCB with holes for the
-centre post, the side posts and the two pins, and under that the hotswap socket's
+centre post, the side posts and the socket's two collars, which the pins come
+down, and under that the hotswap socket's
 pocket, open downward as a shaft to the underside. The shaft and the solder wells
 are cut vertically, square to the desk, however the key tilts, so the
 plinth's bosses stand straight and no sliver of body is left under a tilted key.
 The socket is pushed up the shaft from below until it meets the pocket's
-ceiling, where the switch's pins reach it; the socket body is modelled as the measured 11.6 × 6.2 × 1.9 mm
-envelope cut into the two boxes about its pin cups (`socket_body` in
-`parts.py`), with its two solder tabs out of the ±x ends. A solder well under
+ceiling, where the switch's pins reach it. The socket's sizes are Kailh's
+drawing (10.9 × 5.89 × 1.8 mm, 3.05 mm over the collars): two boxes round its
+step at the centre post (`socket_body` in `parts.py`), with its two solder tabs
+out of the ±x ends, flush with its top. A solder well under
 each tab reaches up from the underside so a wire can be soldered to the tab
 after the socket is in; it stays `min_wall_mm` inside the key's cell, so the −x
-tab's well ends about at the tab's tip. There are no LEDs.
+tab's well ends about 0.6 mm past the tab's tip. There are no LEDs.
 
 **Wiring channels.** Slots in the underside, from the underside up to the
 sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:

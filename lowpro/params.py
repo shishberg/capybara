@@ -98,12 +98,17 @@ cap_clearance_mm = 0.5                 # caps must stay this far apart
 cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - base)
 
 # ---------------------------------------------------------------- the hotswap socket (Kailh MX)
-# Measured on the key tiles (docs/design-status.md): body 11.6 x 6.2 x 1.9,
-# centred 0.7 mm to -x and 4 mm to +y of the stem, seen from the switch side.
-# Its two solder tabs stick out of the +-x ends, PROVISIONAL sizes.
-socket_body_mm = (11.6, 6.2, 1.9)
-socket_centre_mm = (-0.7, 4.0)
-socket_tab_mm = (2.0, 2.6)             # each tab's reach past the body, and its width
+# Kailh's drawing: body 10.9 x 5.89 x 1.8, centred on the midpoint of the two
+# pins, seen from the switch side. The body is that rectangle less the corner
+# by the stem: it steps round the centre post, so the +x end is one lobe wide
+# and the part towards -x runs its whole width. 3.05 thick over the collars, the
+# two barrels round the pin cups that a PCB's holes take.
+socket_body_mm = (10.9, 5.89, 1.8)
+socket_centre_mm = (-0.635, 3.81)
+socket_lobe_mm = (5.8, 4.0)            # the front lobe's length from the -x end, each lobe's width
+socket_collar_mm = (3.0, 1.25)         # PROVISIONAL diameter (footprints' holes are 3); height over the body
+# Its two solder tabs stick out of the +-x ends, 14.5 tip to tip; the width is PROVISIONAL.
+socket_tab_mm = (1.8, 2.6)             # each tab's reach past the body, and its width
 socket_tab_y = (2.54, 5.08)            # the -x tab's y, the +x tab's y
 socket_clearance_mm = 0.25
 # Room under each tab to solder a wire to it, from the floor up to the tab,

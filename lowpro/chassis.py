@@ -214,13 +214,14 @@ def outline_curve():
     the channels are kept min_wall_mm inside, the inside corners are rounded
     to what the wall leaves of outline_close_mm and the convex ones to
     outline_round_mm. The offsets leave a polygon of straight
-    sides and arcs (as chords within mesh_tol_mm); the curve is a periodic
-    cubic spline through points along it a tenth of mesh_mm apart, so that its
-    normal turns smoothly where an arc meets a side. Returns the spline, over
-    the polygon's length, counterclockwise."""
+    sides and arcs (as chords four times finer than mesh_tol_mm asks, or the
+    spline bends too tightly at each chord's end for the top edge's round);
+    the curve is a periodic cubic spline through points along it a tenth of
+    mesh_mm apart, so that its normal turns smoothly where an arc meets a side.
+    Returns the spline, over the polygon's length, counterclockwise."""
     s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
     def offset(s, amount):
-        return s.offset(amount, JoinType.Round, 2.0, segments(abs(amount)))
+        return s.offset(amount, JoinType.Round, 2.0, 4 * segments(abs(amount)))
 
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
@@ -608,8 +609,9 @@ def well():
 # In a key's frame, at the socket's top: the column line past the -x tab
 # (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
 def col_x():
-    # Overlapping the socket's shaft, so no sliver is left between them under the tent.
-    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - 0.3
+    # Far enough out that the diode in the column clears the socket, and still
+    # overlapping the socket's shaft, so no sliver is left between them under the tent.
+    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - P.socket_clearance_mm - P.diode_mm[1] / 2
 
 
 def row_x():
@@ -808,8 +810,7 @@ def solder_wells(k):
     """Room under each of key k's socket tabs to solder to it: solder_well_mm
     centred on the tab's tip, cut back in plan to stay min_wall_mm inside the
     cell at the socket's top, so it keeps that wall from the next key's room
-    (whose -x tab's slot comes within a millimetre of its cell's edge) and from
-    the bay. The -x well then ends about at its tab's tip."""
+    and from the bay. The -x well then ends just past its tab's tip."""
     s = P.solder_well_mm
     inside = polygon(cell_corners(k, -P.min_wall_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
     return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) ^ inside for side in (-1, 1)]

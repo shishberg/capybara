@@ -77,8 +77,8 @@ def mx_switch():
 
 def mx_switch_room():
     """The switch's room in the body: the hole through the plate, the housing's
-    pocket under it with the clip reliefs, and the posts' and pins' holes down
-    to the socket's top."""
+    pocket under it with the clip reliefs, and the posts' holes and the socket's
+    collars' holes, which the pins come down, through the PCB layer."""
     hole = P.switch_cutout_mm + 2 * P.switch_cutout_clearance_mm
     up = P.switch_top_above_plate_mm + 20
     b = P.switch_below_plate_mm
@@ -87,12 +87,13 @@ def mx_switch_room():
     d = P.switch_clip_relief_mm + P.switch_cutout_clearance_mm + 0.1
     rooms += [box((P.switch_clip_width_mm, d, b - P.plate_mm),
                   (0, sy * (hole / 2 + d / 2 - 0.1), -P.plate_mm - (b - P.plate_mm) / 2)) for sy in (-1, 1)]
-    # Posts and pins through the PCB layer, to just above the socket's bottom.
+    # Through the PCB layer, to just above the socket's bottom.
     depth = P.pcb_layer_mm + P.socket_body_mm[2] - 0.2
     z, c = -b - depth, 2 * P.post_clearance_mm
     rooms.append(cylinder(P.switch_centre_post_d + c, depth + 0.1, (0, 0, z)))
     rooms += [cylinder(P.switch_side_post_d + c, depth + 0.1, (sx * P.switch_side_post_x, 0, z)) for sx in (-1, 1)]
-    rooms += [cylinder(P.switch_pin_d + c, depth + 0.1, (p[0], p[1], z)) for p in P.switch_pins]
+    collar = P.socket_collar_mm[0] + 2 * P.socket_clearance_mm
+    rooms += [cylinder(collar, depth + 0.1, (p[0], p[1], z)) for p in P.switch_pins]
     return rooms
 
 
@@ -122,20 +123,16 @@ def socket_bottom_z():
 
 
 def socket_boxes(grow=0):
-    """The socket body as two boxes (its dogleg round the centre post), each
-    about a pin cup, within the measured 11.6 x 6.2 envelope; `grow` is the
-    clearance all round. Each box as (size, centre)."""
+    """The socket body as two boxes round its step at the centre post, the rear
+    lobe the body's whole length and the front lobe up to the step; `grow` is
+    the clearance all round. Each box as (size, centre)."""
     e, c = P.socket_body_mm, P.socket_centre_mm
+    front, lobe = P.socket_lobe_mm
     t = e[2] + 2 * grow
     x0, x1, y0, y1 = c[0] - e[0] / 2, c[0] + e[0] / 2, c[1] - e[1] / 2, c[1] + e[1] / 2
     z = socket_top_z() - t / 2 + grow
-    return [
-        # North-east box about pin 1 (2.54, 5.08).
-        ((x1 - x0 - 4.5 - 2.0 + 4.0 + 2 * grow, y1 - y0 - 2.3 + 2 * grow, t),
-         ((x1 - 2.0 + x0 + 4.5) / 2, (y1 + y0 + 2.3) / 2, z)),
-        # South-west box about pin 2 (-3.81, 2.54).
-        ((7.0 + 2 * grow, y1 - y0 - 2.3 + 2 * grow, t), ((x0 + x0 + 7.0) / 2, (y0 + y1 - 2.3) / 2, z)),
-    ]
+    return [((e[0] + 2 * grow, lobe + 2 * grow, t), (c[0], y1 - lobe / 2, z)),
+            ((front + 2 * grow, lobe + 2 * grow, t), (x0 + front / 2, y0 + lobe / 2, z))]
 
 
 def socket_body(grow=0):
@@ -150,6 +147,12 @@ def socket_tabs(grow=0):
             for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))]
 
 
+def socket_collars():
+    """The two collars, up from the socket's top round its pin cups."""
+    d, h = P.socket_collar_mm
+    return [cylinder(d, h, (p[0], p[1], socket_top_z())) for p in P.switch_pins]
+
+
 def socket_tab_tip(side):
     """The position of the -x (column) and +x (row) tabs' tips in the key frame."""
     return np.array([P.socket_centre_mm[0] + side * (P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]),
@@ -157,7 +160,7 @@ def socket_tab_tip(side):
 
 
 def hotswap_socket():
-    return pieces(socket_body(), "dimgray", "socket") + pieces(socket_tabs(), "silver", "tabs")
+    return pieces(socket_body() + socket_collars(), "dimgray", "socket") + pieces(socket_tabs(), "silver", "tabs")
 
 
 def hotswap_socket_room():
