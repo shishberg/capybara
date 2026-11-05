@@ -62,7 +62,7 @@ def wiring(C, body):
     from .lib import origin
 
     shown = [(body, BODY, 0.12)]
-    for w, pts, _ in C.channels():
+    for w, pts in C.channels():
         colour = "crimson" if w == P.trunk_w_mm else "royalblue"
         for a, b in zip(pts[:-1], pts[1:]):
             shown.append((C.Manifold.hull_points(C.post_points(a, w) + C.post_points(b, w)), colour))
@@ -73,7 +73,7 @@ def wiring(C, body):
 
     entry = C.bay_entry()
     bridge = [C.front_pt(C.finger_key(1, -P.rows_below)), C.ne(C.thumb("near"))]
-    labels = [(mid(C.edge_trunk(1)), "back trunk"), (mid(C.edge_trunk(-1)), "front trunk"),
+    labels = [(mid(C.back_trunk()), "back trunk"), (mid(C.front_trunk()), "front trunk"),
               ((bridge[0] + 3 * bridge[1]) / 4, "bridge to the thumbs"), (C.ne(C.thumb("home")), "thumb trunk"),
               (C.c_tab(C.finger_key(0, 0)), "inner column trunk"), (entry, "into the bay"),
               (origin(C.mcu_frame()), "controller"), (origin(C.battery_frame()), "battery")]

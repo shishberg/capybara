@@ -152,36 +152,29 @@ def circle_points(p, r, n=36):
     return [(p[0] + r * np.cos(a), p[1] + r * np.sin(a)) for a in np.linspace(0, 2 * np.pi, n, endpoint=False)]
 
 
-def channel_points(group=None):
-    """The channel paths in plan with a margin round them, as the point sets of
-    a stadium per segment (those of one group when given)."""
-    out = []
-    for w, pts, g in channels():
-        if group is not None and g != group:
-            continue
-        for a, b in zip(pts[:-1], pts[1:]):
-            out.append(circle_points(a, w / 2 + 1) + circle_points(b, w / 2 + 1))
-    return out
+def channel_points():
+    """The channel paths in plan with min_wall_mm of wall round them, as the
+    point sets of a stadium per segment."""
+    r = P.min_wall_mm
+    return [circle_points(a, w / 2 + r) + circle_points(b, w / 2 + r)
+            for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
 def cells_2d():
-    """The cells, bays and channel paths in plan, before the wall."""
-    return fused([cell_face(k) for k in keys()] + [bay_face(b) for b in L.bays()]
-                 + [hull_of(pts) for pts in channel_points()])
+    """The cells and bays in plan, before the wall."""
+    return fused([cell_face(k) for k in keys()] + [bay_face(b) for b in L.bays()])
 
 
 def hulls_2d():
-    """The finger field (its cells, the bays and its channels) and the thumb
-    cluster each as a convex hull, and the bridge joining them: the thumb row,
-    the two bottom keys nearest it, the bays on the inner side and the channel
-    between the two, so the inner edge runs straight from the bays to the thumb."""
+    """The finger field (its cells and the bays) and the thumb cluster each as a
+    convex hull, and the bridge joining them: the thumb row, the two bottom keys
+    nearest it and the bays on the inner side, so the inner edge runs straight
+    from the bays to the thumb."""
     bays = [p for b in L.bays() for p in bay_points(b)]
-    finger = hull_of([c for k in keys() if k.group == "finger" for c in cell_corners(k)] + bays
-                     + [p for pts in channel_points("finger") for p in pts])
-    thumb = hull_of([c for k in keys() if k.group != "finger" for c in cell_corners(k)]
-                    + [p for pts in channel_points("thumb") for p in pts])
+    finger = hull_of([c for k in keys() if k.group == "finger" for c in cell_corners(k)] + bays)
+    thumb = hull_of([c for k in keys() if k.group != "finger" for c in cell_corners(k)])
     bridge = hull_of([c for k in keys() if k.group == "thumb" or (k.group == "finger" and k.col <= 1 and k.row == -P.rows_below)
-                      for c in cell_corners(k)] + bays + [p for pts in channel_points("bridge") for p in pts])
+                      for c in cell_corners(k)] + bays)
     return fused([finger, thumb, bridge])
 
 
@@ -193,17 +186,24 @@ def signed_area(pts):
 @cached
 def outline_curve():
     """The body's outline as a smooth closed curve: outline_style "hulls" is the
-    hulls joined, "closed" the cells and channel paths closed up (gaps narrower
-    than 2 * outline_close_mm filled). Either way the gaps that remain get a
-    round of outline_close_mm, the wall goes round it and the convex corners
-    are rounded to outline_round_mm. The offsets leave a polygon of straight
+    hulls joined, "closed" the cells and bays closed up (gaps narrower than
+    2 * outline_close_mm filled). Either way the gaps that remain get a round
+    of outline_close_mm, the wall goes round it, the channels are kept
+    min_wall_mm inside and the corners are rounded to outline_round_mm. The
+    offsets leave a polygon of straight
     sides and arcs (as chords within mesh_tol_mm); the curve is a periodic
     cubic spline through points along it a tenth of mesh_mm apart, so that its
     normal turns smoothly where an arc meets a side. Returns the spline, over
     the polygon's length, counterclockwise."""
     s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
-    for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm, -P.outline_round_mm, P.outline_round_mm):
-        s = s.offset(amount, JoinType.Round, 2.0, segments(abs(amount)))
+    def offset(s, amount):
+        return s.offset(amount, JoinType.Round, 2.0, segments(abs(amount)))
+
+    for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
+        s = offset(s, amount)
+    s = fused([s] + [hull_of(pts) for pts in channel_points()])
+    for amount in (-P.outline_round_mm, P.outline_round_mm):
+        s = offset(s, amount)
     piece = max(s.decompose(), key=lambda c: c.area())
     pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
     pts = np.r_[pts, pts[:1]]
@@ -530,7 +530,7 @@ def well():
     """The well: both bays' rectangles and the battery's lead notch between
     them, open from the well's floor up through the plate's top (the body
     takes the parts' rooms, bay_rooms, where they reach above it)."""
-    return [floor_box(b, 100) for b in L.bays() + [L.lead_notch()]]
+    return [floor_box(b, 100) for b in L.well_rects()]
 
 
 # ---------------------------------------------------------------- wiring points
@@ -550,8 +550,19 @@ def ne_y():
 
 
 def out_y():
-    """A trunk point just past a cell's edge."""
+    """A trunk's corner point just past a cell's +x edge."""
     return P.cell_mm / 2 + 1.5
+
+
+def trunk_y(side):
+    """A trunk's line across its end cell, in the key's frame: the back trunk
+    (side 1) just north of the socket's room, the front trunk (side -1) under
+    the south edge of the switch's pocket, the room there being free under
+    the PCB layer. The end rows lean, so at this depth these lines lie further
+    out in plan than they do in the frame."""
+    if side > 0:
+        return P.socket_centre_mm[1] + P.socket_body_mm[1] / 2 + P.socket_clearance_mm + P.trunk_w_mm / 2
+    return -P.switch_cutout_mm / 2
 
 
 def at(k, p):
@@ -575,28 +586,48 @@ def ne(k):
 
 
 def back_pt(k):
-    return at(k, (col_x(), out_y()))
+    return at(k, (col_x(), trunk_y(1)))
 
 
 def front_pt(k):
-    return at(k, (col_x(), -out_y()))
+    return at(k, (col_x(), trunk_y(-1)))
 
 
-def edge_trunk(side):
-    """The back (side 1) or front (side -1) trunk's points, pinky to inner
-    column, past the end cells' edges. Each column's end point is on its -x
-    side, so where the next column in reaches further out than this column's
-    end point, a straight line to its end point would cut across its end cell;
-    there the trunk goes by that cell's +x corner, as far past both edges as
-    the end points are past theirs."""
-    end = back_pt if side > 0 else front_pt
-    row = P.rows_above if side > 0 else -P.rows_below
-    ends = [finger_key(c, row) for c in range(4, -1, -1)]
-    pts = [end(ends[0])]
+def back_trunk():
+    """The back trunk's points, pinky to inner column, past the top cells. Each
+    column's end point is on its -x side, so where the next column in reaches
+    further back than this column's end point, a straight line to its end point
+    would cut across its end cell; there the trunk goes by that cell's +x corner."""
+    ends = [finger_key(c, P.rows_above) for c in range(4, -1, -1)]
+    pts = [back_pt(ends[0])]
     for a, b in zip(ends[:-1], ends[1:]):
-        if side * (rinv(b.frame) @ np.append(end(a), 1))[1] < out_y():
-            pts.append(at(b, (out_y(), side * out_y())))
-        pts.append(end(b))
+        if (rinv(b.frame) @ np.append(back_pt(a), 1))[1] < trunk_y(1):
+            pts.append(at(b, (out_y(), trunk_y(1))))
+        pts.append(back_pt(b))
+    return pts
+
+
+def column_join(a, b):
+    """Where the front line of b's end cell, carried on, meets a's column line."""
+    p, q = front_pt(b), at(b, (0, trunk_y(-1)))
+    c, d = at(a, (col_x(), 0)), at(a, (col_x(), 1))
+    t = np.linalg.solve(np.c_[(q - p)[:2], (c - d)[:2]], (c - p)[:2])[1]
+    return at(a, (col_x(), t))
+
+
+def front_trunk():
+    """The front trunk's points, pinky to inner column, inside the bottom cells.
+    Where a column reaches further forward than the next one in, the trunk
+    leaves that next cell's line straight into the column's own channel, so it
+    never runs round the outside of the stagger."""
+    ends = [finger_key(c, -P.rows_below) for c in range(4, -1, -1)]
+    pts = []
+    for a, b in zip(ends[:-1], ends[1:]):
+        if (rinv(b.frame) @ np.append(front_pt(a), 1))[1] < trunk_y(-1):
+            pts.append(column_join(a, b))
+        elif not pts:
+            pts.append(front_pt(a))
+        pts.append(front_pt(b))
     return pts
 
 
@@ -617,43 +648,44 @@ def thumb(name):
 
 @cached
 def channels():
-    """The channels as polylines (width, [points...], group) in world; the group
-    ("finger", "thumb" or "bridge") says which hull of the footprint holds it."""
+    """The channels as polylines (width, [points...]) in world."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     rows = range(-P.rows_below, P.rows_above + 1)
     out = []
-    # Each finger column: front trunk point, its keys' column tabs, back trunk point.
+    # Each finger column: front trunk point (the pinky's, the longest, joins it
+    # higher up), its keys' column tabs, back trunk point.
     for c in range(5):
+        start = [front_pt(finger_key(c, -P.rows_below))] if c < 4 else []
         out.append((t if c == 0 else w,
-                    [front_pt(finger_key(c, -P.rows_below))] + [c_tab(finger_key(c, r)) for r in rows]
-                    + [back_pt(finger_key(c, P.rows_above))], "finger"))
+                    start + [c_tab(finger_key(c, r)) for r in rows]
+                    + [back_pt(finger_key(c, P.rows_above))]))
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
-    out.append((t, edge_trunk(1) + [bay_entry()], "finger"))
-    out.append((t, edge_trunk(-1), "finger"))
-    out.append((t, [front_pt(finger_key(1, -P.rows_below)), ne(thumb("near"))], "bridge"))
+    out.append((t, back_trunk() + [bay_entry()]))
+    out.append((t, front_trunk()))
+    out.append((t, [front_pt(finger_key(1, -P.rows_below)), ne(thumb("near"))]))
     # Each finger row: from each key's tab up to its north edge, across to the
     # next cell's north edge and along it to that key's tab; the inner column's
     # feeds its wire into the column channel.
     for r in rows:
         k0 = finger_key(0, r)
-        out.append((w, [r_tab(k0), ne(k0), nw(k0)], "finger"))
+        out.append((w, [r_tab(k0), ne(k0), nw(k0)]))
         for c in range(4):
             a, b = finger_key(c, r), finger_key(c + 1, r)
-            out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)], "finger"))
+            out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)]))
     # The thumb row: a trunk along the three keys' north edges (the row wire and
     # the column wires on their way to the front trunk), each key's tabs risen to it.
-    out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), nw(thumb(n)))], "thumb"))
+    out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), nw(thumb(n)))]))
     for n in ("near", "home", "far"):
-        out.append((w, [r_tab(thumb(n)), ne(thumb(n))], "thumb"))
-        out.append((w, [c_tab(thumb(n)), nw(thumb(n))], "thumb"))
+        out.append((w, [r_tab(thumb(n)), ne(thumb(n))]))
+        out.append((w, [c_tab(thumb(n)), nw(thumb(n))]))
     # The extra keys: their tabs risen to their north edges, joined to the gap
     # between the row keys over them.
     if P.thumb_extra:
         for name, left, right in (("x1", "near", "home"), ("x2", "home", "far")):
             k = thumb(name)
             g = (nw(thumb(left)) + ne(thumb(right))) / 2
-            out.append((w, [r_tab(k), ne(k), nw(k), c_tab(k)], "thumb"))
-            out.append((w, [(ne(k) + nw(k)) / 2, g], "thumb"))
+            out.append((w, [r_tab(k), ne(k), nw(k), c_tab(k)]))
+            out.append((w, [(ne(k) + nw(k)) / 2, g]))
     return out
 
 
@@ -667,7 +699,7 @@ def post_points(p, w):
 
 def channel_segments():
     """Every channel's straight runs as (a, b, width)."""
-    return [(a, b, w) for w, pts, _ in channels() for a, b in zip(pts[:-1], pts[1:])]
+    return [(a, b, w) for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
 def run_solid(a, b, w):
@@ -933,7 +965,11 @@ def screw_walls():
     for i, p in enumerate(L.screw_points()):
         x, y = float(p[0]), float(p[1])
         name = f"screw {i + 1} ({x:.1f}, {y:.1f})"
-        holes = [(h.translate((x, y, 0)), plate_cuts()) for h in R.screw_hole(plate_z(x, y))]
+        h = float(plate_z(x, y))
+        if h < P.screw_grip_mm + P.screw_head_h_mm:
+            proud = P.screw_grip_mm + P.screw_head_h_mm - h
+            hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
+        holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]
         holes.append((R.insert_hole().translate((x, y, floor_z(x, y))), body_cuts()))
         for hole, cuts in holes:
             box = hole.bounding_box()
@@ -966,5 +1002,5 @@ def report():
     return (f"plate tops {r2(min(plates))} to {r2(max(plates))} mm over the desk; cap tops {r2(min(tops))} to "
             f"{r2(max(tops))} mm; body shell {r2(L.floor_drop())} mm thick; plinth {r2(min(floors))} to "
             f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; fingertip reach between rows "
-            f"{reach} mm (index to pinky); plan {r2(x1 - x0)} x {r2(y1 - y0)} mm; "
+            f"{reach} mm (index to pinky); plan {r2(x1 - x0)} x {r2(y1 - y0)} mm, {round(polygon(outline()).area())} mm^2; "
             f"least wall round a screw {r2(wall)} mm ({screw} to {what})")

@@ -129,17 +129,17 @@ diode_mm = (4.0, 2.0)
 # bay's), and between the bay and every channel but the one into it; the
 # build checks every pair.
 min_wall_mm = 1
-wall_mm = 6                 # the body's wall past the key cells; the trunk channels and the screws' inserts sit in it
+wall_mm = 3                 # the body's wall past the key cells and the bays
 # The outline: "hulls" joins a convex hull round the finger field and one
 # round the thumb cluster (straight sides); "closed" follows the cells.
-outline_style = "hulls"
-outline_round_mm = 6        # round of the outline's convex corners
-outline_close_mm = 10       # gaps narrower than twice this are filled, with a round of this radius
+outline_style = "closed"
+outline_round_mm = 3        # round of the outline's convex corners
+outline_close_mm = 6        # gaps narrower than twice this are filled, with a round of this radius
 cell_mm = 19.05             # the cell each key owns in plan, square
 # The body's top edge is rounded (a rolling-ball fillet) to this radius; 0 leaves
 # it sharp. It must leave room at the outline's convex corners: outline_round_mm
 # less this, less this times the sine of the top's tilt there, has to stay positive.
-top_round_mm = 4
+top_round_mm = 1.5
 # The body is a shell of one thickness: its underside is its top surface
 # dropped by the room every key needs, the socket's bottom and this much
 # under it (room for the wires under it and the print's tolerance). The
@@ -151,21 +151,21 @@ plate_gap_mm = 0.1
 # Bosses on the bottom plate hold each socket up against its pocket's ceiling.
 boss_clearance_mm = 0.15
 boss_inset_mm = 0.6         # the boss is this much smaller than the socket body all round
-# M2 screws from below into heat-set inserts in the body's wall: insert hole
-# and depth, the screw's clearance hole through the plate, the head's
-# diameter and the clearance round it (its counterbore), and how much plate
-# every screw grips under the body (the counterbore goes up to it, so one
-# screw length fits everywhere: screw_grip_mm + insert_depth_mm). Each screw
-# sits in the middle of the wall, wall_mm / 2 past the cell's or bay's edge,
-# so the counterbore leaves (wall_mm - screw_head_d - screw_head_clearance_mm) / 2
-# of wall on each side; the build checks the holes against everything else.
+# M2 socket-head screws from below into heat-set inserts (M2 x 3) in the body,
+# inside the key field: insert hole and depth (the depth leaves the PCB layer
+# over the hole), the screw's clearance hole through the plate, the head's
+# diameter, height and the clearance round it (its counterbore), and how much
+# plate every screw grips under the body (the counterbore goes up to it, so one
+# screw length fits everywhere: screw_grip_mm + the insert's 3 mm, M2 x 5). The
+# build checks the holes against everything else and that each head sinks into
+# the plinth. Where they stand: screw_points() in layout.py.
 insert_d = 3.2
-insert_depth_mm = 4
+insert_depth_mm = 3.5
 screw_d = 2.4
-screw_head_d = 4.2
-screw_head_clearance_mm = 0.6
-screw_grip_mm = 3
-# Which edges carry screws: see screw_points() in layout.py.
+screw_head_d = 3.8
+screw_head_h_mm = 2
+screw_head_clearance_mm = 0.4
+screw_grip_mm = 2
 
 # ---------------------------------------------------------------- controller, battery, switch
 # PROVISIONAL: a Pro Micro form factor nRF52840 (nice!nano v2 / SuperMini):

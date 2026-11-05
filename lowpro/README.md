@@ -15,7 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | 139 × 142 mm |
+| Plan per half | | 133 × 131 mm, 11,800 mm² |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
@@ -39,7 +39,7 @@ It needs Python 3 with `manifold3d`, `numpy`, `scipy` and `triangle`
 root with `make lowpro`: the right and left bodies and plinths as STL, the
 right assembly (body, plinth, switches, caps, sockets, diodes and electronics,
 each a coloured, named mesh) as 3MF, and the checks, into `output/lowpro/`.
-The whole build takes about a second (`--verbose` shows the stages). `make lowpro-render`
+The whole build takes about two seconds (`--verbose` shows the stages). `make lowpro-render`
 writes PNGs of the right half to look over into `output/lowpro/renders/` (the
 assembly, the body and plinth from above, the wiring through a see-through
 body, the underside, a pocket close-up and sections).
@@ -47,7 +47,7 @@ One part at a time, or with a parameter changed:
 
 ```sh
 python3 -m lowpro.build --half left --part body
-python3 -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
+python3 -m lowpro.build --set tent_deg=4 --set outline_style='"hulls"'
 ```
 
 The body's and the plinth's blanks are each one closed triangle mesh, built
@@ -126,18 +126,17 @@ straight down by the room every key needs (the socket's bottom and
 `under_socket_mm` under it, taken along the most tilted key's normal: 9.7 mm),
 so the body is as thick under the inner column as under the pinky and every
 wiring channel is the same depth, and flat under each cell as the top is. The tent and the wells live in the plinth
-under it. The footprint (`outline_style`) is a convex hull round the finger
-field (its cells, the bays and its wire channels) and another round the thumb
-cluster, joined by a third round the thumb row, the bottom keys nearest it and
-the bays, so the inner edge runs straight from the bays to the thumb cluster
-and only the notch under the pinky side stays open. Every channel lies inside
-one of the hulls, so none of them shows in the outline. A `wall_mm` wall goes
-round it (6 mm, which carries the trunk channels and the screws' inserts), the
-notch is rounded to `outline_close_mm` and every convex corner to
-`outline_round_mm`: straight sides, the stagger steps filled, and the result
-smoothed into one closed spline. ("closed" instead follows the cells and
-channels, with the gaps between them closed up.) The walls are vertical, and
-the top edge is rounded to `top_round_mm` (4 mm; 0 leaves it sharp): a true
+under it. The footprint (`outline_style`) follows the cells and the bays, with the gaps
+narrower than twice `outline_close_mm` closed up, so the outline steps with the
+column stagger. A `wall_mm` wall (3 mm) goes round it, and every channel is kept
+`min_wall_mm` inside the result, which only shows along the back, where the top
+row's lean carries its trunk past the wall. Convex corners are rounded to
+`outline_round_mm`, and the result is smoothed into one closed spline. ("hulls"
+instead takes a convex hull round the finger field and bays, another round the
+thumb cluster and a third joining them: straight sides, about 1,600 mm² more.)
+The wall holds nothing but channels' edges: the screws stand inside the key
+field (see Plinth). The walls are vertical, and
+the top edge is rounded to `top_round_mm` (1.5 mm; 0 leaves it sharp): a true
 rolling-ball round, tangent to the top and the wall, built from the ball's
 closed form: at each station along the outline the ball's section is an arc
 from the wall to the top, and the arcs at neighbouring stations are joined.
@@ -175,9 +174,13 @@ sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
   the rows);
 - the inner column's channel is a wider trunk (`trunk_w_mm`): the three row
   wires join it;
-- a trunk in the back wall from the pinky column's top along to the inner
-  column and on over the well's rim, which the columns' wires follow, and one in
-  the front wall along the bottom row that joins the thumb cluster;
+- a trunk along the top row just north of its sockets, from the pinky column's
+  top to the inner column and on over the well's rim, which the columns' wires
+  follow, and one inside the bottom row's cells, under the south edge of the
+  switches' pockets, that joins the thumb cluster; where a column reaches
+  further forward than the next one in, this trunk goes straight into that
+  column's channel rather than round the stagger, so the pinky's column ends at
+  its bottom key's tab;
 - in the thumb cluster, a trunk along the three row keys' north edges (the
   thumb row's wire and the thumb keys' column wires on their way to the front
   trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps
@@ -193,17 +196,19 @@ at its thinnest, under pinky home, and about 14 mm under the inner column and
 the thumbs, so it carries the tent and the wells and the body does not. Under
 each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
 rises to 0.15 mm under the socket and holds it against its ceiling when a
-switch is pushed in. It is screwed from below with M2 screws into heat-set
-inserts in the body's wall at eight points (`screw_points` in `layout.py`:
-the pinky's outer side, the thumb cluster's far side and front, the bay's inner
-side and front, all edges the trunk channels keep clear of). Each screw sits
-in the middle of the wall, `wall_mm / 2` past the cell's or bay's edge, so its
-counterbore has the same wall on both sides (0.6 mm at a 6 mm wall; the report
-prints the least wall left round any screw). A screw on a cell's −x edge goes
-south of the stem, since the −x tab and its solder well come within about a
-millimetre of that edge north of it. Each screw hole is counterbored from below so that every screw grips
-`screw_grip_mm` of plinth under the body: one screw length (that plus
-`insert_depth_mm`, so M2 × 8) fits the thin side and the thick.
+switch is pushed in. It is screwed from below with M2 socket-head screws into
+M2 × 3 heat-set inserts at nine points (`screw_points` in `layout.py`), none in
+the outer wall. Seven are in key cells (both pinky ends, ring home, middle top
+and the thumb cluster's far end and front), in the web south of the switch's
+pocket, where no socket, tab or channel comes: the insert's hole stops
+under the PCB layer, or beside the pocket where a key's tilt would bring it too
+close. One is in the strip beside the board, where the plinth stays forward of
+the power switch, and one in the neck in front of the battery. The report prints
+the least wall left round any screw (0.66 mm, at the pinky's bottom key, the most
+tilted). Each screw hole is counterbored from below so that every screw
+grips `screw_grip_mm` of plinth under the body: one screw length (M2 × 5) fits
+the thin side and the thick, and the plinth must be thick enough under each to
+sink the head (`screw_head_h_mm`), which keeps them off the thin pinky side.
 
 **Bay.** Nothing can sit under a socket, since each socket's shaft is open to
 the underside, so the controller and battery lie in a well in the plinth on the
@@ -214,7 +219,8 @@ board along the column, components down, its USB-C port out of the back wall
 through a chamfered opening; the power switch beside it in the inner side wall,
 its pocket open upward so it drops in from the body's side; the battery in
 front of the board, in its own pocket, its leads through a notch in the wall
-between them (`battery_lead_notch_mm`). The well's floor is `bay_under_mm` below the parts' room
+between them (`battery_lead_notch_mm`). The strip beside the board is only well as far forward as the power switch.
+The well's floor is `bay_under_mm` below the parts' room
 under the lowest point of the body over the bay (6 mm over the desk), never
 less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
 rooms are cut up into the body as well. The back trunk channel runs over the
@@ -230,12 +236,12 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Check | Fails when | Seen failing with |
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
-| Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel | `--set screw_head_d=8` |
+| Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head | `--set screw_head_d=8`, `--set bottom_plate_mm=1` |
 | Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
-| One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set trunk_w_mm=12` |
-| Span | A part does not span the outline (a cut took its edge away) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
+| One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
+| Span | A part does not span the outline (a cut took its edge away) | `--no-check --set mcu_usb_opening_mm=(300,40)` |
 
 The build also prints the plate and cap heights over the desk, the shell's
 thickness, the plinth's height under the keys, the well's floor, the fingertip
