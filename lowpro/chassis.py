@@ -797,10 +797,18 @@ def thumb_bend():
     return at(thumb("near"), (thumb_col_x(), -P.cell_mm / 2))
 
 
+def thumb_tap():
+    """Where near's diode's line, carried on east, meets the trunk."""
+    k = thumb("near")
+    a, b = thumb_bend(), front_pt(finger_key(2, -P.rows_below))
+    ya, yb = ((rinv(k.frame) @ np.append(p, 1))[1] for p in (a, b))
+    return a + (b - a) * (diode_y() - ya) / (yb - ya)
+
+
 def thumb_column(k):
-    """A thumb key's column wire's way past its +x tab's tip: north to its
-    corner, but near's goes south to the bend."""
-    return [thumb_joint(k), thumb_bend() if k.name == "thumb_near" else thumb_corner(k)]
+    """A thumb key's column wire's way from its diode: past its +x tab's tip to
+    its corner, but near's goes straight on to the trunk."""
+    return [thumb_joint(k), thumb_tap() if k.name == "thumb_near" else thumb_corner(k)]
 
 
 def thumb_channels():
@@ -810,7 +818,7 @@ def thumb_channels():
     edge, west to far's corner, then down far's column and across to x2's and
     x1's corners. Far's column wire goes up to the fork with the row wire, and
     home's on to the index column's foot. The rest join a trunk to the middle
-    column's foot, x2's and x1's from x1's corner and near's at the bend; its
+    column's foot, x2's and x1's from x1's corner and near's beside its key; its
     sink keeps them room where the straight run leaves the curving plinth."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     near, home, far = (thumb(n) for n in ("near", "home", "far"))
