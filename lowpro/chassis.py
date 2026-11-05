@@ -807,7 +807,7 @@ def socket_shaft(k, grow):
 
 
 def solder_wells(k):
-    """Room under each of key k's socket tabs to solder to it: solder_well_mm
+    """Room round each of key k's socket terminals to solder to it: solder_well_mm
     centred on the tab's tip, cut back in plan to stay min_wall_mm inside the
     cell at the socket's top, so it keeps that wall from the next key's room
     and from the bay. The -x well then ends just past its tab's tip."""
@@ -982,13 +982,15 @@ def part_overlap():
 
 def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
-    it (a wire's width in): every key's two socket tabs (in their channels),
-    the battery's leads (out of its back end), the power switch, and the
-    controller."""
+    it (a wire's width in): every key's two terminals (a wire's width off their
+    north faces, in their channels), the battery's leads (out of its back end),
+    the power switch, and the controller."""
     d = P.wire_d_mm
+    off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        ends += [(f"{k.name}'s column tab", c_tab(k) - (0, 0, d)), (f"{k.name}'s row tab", r_tab(k) - (0, 0, d))]
+        ends += [(f"{k.name}'s column tab", at(k, (col_x(), P.socket_tab_y[0] + off)) - (0, 0, d)),
+                 (f"{k.name}'s row tab", at(k, (row_x(), P.socket_tab_y[1] + off)) - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
     if P.power_switch:
@@ -1000,9 +1002,11 @@ def wire_ends():
 def unwired():
     """The wire ends that no path a wire fits through (wire_d_mm), through the
     spaces cut from the body and the plinth (channels, pockets, the well; see
-    lost), joins to the controller's. The space is shrunk by the wire's radius
-    along each axis, which closes the slivers where one cut grazes another."""
+    lost), past the sockets' terminals, joins to the controller's. The space is
+    shrunk by the wire's radius along each axis, which closes the slivers where
+    one cut grazes another."""
     space = union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
+    space = subtract(space, [s for k in keys() for s in place(k.frame, R.socket_tabs())])
     r = P.wire_d_mm / 2
     for axis in np.eye(3):
         space = space.translate(tuple(r * axis)) ^ space.translate(tuple(-r * axis))

@@ -161,11 +161,12 @@ plinth's bosses stand straight and no sliver of body is left under a tilted key.
 The socket is pushed up the shaft from below until it meets the pocket's
 ceiling, where the switch's pins reach it. The socket's sizes are Kailh's
 drawing (10.9 × 5.89 × 1.8 mm, 3.05 mm over the collars): two boxes round its
-step at the centre post (`socket_body` in `parts.py`), with its two solder tabs
-out of the ±x ends, flush with its top. A solder well under
-each tab reaches up from the underside so a wire can be soldered to the tab
-after the socket is in; it stays `min_wall_mm` inside the key's cell, so the −x
-tab's well ends about 0.6 mm past the tab's tip. There are no LEDs.
+step at the centre post (`socket_body` in `parts.py`), with its two terminals
+out of the ±x ends, stubs as tall as the body. A solder well round
+each terminal reaches up from the underside so a wire can be soldered to its
+side after the socket is in; it stays `min_wall_mm` inside the key's cell, so
+the −x terminal has only about 0.4 mm past its tip, and a column wire goes
+behind it, 1.2 mm over the plinth. There are no LEDs.
 
 **Wiring channels.** Slots in the underside, from the underside up to the
 sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
@@ -256,8 +257,8 @@ seen to fail with the setting beside it, and the default layout passes them all.
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
 | Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head; or a counterbore breaks out through the plinth's top beside its pad | `--set screw_head_d=8`, `--set bottom_plate_mm=1`, `--set screw_grip_mm=0.6` |
-| Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
-| Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
+| Wiring | A socket terminal, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well and past the terminals | `--set battery_lead_notch_mm=0.6` |
+| Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,1.68,1.85)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |
 | One solid | A part written is not one closed manifold solid (a boolean left a fragment) | `--no-check --set insert_d=20 --set insert_depth_mm=40` |
 | Span | A part does not span the outline (a cut took its edge away) | `--no-check --set mcu_usb_opening_mm=(300,40)` |

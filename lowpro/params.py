@@ -106,13 +106,14 @@ cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - ba
 socket_body_mm = (10.9, 5.89, 1.8)
 socket_centre_mm = (-0.635, 3.81)
 socket_lobe_mm = (5.8, 4.0)            # the front lobe's length from the -x end, each lobe's width
-socket_collar_mm = (3.0, 1.25)         # PROVISIONAL diameter (footprints' holes are 3); height over the body
-# Its two solder tabs stick out of the +-x ends, 14.5 tip to tip; the width is PROVISIONAL.
-socket_tab_mm = (1.8, 2.6)             # each tab's reach past the body, and its width
+socket_collar_mm = (2.9, 1.25)         # diameter, height over the body
+# Its two terminals stick out of the +-x ends, 14.5 tip to tip: stubs about
+# square in section, as tall as the body and 0.05 proud of its top, to reach a PCB.
+socket_tab_mm = (1.8, 1.68, 1.85)      # each terminal's reach past the body, width, height
 socket_tab_y = (2.54, 5.08)            # the -x tab's y, the +x tab's y
 socket_clearance_mm = 0.25
-# Room under each tab to solder a wire to it, from the floor up to the tab,
-# centred on the tab's tip and cut back to stay min_wall_mm inside the cell.
+# Room round each terminal to solder a wire to it, from the floor up to the
+# socket's top, centred on the tip and cut back to stay min_wall_mm inside the cell.
 solder_well_mm = (4.5, 5)
 
 # ---------------------------------------------------------------- wiring

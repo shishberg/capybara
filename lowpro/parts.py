@@ -140,10 +140,11 @@ def socket_body(grow=0):
 
 
 def socket_tabs(grow=0):
-    """The two solder tabs, flat in the socket's top face, out of its +-x ends."""
+    """The two terminals, out of the socket's +-x ends, down from just over its top."""
     e, c = P.socket_body_mm, P.socket_centre_mm
-    return [box((P.socket_tab_mm[0] + 0.6 + 2 * grow, P.socket_tab_mm[1] + 2 * grow, 0.4 + 2 * grow),
-                (c[0] + s * (e[0] / 2 + P.socket_tab_mm[0] / 2 - 0.3), y, socket_top_z() - 0.2))
+    reach, width, height = P.socket_tab_mm
+    return [box((reach + 0.6 + 2 * grow, width + 2 * grow, height + 2 * grow),
+                (c[0] + s * (e[0] / 2 + reach / 2 - 0.3), y, socket_bottom_z() + height / 2))
             for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))]
 
 
