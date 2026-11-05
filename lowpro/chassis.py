@@ -164,9 +164,8 @@ def channel_points():
 
 
 def cells_2d():
-    """The cells, the bays and the thumb keys' own routes in plan, before the wall."""
-    routes = [hull_of(circle_points(a, w / 2) + circle_points(b, w / 2)) for w, pts in thumb_routes() for a, b in zip(pts[:-1], pts[1:])]
-    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())] + routes)
+    """The cells and the bays in plan, before the wall."""
+    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())])
 
 
 def hulls_2d():
@@ -733,26 +732,25 @@ def back_trunk():
     return pts
 
 
-def column_join(a, b):
-    """Where the front line of b's end cell, carried on, meets a's column line."""
-    p, q = front_pt(b), at(b, (0, trunk_y(-1)))
-    c, d = at(a, (col_x(), 0)), at(a, (col_x(), 1))
+def column_meet(k, p, q):
+    """Where the line through p and q meets k's column line."""
+    c, d = at(k, (col_x(), 0)), at(k, (col_x(), 1))
     t = np.linalg.solve(np.c_[(q - p)[:2], (c - d)[:2]], (c - p)[:2])[1]
-    return at(a, (col_x(), t))
+    return at(k, (col_x(), t))
 
 
 def front_trunk():
-    """The front trunk's points, pinky to index column, south of the bottom
+    """The front trunk's points, pinky to middle column, south of the bottom
     cells' diodes. Where a column reaches further forward than the next one in,
     the trunk leaves that next cell's line straight into the column's own
     channel, so it never runs round the outside of the stagger. Where it reaches
     less far, a straight line to the next column's end point would cut across
     that cell's diode, so the trunk goes by the cell's +x corner."""
-    ends = [finger_key(c, -P.rows_below) for c in range(4, 0, -1)]
+    ends = [finger_key(c, -P.rows_below) for c in range(4, 1, -1)]
     pts = []
     for a, b in zip(ends[:-1], ends[1:]):
         if (rinv(b.frame) @ np.append(front_pt(a), 1))[1] < trunk_y(-1):
-            pts.append(column_join(a, b))
+            pts.append(column_meet(a, front_pt(b), at(b, (0, trunk_y(-1)))))
         else:
             if not pts:
                 pts.append(front_pt(a))
@@ -776,84 +774,87 @@ def thumb(name):
     return key_named(f"thumb_{name}")
 
 
-def edge_mid(k):
-    """Halfway along a thumb key's north edge."""
-    return (ne(k) + nw(k)) / 2
+def thumb_joint(k):
+    """Where a thumb key's column wire meets its diode's +x leg."""
+    return at(k, (thumb_col_x(), diode_y()))
+
+
+def thumb_corner(k):
+    """Where a thumb key's wires leave it: its north edge, on the column wire's line."""
+    return at(k, (thumb_col_x(), ne_y()))
+
+
+def thumb_fork():
+    """Where the thumb row's wire divides, on the inner column's line past its
+    bottom key. That key's frame climbs here as the top falls away, so the fork's
+    height is halfway from the column's foot down to home's corner."""
+    k = finger_key(0, -P.rows_below)
+    return np.r_[at(k, (col_x(), trunk_y(-1) - 6))[:2], (front_pt(k)[2] + thumb_corner(thumb("home"))[2]) / 2]
+
+
+def thumb_bend():
+    """Where the wires from the outer thumb keys turn north, past near's south-east corner."""
+    return at(thumb("near"), (thumb_col_x(), -P.cell_mm / 2))
 
 
 def thumb_column(k):
-    """A thumb key's column wire's way out: from its joint to the diode's +x leg,
-    north past the +x tab's tip to the key's north-east corner."""
-    return [at(k, (thumb_col_x(), diode_y())), at(k, (thumb_col_x(), ne_y())), ne(k)]
+    """A thumb key's column wire's way past its +x tab's tip: north to its
+    corner, but near's goes south to the bend."""
+    return [thumb_joint(k), thumb_bend() if k.name == "thumb_near" else thumb_corner(k)]
+
+
+def thumb_channels():
+    """The thumb cluster's channels. Each key has its column's channel and a
+    short one from the +x tab to the north edge. The row wire comes down the
+    inner column to the fork and divides: east to home's corner and near's north
+    edge, west to far's corner, then down far's column and across to x2's and
+    x1's corners. Far's column wire goes up to the fork with the row wire, and
+    home's on to the index column's foot. The rest join a trunk to the middle
+    column's foot, x2's and x1's from x1's corner and near's at the bend; its
+    sink keeps them room where the straight run leaves the curving plinth."""
+    w, t = P.channel_w_mm, P.trunk_w_mm
+    near, home, far = (thumb(n) for n in ("near", "home", "far"))
+    trunk = [thumb_bend(), front_pt(finger_key(2, -P.rows_below))]
+    out = [(w, [thumb_corner(far), thumb_fork(), thumb_corner(home), ne(near)]),
+           (w, [thumb_corner(home), front_pt(finger_key(1, -P.rows_below))])]
+    if P.thumb_extra:
+        x1, x2 = thumb("x1"), thumb("x2")
+        out.append((w, [thumb_joint(far), thumb_corner(x2), thumb_corner(x1)]))
+        trunk.insert(0, thumb_corner(x1))
+    out.append((t, trunk))
+    for k in keys():
+        if k.group != "finger":
+            out += [(w, thumb_column(k)), (w, [x_tab(k), ne(k)])]
+    return out
 
 
 @cached
-def thumb_routes():
-    """The thumb wires' own ways out, as channels (width, [points...]) in world:
-    far's up the inner side beside the row wire, home's and near's to the index
-    column's foot, x1's round near's east corner to the middle column's, and x2's
-    along x1's edge then inside near's south edge to join x1's. From that corner
-    the two run up to the front trunk as a trunk, whose sink keeps them room where
-    the straight run leaves the curving plinth."""
-    w, t = P.channel_w_mm, P.trunk_w_mm
-    near, home, far = (thumb(n) for n in ("near", "home", "far"))
-    foot = [front_pt(finger_key(c, -P.rows_below)) for c in range(3)]
-    # Far's turn is off the end of the inner key, whose frame climbs there as the
-    # top falls away, so it stays level with the foot.
-    inner = finger_key(0, -P.rows_below)
-    turn = np.r_[at(inner, (col_x(), trunk_y(-1) - 6))[:2], foot[0][2]]
-    routes = [(w, [nw(home), turn, foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
-    if P.thumb_extra:
-        x1, x2 = thumb("x1"), thumb("x2")
-        corner = at(near, (out_y(), -P.cell_mm / 2))
-        routes += [(w, [ne(x2), nw(x1)]), (w, [ne(x1), corner]), (t, [corner, foot[2]]),
-                   (w, [edge_mid(x1), at(near, (-P.cell_mm / 2, trunk_y(-1))), corner])]
-    return routes
-
-
 def channels():
-    """The channels as polylines (width, [points...]) in world."""
+    """The channels as polylines (width, [points...]) in world: the five finger
+    columns first."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     rows = range(-P.rows_below, P.rows_above + 1)
     out = []
     # Each finger column: front trunk point (the pinky's, the longest, joins it
-    # higher up, so it starts level with its bottom key's diode), past its keys'
-    # -x tabs, back trunk point.
+    # higher up, so it starts level with its bottom key's diode; the inner one's
+    # goes on to the thumbs' fork), past its keys' -x tabs, back trunk point.
     for c in range(5):
         bottom = finger_key(c, -P.rows_below)
-        start = [front_pt(bottom) if c < 4 else at(bottom, (col_x(), diode_y()))]
+        start = [thumb_fork(), front_pt(bottom)] if c == 0 else [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
         out.append((t if c == 0 else column_w(),
                     start + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))]))
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
     out.append((t, back_trunk() + [bay_entry()]))
     out.append((t, front_trunk()))
-    # Each finger row: along each key's north edge from its column channel, which
-    # the wire shares from the -x tab up, to the next key's column channel.
-    for r in rows:
+    # Each finger row but the top one, whose wire runs in the back trunk: straight
+    # along each key's north edge and on into the next column, whose channel the
+    # wire then shares to that key's -x tab.
+    for r in rows[:-1]:
         for c in range(4):
             a, b = finger_key(c, r), finger_key(c + 1, r)
-            out.append((w, [nw(a), ne(a), nw(b)]))
-    # Every thumb key's wires leave from its north-east corner: the row wire from
-    # the +x tab, the column wire past that tab's tip. The corners are joined
-    # along the keys' north edges, clear of the diodes in the middle of the keys.
-    near, home, far = (thumb(n) for n in ("near", "home", "far"))
-    out.append((w, [ne(near), nw(near), ne(home)]))
-    out.append((w, [nw(home), ne(far)]))
-    out += thumb_routes()
-    # The extra keys join up between the row keys, x1's to home's column joint and
-    # x2's round far's east corner, so the row wire can go on from far to x2, x1,
-    # home and near without doubling back.
-    if P.thumb_extra:
-        x1, x2 = thumb("x1"), thumb("x2")
-        out.append((w, [ne(x1), nw(x1)]))
-        out.append((w, [ne(x2), edge_mid(x2)]))
-        out.append((w, [edge_mid(x1), thumb_column(home)[0]]))
-        out.append((w, [edge_mid(x2), at(far, (out_y(), ne_y())), ne(far)]))
-    for k in keys():
-        if k.group != "finger":
-            out += [(w, [x_tab(k), ne(k)]), (w, thumb_column(k))]
-    return out
+            out.append((w, [nw(a), column_meet(b, nw(a), ne(a))]))
+    return out + thumb_channels()
 
 
 def post_points(p, w):
@@ -1131,8 +1132,8 @@ def wire_ends():
     off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        row, joint = ((col_x(), P.socket_tab_y[0] + off), col_x()) if k.group == "finger" else ((row_x(), P.socket_tab_y[1] + off), thumb_col_x())
-        ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", at(k, (joint, diode_y())) - (0, 0, d))]
+        row, joint = ((col_x(), P.socket_tab_y[0] + off), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), P.socket_tab_y[1] + off), thumb_joint(k))
+        ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
     if P.power_switch:
@@ -1194,12 +1195,13 @@ def cramped_diodes():
 def unwired():
     """The wire ends that no path a wire fits through (wire_d_mm), through
     wire_space, past the sockets' terminals, joins to the controller's. The space
-    is shrunk by the wire's radius along each axis, which closes the slivers
-    where one cut grazes another."""
+    is shrunk by the wire's radius whichever way a channel runs, by keeping what
+    is left of it moved that far each way round the plan and up and down, which
+    closes the slivers where one cut grazes another."""
     space = subtract(wire_space(), [s for k in keys() for s in place(k.frame, R.socket_tabs())])
     r = P.wire_d_mm / 2
-    for axis in np.eye(3):
-        space = space.translate(tuple(r * axis)) ^ space.translate(tuple(-r * axis))
+    ways = [(r * np.cos(a), r * np.sin(a), 0) for a in np.linspace(0, 2 * np.pi, 8, endpoint=False)] + [(0, 0, r), (0, 0, -r)]
+    space = Manifold.batch_boolean([space.translate(tuple(float(c) for c in v)) for v in ways], OpType.Intersect)
 
     def probe(p):
         return Manifold.cube((0.2, 0.2, 0.2), center=True).translate(tuple(float(c) for c in p))

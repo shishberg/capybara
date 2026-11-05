@@ -127,7 +127,8 @@ wire_d_mm = 1.6
 # A column channel reaches past each -x terminal's tip by a wire and this much.
 wire_gap_mm = 0.2
 # The trunks (the inner column's channel, which the row wires join, and the
-# one behind the top row that the columns' wires follow to the controller).
+# one behind the top row that the columns' wires and the top row's follow to the
+# controller).
 trunk_w_mm = 3.5
 # How far the channels and the trunks go on down into the plinth, each leaving
 # it at least bottom_plate_mm: a row wire crosses a column wire, and a trunk
@@ -140,10 +141,10 @@ diode_room_mm = 0.4         # the diode's room round it
 # Each key's diode has its own pocket across the key, south of the centre post,
 # with a slot for each leg, so no wire runs past it. On a finger key its +x leg
 # goes round the side post's hole to the +x tab and its -x leg out to the column
-# wire, which runs beside the tabs' tips; each row's wire joins the -x tabs along
-# the cells' north edges. A thumb key's is the other way round: its -x leg goes to
-# the -x tab and its +x leg out to the column wire, which runs past the +x tab's
-# tip to the corner where the row wire joins that tab.
+# wire, which runs beside the tabs' tips; each row's wire goes straight along a
+# cell's north edge into the next column and down it to that key's -x tab. A thumb
+# key's is the other way round: its -x leg goes to the -x tab and its +x leg out to
+# the column wire, which runs past the +x tab's tip.
 diode_leg_d_mm = 0.5
 diode_leg_slot_mm = 1.0
 # The wall between a bottom-row diode's pocket and the front trunk, in the key's
