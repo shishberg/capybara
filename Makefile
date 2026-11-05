@@ -36,16 +36,25 @@ firmware:
 
 .PHONY: firmware
 
-# Low-profile Capybara proposal (meshes cut with Manifold); see lowpro/README.md for what it needs.
-lowpro:
-	python3 -m lowpro.build
+# Low-profile Capybara proposal (meshes cut with Manifold); see lowpro/README.md.
+# Its targets set up .venv from lowpro/requirements.txt when that's needed.
+LOWPRO_PY = .venv/bin/python
+LOWPRO_ENV = .venv/.lowpro
+
+$(LOWPRO_ENV): lowpro/requirements.txt
+	uv venv --allow-existing --python 3.12 .venv
+	uv pip install --python $(LOWPRO_PY) -r lowpro/requirements.txt
+	touch $@
+
+lowpro: $(LOWPRO_ENV)
+	$(LOWPRO_PY) -m lowpro.build
 
 # Only the checks; fails when one does.
-lowpro-check:
-	python3 -m lowpro.build --check
+lowpro-check: $(LOWPRO_ENV)
+	$(LOWPRO_PY) -m lowpro.build --check
 
-# PNGs of the right half for a person to look over; needs pyvista.
-lowpro-render:
-	python3 -m lowpro.render
+# PNGs of the right half for a person to look over.
+lowpro-render: $(LOWPRO_ENV)
+	$(LOWPRO_PY) -m lowpro.render
 
 .PHONY: lowpro lowpro-check lowpro-render

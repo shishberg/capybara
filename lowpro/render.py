@@ -1,7 +1,7 @@
 """Render the right half to PNGs for a person to look over. From the repository root:
 
-    python3 -m lowpro.render                     # into output/lowpro/renders/
-    python3 -m lowpro.render --set tent_deg=4
+    .venv/bin/python -m lowpro.render                     # into output/lowpro/renders/
+    .venv/bin/python -m lowpro.render --set tent_deg=4
 
 Builds the parts in-process (as lowpro.build does, without the checks or the
 files) and writes: the assembly and the body with plinth from above, the

@@ -34,8 +34,8 @@ and the way it moves. What changes:
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `lib.py` | Frames as 4 × 4 matrices. |
 
-It needs Python 3 with `manifold3d`, `numpy`, `scipy` and `triangle`
-(`pip install manifold3d numpy scipy triangle`), and `pyvista` for the renders.
+It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
+`.venv` from `requirements.txt` the first time they run.
 
 Build from the repository root. `make lowpro` runs the checks and writes the
 right and left bodies and plinths as STL and the right assembly as 3MF into
@@ -44,8 +44,8 @@ writes PNGs of the right half into `output/lowpro/renders/`. One part at a time,
 or with a parameter changed:
 
 ```sh
-python3 -m lowpro.build --half left --part body
-python3 -m lowpro.build --set tent_deg=4 --set outline_style='"hulls"'
+.venv/bin/python -m lowpro.build --half left --part body
+.venv/bin/python -m lowpro.build --set tent_deg=4 --set outline_style='"hulls"'
 ```
 
 ## The layout
