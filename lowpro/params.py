@@ -117,14 +117,19 @@ socket_clearance_mm = 0.25
 solder_well_mm = (4.5, 5)
 
 # ---------------------------------------------------------------- wiring
-# Channels in the body's underside for the wires, closed by the bottom plate.
+# Channels in the body's underside for the wires, sunk into the bottom plate.
 channel_w_mm = 2.2
-# The thickest wire (the battery's leads): the wiring check counts only the
+# The thickest wire (the keys' hookup wire): the wiring check counts only the
 # passages it fits through.
-wire_d_mm = 1.0
+wire_d_mm = 1.6
 # The trunks (the inner column's channel, which the row wires join, and the
 # one behind the top row that the columns' wires follow to the controller).
 trunk_w_mm = 3.5
+# How far the channels and the trunks go on down into the plinth, each leaving
+# it at least bottom_plate_mm: a wire passes behind a socket's terminal and over
+# another wire there, and a trunk holds its bundle two wires wide.
+channel_sink_mm = 1
+trunk_sink_mm = 5.5
 # The per-key diode (DO-35, 1N4148), in the column channel: body length and diameter.
 diode_mm = (4.0, 2.0)
 # Each key's diode leg runs up its column in the channel past the -x tabs;

@@ -764,9 +764,10 @@ def channels():
 
 def post_points(p, w):
     """A channel post's corners at a world point: a square of w from 3 mm under
-    the body's underside up to the point (so the hull between two posts stays
-    open to the underside where that curves up between them)."""
-    f = floor_z(p[0], p[1]) - 3
+    the deepest sink below the body's underside up to the point (so the hull
+    between two posts stays open to the underside where that curves up between
+    them, and reaches the sink's floor)."""
+    f = floor_z(p[0], p[1]) - 3 - P.trunk_sink_mm
     return [(p[0] + sx * w / 2, p[1] + sy * w / 2, z) for sx in (-1, 1) for sy in (-1, 1) for z in (f, p[2])]
 
 
@@ -781,6 +782,16 @@ def run_solid(a, b, w):
 
 def channel_solids():
     return [run_solid(*r) for r in channel_segments()]
+
+
+def channel_sinks():
+    """The channels' sinks into the plinth's top, each as deep as its kind and
+    stopping bottom_plate_mm over the desk."""
+    shell = plinth_shell()
+    above = Manifold.cube((400, 400, 100)).translate((-200, -200, P.bottom_plate_mm))
+    runs = channel_segments()
+    return [(union([run_solid(*r) for r in runs if (r[2] == P.trunk_w_mm) == trunk]) ^ above) - shell.translate((0, 0, -d))
+            for trunk, d in ((False, P.channel_sink_mm), (True, P.trunk_sink_mm))]
 
 
 def diode_frame(k):
@@ -899,7 +910,7 @@ def screw_holes():
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
     return [("the well", well()), ("a bay room", bay_rooms(plinth=True)),
-            ("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()]))]
+            ("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()])), ("a channel", channel_sinks())]
 
 
 def plate_cutters():
@@ -984,7 +995,7 @@ def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
     it (a wire's width in): every key's two terminals (a wire's width off their
     north faces, in their channels), the battery's leads (out of its back end),
-    the power switch, and the controller."""
+    the power switch's pins (in their notch), and the controller."""
     d = P.wire_d_mm
     off = P.socket_tab_mm[1] / 2 + d
     ends = []
@@ -994,7 +1005,8 @@ def wire_ends():
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
     if P.power_switch:
-        ends.append(("the power switch", origin(power_switch_frame())))
+        notch = P.power_switch_mm[1] / 2 + P.power_switch_pins_mm[1] / 2
+        ends.append(("the power switch", xform(power_switch_frame(), [0, notch, -d / 2])))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 
@@ -1034,7 +1046,8 @@ def thin_walls():
     (room, room, wall mm), empty when every wall is thick enough. Channels
     join keys by design, so they are held only to the bay."""
     rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), diode_room(k)], True)) for k in keys()]
-    bay = union([lost(body_shell(), bay_rooms(), True), lost(plinth_shell(), plate_cutters())])
+    bay = union([lost(body_shell(), bay_rooms(), True),
+                 lost(plinth_shell(), [s for name, group in plate_cuts() if name != "a channel" for s in group])])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",

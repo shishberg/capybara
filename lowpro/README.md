@@ -166,10 +166,14 @@ out of the ±x ends, stubs as tall as the body. A solder well round
 each terminal reaches up from the underside so a wire can be soldered to its
 side after the socket is in; it stays `min_wall_mm` inside the key's cell, so
 the −x terminal has only about 0.4 mm past its tip, and a column wire goes
-behind it, 1.2 mm over the plinth. There are no LEDs.
+behind it. There are no LEDs.
 
 **Wiring channels.** Slots in the underside, from the underside up to the
-sockets' tops (about 3 mm deep, the same everywhere), closed by the plinth:
+sockets' tops (about 3 mm deep, the same everywhere), going on down into the
+plinth's top, `channel_sink_mm` for a channel and `trunk_sink_mm` for a trunk,
+and leaving it at least `bottom_plate_mm` thick. That sink is what lets a
+`wire_d_mm` wire pass behind a terminal and cross another, and a trunk carry
+its bundle two wires wide, without adding height or footprint:
 
 - a column channel up each column past the keys' −x tabs, with a pocket for
   each key's diode (DO-35) in line, so the diodes' legs make the column wire as
@@ -238,8 +242,9 @@ only wires between plinth and body are the keys': a pocket in the strip beside
 the board, at the battery's end, its knob flush through the inner side wall. The
 pocket fits it to `power_switch_clearance_mm` all round and opens up through the
 plinth's top, so the switch drops in from above, knob down its slot, and the
-body's underside closes over it. A notch behind it (`power_switch_pins_mm`)
-leaves the pins room and passes their wires into the well.
+body's underside closes over it. A notch behind it (`power_switch_pins_mm`),
+`wire_d_mm` deeper than the pocket, leaves the pins room and passes their wires
+into the well.
 The well's floor is `bay_under_mm` below the parts' room
 under the lowest point of the body over the bay (6 mm over the desk), never
 less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
