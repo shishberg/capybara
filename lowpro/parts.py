@@ -229,14 +229,14 @@ def power_switch_part():
             + pieces([box((k[0], k[2], k[0]), (0, -b[1] / 2 - k[2] / 2, 0))], "red", "knob"))
 
 
-def power_switch_room(up=0):
-    """The switch's pocket, with the knob's slot through the wall; `up` opens it
-    that far upward (through the plate's top, so the switch drops in from the body's side)."""
+def power_switch_room():
+    """The switch's pocket in the body, with the knob's slot through the wall,
+    open down through the underside: it goes in from below, and the plinth's rim
+    and the well's opening under it hold it and pass its wires."""
     b, k, c = P.power_switch_mm, P.power_switch_knob_mm, 0.3
     rooms = [box((b[0] + 2 * c, b[1] + 2 * c, b[2] + 2 * c)),
              box((k[1] + 2 * c, 10, k[0] + 2 * c), (0, -b[1] / 2 - 5, 0))]
-    if up > 0:
-        rooms.append(box((b[0] + 2 * c, b[1] + 2 * c, up), (0, 0, up / 2)))
+    rooms.append(box((b[0] + 2 * c, b[1] + 2 * c, 20), (0, 0, -10)))
     return rooms
 
 

@@ -289,10 +289,10 @@ def cap_top(k):
 # Nothing with a socket over it can sit under the body's floor (each socket's
 # shaft is open to the bottom plate), so the controller and the battery lie in
 # a well in the bottom plate on the inner side of the inner column, in world
-# axes: the board along the column with its port out of the back wall, the
-# power switch beside it in the inner side wall, and the battery in front of
-# the board. The bay's rectangles are ((x0, y0), (x1, y1)) in plan; the
-# parts' frames here are on z = 0, chassis.py lifts them to the well's floor.
+# axes: the board along the column with its port out of the back wall and the
+# battery in front of the board. The bay's rectangles are ((x0, y0), (x1, y1))
+# in plan; the parts' frames here are on z = 0, chassis.py lifts them to the
+# well's floor, and the power switch, over the battery, up into the body.
 def cell_back(k):
     return max(c[1] for c in cell_corners(k))
 
@@ -307,22 +307,17 @@ def column_key(col, row):
     return next(k for k in keys() if k.group == "finger" and k.col == col and k.row == row)
 
 
-def switch_strip():
-    """The strip beside the board for the power switch."""
-    return P.power_switch_mm[1] + 1.2 if P.power_switch else 0
-
-
 @cached
 def mcu_bay():
     """The controller's bay: beside the inner column's cells, its back at the
-    top cell's back, as wide as the board and the switch, and reaching as far
+    top cell's back, as wide as the board, and reaching as far
     forward as the board's room (the board sits mcu_usb_overhang_mm back past
     the bay's back, toward the port's opening: mcu_frame)."""
     c = P.mcu_clearance_mm
     x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.min_wall_mm
     y1 = cell_back(column_key(0, P.rows_above))
     y0 = y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c
-    return ((x1 - P.mcu_board_mm[0] - 2 * c - switch_strip(), y0), (x1, y1))
+    return ((x1 - P.mcu_board_mm[0] - 2 * c, y0), (x1, y1))
 
 
 def mcu_frame():
@@ -334,11 +329,11 @@ def mcu_frame():
 
 
 def power_switch_frame():
-    """The power switch's frame: body centred in its strip, knob out of the inner side (-x)."""
-    b, c = mcu_bay(), 0.3
-    return trans([b[0][0] + c + P.power_switch_mm[1] / 2,
-                  b[1][1] - P.power_switch_back_mm - P.power_switch_mm[0] / 2,
-                  P.power_switch_mm[2] / 2 + c]) @ rot_z(-90)
+    """The power switch's frame in plan: over the battery's outer edge, halfway
+    along it, its knob out of the inner side wall (-x) and flush with it."""
+    b = battery_bay()
+    x = bay_rect()[0][0] - P.wall_mm + P.power_switch_knob_mm[2] + P.power_switch_mm[1] / 2
+    return trans([x, (b[0][1] + b[1][1]) / 2, 0]) @ rot_z(-90)
 
 
 @cached
@@ -361,19 +356,11 @@ def bays():
     return [mcu_bay(), battery_bay()]
 
 
-def power_switch_front():
-    """The front of the power switch's pocket along the strip beside the board."""
-    return mcu_bay()[1][1] - P.power_switch_back_mm - P.power_switch_mm[0] - 1
-
-
-def well_rects():
-    """The plan rectangles the well is cut from: the board's part of the
-    controller's bay, the strip beside it back from the power switch's front
-    (forward of that the plinth stays, and carries a screw), the battery's bay
-    and the lead notch."""
-    (x0, y0), (x1, y1) = mcu_bay()
-    x = x0 + switch_strip()
-    return [((x, y0), (x1, y1)), ((x0, power_switch_front()), (x, y1)), battery_bay(), lead_notch()]
+def bay_rect():
+    """The plan rectangle round both bays, which the outline follows: as wide
+    as the wider one, so the inner side wall runs straight past the narrower."""
+    m, b = mcu_bay(), battery_bay()
+    return ((min(m[0][0], b[0][0]), b[0][1]), (m[1][0], m[1][1]))
 
 
 def lead_notch():
@@ -391,14 +378,14 @@ def screw_points():
     too thin to hold an insert, so the screws stand inside the field: in a
     key's cell, in the web south of its switch's pocket and under its PCB
     layer, where no socket, tab or channel comes (the (x, y) in the key's frame
-    are picked for the wall they leave, which a key's lean moves); and round the bays, one in the strip by the board that the power
-    switch leaves empty, midway between the board's room and the outline, and
-    one in the neck in front of the battery."""
+    are picked for the wall they leave, which a key's lean moves); and round the bays, one in the strip beside the board, which is
+    narrower than the battery, midway between the well and the outline and
+    near the USB port, and one in the neck in front of the battery."""
     def cell(name, x, y):
         return xy(xform(key_named(name).frame, [x, y, 0]))
 
     m, b = mcu_bay(), battery_bay()
-    strip = m[0][0] + (switch_strip() - P.wall_mm) / 2, (m[0][1] + power_switch_front()) / 2
+    strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
     neck = b[1][0] + 3, b[0][1] - 4
     return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
             cell("thumb_x2" if P.thumb_extra else "thumb_home", 8, -9.5), strip, neck]

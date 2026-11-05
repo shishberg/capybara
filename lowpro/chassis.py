@@ -162,7 +162,7 @@ def channel_points():
 
 def cells_2d():
     """The cells and bays in plan, before the wall."""
-    return fused([cell_face(k) for k in keys()] + [bay_face(b) for b in L.bays()])
+    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())])
 
 
 def hulls_2d():
@@ -170,12 +170,21 @@ def hulls_2d():
     convex hull, and the bridge joining them: the thumb row, the two bottom keys
     nearest it and the bays on the inner side, so the inner edge runs straight
     from the bays to the thumb."""
-    bays = [p for b in L.bays() for p in bay_points(b)]
+    bays = bay_points(L.bay_rect())
     finger = hull_of([c for k in keys() if k.group == "finger" for c in cell_corners(k)] + bays)
     thumb = hull_of([c for k in keys() if k.group != "finger" for c in cell_corners(k)])
     bridge = hull_of([c for k in keys() if k.group == "thumb" or (k.group == "finger" and k.col <= 1 and k.row == -P.rows_below)
                       for c in cell_corners(k)] + bays)
     return fused([finger, thumb, bridge])
+
+
+def back_edge():
+    """A hull along the back from the bay's corners to the middle column's top
+    cell, its wall included: one straight, full-height edge over the column
+    stagger and the back trunk's bumps."""
+    (x0, _), (x1, y1) = L.bay_rect()
+    corners = [(x0, y1), (x1, y1)] + [c for col in (0, 1, 2) for c in cell_corners(L.column_key(col, P.rows_above))[2:]]
+    return hull_of([p for c in corners for p in circle_points(c, P.wall_mm)])
 
 
 def signed_area(pts):
@@ -188,9 +197,10 @@ def outline_curve():
     """The body's outline as a smooth closed curve: outline_style "hulls" is the
     hulls joined, "closed" the cells and bays closed up (gaps narrower than
     2 * outline_close_mm filled). Either way the gaps that remain get a round
-    of outline_close_mm, the wall goes round it, the channels are kept
-    min_wall_mm inside and the corners are rounded to outline_round_mm. The
-    offsets leave a polygon of straight
+    of outline_close_mm, the wall goes round it, the back edge is laid over it,
+    the channels are kept min_wall_mm inside, the inside corners are rounded
+    to what the wall leaves of outline_close_mm and the convex ones to
+    outline_round_mm. The offsets leave a polygon of straight
     sides and arcs (as chords within mesh_tol_mm); the curve is a periodic
     cubic spline through points along it a tenth of mesh_mm apart, so that its
     normal turns smoothly where an arc meets a side. Returns the spline, over
@@ -201,8 +211,9 @@ def outline_curve():
 
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
-    s = fused([s] + [hull_of(pts) for pts in channel_points()])
-    for amount in (-P.outline_round_mm, P.outline_round_mm):
+    s = fused([s, back_edge()] + [hull_of(pts) for pts in channel_points()])
+    inside = P.outline_close_mm - P.wall_mm
+    for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
         s = offset(s, amount)
     piece = max(s.decompose(), key=lambda c: c.area())
     pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
@@ -541,8 +552,7 @@ def skirt():
 def bay_pocket_h():
     """The pocket height the parts need over the well's floor."""
     return max(P.mcu_parts_mm + P.mcu_board_mm[2] + P.mcu_clearance_mm,
-               P.battery_mm[2] + P.battery_clearance_mm,
-               P.power_switch_mm[2] + 0.6 if P.power_switch else 0)
+               P.battery_mm[2] + P.battery_clearance_mm)
 
 
 @cached
@@ -563,7 +573,10 @@ def battery_frame():
 
 
 def power_switch_frame():
-    return trans([0, 0, bay_z()]) @ L.power_switch_frame()
+    """The switch up in the body, just clear of the underside under all of it."""
+    m, s, c = L.power_switch_frame(), P.power_switch_mm, 0.3
+    z = max(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
+    return trans([0, 0, z + s[2] / 2 + c]) @ m
 
 
 def floor_box(r, h):
@@ -575,7 +588,7 @@ def well():
     """The well: both bays' rectangles and the battery's lead notch between
     them, open from the well's floor up through the plate's top (the body
     takes the parts' rooms, bay_rooms, where they reach above it)."""
-    return [floor_box(b, 100) for b in L.well_rects()]
+    return [floor_box(b, 100) for b in L.bays() + [L.lead_notch()]]
 
 
 # ---------------------------------------------------------------- wiring points
@@ -796,14 +809,13 @@ def key_room(k):
 
 
 def bay_rooms(plinth=False):
-    """The parts' rooms in the well, cut from the plinth (where the switch's
-    pocket opens up through the plate's top) and from the body where they reach
-    above the plate's top. The battery's lead notch is one of them, as tall
-    as the pocket."""
+    """The parts' rooms in the well, cut from the plinth and from the body where
+    they reach above the plate's top. The battery's lead notch is one of them,
+    as tall as the pocket; the power switch's is the body's alone."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
-    if P.power_switch:
-        out += place(power_switch_frame(), R.power_switch_room(100 if plinth else 0))
+    if P.power_switch and not plinth:
+        out += place(power_switch_frame(), R.power_switch_room())
     return out
 
 
