@@ -57,4 +57,7 @@ lowpro-check: $(LOWPRO_ENV)
 lowpro-render: $(LOWPRO_ENV)
 	$(LOWPRO_PY) -m lowpro.render
 
-.PHONY: lowpro lowpro-check lowpro-render
+lowpro-test: $(LOWPRO_ENV)
+	$(LOWPRO_PY) -m unittest lowpro.test_checks
+
+.PHONY: lowpro lowpro-check lowpro-render lowpro-test

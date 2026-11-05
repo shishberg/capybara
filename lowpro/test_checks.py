@@ -1,0 +1,57 @@
+"""The wiring checks have to fail when a channel is blocked: a check that can't
+fail looks the same as a clear board. From the repository root:
+
+    .venv/bin/python -m unittest lowpro.test_checks
+"""
+import unittest
+from unittest import mock
+
+import numpy as np
+
+from . import chassis as C
+from . import layout as L
+from . import params as P
+from . import parts as R
+
+
+def key_plane_meet(k, p, q):
+    """The old column_meet: on k's plane carried on past the key, which falls
+    away from the column's channel and took row channels out of the underside."""
+    c, d = C.at(k, (C.col_x(), 0)), C.at(k, (C.col_x(), 1))
+    t = np.linalg.solve(np.c_[(q - p)[:2], (c - d)[:2]], (c - p)[:2])[1]
+    return C.at(k, (C.col_x(), t))
+
+
+class PinchedRuns(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        self.addCleanup(setattr, P, "half", P.half)
+        L.reset()
+
+    def test_every_run_is_clear_on_both_halves(self):
+        for half in ("right", "left"):
+            P.half = half
+            L.reset()
+            with self.subTest(half=half):
+                self.assertEqual(C.pinched_runs(), [])
+
+    def test_a_channel_leaving_the_underside_is_caught(self):
+        with mock.patch.object(C, "column_meet", key_plane_meet):
+            L.reset()
+            self.assertTrue(C.pinched_runs())
+
+    def test_a_plug_in_a_channel_is_caught(self):
+        """A block of plinth across one row channel: every other way round is
+        still open, so only this check sees it."""
+        a, b, w = next((a, b, w) for a, b, w in C.channel_segments() if w == P.channel_w_mm and a[1] > -30)
+        mid = (a + b) / 2
+        plug = R.box((3, 3, 40), (mid[0], mid[1], mid[2] - 20))
+        plinth = C.bottom_plate()
+        with mock.patch.object(C, "bottom_plate", lambda: C.add(plinth, [plug])):
+            self.assertEqual(C.unwired(), [])
+            self.assertIn(f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
+                          [name for name, _, _ in C.pinched_runs()])
+
+
+if __name__ == "__main__":
+    unittest.main()

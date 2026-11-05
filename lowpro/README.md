@@ -34,6 +34,7 @@ and the way it moves. What changes:
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes. |
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `lib.py` | Frames as 4 × 4 matrices. |
+| `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
 
 It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
@@ -112,6 +113,11 @@ sweep its room, which notches that plate's edge.
 Only writing a part checks that it is one closed solid spanning the outline:
 `make lowpro-check` skips that. A failed check doesn't stop the build: it still
 writes the files, then exits 1.
+
+The wiring has two checks. One finds a way for a wire from every end to the
+controller, by any path. The other holds each channel to its own route: a wire
+has to lie along every straight run from end to end, below the underside's
+surface, or it gets pinched at the seam.
 
 Not checked:
 

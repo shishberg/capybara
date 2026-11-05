@@ -803,11 +803,26 @@ def back_trunk():
     return pts
 
 
+def column_line(c):
+    """Finger column c's channel: front trunk point (the pinky's, the longest,
+    joins it higher up, so it starts level with its bottom key's diode), past its
+    keys' -x tabs, back trunk point."""
+    bottom = finger_key(c, -P.rows_below)
+    start = [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
+    return (start + [c_tab(finger_key(c, r)) for r in range(-P.rows_below, P.rows_above + 1)]
+            + [back_pt(finger_key(c, P.rows_above))])
+
+
 def column_meet(k, p, q):
-    """Where the line through p and q meets k's column line."""
-    c, d = at(k, (col_x(), 0)), at(k, (col_x(), 1))
-    t = np.linalg.solve(np.c_[(q - p)[:2], (c - d)[:2]], (c - p)[:2])[1]
-    return at(k, (col_x(), t))
+    """Where the line through p and q crosses k's column channel in plan, at the
+    channel's own height: a key's plane, carried on past the key, falls away from
+    the channel, and a run ending on it dives out of the body's underside."""
+    pts = column_line(k.col)
+    for a, b in zip(pts[:-1], pts[1:]):
+        t = np.linalg.solve(np.c_[(b - a)[:2], (p - q)[:2]], (p - a)[:2])[0]
+        if 0 <= t <= 1:
+            return a + (b - a) * t
+    raise ValueError(f"the line from {p} to {q} misses {k.name}'s column")
 
 
 def front_trunk():
@@ -942,15 +957,7 @@ def channels():
     columns first."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     rows = range(-P.rows_below, P.rows_above + 1)
-    out = []
-    # Each finger column: front trunk point (the pinky's, the longest, joins it
-    # higher up, so it starts level with its bottom key's diode), past its keys'
-    # -x tabs, back trunk point.
-    for c in range(5):
-        bottom = finger_key(c, -P.rows_below)
-        start = [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
-        out.append((column_w(), start + [c_tab(finger_key(c, r)) for r in rows]
-                    + [back_pt(finger_key(c, P.rows_above))]))
+    out = [(column_w(), column_line(c)) for c in range(5)]
     # The back trunk, pinky to inner column and into the bay, the front trunk, and
     # the inner column's trunk from the thumbs' fork to the home key's tab, where
     # the lower rows' wires leave it for the well.
@@ -1286,6 +1293,11 @@ def true_part_clashes():
     return [(name, v) for name, v in hits if v > 1e-3]
 
 
+def tab_off():
+    """How far from a terminal's middle a row wire ends: a wire's width off its north face."""
+    return P.socket_tab_mm[1] / 2 + P.wire_d_mm
+
+
 def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
     it (a wire's width in): every key's row end (a wire's width off its terminal's
@@ -1293,10 +1305,9 @@ def wire_ends():
     battery's leads (out of its back end),
     the power switch's pins (in their notch), and the controller."""
     d = P.wire_d_mm
-    off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + off), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + off), thumb_joint(k))
+        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
         ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
@@ -1355,23 +1366,53 @@ def cramped_diodes():
     return out
 
 
-def unwired():
-    """The wire ends that no path a wire fits through (wire_d_mm), through
-    wire_space, past the sockets' terminals, joins to the controller's. The space
-    is shrunk by the wire's radius whichever way a channel runs, by keeping what
-    is left of it moved that far each way round the plan and up and down, which
-    closes the slivers where one cut grazes another."""
-    space = subtract(wire_space(), [s for k in keys() for s in place(k.frame, R.socket_tabs())])
+def terminals():
+    return [s for k in keys() for s in place(k.frame, R.socket_tabs())]
+
+
+def wire_centres(space):
+    """Where a wire's centre can lie in a space: the space shrunk by the wire's
+    radius every way round, which closes the slivers where one cut grazes another."""
     r = P.wire_d_mm / 2
-    ways = [(r * np.cos(a), r * np.sin(a), 0) for a in np.linspace(0, 2 * np.pi, 8, endpoint=False)] + [(0, 0, r), (0, 0, -r)]
-    space = Manifold.batch_boolean([space.translate(tuple(float(c) for c in v)) for v in ways], OpType.Intersect)
+    ways = [(0, 0, r), (0, 0, -r)] + [(r * np.cos(a) * np.cos(e), r * np.sin(a) * np.cos(e), r * np.sin(e))
+                                      for a in np.linspace(0, 2 * np.pi, 8, endpoint=False) for e in np.radians((-45, 0, 45))]
+    return Manifold.batch_boolean([space.translate(tuple(float(c) for c in v)) for v in ways], OpType.Intersect)
+
+
+def unwired():
+    """The wire ends that no path a wire fits through, in wire_space past what the
+    finished parts and the sockets' terminals fill, joins to the controller's. Any
+    path counts, so this passes a blocked channel if the wire could go round
+    another way: see pinched_runs."""
+    centres = wire_centres(subtract(wire_space(), [body(), bottom_plate()] + terminals()))
 
     def probe(p):
         return Manifold.cube((0.2, 0.2, 0.2), center=True).translate(tuple(float(c) for c in p))
 
     *ends, (_, controller) = wire_ends()
-    home = next(c for c in space.decompose() if (c ^ probe(controller)).volume() > 0)
+    home = next(c for c in centres.decompose() if (c ^ probe(controller)).volume() > 0)
     return [name for name, p in ends if (home ^ probe(p)).volume() <= 0]
+
+
+def pinched_runs():
+    """The channels' straight runs that a wire can't lie along from end to end:
+    inside the run, below the underside's surface (a wire left proud is pinched at
+    the seam), past the terminals and whatever of the plinth stands into the body.
+    A run from a terminal counts from where its wire ends, tab_off from the tab.
+    As a list of (run, mm a wire gets along it, its length)."""
+    centres = wire_centres(subtract(body_mass() ^ union(body_cutters()), [bottom_plate()] + terminals()))
+    tabs = [x_tab(k) for k in keys() if k.group != "finger"]
+    out = []
+    for a, b, w in channel_segments():
+        length = float(np.linalg.norm((b - a)[:2]))
+        along = (b - a)[:2] / length
+        spans = [(float(s.min()), float(s.max())) for piece in (centres ^ run_solid(a, b, w)).decompose()
+                 for s in [(np.asarray(piece.to_mesh().vert_properties)[:, :2] - a[:2]) @ along]]
+        start = tab_off() if any(np.array_equal(a, t) for t in tabs) else 0
+        if not any(lo <= start and hi >= length for lo, hi in spans):
+            reach = max((min(hi, length) - max(lo, 0) for lo, hi in spans), default=0)
+            out.append((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", reach, length))
+    return out
 
 
 def lost(shell, cutters, open_below=False):

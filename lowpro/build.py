@@ -156,6 +156,12 @@ def check():
         ok = False
     else:
         print("every wire reaches the controller")
+    pinched = C.pinched_runs()
+    if pinched:
+        print(f"a {C.P.wire_d_mm} mm wire can't follow: " + ", ".join(f"{r} ({d:.1f} of {n:.1f} mm)" for r, d, n in pinched))
+        ok = False
+    else:
+        print("a wire follows every channel from end to end")
     crowded = C.crowded_keys()
     if crowded:
         print("no straight wire fits beside the terminal at: " + ", ".join(crowded))
