@@ -146,7 +146,7 @@ thumb_ease_mm = 3.0         # how far along the key its wire eases over to the n
 # Each finger key's diode has its own pocket across the key, south of the centre
 # post, with a slot for each leg: its +x leg goes round the side post's hole to
 # the +x tab and its -x leg out to the column wire, which runs beside the tabs'
-# tips. Each row's wire joins the -x tabs along the cells' north edges. See the README.
+# tips. Each row's wire joins the -x tabs along the cells' north edges.
 diode_leg_d_mm = 0.5
 diode_leg_slot_mm = 1.0
 # The wall between a bottom-row diode's pocket and the front trunk, in the key's

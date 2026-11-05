@@ -40,7 +40,7 @@ firmware:
 lowpro:
 	python3 -m lowpro.build
 
-# Only the checks; fails when one does (lowpro/README.md lists them).
+# Only the checks; fails when one does.
 lowpro-check:
 	python3 -m lowpro.build --check
 
