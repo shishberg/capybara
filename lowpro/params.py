@@ -199,11 +199,14 @@ battery_clearance_mm = 0.5
 # The notch in the wall between the battery's bay and the controller's, at the
 # middle of the battery's back end, for its leads.
 battery_lead_notch_mm = 4
-# Power switch: PROVISIONAL MSK-12C02 slide switch, body and its knob's reach.
+# Power switch: PROVISIONAL MSK-12C02 slide switch, its body and handle as the
+# distributors list them; the rest is unmeasured until it is checked on a real part.
 # It sits in the body over the battery's outer edge (layout.py power_switch_frame).
 power_switch = True
-power_switch_mm = (8.6, 3.7, 3.5)
-power_switch_knob_mm = (1.5, 3.0, 1.5)  # width, travel + width, how far it stands out
+power_switch_mm = (8.0, 2.8, 1.4)
+power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out
+power_switch_pins_mm = (4.5, 2.0)       # the notch behind it: wide, deep
+power_switch_clearance_mm = 0.1
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled

@@ -15,7 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | 132 × 131 mm, 11,800 mm² |
+| Plan per half | | 132 × 131 mm, 11,900 mm² |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
@@ -131,7 +131,7 @@ narrower than twice `outline_close_mm` closed up, so the outline steps with the
 column stagger. A `wall_mm` wall (3 mm) goes round it, and every channel is kept
 `min_wall_mm` inside the result, which only shows where the top row's lean
 carries the back trunk past the wall. From the bay's back corner to the middle
-column the back is one straight edge over the stagger and the trunk (`back_edge`).
+column the back is one arc, the flattest that clears the stagger and the trunk (`back_edge`).
 Inside corners are rounded to what the wall leaves of `outline_close_mm`, convex
 ones to `outline_round_mm`, and the result is smoothed into one closed spline. ("hulls"
 instead takes a convex hull round the finger field and bays, another round the
@@ -225,8 +225,11 @@ through a chamfered opening; the battery in front of the board, in its own
 pocket, its leads through a notch in the wall between them
 (`battery_lead_notch_mm`). The power switch is not in the well: it sits in a
 pocket in the body's underside over the battery's outer edge, its knob flush
-through the inner side wall. It goes in from below before the plinth does, the
-plinth's rim holds it up, and its wires pass down into the battery's bay.
+through the inner side wall. The pocket fits it to `power_switch_clearance_mm`
+all round, and it goes in from below before the plinth does, the knob up a slot
+open at the bottom. A seat on the plinth's rim then holds it against the
+ceiling, and a notch behind it (`power_switch_pins_mm`) leaves the pins room and
+passes their wires down into the battery's bay.
 The well's floor is `bay_under_mm` below the parts' room
 under the lowest point of the body over the bay (6 mm over the desk), never
 less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'

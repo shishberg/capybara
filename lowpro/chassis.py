@@ -180,11 +180,24 @@ def hulls_2d():
 
 def back_edge():
     """A hull along the back from the bay's corners to the middle column's top
-    cell, its wall included: one straight, full-height edge over the column
-    stagger and the back trunk's bumps."""
+    cell, its wall included, under one full-height arc: from the bay's back
+    corner to the rearmost point of what it covers, the flattest arc between
+    them that clears the column stagger and the back trunk, so nothing behind
+    it leaves a crease."""
     (x0, _), (x1, y1) = L.bay_rect()
     corners = [(x0, y1), (x1, y1)] + [c for col in (0, 1, 2) for c in cell_corners(L.column_key(col, P.rows_above))[2:]]
-    return hull_of([p for c in corners for p in circle_points(c, P.wall_mm)])
+    walls = [p for c in corners for p in circle_points(c, P.wall_mm)]
+    under = np.array(walls + [p for pts in channel_points() for p in pts])
+    a, b = np.array((x0, y1 + P.wall_mm)), under[np.argmax(under[:, 1])]
+    half, mid = np.linalg.norm(b - a) / 2, (a + b) / 2
+    along = (b - a) / (2 * half)
+    up = np.array((-along[1], along[0]))
+    u, v = (under - mid) @ along, (under - mid) @ up
+    over = (np.abs(u) < half) & (v > 0)
+    centre = mid + up * ((u[over] ** 2 + v[over] ** 2 - half ** 2) / (2 * v[over])).max()
+    r = np.linalg.norm(a - centre)
+    turn = np.linspace(*(np.arctan2(*(p - centre)[::-1]) for p in (a, b)), 64)
+    return hull_of(walls + [tuple(centre + r * np.array((np.cos(t), np.sin(t)))) for t in turn])
 
 
 def signed_area(pts):
@@ -574,9 +587,9 @@ def battery_frame():
 
 def power_switch_frame():
     """The switch up in the body, just clear of the underside under all of it."""
-    m, s, c = L.power_switch_frame(), P.power_switch_mm, 0.3
+    m, s = L.power_switch_frame(), P.power_switch_mm
     z = max(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
-    return trans([0, 0, z + s[2] / 2 + c]) @ m
+    return trans([0, 0, z + s[2] / 2 + P.power_switch_clearance_mm]) @ m
 
 
 def floor_box(r, h):
@@ -854,6 +867,19 @@ def socket_boss(k):
             ^ half_space(k.frame, -L.floor_drop() - P.plate_gap_mm - put_back_mm, below=False))
 
 
+def power_switch_seat():
+    """The plinth's rim raised into the switch's pocket up to the switch's
+    underside, on the knob's side: it holds the switch against the pocket's
+    ceiling and leaves the pins' side open to the battery's bay."""
+    m, s, c = power_switch_frame(), P.power_switch_mm, P.power_switch_clearance_mm
+    front = -s[1] / 2 - c + P.boss_clearance_mm
+    rim = L.bay_rect()[0][0] - origin(m)[0]
+    length = s[0] + 2 * c - 2 * P.boss_clearance_mm
+    low = min(plate_z(*xform(m, [i * length / 2, y, 0])[:2]) for i in (-1, 1) for y in (front, rim))
+    h = origin(m)[2] - s[2] / 2 - low + put_back_mm
+    return placed(m, R.box((length, rim - front, h), (0, (front + rim) / 2, -s[2] / 2 - h / 2)))
+
+
 def screw_holes():
     return [h.translate((p[0], p[1], 0)) for p in L.screw_points() for h in R.screw_hole(plate_z(p[0], p[1]))]
 
@@ -872,10 +898,12 @@ def plate_cutters():
 @cached
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
-    the pinhole over the reset button, and the socket bosses standing on it."""
+    the pinhole over the reset button, and the socket bosses and the power
+    switch's seat standing on it."""
     shell = plinth_shell()
     t = time.time()
-    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
+    bosses = [socket_boss(k) for k in keys()] + ([power_switch_seat()] if P.power_switch else [])
+    plate = add(subtract(shell, plate_cutters() + screw_holes()), bosses)
     plate.num_tri()
     stage("plinth cuts and bosses", t)
     return plate

@@ -230,14 +230,17 @@ def power_switch_part():
 
 
 def power_switch_room():
-    """The switch's pocket in the body, with the knob's slot through the wall,
-    open down through the underside: it goes in from below, and the plinth's rim
-    and the well's opening under it hold it and pass its wires."""
-    b, k, c = P.power_switch_mm, P.power_switch_knob_mm, 0.3
-    rooms = [box((b[0] + 2 * c, b[1] + 2 * c, b[2] + 2 * c)),
-             box((k[1] + 2 * c, 10, k[0] + 2 * c), (0, -b[1] / 2 - 5, 0))]
-    rooms.append(box((b[0] + 2 * c, b[1] + 2 * c, 20), (0, 0, -10)))
-    return rooms
+    """The switch's pocket in the body, a close fit round it, with the knob's
+    slot through the wall and a notch behind for the pins and their wires, all
+    open down through the underside: it goes in from below, knob in its slot,
+    and the plinth's seat holds it against the ceiling."""
+    b, k, c = P.power_switch_mm, P.power_switch_knob_mm, P.power_switch_clearance_mm
+    pins = P.power_switch_pins_mm
+    h = b[2] + 2 * c + 20
+    z = b[2] / 2 + c - h / 2
+    return [box((b[0] + 2 * c, b[1] + 2 * c, h), (0, 0, z)),
+            box((k[1] + 2 * c, 10, h), (0, -b[1] / 2 - 5, z)),
+            box((pins[0], pins[1] + c, h), (0, b[1] / 2 + (pins[1] + c) / 2, z))]
 
 
 # ---------------------------------------------------------------- screws
