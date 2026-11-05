@@ -93,6 +93,9 @@ its C4 goes to pin 12 on the far edge, under the board's south end. P0.09 and
 P0.10 are the chip's NFC pins, so the left half's firmware has to set them as
 GPIOs.
 
+B+ and B− are at the board's north end, by the port, so the battery's wires run
+its length under it.
+
 ## The chassis
 
 The chassis is two printed parts: the body, which holds the keys, and the plinth
