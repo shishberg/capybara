@@ -487,9 +487,54 @@ def plinth_shell():
     fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
             for g in plane_groups()]
     clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, z, below=False) for g in plane_groups()]
-    shell = subtract(add(plinth_blank(), fill), clear)
+    shell = add(subtract(add(plinth_blank(), fill), clear), [skirt()])
     stage("the plinth's shell", t)
     return shell
+
+
+# ---------------------------------------------------------------- the skirt
+# The plinth alone fills the outline's concave stretches, low down: a disc of
+# skirt_radius_mm rolled round the outside (the outline closed by it) bridges
+# each with one arc, tangent to the corners either side, and can't leave the
+# convex hull. The skirt is flat at skirt_h_mm, and meets the plinth's wall in a
+# rolling-ball cove of skirt_cove_mm.
+@cached
+def skirt_faces():
+    """The skirt in plan: the closed outline, and the spaces it adds to the
+    outline (past a hair, which drops the slivers along the rest of the wall)."""
+    r = P.skirt_radius_mm
+    out = polygon(outline())
+    closed = out.offset(r, JoinType.Round, 2.0, segments(r)).offset(-r, JoinType.Round, 2.0, segments(r))
+    return closed, fused([p for p in (closed - out.offset(0.05, JoinType.Round, 2.0, 8)).decompose() if p.area() > 1])
+
+
+def cove_ring():
+    """The cove's section swept round the whole outline, a closed ring of mesh:
+    from inside the plinth's wall out past the cove, along the skirt's top and
+    up the arc to the wall."""
+    c, h = P.skirt_cove_mm, P.skirt_h_mm
+    reach = c + 0.5
+    if reach >= P.outline_close_mm - P.wall_mm:
+        raise ValueError(f"skirt_cove_mm {c} is too large for the outline's inside corners")
+    a = np.radians(np.linspace(-90, -180, segments(c) // 4 + 1))
+    section = np.r_[[(-0.5, 0), (reach, 0), (reach, h)], np.c_[c + c * np.cos(a), h + c + c * np.sin(a)],
+                    [(-0.5, h + c)]]
+    q, inward = outline_stations()
+    n, m = len(q), len(section)
+    v = (q[:, None, :] - section[None, :, :1] * inward[:, None, :]).reshape(-1, 2)
+    v = np.c_[v, np.tile(section[:, 1], n)]
+    rings = np.arange(n * m).reshape(n, m)
+    t = [walled(rings[:, i], rings[:, (i + 1) % m]) for i in range(m)]
+    return solid_from(v, np.concatenate(t), "skirt's cove")
+
+
+def skirt():
+    """The skirt as a solid, flat with the cove along the wall, lapping into the
+    plinth (whose wall stands higher here: the body and plinth check would
+    catch one that didn't) so the two are one solid."""
+    closed, gaps = skirt_faces()
+    lapped = gaps.offset(1, JoinType.Round, 2.0, 16) ^ closed
+    return union([lapped.extrude(P.skirt_h_mm), cove_ring() ^ lapped.extrude(100)])
 
 
 # ---------------------------------------------------------------- the bay's well

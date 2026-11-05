@@ -148,6 +148,12 @@ top_round_mm = 1.5
 under_socket_mm = 0.6
 bottom_plate_mm = 2
 plate_gap_mm = 0.1
+# The plinth's skirt, past the outline in its concave stretches: the radius of
+# the arcs that bridge them, its height over the desk, and the cove where it
+# meets the plinth's wall (less than outline_close_mm - wall_mm - 0.5).
+skirt_radius_mm = 25
+skirt_h_mm = 2
+skirt_cove_mm = 2
 # Bosses on the bottom plate hold each socket up against its pocket's ceiling.
 boss_clearance_mm = 0.15
 boss_inset_mm = 0.6         # the boss is this much smaller than the socket body all round

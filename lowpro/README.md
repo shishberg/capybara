@@ -191,7 +191,10 @@ of two posts), and where two meet they merge. Look at them from below (`wiring-b
 before trusting a route; `channels()` in `chassis.py` is the list to edit.
 
 **Plinth.** The bottom plate is a plinth: flat on the desk, its top the body's
-underside `plate_gap_mm` lower, the same outline. It is `bottom_plate_mm` thick
+underside `plate_gap_mm` lower, the same outline. Its skirt alone goes past the outline: where the outline
+is concave, `skirt_radius_mm` arcs bridge the gaps (a disc that size rolled round
+the outside, so the skirt never leaves the convex hull), flat at `skirt_h_mm` over
+the desk and meeting the wall in a `skirt_cove_mm` cove. It is `bottom_plate_mm` thick
 at its thinnest, under pinky home, and about 14 mm under the inner column and
 the thumbs, so it carries the tent and the wells and the body does not. Under
 each socket it carries a boss, the socket's shaft inset `boss_inset_mm`, that
