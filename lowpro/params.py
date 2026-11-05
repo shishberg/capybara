@@ -142,6 +142,7 @@ diode_lead_mm = 1.5         # the straight lead its glass keeps before any bend
 # made up on the bench: how far it runs along the key from the diode's line, and
 # how wide it is across the leg and the wire's core in their sleeve.
 thumb_joint_mm = (6.0, 1.5)
+thumb_ease_mm = 3.0         # how far along the key its wire eases over to the north edge's line
 # Each finger key's diode sits south of its socket, its north leg on the -x tab
 # and its south leg on the column wire, which runs beside the tabs' tips; each
 # row's wire joins the +x tabs along the cells' north edges. See the README.

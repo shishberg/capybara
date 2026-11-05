@@ -74,7 +74,7 @@ def wiring(C, body):
     entry = C.bay_entry()
     bridge = [C.front_pt(C.finger_key(1, -P.rows_below)), C.ne(C.thumb("near"))]
     labels = [(mid(C.back_trunk()), "back trunk"), (mid(C.front_trunk()), "front trunk"),
-              ((bridge[0] + 3 * bridge[1]) / 4, "bridge to the thumbs"), (C.ne(C.thumb("home")), "thumb trunk"),
+              ((bridge[0] + 3 * bridge[1]) / 4, "bridge to the thumbs"), (C.ne(C.thumb("home")), "thumb row"),
               (C.c_tab(C.finger_key(0, 0)), "inner column trunk"), (entry, "into the bay"),
               (origin(C.mcu_frame()), "controller"), (origin(C.battery_frame()), "battery")]
     if P.power_switch:

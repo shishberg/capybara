@@ -161,8 +161,9 @@ def channel_points():
 
 
 def cells_2d():
-    """The cells and bays in plan, before the wall."""
-    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())])
+    """The cells, the bays and the thumb keys' own routes in plan, before the wall."""
+    routes = [hull_of(circle_points(a, w / 2) + circle_points(b, w / 2)) for w, pts in thumb_routes() for a, b in zip(pts[:-1], pts[1:])]
+    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())] + routes)
 
 
 def hulls_2d():
@@ -710,9 +711,11 @@ def riser(k):
 
 def joint_run(k):
     """A channel along a thumb key's north edge, north enough to hold the diode's
-    leg and sleeved joint (see thumb_joint)."""
+    leg and sleeved joint (see thumb_joint), then easing the wire over to the
+    edge's own line."""
     y = thumb_leg_y() + 0.4 - P.channel_w_mm / 2
-    return [at(k, (riser_x(k), y)), at(k, (riser_x(k) + P.thumb_joint_mm[0], y))]
+    x = riser_x(k) + P.thumb_joint_mm[0]
+    return [at(k, (riser_x(k), y)), at(k, (x, y)), at(k, (x + P.thumb_ease_mm, ne_y()))]
 
 
 def nw(k):
@@ -754,11 +757,11 @@ def column_join(a, b):
 
 
 def front_trunk():
-    """The front trunk's points, pinky to inner column, inside the bottom cells.
+    """The front trunk's points, pinky to index column, inside the bottom cells.
     Where a column reaches further forward than the next one in, the trunk
     leaves that next cell's line straight into the column's own channel, so it
     never runs round the outside of the stagger."""
-    ends = [finger_key(c, -P.rows_below) for c in range(4, -1, -1)]
+    ends = [finger_key(c, -P.rows_below) for c in range(4, 0, -1)]
     pts = []
     for a, b in zip(ends[:-1], ends[1:]):
         if (rinv(b.frame) @ np.append(front_pt(a), 1))[1] < trunk_y(-1):
@@ -784,7 +787,32 @@ def thumb(name):
     return key_named(f"thumb_{name}")
 
 
+def edge_mid(k):
+    """Halfway along a thumb key's north edge."""
+    return (ne(k) + riser(k)[1]) / 2
+
+
 @cached
+def thumb_routes():
+    """The thumb wires' own ways out, as channels (width, [points...]) in world:
+    far's up the inner side beside the row wire, home's and near's to the index
+    column's foot, x1's round near's east corner to the middle column's, and x2's
+    along x1's edge then inside near's south edge to join x1's. From that corner
+    the two run up to the front trunk as a trunk, whose sink keeps them room where
+    the straight run leaves the curving plinth."""
+    w, t = P.channel_w_mm, P.trunk_w_mm
+    near, home, far = (thumb(n) for n in ("near", "home", "far"))
+    foot = [front_pt(finger_key(c, -P.rows_below)) for c in range(3)]
+    inner = finger_key(0, -P.rows_below)
+    routes = [(w, [riser(home)[1], at(inner, (col_x(), trunk_y(-1) - 6)), foot[0]]), (w, [ne(home), foot[1]]), (w, [ne(near), foot[1]])]
+    if P.thumb_extra:
+        x1, x2 = thumb("x1"), thumb("x2")
+        corner = at(near, (out_y(), -P.cell_mm / 2))
+        routes += [(w, [ne(x2), riser(x1)[1]]), (w, [ne(x1), corner]), (t, [corner, foot[2]]),
+                   (w, [edge_mid(x1), at(near, (-P.cell_mm / 2, trunk_y(-1))), corner])]
+    return routes
+
+
 def channels():
     """The channels as polylines (width, [points...]) in world."""
     w, t = P.channel_w_mm, P.trunk_w_mm
@@ -802,7 +830,6 @@ def channels():
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
     out.append((t, back_trunk() + [bay_entry()]))
     out.append((t, front_trunk()))
-    out.append((t, [front_pt(finger_key(1, -P.rows_below)), ne(thumb("near"))]))
     # Each finger row: from each key's tab up to its north edge, across to the
     # next cell's north edge and along it to that key's tab; the inner column's
     # feeds its wire into the column channel.
@@ -812,20 +839,23 @@ def channels():
         for c in range(4):
             a, b = finger_key(c, r), finger_key(c + 1, r)
             out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)]))
-    # The thumb row: a trunk along the three keys' north edges (the row wire and
-    # the column wires on their way to the front trunk), each key's tabs risen to it.
-    out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), riser(thumb(n))[1])]))
-    for n in ("near", "home", "far"):
-        out.append((w, [r_tab(thumb(n)), ne(thumb(n))]))
-        out.append((w, riser(thumb(n))))
-    # The extra keys: their tabs risen to their north edges, joined to the gap
-    # between the row keys over them.
+    # The thumb row: a channel along the three keys' north edges, each key's tabs
+    # risen to it.
+    near, home, far = (thumb(n) for n in ("near", "home", "far"))
+    out.append((w, [ne(near), riser(near)[1], ne(home), riser(home)[1], ne(far), riser(far)[1]]))
+    for k in (near, home, far):
+        out.append((w, [r_tab(k), ne(k)]))
+        out.append((w, riser(k)))
+    out += thumb_routes()
+    # The extra keys: their tabs risen to their north edges, each joined up between
+    # the row keys, x1's to the gap by near and x2's round far's east corner to its
+    # tab's riser, so the row wire can go on from far without doubling back.
     if P.thumb_extra:
-        for name, left, right in (("x1", "near", "home"), ("x2", "home", "far")):
-            k = thumb(name)
-            g = (riser(thumb(left))[1] + ne(thumb(right))) / 2
+        x1, x2 = thumb("x1"), thumb("x2")
+        for k in (x1, x2):
             out.append((w, [r_tab(k), ne(k), *riser(k)[::-1]]))
-            out.append((w, [(ne(k) + riser(k)[1]) / 2, g]))
+        out.append((w, [edge_mid(x1), (riser(near)[1] + ne(home)) / 2]))
+        out.append((w, [edge_mid(x2), at(far, (out_y(), ne_y())), ne(far)]))
     out += [(w, joint_run(k)) for k in keys() if k.group != "finger"]
     return out
 

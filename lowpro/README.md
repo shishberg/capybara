@@ -171,8 +171,8 @@ stays `min_wall_mm` inside the key's cell. There are no LEDs.
 sockets' tops (about 3 mm deep, the same everywhere), going on down into the
 plinth's top, `channel_sink_mm` for a channel and `trunk_sink_mm` for a trunk,
 and leaving it at least `bottom_plate_mm` thick. That sink is what lets a
-`wire_d_mm` wire cross another, and a trunk carry its bundle two wires wide,
-without adding height or footprint:
+`wire_d_mm` wire cross another, two lie together in a channel, and a trunk carry
+its bundle two wires wide, without adding height or footprint:
 
 - a column channel up each column, from the socket's shaft out past the −x
   tabs' tips by a wire and `wire_gap_mm`, so a straight column wire runs beside
@@ -188,18 +188,24 @@ without adding height or footprint:
 - a trunk along the top row just north of its sockets, from the pinky column's
   top to the inner column and on over the well's rim, which the columns' wires
   follow, and one inside the bottom row's cells, under the south edge of the
-  switches' pockets, that joins the thumb cluster; where a column reaches
-  further forward than the next one in, this trunk goes straight into that
-  column's channel rather than round the stagger, so the pinky's column ends at
-  its bottom key's diode;
-- in the thumb cluster, a trunk along the three row keys' north edges (the
-  thumb row's wire and the thumb keys' column wires on their way to the front
-  trunk), each key's tabs risen to it, and the extra keys' tabs risen to the gaps
-  between the row keys. Each thumb key's diode sits in its riser, and a channel
-  along the key's north edge holds that diode's north leg and its sleeved joint
-  to the wire (`thumb_joint_mm`). No wire passes a thumb key's terminal: its
-  column wire starts at the joint, and the wires from further out run under the
-  diode, in the trunk's sink.
+  switches' pockets, from the pinky's column to the index column's; where a
+  column reaches further forward than the next one in, this trunk goes straight
+  into that column's channel rather than round the stagger, so the pinky's
+  column ends at its bottom key's diode;
+- in the thumb cluster, separate channels that hold at most two wires each
+  (`thumb_routes`, which count towards the outline and so get the full wall). A
+  channel runs along the three row keys' north edges, each key's tabs risen to
+  it. Far's column wire goes up the inner side beside the row wire, and home's
+  and near's go to the index column's foot. X1's goes round near's east corner,
+  and x2's along x1's edge and inside near's south edge to join it there, and a
+  trunk takes the two to the middle column's foot. X1's north edge joins the
+  row channel at the gap by near, and x2's round far's east corner. The row wire
+  is a chain like a finger row's, through far, x2, home, near and x1. Each thumb
+  key's diode sits in its riser, and a channel along the key's north edge holds
+  that diode's north leg and its sleeved joint to the wire (`thumb_joint_mm`),
+  then eases the wire over to the edge's line (`thumb_ease_mm`).
+  The only wires to pass a diode are the row wire at near and the row wire and
+  x2's column wire at x1, and they run under the leg and joint, in the sink.
 
 The channels are a first cut: each is a straight slot between two points (a hull
 of two posts), and where two meet they merge. Look at them from below (`wiring-below.png`)
@@ -261,8 +267,7 @@ button.
 ## Wiring the thumb keys
 
 Wire the body upside down with the plinth off. Everything soldered is then at
-the bottom of a slot about 3 mm deep, open towards you; the trunk's depth is
-mostly the plinth's sink, which only takes the finished bundle.
+the bottom of a slot about 3 mm deep, open towards you.
 
 1. On the bench, for each of the five keys: bend the diode's banded leg sideways
    `diode_lead_mm` from the glass, thread 2 mm heat-shrink onto the column wire,
@@ -272,13 +277,11 @@ mostly the plinth's sink, which only takes the finished bundle.
 3. Drop each diode into its riser, the sleeved joint along the north edge, and
    solder its bare leg to the column terminal's north face. That is the diode's
    only joint in the case, and the leg's only bare metal is on its own terminal.
-4. Lay the column wires along the trunk towards the front trunk in the order
-   near, x1, home, x2, far, each on top of the last, so that none has to go
-   under anything already in place.
-5. Lay the row wire last, on top, and take it down each key's row channel to
-   its +x terminal.
-6. Tape the bundle every 20 to 30 mm so that it stays inside the trunk's width.
-   Close the plinth without force: if it rocks, a wire is outside a sink and
+4. Lay each column wire along its own channel to its finger column.
+5. Lay the row wire last, on top, so that it passes over the joints at near and
+   x1: from the controller to far's +x terminal, then on to x2, home, near and
+   x1, two wire ends on every terminal but the last.
+6. Close the plinth without force: if it rocks, a wire is outside a sink and
    being pinched.
 
 ## Checks and what they don't cover
@@ -304,8 +307,9 @@ hole, to the outline or to another cut.
 
 Not checked: the hand's reach (the `?hand` prototype's checks don't run on this
 layout), switches and caps against the body (the cells are planar and larger than
-a cap, so a cap can't meet the body, but nothing proves it), and the walls
-between channels and the keys' pockets (channels join keys by design). The Cherry cap, the
+a cap, so a cap can't meet the body, but nothing proves it), the walls
+between channels and the keys' pockets (channels join keys by design), and how
+many wires a channel holds at once (the wiring check tries one at a time). The Cherry cap, the
 socket's tabs, the controller, the battery and the power switch are nominal sizes.
 
 ## Open questions
