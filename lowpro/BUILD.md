@@ -263,9 +263,16 @@ bottom row, R3 thumbs.
 
 ### 6. Left half
 
-The left half is the mirror image of the right. Use the left STLs and the left
-column of the [pin table](#pins). The controller is the same board, not mirrored, so
-B+ and B− stay in the same corners while the strip and the keys swap sides.
+The left half's case is the mirror image of the right's, but its switches, sockets
+and controller are the same parts, the same way round. Use the left STLs and the left
+column of the [pin table](#pins).
+
+- **Sockets:** a socket's terminals sit at different distances from the key's middle
+  on each side, so the left half's are the other way about to the mirror image of the
+  right's. The terminals' roles don't change: the row wire still goes to the inner-side
+  terminal of a finger key, and the diode to the pinky-side one.
+- **Controller:** B+ and B− stay in the same corners of the board, while the strip
+  and the keys swap sides.
 
 ## Firmware
 

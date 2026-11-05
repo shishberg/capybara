@@ -636,6 +636,9 @@ def well():
 # line past the +x tab (thumb_col_x), the line over the +x tab (row_x), and the
 # north edge (ne_y).
 def socket_end_x():
+    """The -x end of the right half's socket. The column channels stand off it in
+    both halves: the left half's socket stops short of it, so that half's -x tab
+    only reaches the channel."""
     return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2
 
 
@@ -674,7 +677,7 @@ def thumb_col_x():
 
 
 def row_x():
-    return P.socket_centre_mm[0] + P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]
+    return R.socket_tab_tip(1)[0]
 
 
 def ne_y():
@@ -702,12 +705,12 @@ def at(k, p):
 
 
 def c_tab(k):
-    return at(k, (col_x(), P.socket_tab_y[0]))
+    return at(k, (col_x(), R.socket_tab_tip(-1)[1]))
 
 
 def x_tab(k):
     """The +x tab: a thumb key's row wire comes to it."""
-    return at(k, (row_x(), P.socket_tab_y[1]))
+    return at(k, (row_x(), R.socket_tab_tip(1)[1]))
 
 
 def nw(k):
@@ -943,7 +946,8 @@ def leg_slots(k):
     into its terminal's solder well. A finger key's terminal is the +x tab and
     its column wire on the -x side; a thumb key's are the other way round."""
     s, x0, y, z = P.diode_leg_slot_mm, P.diode_mm[0] / 2, diode_y(), diode_z()
-    side, wire, tab = (1, shaft_edge_x(), P.socket_tab_y[1]) if k.group == "finger" else (-1, thumb_col_x(), P.socket_tab_y[0])
+    side, wire = (1, shaft_edge_x()) if k.group == "finger" else (-1, thumb_col_x())
+    tab = R.socket_tab_tip(side)[1]
     well = tab - P.solder_well_mm[1] / 2 + s
 
     def across(a, b):
@@ -982,11 +986,11 @@ def socket_shaft(k, grow):
 
 def solder_wells(k):
     """Room round each of key k's socket terminals to solder to it: solder_well_mm
-    reaching solder_well_reach_mm past the tab's tip, cut back in plan to stay min_wall_mm inside the
+    reaching solder_well_reach_mm past the tab's tip, cut back in plan to stay solder_well_inset_mm inside the
     cell at the socket's top, so it keeps that wall from the next key's room
     and from the bay. The -x well then ends just past its tab's tip."""
     s = P.solder_well_mm
-    inside = polygon(cell_corners(k, -P.min_wall_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
+    inside = polygon(cell_corners(k, -P.solder_well_inset_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
     return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) + (side * (P.solder_well_reach_mm - s[0] / 2), 0, -0.3)) ^ inside
             for side in (-1, 1)]
 
@@ -1184,6 +1188,22 @@ def part_clashes():
     return out
 
 
+def true_part_clashes():
+    """The keys of the left half where a real switch or socket, the same parts as
+    the right half's and not mirrored, meets the finished body as it's written:
+    part_clashes works before the mirror, with the parts drawn for it, so it
+    can't see one drawn the wrong way round. As (key, overlap mm^3)."""
+    if P.half != "left":
+        return []
+    P.half = "right"
+    real = [p.solid for p in R.mx_switch() + R.hotswap_socket()]
+    P.half = "left"
+    flip = np.diag([-1.0, 1, 1, 1])
+    written = body().mirror((1, 0, 0))
+    hits = [(k.name, sum((placed(flip @ k.frame @ flip, s) ^ written).volume() for s in real)) for k in keys()]
+    return [(name, v) for name, v in hits if v > 1e-3]
+
+
 def wire_ends():
     """Where wires start, by name, each a point just inside the space cut for
     it (a wire's width in): every key's row end (a wire's width off its terminal's
@@ -1194,7 +1214,7 @@ def wire_ends():
     off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        row, joint = ((col_x(), P.socket_tab_y[0] + off), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), P.socket_tab_y[1] + off), thumb_joint(k))
+        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + off), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + off), thumb_joint(k))
         ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))

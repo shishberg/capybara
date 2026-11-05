@@ -52,7 +52,11 @@ or with a parameter changed:
 ## The layout
 
 Everything is laid out for the right half in the hand's axes, then tented and
-lifted. The left half is the mirror image.
+lifted. The left half is the mirror image of it, except that its switches and
+sockets are the same parts, which can't be mirrored: each key's pin holes, socket
+pocket, terminals' wells and boss are drawn true, and only the rest is mirrored.
+Its socket reaches 1.27 mm less far toward the column channel and that much further
+the other way, so each half is its own build.
 
 **Finger columns.** Each home key sits under where its fingertip rested on the
 paper, facing straight up, and its column runs along the finger's measured

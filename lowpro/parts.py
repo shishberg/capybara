@@ -62,11 +62,21 @@ def pieces(solids, colour, label):
     return [Piece(label, colour, union(solids))]
 
 
+def handed(x):
+    """A key-frame x on a switch or socket as this half draws it: the left half
+    is built as the right and mirrored, so it draws them mirrored to come out true."""
+    return -x if P.half == "left" else x
+
+
+def switch_pins():
+    return [(handed(x), y) for x, y in P.switch_pins]
+
+
 # ---------------------------------------------------------------- MX switch
 def mx_switch():
     """The switch as it stands in the plate: housing over and under the plate,
     posts and pins below."""
-    b, pins, post = P.switch_below_plate_mm, P.switch_pins, P.switch_post_mm
+    b, pins, post = P.switch_below_plate_mm, switch_pins(), P.switch_post_mm
     grey = [box((P.switch_rim_mm, P.switch_rim_mm, P.switch_top_above_plate_mm), (0, 0, P.switch_top_above_plate_mm / 2)),
             box((P.switch_cutout_mm, P.switch_cutout_mm, b), (0, 0, -b / 2)),
             cylinder(P.switch_centre_post_d, post, (0, 0, -b - post))]
@@ -93,7 +103,7 @@ def mx_switch_room():
     rooms.append(cylinder(P.switch_centre_post_d + c, depth + 0.1, (0, 0, z)))
     rooms += [cylinder(P.switch_side_post_d + c, depth + 0.1, (sx * P.switch_side_post_x, 0, z)) for sx in (-1, 1)]
     collar = P.socket_collar_mm[0] + 2 * P.socket_clearance_mm
-    rooms += [cylinder(collar, depth + 0.1, (p[0], p[1], z)) for p in P.switch_pins]
+    rooms += [cylinder(collar, depth + 0.1, (p[0], p[1], z)) for p in switch_pins()]
     return rooms
 
 
@@ -137,8 +147,8 @@ def socket_boxes(grow=0):
     t = e[2] + 2 * grow
     x0, x1, y0, y1 = c[0] - e[0] / 2, c[0] + e[0] / 2, c[1] - e[1] / 2, c[1] + e[1] / 2
     z = socket_top_z() - t / 2 + grow
-    return [((e[0] + 2 * grow, lobe + 2 * grow, t), (c[0], y1 - lobe / 2, z)),
-            ((front + 2 * grow, lobe + 2 * grow, t), (x0 + front / 2, y0 + lobe / 2, z))]
+    return [((e[0] + 2 * grow, lobe + 2 * grow, t), (handed(c[0]), y1 - lobe / 2, z)),
+            ((front + 2 * grow, lobe + 2 * grow, t), (handed(x0 + front / 2), y0 + lobe / 2, z))]
 
 
 def socket_body(grow=0):
@@ -146,12 +156,13 @@ def socket_body(grow=0):
 
 
 def socket_tab_boxes(grow=0):
-    """The two terminals as (size, centre), out of the socket's +-x ends, down from just over its top."""
+    """The two terminals as (size, centre), the -x one first, out of the socket's
+    ends, down from just over its top."""
     e, c = P.socket_body_mm, P.socket_centre_mm
     reach, width, height = P.socket_tab_mm
-    return [((reach + 0.6 + 2 * grow, width + 2 * grow, height + 2 * grow),
-             (c[0] + s * (e[0] / 2 + reach / 2 - 0.3), y, socket_bottom_z() + height / 2))
-            for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))]
+    return sorted([((reach + 0.6 + 2 * grow, width + 2 * grow, height + 2 * grow),
+                    (handed(c[0] + s * (e[0] / 2 + reach / 2 - 0.3)), y, socket_bottom_z() + height / 2))
+                   for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))], key=lambda b: b[1][0])
 
 
 def socket_tabs(grow=0):
@@ -161,13 +172,14 @@ def socket_tabs(grow=0):
 def socket_collars():
     """The two collars, up from the socket's top round its pin cups."""
     d, h = P.socket_collar_mm
-    return [cylinder(d, h, (p[0], p[1], socket_top_z())) for p in P.switch_pins]
+    return [cylinder(d, h, (p[0], p[1], socket_top_z())) for p in switch_pins()]
 
 
 def socket_tab_tip(side):
     """The position of the -x and +x tabs' tips in the key frame."""
-    return np.array([P.socket_centre_mm[0] + side * (P.socket_body_mm[0] / 2 + P.socket_tab_mm[0]),
-                     P.socket_tab_y[0] if side < 0 else P.socket_tab_y[1], socket_top_z()])
+    s = handed(side)
+    return np.array([handed(P.socket_centre_mm[0] + s * (P.socket_body_mm[0] / 2 + P.socket_tab_mm[0])),
+                     P.socket_tab_y[0] if s < 0 else P.socket_tab_y[1], socket_top_z()])
 
 
 def hotswap_socket():

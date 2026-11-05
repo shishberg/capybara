@@ -5,6 +5,12 @@ is here. Sizes marked PROVISIONAL are from datasheets or memory, not measured
 parts. Override any of them from the command line: see build.py.
 """
 
+# Which half is being built. The left half is the right's mirror image, but a
+# switch and its socket are the same parts in both, and they can't be mirrored:
+# on the left they're drawn the other way round here, so that the mirror puts
+# them right (parts.py handed). build.py sets this for each half.
+half = "right"
+
 # ---------------------------------------------------------------- the key field
 # Tent: the whole hand turned about the Y axis, raising the thumb side. 0 is flat.
 tent_deg = 6
@@ -115,9 +121,11 @@ socket_tab_y = (2.54, 5.08)            # the -x tab's y, the +x tab's y
 socket_clearance_mm = 0.25
 # Room round each terminal to solder a wire to it, from the floor up to the
 # socket's top, reaching solder_well_reach_mm past the tip (a wire's room and a
-# little) and cut back to stay min_wall_mm inside the cell.
+# little) and cut back to stay solder_well_inset_mm inside the cell: min_wall_mm
+# and the little that a column channel stands past the next cell's edge.
 solder_well_mm = (4.5, 5)
 solder_well_reach_mm = 1.75
+solder_well_inset_mm = 1.2
 
 # ---------------------------------------------------------------- wiring
 # Channels in the body's underside for the wires, sunk into the bottom plate.

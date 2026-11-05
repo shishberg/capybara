@@ -9,7 +9,8 @@ Any parameter in params.py can be overridden with --set. Files go to
 output/lowpro/ (--out): <half>-body.stl, <half>-plate.stl and
 right-assembly.3mf (body, plinth, switches, caps, sockets, diodes and
 electronics, each piece a named, coloured mesh). The left half is the right
-mirrored.
+mirrored, but for the switches and sockets, which are the same parts in both, so
+each half is its own build.
 """
 import argparse
 import ast
@@ -185,6 +186,12 @@ def check():
         ok = False
     else:
         print("switches, sockets, electronics and caps at full travel clear the case")
+    wrong = C.true_part_clashes()
+    if wrong:
+        print("a real switch or socket doesn't fit the mirrored half at: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in wrong))
+        ok = False
+    elif C.P.half == "left":
+        print("real switches and sockets fit the mirrored half")
     return ok
 
 
@@ -209,27 +216,31 @@ def main(argv=None):
 
     C.VERBOSE = args.verbose
     set_params(args.set)
-    L.reset()
-    print(C.report(), flush=True)
-    s = C.stage("report", t)
-    ok = True if args.no_check else check()
-    s = C.stage("checks", s)
+    ok = True
+    for half in halves:
+        # Each half is its own build: the switches and sockets don't mirror (params.py half).
+        C.P.half = half
+        L.reset()
+        print(f"the {half} half: {C.report()}", flush=True)
+        s = C.stage("report", t)
+        ok = (True if args.no_check else check()) and ok
+        s = C.stage("checks", s)
+        if args.check:
+            continue
+        body = C.body() if {"body", "assembly"} & set(parts) else None
+        plate = C.bottom_plate() if {"plate", "assembly"} & set(parts) else None
+        s = time.time()
+        for name, solid in (("body", body), ("plate", plate)):
+            if name in parts:
+                write_stl(for_half(solid, half), out / f"{half}-{name}.stl")
+        s = C.stage("STL", s)
+        if "assembly" in parts and half == "right":
+            refuse_invalid(body, "the assembly's body")
+            refuse_invalid(plate, "the assembly's plinth")
+            write_3mf(assembly(body, plate), out / "right-assembly.3mf")
+            C.stage("3MF", s)
     if args.check:
         return 0 if ok else 1
-
-    body = C.body() if {"body", "assembly"} & set(parts) else None
-    plate = C.bottom_plate() if {"plate", "assembly"} & set(parts) else None
-    s = time.time()
-    for name, solid in (("body", body), ("plate", plate)):
-        if name in parts:
-            for half in halves:
-                write_stl(for_half(solid, half), out / f"{half}-{name}.stl")
-    s = C.stage("STL", s)
-    if "assembly" in parts:
-        refuse_invalid(body, "the assembly's body")
-        refuse_invalid(plate, "the assembly's plinth")
-        write_3mf(assembly(body, plate), out / "right-assembly.3mf")
-        C.stage("3MF", s)
     print(f"built in {time.time() - t:.1f} s", flush=True)
     return 0 if ok else 1
 
