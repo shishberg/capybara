@@ -390,6 +390,13 @@ def lead_notch():
 
 
 # ---------------------------------------------------------------- screws
+def neck_screw():
+    """The screw south of the battery, in the outline's lobe for it, past where the
+    underside falls away from the battery's end, so that it has a level pad."""
+    (_, y0), (x1, _) = battery_bay()
+    return (x1 - P.neck_screw_mm[0], y0 - P.neck_screw_mm[1])
+
+
 @cached
 def screw_points():
     """Where the bottom plate screws into the body, in world plan. The wall is
@@ -398,12 +405,12 @@ def screw_points():
     layer, where no socket, tab or channel comes (the (x, y) in the key's frame
     are picked for the wall they leave, which a key's lean moves); and one in
     the strip beside the board, which is narrower than the battery, midway
-    between the well and the outline and near the USB port. The neck in front of
-    the battery has none: its underside falls too steeply for a level pad."""
+    between the well and the outline and near the USB port; and one south of the
+    battery (neck_screw)."""
     def cell(name, x, y):
         return xy(xform(key_named(name).frame, [x, y, 0]))
 
     m = mcu_bay()
     strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
     return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 2, -9.5)]
+            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 2, -9.5), neck_screw()]

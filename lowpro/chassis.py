@@ -164,6 +164,13 @@ def channel_points():
             for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
+def neck_lobe():
+    """The outline's lobe round the screw south of the battery: min_wall_mm round its
+    counterbore, and mesh_tol_mm over it for the outline's chords to cut across."""
+    r = R.counterbore_d() / 2 + P.min_wall_mm + P.mesh_tol_mm
+    return polygon(circle_points(L.neck_screw(), r))
+
+
 def cells_2d():
     """The cells and the bays in plan, before the wall."""
     return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_outline_rect())])
@@ -233,7 +240,7 @@ def outline_curve():
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
     channel_walls = [hull_of(pts) for pts in channel_points()]
-    s = fused([s, back_edge()] + channel_walls)
+    s = fused([s, back_edge(), neck_lobe()] + channel_walls)
     inside = P.outline_close_mm - P.wall_mm
     for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
         s = offset(s, amount)

@@ -215,6 +215,7 @@ screw_head_h_mm = 2
 screw_head_clearance_mm = 0.4
 screw_grip_mm = 2
 screw_pad_d = 3.8
+neck_screw_mm = (5.5, 8.8)      # the screw south of the battery, from the bay's south corner on the keys' side
 
 # ---------------------------------------------------------------- controller, battery, switch
 # The Tenstar red ProMicro NRF52840, its size PROVISIONAL until measured:

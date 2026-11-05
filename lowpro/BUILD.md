@@ -48,13 +48,13 @@ For each half, so double it for the pair:
 | 402030 LiPo, about 200 mAh, with protection circuit | 1 | 30 × 20 × 4.2 mm at most |
 | MSK-12C02 slide switch | 1 | |
 | 6.5 × 6.5 mm SMD tactile switch, 2 mm body | 1 | Pick a firm one, so that a knock doesn't reset the board. |
-| M2 × 3 heat-set insert | 5 | For a 3.2 mm hole |
-| M2 × 5 socket-head screw | 5 | |
+| M2 × 3 heat-set insert | 6 | For a 3.2 mm hole |
+| M2 × 5 socket-head screw | 6 | |
 | Double-sided foam tape, about 1 mm thick | a little | Holds the battery in its bay and pads the strip over the board. |
 | Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal. |
 
 You also need a soldering iron with a fine tip, flush cutters, wire strippers,
-tweezers, a multimeter and a long-armed 1.5 mm hex key: the deepest screw is 8.5 mm up
+tweezers, a multimeter and a long-armed 1.5 mm hex key: the deepest screw is 10.5 mm up
 its hole.
 
 ## Measure first
@@ -220,7 +220,7 @@ is on.
 
 ### 1. Inserts
 
-Press the five heat-set inserts into the body's underside, in the five holes with
+Press the six heat-set inserts into the body's underside, in the six holes with
 round flat pads round them, until flush with the pad. Keep them square: the pads are
 level but the surface round them isn't.
 
@@ -289,7 +289,7 @@ drops straight in. Try each one dry first.
 
 1. Lay the plinth on the upside-down body. No wire joins them, so it goes straight on,
    and its steps locate it. Check that no wire sits on the seam.
-2. Fit the five screws and tighten them gently. The seam should close without forcing,
+2. Fit the six screws and tighten them gently. The seam should close without forcing,
    and stop and look if it doesn't. The parts are designed 0.1 mm apart across the
    seam, so a hair of a gap away from the screws is expected.
 3. Turn it over and fit the caps: R2 top row, R3 home row, R4 bottom row, R3 thumbs.
