@@ -126,9 +126,9 @@ channel_w_mm = 2.2
 wire_d_mm = 1.6
 # A column channel reaches past each -x terminal's tip by a wire and this much.
 wire_gap_mm = 0.2
-# The trunks (the inner column's channel, which the row wires join, and the
-# one behind the top row that the columns' wires and the top row's follow to the
-# controller).
+# The trunks (the inner column's channel up to the home key, which the lower
+# rows' wires share to the well, and the one behind the top row that the other
+# columns' wires and the top row's follow to the controller).
 trunk_w_mm = 3.5
 # How far the channels and the trunks go on down into the plinth, each leaving
 # it at least bottom_plate_mm: a row wire crosses a column wire, and a trunk
@@ -154,7 +154,7 @@ front_trunk_wall_mm = 1.95
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the
-# bay's), and between the bay and every channel but the one into it; the
+# bay's), and between the bay and every channel but those into it; the
 # build checks every pair.
 min_wall_mm = 1
 wall_mm = 3                 # the body's wall past the key cells and the bays

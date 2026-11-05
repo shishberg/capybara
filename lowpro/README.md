@@ -78,18 +78,23 @@ board (008 is P0.08):
 
 | Net | Right | Left |
 |---|---|---|
-| RT | 006 | 031 |
-| RH | 008 | 029 |
-| RB | 017 | 002 |
-| RX | 020 | 115 |
-| C0 | 022 | 113 |
-| C1 | 100 | 111 |
-| C2 | 011 | 010 |
-| C3 | 104 | 009 |
-| C4 | 106 | 106 |
+| RT | 006 | 029 |
+| RH | 011 | 010 |
+| RB | 104 | 106 |
+| RX | 106 | 009 |
+| C0 | 100 | 111 |
+| C1 | 022 | 113 |
+| C2 | 020 | 115 |
+| C3 | 008 | 002 |
+| C4 | 017 | 031 |
+
+The pins follow the wires' three ways into the well. RH, RB and RX cross straight
+from the inner column level with the home key to the board's south end, C4 goes
+straight from the top inner key's diode to the pin beside it, and RT and the other
+columns come round the back trunk to the board's north end.
 
 The right half skips 024 because the board's battery divider is on it. The left
-edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its C4 goes
+edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its RB goes
 under the board's south end to 106, the last hole on the far edge. 009 and 010
 are the chip's NFC pins, so the left half's firmware has to set them as GPIOs.
 

@@ -762,11 +762,25 @@ def front_trunk():
     return pts
 
 
+def well_point(y):
+    """A point just inside the well, by the column's wall, level with y."""
+    x = L.mcu_bay()[1][0] - 3
+    return np.array([x, y, floor_z(x, y) + 3])
+
+
 def bay_entry():
     """Where the back trunk reaches the well: just inside its back corner by the column."""
-    b = L.mcu_bay()
-    x, y = b[1][0] - 3, b[1][1] - 3
-    return np.array([x, y, floor_z(x, y) + 3])
+    return well_point(L.mcu_bay()[1][1] - 3)
+
+
+def well_exits():
+    """The inner column's ways straight through its wall into the well, as
+    channels: one from the home key's -x tab for the home, bottom and thumb
+    rows' wires, whose runs end there, and one from the top key's diode joint,
+    where the column's wire ends, for that wire alone."""
+    tab = c_tab(finger_key(0, 0))
+    joint = at(finger_key(0, P.rows_above), (col_x(), diode_y()))
+    return [(P.trunk_w_mm, [tab, well_point(tab[1])]), (P.channel_w_mm, [joint, well_point(joint[1])])]
 
 
 def finger_key(col, row):
@@ -847,17 +861,21 @@ def channels():
     rows = range(-P.rows_below, P.rows_above + 1)
     out = []
     # Each finger column: front trunk point (the pinky's, the longest, joins it
-    # higher up, so it starts level with its bottom key's diode; the inner one's
-    # goes on to the thumbs' fork), past its keys' -x tabs, back trunk point.
+    # higher up, so it starts level with its bottom key's diode), past its keys'
+    # -x tabs, back trunk point.
     for c in range(5):
         bottom = finger_key(c, -P.rows_below)
-        start = [thumb_fork(), front_pt(bottom)] if c == 0 else [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
-        out.append((t if c == 0 else column_w(),
-                    start + [c_tab(finger_key(c, r)) for r in rows]
+        start = [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
+        out.append((column_w(), start + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))]))
-    # The back trunk, pinky to inner column and into the bay, and the front trunk.
+    # The back trunk, pinky to inner column and into the bay, the front trunk, and
+    # the inner column's trunk from the thumbs' fork to the home key's tab, where
+    # the lower rows' wires leave it for the well.
     out.append((t, back_trunk() + [bay_entry()]))
     out.append((t, front_trunk()))
+    inner = [finger_key(0, r) for r in rows if r <= 0]
+    out.append((t, [thumb_fork(), front_pt(inner[0])] + [c_tab(k) for k in inner]))
+    out += well_exits()
     # Each finger row but the top one, whose wire runs in the back trunk: straight
     # along each key's north edge and on into the next column, whose channel the
     # wire then shares to that key's -x tab.
@@ -1233,7 +1251,7 @@ def lost(shell, cutters, open_below=False):
 def thin_walls():
     """The walls thinner than min_wall_mm between the rooms of different parts
     (each key's room, solder wells and diode's room; the bay's rooms and well),
-    and between the bay and every channel but the one into it, between a finger
+    and between the bay and every channel but those into it, between a finger
     column's channel and the keys of other columns, between a diode's pocket and
     every channel but its own column wire's, and between a channel and the
     outside and the top, as a list of (room, room, wall mm), empty when every
@@ -1245,9 +1263,10 @@ def thin_walls():
                  lost(plinth_shell(), [s for name, group in plate_cuts() if name != "a channel" for s in group])])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
+    into_well = [bay_entry()] + [pts[-1] for _, pts in well_exits()]
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
                 lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
-              for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
+              for a, b, w in channel_segments() if not any(np.array_equal(b, p) for p in into_well)]
     for c, (w, pts) in enumerate(channels()[:5]):
         run = (f"column {c}'s channel", lost(body_shell(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
         pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
