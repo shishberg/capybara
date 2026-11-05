@@ -587,11 +587,18 @@ def battery_frame():
     return trans([0, 0, bay_z()]) @ L.battery_frame()
 
 
-def power_switch_frame():
-    """The switch in the plinth, just under the body's underside over all of it."""
-    m, s = L.power_switch_frame(), P.power_switch_mm
+def strip_frame(m, s, c):
+    """A part of size s at plan frame m in the plinth, c under the body's underside over all of it."""
     z = min(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
-    return trans([0, 0, z - s[2] / 2 - P.power_switch_clearance_mm]) @ m
+    return trans([0, 0, z - s[2] / 2 - c]) @ m
+
+
+def power_switch_frame():
+    return strip_frame(L.power_switch_frame(), P.power_switch_mm, P.power_switch_clearance_mm)
+
+
+def reset_button_frame():
+    return strip_frame(L.reset_button_frame(), P.reset_button_mm, P.reset_button_clearance_mm)
 
 
 def floor_box(r, h):
@@ -974,11 +981,13 @@ def key_room(k):
 def bay_rooms(plinth=False):
     """The parts' rooms in the well, cut from the plinth and from the body where
     they reach above the plate's top. The battery's lead notch is one of them,
-    as tall as the pocket; the power switch's is the plinth's alone."""
+    as tall as the pocket; the power switch's and reset button's are the plinth's alone."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
     if P.power_switch and plinth:
         out += place(power_switch_frame(), R.power_switch_room())
+    if plinth:
+        out += place(reset_button_frame(), R.reset_button_room())
     return out
 
 
@@ -1047,8 +1056,7 @@ def screw_holes():
 @cached
 def plate_cuts():
     """Everything cut from the plinth but the screw holes, in named groups."""
-    return [("the well", well()), ("a bay room", bay_rooms(plinth=True)),
-            ("the reset pinhole", place(mcu_frame(), [R.mcu_reset_hole()])), ("a channel", channel_sinks())]
+    return [("the well", well()), ("a bay room", bay_rooms(plinth=True)), ("a channel", channel_sinks())]
 
 
 def plate_cutters():
@@ -1058,7 +1066,7 @@ def plate_cutters():
 @cached
 def bottom_plate():
     """The plinth: up to the body's underside and the screws' pads, with the well,
-    the screw holes and the pinhole over the reset button, and the socket bosses
+    the screw holes and the reset button's pinhole, and the socket bosses
     standing on it."""
     pads = [R.cylinder(P.screw_pad_d, z + 1, (p[0], p[1], -1)) ^ Manifold.cube((400, 400, 100)).translate((-200, -200, 0))
             for p, z in zip(L.screw_points(), screw_seats())]
@@ -1093,7 +1101,7 @@ def diodes():
 
 
 def electronics():
-    parts = [(mcu_frame(), R.mcu_board()), (battery_frame(), R.battery())]
+    parts = [(mcu_frame(), R.mcu_board()), (battery_frame(), R.battery()), (reset_button_frame(), R.reset_button_part())]
     if P.power_switch:
         parts.append((power_switch_frame(), R.power_switch_part()))
     return [Piece(p.label, p.colour, placed(m, p.solid)) for m, part in parts for p in part]
@@ -1150,6 +1158,8 @@ def wire_ends():
     if P.power_switch:
         notch = P.power_switch_mm[1] / 2 + P.power_switch_pins_mm[1] / 2
         ends.append(("the power switch", xform(power_switch_frame(), [0, notch, -d / 2])))
+    notch = P.reset_button_mm[1] / 2 + P.reset_button_pins_mm[1] / 2
+    ends.append(("the reset button", xform(reset_button_frame(), [0, notch, -d / 2])))
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 

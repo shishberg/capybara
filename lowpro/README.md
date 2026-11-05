@@ -18,7 +18,7 @@ and the way it moves. What changes:
 | Plan per half | | 132 × 131 mm, 12,062 mm² |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
-| Controller | RP2040 Pro Micro per hand, TRRS between hands | nRF52840 Pro Micro (nice!nano / SuperMini) per hand, BLE, USB-C for charging only |
+| Controller | RP2040 Pro Micro per hand, TRRS between hands | Tenstar red ProMicro NRF52840 per hand, BLE, USB-C for charging only |
 | Power | USB | A small LiPo per hand and a slide switch |
 | Chassis | Open rib frame, bottom section | An enclosed shell of one thickness, screwed onto a plinth that carries the tent |
 
@@ -30,7 +30,7 @@ and the way it moves. What changes:
 | `render.py` | PNGs of the right half for a person to look over; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
 | `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions. |
-| `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery and power switch, and the room each takes. |
+| `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes. |
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `lib.py` | Frames as 4 × 4 matrices. |
 
@@ -74,27 +74,33 @@ column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
 [firmware's](../firmware/README.md) matrix carries over, though it needs an
 nRF52840 build, with its own pins. The same board goes in both hands and the
 bay is mirrored, so each half has its own pins, on the edge nearest the keys
-where it can (Pro Micro pin number, then GPIO):
+where it can, named as they're printed on the board (008 is P0.08):
 
 | Net | Right | Left |
 |---|---|---|
-| RT | 2, P0.08 | 20, P0.31 |
-| RH | 5, P0.17 | 19, P0.29 |
-| RB | 6, P0.20 | 18, P0.02 |
-| RX | 7, P0.22 | 17, P1.15 |
-| C0 | 8, P0.24 | 16, P1.13 |
-| C1 | 9, P1.00 | 15, P1.11 |
-| C2 | 10, P0.11 | 14, P0.10 |
-| C3 | 11, P1.04 | 13, P0.09 |
-| C4 | 12, P1.06 | 12, P1.06 |
+| RT | 006 | 031 |
+| RH | 008 | 029 |
+| RB | 017 | 002 |
+| RX | 020 | 115 |
+| C0 | 022 | 113 |
+| C1 | 100 | 111 |
+| C2 | 011 | 010 |
+| C3 | 104 | 009 |
+| C4 | 106 | 107 |
 
-That left edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so
-its C4 goes to pin 12 on the far edge, under the board's south end. P0.09 and
-P0.10 are the chip's NFC pins, so the left half's firmware has to set them as
+The right half skips 024 because the board's battery divider is on it. The left
+edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its C4 goes
+under the board to 107, in the row of three holes near the south end. 009 and
+010 are the chip's NFC pins, so the left half's firmware has to set them as
 GPIOs.
 
-B+ and B− are at the board's north end, by the port, so the battery's wires run
-its length under it.
+The board has no reset button, so a tact switch in the plinth, north of the
+power switch, is wired to RST and GND and pressed with a pin through the
+plinth's base.
+
+B+ and B− are in line with the header pins at the board's north end, B+ in the
+north-west corner and B− in the north-east, so the battery's wires run its
+length under it.
 
 ## The chassis
 
@@ -103,8 +109,8 @@ under it, flat on the desk. The body's underside is its top surface dropped
 straight down, so every wiring channel is the same depth and the plinth takes up
 the height to the desk. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
-open shafts mean nothing can sit under a key, so the controller, battery and
-power switch lie in a well in the plinth beside the inner column, and the only
+open shafts mean nothing can sit under a key, so the controller, battery, reset
+button and power switch lie in a well in the plinth beside the inner column, and the only
 wires between plinth and body are the keys'. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by
 side without adding height or footprint. Use insulated wire for the rows, which

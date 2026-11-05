@@ -199,9 +199,7 @@ def mcu_board():
     board = box(b, (0, b[1] / 2, mcu_pcb_z() + b[2] / 2))
     usb_len = 7.5 + P.mcu_usb_overhang_mm
     usb = box((u[0], usb_len, u[1]), (0, usb_len / 2 - P.mcu_usb_overhang_mm, mcu_pcb_z() - u[1] / 2))
-    reset = cylinder(3, 1.5, (P.mcu_reset_mm[0], P.mcu_reset_mm[1], mcu_pcb_z() - 1.5))
-    return (pieces([board], "darkgreen", "board") + pieces([usb], "silver", "usb")
-            + pieces([reset], "white", "reset"))
+    return pieces([board], "red", "board") + pieces([usb], "silver", "usb")
 
 
 def mcu_room():
@@ -215,11 +213,6 @@ def mcu_room():
     opening = frustum((o[0] + 2, o[1] + 2), o, 0, P.wall_mm + 5)
     turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.wall_mm - 5, mcu_pcb_z() - P.mcu_usb_mm[1] / 2))
     return [pocket, opening.transform(turn[:3])]
-
-
-def mcu_reset_hole():
-    """The pinhole in the bottom plate over the reset button."""
-    return cylinder(2, 20, (P.mcu_reset_mm[0], P.mcu_reset_mm[1], -10))
 
 
 # ---------------------------------------------------------------- battery
@@ -253,6 +246,25 @@ def power_switch_room():
     return [box((b[0] + 2 * c, b[1] + 2 * c, h), (0, 0, z)),
             box((k[1] + 2 * c, 10, h), (0, -b[1] / 2 - 5, z)),
             box((pins[0], pins[1] + c, h + P.wire_d_mm), (0, b[1] / 2 + (pins[1] + c) / 2, z - P.wire_d_mm / 2))]
+
+
+# ---------------------------------------------------------------- reset button
+def reset_button_part():
+    """The tact switch in its frame: body centred, plunger down."""
+    return pieces([box(P.reset_button_mm)], "black", "reset button")
+
+
+def reset_button_room():
+    """The button's pocket in the plinth, a close fit round it, with a notch
+    behind for its pins and wires into the well, a wire deeper than the pocket,
+    both open up through the plinth's top: it drops in from above and the body's
+    underside holds it against a pin pushed up the hole through the plinth's base."""
+    b, c, pins = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_button_pins_mm
+    h = b[2] + 2 * c + 20
+    z = h / 2 - b[2] / 2 - c
+    return [box((b[0] + 2 * c, b[1] + 2 * c, h), (0, 0, z)),
+            box((pins[0], pins[1] + c, h + P.wire_d_mm), (0, b[1] / 2 + (pins[1] + c) / 2, z - P.wire_d_mm / 2)),
+            cylinder(P.reset_pinhole_d_mm, 30, (0, 0, -30))]
 
 
 # ---------------------------------------------------------------- screws

@@ -205,7 +205,7 @@ screw_grip_mm = 2
 screw_pad_d = 3.8
 
 # ---------------------------------------------------------------- controller, battery, switch
-# PROVISIONAL: a Pro Micro form factor nRF52840 (nice!nano v2 / SuperMini):
+# The Tenstar red ProMicro NRF52840, its size PROVISIONAL until measured:
 # board, the parts' height over it (the USB-C port is the tallest), how far
 # the port stands past the board's end, the port's opening in the wall.
 mcu_board_mm = (18, 33.5, 1.0)
@@ -221,8 +221,6 @@ bay_under_mm = 1
 # the body (so the port's opening stays in the plate's wall).
 # mcu_turn_deg turns it in plan about its port end.
 mcu_turn_deg = 0
-# The reset button on the board, from the port end: across (x) and along (y) the board.
-mcu_reset_mm = (0, 14.5)
 # Battery: PROVISIONAL 402030 LiPo (about 200 mAh), lying flat in the bay in
 # front of the board, its 30 mm along the column.
 battery_mm = (30, 20, 4.2)
@@ -238,6 +236,14 @@ power_switch_mm = (8.0, 2.8, 1.4)
 power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out
 power_switch_pins_mm = (4.5, 2.0)       # the notch behind it, into the well: wide, deep
 power_switch_clearance_mm = 0.1
+# Reset button: the board has none, so a PROVISIONAL 6 x 3 x 2.5 mm tact switch
+# is wired to RST and GND. It sits in the plinth north of the power switch,
+# plunger down over a pinhole in the plinth's base (layout.py reset_button_frame).
+reset_button_mm = (6.0, 3.0, 2.5)   # long, wide, tall with its plunger
+reset_button_pins_mm = (4.0, 2.0)   # the notch behind it, into the well: wide, deep
+reset_button_clearance_mm = 0.1
+reset_button_gap_mm = 3             # from the power switch's north end
+reset_pinhole_d_mm = 2
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled

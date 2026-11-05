@@ -336,6 +336,13 @@ def power_switch_frame():
     return trans([x, y, 0]) @ rot_z(-90)
 
 
+def reset_button_frame():
+    """The reset button's frame in plan: in the strip beside the board, in line
+    with the power switch and north of it, its pins' notch into the well."""
+    y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] + P.reset_button_gap_mm + P.reset_button_mm[0] / 2
+    return trans([power_switch_frame()[0, 3], y, 0]) @ rot_z(-90)
+
+
 @cached
 def battery_bay():
     """The battery's bay: in front of the controller's, against the same inner

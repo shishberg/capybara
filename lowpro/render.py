@@ -79,6 +79,7 @@ def wiring(C, body):
               (origin(C.mcu_frame()), "controller"), (origin(C.battery_frame()), "battery")]
     if P.power_switch:
         labels.append((origin(C.power_switch_frame()), "power switch"))
+    labels.append((origin(C.reset_button_frame()), "reset button"))
     return shown, labels
 
 
