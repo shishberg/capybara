@@ -606,12 +606,41 @@ def well():
 
 
 # ---------------------------------------------------------------- wiring points
-# In a key's frame, at the socket's top: the column line past the -x tab
-# (col_x), the row riser over the +x tab (row_x), and the north edge (ne_y).
+# In a key's frame, at the socket's top: the column channel's centre (col_x),
+# the column wire's line past the -x tab (lane_x), the diode's line (diode_x),
+# the row riser over the +x tab (row_x), and the north edge (ne_y).
+def socket_end_x():
+    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2
+
+
+def lane_x():
+    """The column wire's line, beside the -x terminal's tip."""
+    return socket_end_x() - P.socket_tab_mm[0] - P.wire_gap_mm - P.wire_d_mm / 2
+
+
+def diode_x():
+    """A thumb key's diode's line, as close to the socket as its room's clearance
+    allows. A finger key's is off the column wire's line: see diode_frame."""
+    return socket_end_x() - P.socket_clearance_mm - P.diode_mm[1] / 2
+
+
+def diode_y():
+    """A finger key's diode's centre, south of the switch's side post."""
+    return -P.switch_side_post_d / 2 - P.socket_clearance_mm - P.diode_room_mm - P.diode_mm[0] / 2
+
+
+def column_w():
+    """A column channel's width: from the socket's shaft, overlapping it so no
+    sliver is left between them under the tent, out past the wire beside the tip."""
+    return shaft_edge_x() - lane_x() + P.wire_d_mm / 2
+
+
+def shaft_edge_x():
+    return socket_end_x() - P.socket_clearance_mm + 0.1
+
+
 def col_x():
-    # Far enough out that the diode in the column clears the socket, and still
-    # overlapping the socket's shaft, so no sliver is left between them under the tent.
-    return P.socket_centre_mm[0] - P.socket_body_mm[0] / 2 - P.socket_clearance_mm - P.diode_mm[1] / 2
+    return shaft_edge_x() - column_w() / 2
 
 
 def row_x():
@@ -648,6 +677,16 @@ def c_tab(k):
 
 def r_tab(k):
     return at(k, (row_x(), P.socket_tab_y[1]))
+
+
+def riser_x(k):
+    """Key k's column line at its terminal: a thumb key's is the diode's, as no wire passes it."""
+    return col_x() if k.group == "finger" else diode_x()
+
+
+def riser(k):
+    """A thumb key's column channel, from its terminal to its north edge."""
+    return [at(k, (riser_x(k), P.socket_tab_y[0])), at(k, (riser_x(k), ne_y()))]
 
 
 def nw(k):
@@ -729,7 +768,7 @@ def channels():
     # higher up), its keys' column tabs, back trunk point.
     for c in range(5):
         start = [front_pt(finger_key(c, -P.rows_below))] if c < 4 else []
-        out.append((t if c == 0 else w,
+        out.append((t if c == 0 else column_w(),
                     start + [c_tab(finger_key(c, r)) for r in rows]
                     + [back_pt(finger_key(c, P.rows_above))]))
     # The back trunk, pinky to inner column and into the bay, and the front trunk.
@@ -747,18 +786,18 @@ def channels():
             out.append((w, [r_tab(a), ne(a), nw(b), ne(b), r_tab(b)]))
     # The thumb row: a trunk along the three keys' north edges (the row wire and
     # the column wires on their way to the front trunk), each key's tabs risen to it.
-    out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), nw(thumb(n)))]))
+    out.append((t, [p for n in ("near", "home", "far") for p in (ne(thumb(n)), riser(thumb(n))[1])]))
     for n in ("near", "home", "far"):
         out.append((w, [r_tab(thumb(n)), ne(thumb(n))]))
-        out.append((w, [c_tab(thumb(n)), nw(thumb(n))]))
+        out.append((w, riser(thumb(n))))
     # The extra keys: their tabs risen to their north edges, joined to the gap
     # between the row keys over them.
     if P.thumb_extra:
         for name, left, right in (("x1", "near", "home"), ("x2", "home", "far")):
             k = thumb(name)
-            g = (nw(thumb(left)) + ne(thumb(right))) / 2
-            out.append((w, [r_tab(k), ne(k), nw(k), c_tab(k)]))
-            out.append((w, [(ne(k) + nw(k)) / 2, g]))
+            g = (riser(thumb(left))[1] + ne(thumb(right))) / 2
+            out.append((w, [r_tab(k), ne(k), *riser(k)[::-1]]))
+            out.append((w, [(ne(k) + riser(k)[1]) / 2, g]))
     return out
 
 
@@ -795,14 +834,21 @@ def channel_sinks():
 
 
 def diode_frame(k):
-    """The diode's frame: in the column channel, over the column tab."""
-    return k.frame @ trans([col_x(), (P.socket_tab_y[0] + ne_y()) / 2 + 1, R.socket_top_z() - P.diode_mm[1] / 2 - 0.4])
+    """The diode's frame. A finger key's lies south of the socket and inside the
+    -x terminal's tip, so the column wire goes straight by it and its north leg
+    reaches the terminal's south face; a thumb key's, which no wire passes, in
+    its riser over the column tab."""
+    d, r = P.diode_mm, P.diode_room_mm
+    z = R.socket_top_z() - d[1] / 2 - r
+    if k.group == "finger":
+        return k.frame @ trans([R.socket_tab_tip(-1)[0] + d[1] / 2 + r, diode_y(), z])
+    return k.frame @ trans([diode_x(), (P.socket_tab_y[0] + ne_y()) / 2 + 1, z])
 
 
 def diode_room(k):
-    """Room for key k's diode in the column channel, over the column tab."""
-    d = P.diode_mm
-    return placed(diode_frame(k), R.box((d[1] + 0.8, d[0] + 0.8, d[1] + 0.8)))
+    """Room for key k's diode, open down to the underside to put it in."""
+    d, r = P.diode_mm, P.diode_room_mm
+    return swept(diode_frame(k), (d[1] + 2 * r, d[0] + 2 * r, d[1] + 2 * r), (0, 0, 0))
 
 
 def swept(m, size, centre, depth=60):
@@ -819,12 +865,13 @@ def socket_shaft(k, grow):
 
 def solder_wells(k):
     """Room round each of key k's socket terminals to solder to it: solder_well_mm
-    centred on the tab's tip, cut back in plan to stay min_wall_mm inside the
+    reaching solder_well_reach_mm past the tab's tip, cut back in plan to stay min_wall_mm inside the
     cell at the socket's top, so it keeps that wall from the next key's room
     and from the bay. The -x well then ends just past its tab's tip."""
     s = P.solder_well_mm
     inside = polygon(cell_corners(k, -P.min_wall_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
-    return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) - (0, 0, 0.3)) ^ inside for side in (-1, 1)]
+    return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) + (side * (P.solder_well_reach_mm - s[0] / 2), 0, -0.3)) ^ inside
+            for side in (-1, 1)]
 
 
 # ---------------------------------------------------------------- the body
@@ -1000,7 +1047,7 @@ def wire_ends():
     off = P.socket_tab_mm[1] / 2 + d
     ends = []
     for k in keys():
-        ends += [(f"{k.name}'s column tab", at(k, (col_x(), P.socket_tab_y[0] + off)) - (0, 0, d)),
+        ends += [(f"{k.name}'s column tab", at(k, (riser_x(k), P.socket_tab_y[0] + off)) - (0, 0, d)),
                  (f"{k.name}'s row tab", at(k, (row_x(), P.socket_tab_y[1] + off)) - (0, 0, d))]
     m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
     ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
@@ -1011,14 +1058,45 @@ def wire_ends():
     return ends
 
 
+def wire_space():
+    """The spaces cut from the body and the plinth (channels, pockets, the well; see lost)."""
+    return union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
+
+
+def crowded_keys():
+    """The finger keys where a straight wire can't lie along the column from the
+    diode's south end to the north edge: in the key's frame, the body, the plinth,
+    the terminal (carried on down, so nothing counts that goes under it) and the
+    diode over that span, seen along y, leave no room for a circle of wire_d_mm
+    in the channel. The pinky's bottom key is left out: its wires join north of it."""
+    solid = union([body(), bottom_plate()])
+    (size, centre), _ = R.socket_tab_boxes()
+    tab = R.box((size[0], size[1], 40), (centre[0], centre[1], -20))
+    d = P.diode_mm
+    y0, y1 = diode_y() - d[0] / 2 - 0.2, ne_y()
+    span = R.box((12, y1 - y0, 12), (-8, (y0 + y1) / 2, -9.5))
+    x0 = lane_x() - 2 * P.wire_d_mm
+    window = CrossSection.square((socket_end_x() - x0, 12)).translate((x0, -15.5))
+    across = np.array([[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0]], float)
+    out = []
+    for k in keys():
+        if k.group != "finger" or (k.col == 4 and k.row == -P.rows_below):
+            continue
+        to_key = rinv(k.frame)
+        m = np.asarray(to_key[:3, :4], float)
+        solids = [solid.transform(m) ^ span, tab ^ span, placed(to_key @ diode_frame(k), R.diode_body())]
+        seen = CrossSection.batch_boolean([p.transform(across).project() for p in solids], OpType.Add)
+        if (window - seen).offset(-P.wire_d_mm / 2, JoinType.Round, 2.0, 32).is_empty():
+            out.append(k.name)
+    return out
+
+
 def unwired():
-    """The wire ends that no path a wire fits through (wire_d_mm), through the
-    spaces cut from the body and the plinth (channels, pockets, the well; see
-    lost), past the sockets' terminals, joins to the controller's. The space is
-    shrunk by the wire's radius along each axis, which closes the slivers where
-    one cut grazes another."""
-    space = union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
-    space = subtract(space, [s for k in keys() for s in place(k.frame, R.socket_tabs())])
+    """The wire ends that no path a wire fits through (wire_d_mm), through
+    wire_space, past the sockets' terminals, joins to the controller's. The space
+    is shrunk by the wire's radius along each axis, which closes the slivers
+    where one cut grazes another."""
+    space = subtract(wire_space(), [s for k in keys() for s in place(k.frame, R.socket_tabs())])
     r = P.wire_d_mm / 2
     for axis in np.eye(3):
         space = space.translate(tuple(r * axis)) ^ space.translate(tuple(-r * axis))
@@ -1042,10 +1120,12 @@ def lost(shell, cutters, open_below=False):
 def thin_walls():
     """The walls thinner than min_wall_mm between the rooms of different parts
     (each key's room, solder wells and diode's room; the bay's rooms and well),
-    and between the bay and every channel but the one into it, as a list of
-    (room, room, wall mm), empty when every wall is thick enough. Channels
+    and between the bay and every channel but the one into it, and between a
+    finger column's channel and the keys of other columns, as a list of (room,
+    room, wall mm), empty when every wall is thick enough. The other channels
     join keys by design, so they are held only to the bay."""
     rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), diode_room(k)], True)) for k in keys()]
+    named = dict(zip([k.name for k in keys()], rooms))
     bay = union([lost(body_shell(), bay_rooms(), True),
                  lost(plinth_shell(), [s for name, group in plate_cuts() if name != "a channel" for s in group])])
     rooms.append(("the bay", bay))
@@ -1053,6 +1133,9 @@ def thin_walls():
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
                 lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
               for a, b, w in channel_segments() if not np.array_equal(b, bay_entry())]
+    for c, (w, pts) in enumerate(channels()[:5]):
+        run = (f"column {c}'s channel", lost(body_shell(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
+        pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
     out = []
     for (a, sa), (b, sb) in pairs:
         if gap(sa, sb) < P.min_wall_mm:

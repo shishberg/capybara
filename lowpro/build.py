@@ -155,6 +155,12 @@ def check():
         ok = False
     else:
         print("every wire reaches the controller")
+    crowded = C.crowded_keys()
+    if crowded:
+        print("no straight wire fits beside the terminal at: " + ", ".join(crowded))
+        ok = False
+    else:
+        print("every column's wire runs straight beside its terminals")
     v = C.part_overlap()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")

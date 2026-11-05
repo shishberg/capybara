@@ -113,8 +113,10 @@ socket_tab_mm = (1.8, 1.68, 1.85)      # each terminal's reach past the body, wi
 socket_tab_y = (2.54, 5.08)            # the -x tab's y, the +x tab's y
 socket_clearance_mm = 0.25
 # Room round each terminal to solder a wire to it, from the floor up to the
-# socket's top, centred on the tip and cut back to stay min_wall_mm inside the cell.
+# socket's top, reaching solder_well_reach_mm past the tip (a wire's room and a
+# little) and cut back to stay min_wall_mm inside the cell.
 solder_well_mm = (4.5, 5)
+solder_well_reach_mm = 1.75
 
 # ---------------------------------------------------------------- wiring
 # Channels in the body's underside for the wires, sunk into the bottom plate.
@@ -122,18 +124,22 @@ channel_w_mm = 2.2
 # The thickest wire (the keys' hookup wire): the wiring check counts only the
 # passages it fits through.
 wire_d_mm = 1.6
+# A column channel reaches past each -x terminal's tip by a wire and this much.
+wire_gap_mm = 0.2
 # The trunks (the inner column's channel, which the row wires join, and the
 # one behind the top row that the columns' wires follow to the controller).
 trunk_w_mm = 3.5
 # How far the channels and the trunks go on down into the plinth, each leaving
-# it at least bottom_plate_mm: a wire passes behind a socket's terminal and over
-# another wire there, and a trunk holds its bundle two wires wide.
+# it at least bottom_plate_mm: a row wire crosses a column wire, and a trunk
+# holds its bundle two wires wide.
 channel_sink_mm = 1
 trunk_sink_mm = 5.5
-# The per-key diode (DO-35, 1N4148), in the column channel: body length and diameter.
+# The per-key diode (DO-35, 1N4148): body length and diameter.
 diode_mm = (4.0, 2.0)
-# Each key's diode leg runs up its column in the channel past the -x tabs;
-# each row's wire joins the +x tabs along the cells' north edges. See the README.
+diode_room_mm = 0.4         # the diode's room round it
+# Each finger key's diode sits south of its socket, its north leg on the -x tab
+# and its south leg on the column wire, which runs beside the tabs' tips; each
+# row's wire joins the +x tabs along the cells' north edges. See the README.
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the

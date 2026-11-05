@@ -139,13 +139,17 @@ def socket_body(grow=0):
     return [box(s, c) for s, c in socket_boxes(grow)]
 
 
-def socket_tabs(grow=0):
-    """The two terminals, out of the socket's +-x ends, down from just over its top."""
+def socket_tab_boxes(grow=0):
+    """The two terminals as (size, centre), out of the socket's +-x ends, down from just over its top."""
     e, c = P.socket_body_mm, P.socket_centre_mm
     reach, width, height = P.socket_tab_mm
-    return [box((reach + 0.6 + 2 * grow, width + 2 * grow, height + 2 * grow),
-                (c[0] + s * (e[0] / 2 + reach / 2 - 0.3), y, socket_bottom_z() + height / 2))
+    return [((reach + 0.6 + 2 * grow, width + 2 * grow, height + 2 * grow),
+             (c[0] + s * (e[0] / 2 + reach / 2 - 0.3), y, socket_bottom_z() + height / 2))
             for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))]
+
+
+def socket_tabs(grow=0):
+    return [box(s, c) for s, c in socket_tab_boxes(grow)]
 
 
 def socket_collars():
@@ -172,10 +176,13 @@ def hotswap_socket_room():
 
 
 # ---------------------------------------------------------------- diode
-def diode():
+def diode_body():
     """The diode's body, along y about the origin."""
-    d = cylinder(P.diode_mm[1], P.diode_mm[0]).rotate((-90, 0, 0)).translate((0, -P.diode_mm[0] / 2, 0))
-    return pieces([d], "orange", "diode")
+    return cylinder(P.diode_mm[1], P.diode_mm[0]).rotate((-90, 0, 0)).translate((0, -P.diode_mm[0] / 2, 0))
+
+
+def diode():
+    return pieces([diode_body()], "orange", "diode")
 
 
 # ---------------------------------------------------------------- controller (nRF52840 Pro Micro)
