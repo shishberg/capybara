@@ -207,7 +207,9 @@ the outer wall. Three are in key cells (ring home, middle top and the thumb
 cluster's front), in the web south of the switch's pocket, where no socket, tab
 or channel comes: the insert's hole stops under the PCB layer, or beside the
 pocket where a key's tilt would bring it too close. One is in the strip beside
-the board, which is narrower than the battery, near the USB port, and one in the neck in front of the battery. The pinky column has none: its
+the board, which is narrower than the battery, near the USB port. The neck in
+front of the battery has none: its underside falls too steeply for a level pad.
+The pinky column has none either: its
 keys' cells are the most tilted and leave the least wall, and the thin plinth
 under them lies on the desk. The report prints the least wall left round any
 screw. The underside tilts and steps under most of them, so each stands on a
@@ -250,7 +252,7 @@ seen to fail with the setting beside it, and the default layout passes them all.
 | Check | Fails when | Seen failing with |
 |---|---|---|
 | Caps | Two neighbouring caps (grown by `cap_clearance_mm`) meet, at rest or with either pressed `cap_travel_mm` | `--set row_pitch_mm=15` |
-| Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head | `--set screw_head_d=8`, `--set bottom_plate_mm=1` |
+| Screw walls | A screw's holes (the plinth's hole and counterbore, the body's insert hole) break into anything else cut from that part: the well, the parts' rooms, a key's pockets, a solder well, a diode's room or a channel; or the plinth is too thin to sink a head; or a counterbore breaks out through the plinth's top beside its pad | `--set screw_head_d=8`, `--set bottom_plate_mm=1`, `--set screw_grip_mm=0.6` |
 | Wiring | A socket tab, the battery's leads or the power switch has no path to the controller that a `wire_d_mm` wire fits through, along the channels, pockets and well | `--set battery_lead_notch_mm=0.6` |
 | Walls | The rooms of two different parts (a key's pockets, solder wells and diode's room; the bay's rooms and well) come within `min_wall_mm` of each other, or a channel other than the one into the bay comes within it of the bay | `--set socket_tab_mm=(3.5,2.6)` |
 | Body and plinth | The body and the plinth overlap anywhere | `--set plate_gap_mm=-0.05` |

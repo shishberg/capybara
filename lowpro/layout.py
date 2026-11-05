@@ -378,14 +378,14 @@ def screw_points():
     too thin to hold an insert, so the screws stand inside the field: in a
     key's cell, in the web south of its switch's pocket and under its PCB
     layer, where no socket, tab or channel comes (the (x, y) in the key's frame
-    are picked for the wall they leave, which a key's lean moves); and round the bays, one in the strip beside the board, which is
-    narrower than the battery, midway between the well and the outline and
-    near the USB port, and one in the neck in front of the battery."""
+    are picked for the wall they leave, which a key's lean moves); and one in
+    the strip beside the board, which is narrower than the battery, midway
+    between the well and the outline and near the USB port. The neck in front of
+    the battery has none: its underside falls too steeply for a level pad."""
     def cell(name, x, y):
         return xy(xform(key_named(name).frame, [x, y, 0]))
 
-    m, b = mcu_bay(), battery_bay()
+    m = mcu_bay()
     strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
-    neck = b[1][0] + 3, b[0][1] - 4
     return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_x2" if P.thumb_extra else "thumb_home", 8, -9.5), strip, neck]
+            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 2, -9.5)]

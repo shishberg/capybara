@@ -1064,6 +1064,10 @@ def screw_walls():
         if h < P.screw_grip_mm + P.screw_head_h_mm:
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
+        round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, 0))
+        under = h - P.screw_grip_mm - (round_it - plinth_shell()).bounding_box()[2]
+        if under > 0:
+            hits.append((name, "the plinth's top (the counterbore breaks out through it)", np.pi * (R.counterbore_d() / 2) ** 2 * under))
         holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]
         holes += [(insert_hole_at(p, h), body_cuts()), (screw_pad(p, h), body_cuts())]
         for hole, cuts in holes:
