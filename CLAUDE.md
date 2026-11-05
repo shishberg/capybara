@@ -19,6 +19,7 @@ Keep project facts in the READMEs and docs, not here. This file covers where to 
 
 ## Committing
 
+- Work on `main` unless told otherwise: no branches or worktrees of your own.
 - Always commit your work before finishing. Uncommitted or untracked work is easy to lose and hard for the next session to find.
 - Run `git status` at the start and end of a task. Look for untracked directories as well as modified files, and ask about anything significant that isn't tracked.
 - Keep commits to the task at hand. Leave unrelated changes you didn't make out of your commits, and mention them.
