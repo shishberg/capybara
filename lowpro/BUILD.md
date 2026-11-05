@@ -72,9 +72,8 @@ parameter in `lowpro/params.py` before printing:
 | Sockets | The terminals, which vary between batches | `socket_tab_mm` |
 
 The board's end goes 1.3 mm into the USB-C hole. The USB-C shell and the board together
-can be 4.3 mm thick, and the hole is 4.6 mm high there, less whatever its top sags in
-printing. Once the plinth is printed, try the bare board in the hole, and file the top
-of the hole to fit if it won't go.
+can be 4.3 mm thick, and the hole is 4.6 mm high there. Once the plinth is printed, try
+the bare board in the hole, and file the top of the hole to fit if it won't go.
 
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
@@ -88,7 +87,8 @@ slots before printing the rest.
 
 ## Printing
 
-- **Plinth:** flat on its base, top up, no supports.
+- **Plinth:** flat on its base, top up, with supports under the top of the USB-C hole
+  and the screws' seats.
 - **Body:** its top surface faces up, laid on the 6° tent plane, on supports or a
   raft. The underside is curved and tilted, so it has no flat face to stand on.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
