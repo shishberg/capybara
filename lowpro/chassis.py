@@ -646,7 +646,7 @@ def lane_x():
 
 def diode_y():
     """A diode's line across its key, south of the centre post's hole."""
-    return -P.switch_centre_post_d / 2 - P.post_clearance_mm - P.socket_clearance_mm - P.diode_room_mm - P.diode_mm[1] / 2
+    return -P.switch_centre_post_d / 2 - P.post_clearance_mm - P.min_wall_mm - P.diode_room_mm - P.diode_mm[1] / 2
 
 
 def leg_x():
