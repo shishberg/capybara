@@ -221,16 +221,20 @@ def mcu_board():
 
 
 def mcu_room():
-    """The board's pocket: from the well's floor up over the board, with the
-    wall's opening for the plug, chamfered outward."""
-    b, c, o = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_opening_mm
+    """The board's pocket: from the well's floor up over the board, the port's slot
+    past the board's end, and the hole for the plug and its moulding, from the
+    port's end out through the wall's face, flaring at 45 degrees."""
+    b, c, u, r = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_mm, P.mcu_usb_relief_mm
     h = mcu_pcb_z() + b[2] + c
     pocket = box((b[0] + 2 * c, b[1] + 2 * c, h), (0, b[1] / 2, h / 2))
-    # The opening runs along -y through the back wall: drawn along z, then
-    # turned so that its z runs along +y from wall_mm + 5 out.
-    opening = frustum((o[0] + 2, o[1] + 2), o, 0, P.wall_mm + 5)
-    turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.wall_mm - 5, mcu_pcb_z() - P.mcu_usb_mm[1] / 2))
-    return [pocket, opening.transform(turn[:3])]
+    # The hole runs along -y through the back wall: drawn along z, then turned so
+    # that its z runs along +y, in to the port's end.
+    centre = mcu_pcb_z() - u[1] / 2
+    port = box((u[0] + 2 * c, P.mcu_usb_overhang_mm + 1, u[1] + 2 * c), (0, (1 - P.mcu_usb_overhang_mm) / 2, centre))
+    flare = 5
+    hole = frustum((r[0] + 2 * flare, r[1] + 2 * flare), r, 0, flare)
+    turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.mcu_usb_overhang_mm - flare, centre))
+    return [pocket, port, hole.transform(turn[:3])]
 
 
 # ---------------------------------------------------------------- battery
@@ -286,17 +290,19 @@ def reset_wire_ways():
 
 def reset_button_room():
     """The switch's pocket, its body against the skin of the wall, with a round
-    hole through the skin for the plunger, a wider slot along its back for the
+    hole through the skin for the plunger, chamfered at the wall's face, a wider slot along its back for the
     legs, and a way for each wire either side of the stop into the well. It's cut
     from the plinth and the body alike: the frame's on the seam between them, so
     each has half, and each half of the stop takes half the press."""
-    b, c, (d, _), (span, _, _, t) = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm, P.reset_leg_mm
+    b, c, (d, skin), (span, _, _, t) = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm, P.reset_leg_mm
     w, deep = P.reset_stop_mm
     h = b[2] + 2 * c
     way = span / 2 + c - w / 2
+    k = P.reset_chamfer_mm
+    chamfer = Manifold.cylinder(k + 1, d / 2 + c + k + 1, d / 2 + c).rotate((-90, 0, 0)).translate((0, -b[1] / 2 - skin - 1, 0))
     return ([box((b[0] + 2 * c, b[1] + c, h), (0, c / 2, 0)),
              box((span + 2 * c, t + c, h), (0, b[1] / 2 + (c - t) / 2, 0)),
-             cylinder(d + 2 * c, 10).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0))]
+             cylinder(d + 2 * c, 10).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0)), chamfer]
             + [box((way, deep + 1, h), (x, y - 0.5, 0)) for x, y in reset_wire_ways()])
 
 

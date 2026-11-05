@@ -51,7 +51,7 @@ For each half, so double it for the pair:
 | M2 × 3 heat-set insert | 5 | For a 3.2 mm hole |
 | M2 × 5 socket-head screw | 5 | |
 | Double-sided foam tape, about 1 mm thick | a little | Holds the battery in its bay and pads the strip over the board. |
-| Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal, and it doesn't fit over the south end of the left half's board. |
+| Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal. |
 
 You also need a soldering iron with a fine tip, flush cutters, wire strippers,
 tweezers, a multimeter and a long-armed 1.5 mm hex key: the deepest screw is 8.5 mm up
@@ -195,16 +195,17 @@ through three slots in the wall on the keys' side.
 - **Battery:** in the south bay, leads at its north end, through the notch in the
   wall into the controller's bay.
 - **Controller:** in the north bay, components down, USB-C port out through the back
-  wall. The battery's leads run north under the board to its north end. The top of the
-  USB-C hole clears the north end of the board by 0.3 mm, so nothing there can stand
-  proud of the board's top. A strip down the middle of the ceiling, padded with foam,
-  holds the board against the floor. The wires clear it either side and past its south
-  end.
+  wall. The battery's leads run north under the board to its north end. The ceiling
+  over the board is one flat surface at the channels' depth, tilted a little to follow
+  them, and at least 4 mm over the board's top, so the wires have room round the board.
+  A strip down the middle of it, padded with foam, holds the board against the floor.
+  The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
   plinth's top, knob in a slot through the inner side wall. The knob's tip is flush with the outside of the
   wall, so you slide it with a fingernail.
-- **Reset button:** in the same strip, north of the power switch, on edge, plunger
-  out through a round hole in the inner side wall. It sits on the seam, so the plinth
+- **Reset button:** in the same strip, north of the power switch, on edge, the
+  plunger's tip flush with the outside of the inner side wall in a chamfered round
+  hole. It sits on the seam, so the plinth
   has half its pocket and the body the other half, and the wires stay in the body's.
 
 Power runs battery + → slide switch → B+, and battery − → B−. Seen from above in
@@ -277,9 +278,7 @@ drops straight in. Try each one dry first.
    through its hole from the board's top face, and lay the board in its bay, top face
    down on the strip, port in its notch. The wires then lie between the board and the
    ceiling, either side of the strip and past its south end.
-7. Solder the nine wires from the side now facing you and trim them flush. There's
-   only 1.5 to 2 mm over the board's top face at its south end, and 1.5 mm at the left
-   half's RH, RB and RX holes, so lay the wires side by side, not crossed.
+7. Solder the nine wires from the side now facing you and trim them flush.
 8. Turn the switch on. Hold the board down and plug in USB-C. Press reset twice,
    holding the button in with a finger, as the other half of its pocket is in the
    plinth. The board should mount as a drive: flash the firmware, then press every
@@ -339,15 +338,15 @@ matrix, with these changes:
   nothing else on the board to power: no LEDs, no display.
 - **The slide switch** disconnects the battery alone. Off, the half is dead on
   battery, and it can't charge either.
-- **USB-C** is for charging and for flashing, not typing. The port sits 1 to 2 mm back
-  from the wall's face in a 10.7 × 5.2 mm opening, so a cable with a slim moulding is
-  safest: a fat one may not seat. A half with USB-C plugged
-  in runs from it, and charges its battery if its slide switch is on, at about
+- **USB-C** is for charging and for flashing, not typing. The port sits about 1.25 mm
+  back from the wall's face, in a hole 13 × 7 mm at the port that flares out to the
+  face, so a plug's moulding up to that size seats. A half with USB-C plugged in runs
+  from it, and charges its battery if its slide switch is on, at about
   100 mA, so about two hours from flat. Check the rate on the bought board.
 - **Turning on:** switch both halves on. The right half connects to the left, and
   the left to the host it's paired with, or advertises if it has none.
 - **Reset button:** one press restarts the half. Two quick presses put it in its UF2
-  bootloader, when it mounts as a USB drive for a new firmware image. Press it through
-  the round hole in the inner side wall with a fingertip.
+  bootloader, when it mounts as a USB drive for a new firmware image. Press it with a
+  fingertip, in the chamfered hole in the inner side wall.
 - **If a key does nothing:** a single dead key is its switch, its socket or its
   diode. A whole dead row or column is that net's wire or pin.

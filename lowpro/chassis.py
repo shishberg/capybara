@@ -166,7 +166,7 @@ def channel_points():
 
 def cells_2d():
     """The cells and the bays in plan, before the wall."""
-    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_rect())])
+    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_outline_rect())])
 
 
 def hulls_2d():
@@ -174,7 +174,7 @@ def hulls_2d():
     convex hull, and the bridge joining them: the thumb row, the two bottom keys
     nearest it and the bays on the inner side, so the inner edge runs straight
     from the bays to the thumb."""
-    bays = bay_points(L.bay_rect())
+    bays = bay_points(L.bay_outline_rect())
     finger = hull_of([c for k in keys() if k.group == "finger" for c in cell_corners(k)] + bays)
     thumb = hull_of([c for k in keys() if k.group != "finger" for c in cell_corners(k)])
     bridge = hull_of([c for k in keys() if k.group == "thumb" or (k.group == "finger" and k.col <= 1 and k.row == -P.rows_below)
@@ -188,7 +188,7 @@ def back_edge():
     corner to the rearmost point of what it covers, the flattest arc between
     them that clears the column stagger and the back trunk, so nothing behind
     it leaves a crease: a straight line if nothing stands over it."""
-    (x0, _), (x1, y1) = L.bay_rect()
+    (x0, _), (x1, y1) = L.bay_outline_rect()
     corners = [(x0, y1), (x1, y1)] + [c for col in (0, 1, 2) for c in cell_corners(L.column_key(col, P.rows_above))[2:]]
     walls = [p for c in corners for p in circle_points(c, P.wall_mm)]
     under = np.array(walls + [p for pts in channel_points() for p in pts])
@@ -643,11 +643,32 @@ def plinth_mass():
     return subtract(plinth_shell(), [bay_block(P.step_clearance_mm)])
 
 
+@cached
+def board_ceiling():
+    """The well's ceiling over the board, as (a, b, c) of the plane z = ax + by + c:
+    flat, at the channels' depth, where they come in: the plane that best fits
+    well_point's depth over the bay, raised so that no channel's end stands over it."""
+    (x0, y0), (x1, y1) = L.mcu_bay()
+    x, y = (g.ravel() for g in np.meshgrid(np.linspace(x0, x1, 9), np.linspace(y0, y1, 9)))
+    z = np.array([well_point(j, i)[2] for i, j in zip(x, y)])
+    a, b, c = np.linalg.lstsq(np.c_[x, y, np.ones_like(x)], z, rcond=None)[0]
+    return a, b, c + max(p[2] - a * p[0] - b * p[1] - c for p in well_ends())
+
+
+def board_room():
+    """The board's bay, and the port end's slot in the back wall, from the well's
+    floor up to its ceiling."""
+    (x0, y0), (x1, y1) = L.mcu_bay()
+    y1 += P.mcu_usb_overhang_mm + P.mcu_clearance_mm
+    a, b, c = board_ceiling()
+    return Manifold.hull_points([(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (bay_z(), a * x + b * y + c)])
+
+
 def well():
-    """The well: both bays' rectangles and the battery's lead notch between
-    them, cut from the block up to the body's underside."""
+    """The well: the board's room, and the battery's bay and its lead notch cut
+    from the block up to the body's underside."""
     ceiling = plinth_blank().translate((0, 0, P.plate_gap_mm + ring_mm))
-    return [floor_box(b, 100) ^ ceiling for b in L.bays() + [L.lead_notch()]]
+    return [board_room()] + [floor_box(b, 100) ^ ceiling for b in (L.battery_bay(), L.lead_notch())]
 
 
 def press_strip():
@@ -657,7 +678,8 @@ def press_strip():
     (w, length), y0 = P.mcu_press_mm, P.mcu_press_start_mm
     corners = [xform(mcu_frame(), [i * w / 2, y, 0])[:2] for i in (-1, 1) for y in (y0, y0 + length)]
     z = R.mcu_pcb_z() + P.mcu_board_mm[2] + P.mcu_press_gap_mm
-    h = max(floor_z(*c) for c in corners) + 1 - bay_z() - z
+    a, b, c = board_ceiling()
+    h = max(a * p[0] + b * p[1] + c for p in corners) + 1 - bay_z() - z
     return placed(mcu_frame(), R.box((w, length, h), (0, y0 + length / 2, z + h / 2)))
 
 
@@ -801,9 +823,10 @@ def front_trunk():
     return pts
 
 
-def well_point(y):
-    """A point just inside the well, by the column's wall, level with y."""
-    x = L.mcu_bay()[1][0] - 3
+def well_point(y, x=None):
+    """A point at the channels' depth just inside the well, by the column's wall,
+    level with y (or at x)."""
+    x = L.mcu_bay()[1][0] - 3 if x is None else x
     return np.array([x, y, floor_z(x, y) + 3])
 
 
@@ -822,10 +845,15 @@ def well_exits():
     return [(P.trunk_w_mm, [tab, well_point(tab[1])]), (P.channel_w_mm, [joint, well_point(joint[1])])]
 
 
+def well_ends():
+    """Where the channels end in the well."""
+    return [bay_entry()] + [pts[-1] for _, pts in well_exits()]
+
+
 def well_ways():
     """The runs into the well, carried on down through the block's wall, so that
     a wire lies into them from below."""
-    ends = [bay_entry()] + [pts[-1] for _, pts in well_exits()]
+    ends = well_ends()
     down = np.array([0, 0, 30])
     return [Manifold.hull_points(post_points(a, w) + post_points(b, w) + post_points(a - down, w) + post_points(b - down, w))
             for a, b, w in channel_segments() if any(np.array_equal(b, p) for p in ends)]
@@ -1361,7 +1389,7 @@ def thin_walls():
     bay = union([lost(body_mass(), bay_rooms() + well(), True), lost(plinth_mass(), bay_rooms(plinth=True))])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
-    into_well = [bay_entry()] + [pts[-1] for _, pts in well_exits()]
+    into_well = well_ends()
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
                 lost(body_mass(), [run_solid(a, b, w)], True)), ("the bay", bay))
               for a, b, w in channel_segments() if not any(np.array_equal(b, p) for p in into_well)]

@@ -338,8 +338,8 @@ def power_switch_frame():
 
 def reset_button_frame():
     """The reset button's frame in plan: in the strip beside the board, north of
-    the power switch, its plunger out of the inner side wall (-x) past a skin of it."""
-    x = bay_rect()[0][0] - P.wall_mm + P.reset_skin_mm + P.reset_button_mm[1] / 2
+    the power switch, its plunger's tip flush with the inner side wall (-x)."""
+    x = bay_rect()[0][0] - P.wall_mm + P.reset_plunger_mm[1] + P.reset_button_mm[1] / 2
     y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] + P.reset_button_gap_mm + P.reset_leg_mm[0] / 2
     return trans([x, y, 0]) @ rot_z(-90)
 
@@ -372,6 +372,13 @@ def bay_rect():
     m, b = mcu_bay(), battery_bay()
     strip = P.screw_head_d + P.screw_head_clearance_mm + 2 * P.min_wall_mm
     return ((min(m[0][0] - strip + P.wall_mm, b[0][0]), b[0][1]), (m[1][0], m[1][1]))
+
+
+def bay_outline_rect():
+    """bay_rect as the outline's wall goes round it: short at the back, so that the
+    back wall leaves min_wall_mm behind the board's end and not wall_mm behind the bay."""
+    (x0, y0), (x1, y1) = bay_rect()
+    return ((x0, y0), (x1, y1 + P.mcu_usb_overhang_mm + P.mcu_clearance_mm + P.min_wall_mm - P.wall_mm))
 
 
 def lead_notch():

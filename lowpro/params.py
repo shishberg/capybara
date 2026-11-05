@@ -219,12 +219,14 @@ screw_pad_d = 3.8
 # ---------------------------------------------------------------- controller, battery, switch
 # The Tenstar red ProMicro NRF52840, its size PROVISIONAL until measured:
 # board, the parts' height over it (the USB-C port is the tallest), how far
-# the port stands past the board's end, the port's opening in the wall.
+# the port stands past the board's end.
 mcu_board_mm = (18, 33.5, 1.0)
 mcu_parts_mm = 3.3
 mcu_usb_mm = (9.0, 3.3)         # the port's width and height
 mcu_usb_overhang_mm = 1.3
-mcu_usb_opening_mm = (10.5, 5)  # the hole through the back wall for the plug
+# The hole through the back wall for the plug and its moulding: this size at the
+# port's end, flaring out to the wall's face.
+mcu_usb_relief_mm = (13, 7)
 mcu_clearance_mm = 0.3
 bay_under_mm = 1
 # The board lies in a well on the inner side of the inner column (layout.py
@@ -263,7 +265,7 @@ reset_button_mm = (6.5, 2.0, 6.5)   # across, thick, tall
 reset_plunger_mm = (3.25, 1.0)      # diameter, how far it stands out of the body
 reset_leg_mm = (8.7, 4.4, 0.8, 0.3) # span, pitch, width, thick
 reset_stop_mm = (4.5, 4.0)          # the stop behind it, with the wires either side: wide, deep to the well
-reset_skin_mm = 0.5                 # the wall left in front of the body
+reset_chamfer_mm = 0.8              # the hole's chamfer at the wall's face
 reset_button_clearance_mm = 0.1
 reset_button_gap_mm = 3             # from the power switch's north end
 
