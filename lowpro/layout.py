@@ -337,10 +337,11 @@ def power_switch_frame():
 
 
 def reset_button_frame():
-    """The reset button's frame in plan: in the strip beside the board, in line
-    with the power switch and north of it, its pins' notch into the well."""
-    y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] + P.reset_button_gap_mm + P.reset_button_mm[0] / 2
-    return trans([power_switch_frame()[0, 3], y, 0]) @ rot_z(-90)
+    """The reset button's frame in plan: in the strip beside the board, north of
+    the power switch, its plunger out of the inner side wall (-x) past a skin of it."""
+    x = bay_rect()[0][0] - P.wall_mm + P.reset_skin_mm + P.reset_button_mm[1] / 2
+    y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] + P.reset_button_gap_mm + P.reset_leg_mm[0] / 2
+    return trans([x, y, 0]) @ rot_z(-90)
 
 
 @cached

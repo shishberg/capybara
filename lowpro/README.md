@@ -93,9 +93,11 @@ edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), so its C4 goes
 under the board's south end to 106, the last hole on the far edge. 009 and 010
 are the chip's NFC pins, so the left half's firmware has to set them as GPIOs.
 
-The board has no reset button, so a tact switch in the plinth, north of the
-power switch, is wired to RST and GND and pressed with a pin through the
-plinth's base.
+The board has no reset button, so the main build's
+[tactile switch](../docs/pro-micro.md) is wired to RST and GND. It stands on edge
+in the plinth, north of the power switch, its plunger out through the inner side
+wall to press with a fingertip. It drops in from above, plunger in a slot in the
+wall, and a stop behind it takes the press.
 
 B+ and B− are in line with the header pins at the board's north end, B+ in the
 north-west corner and B− in the north-east, so the battery's wires run its

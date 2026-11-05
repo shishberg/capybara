@@ -1058,9 +1058,8 @@ def plate_cutters():
 
 @cached
 def bottom_plate():
-    """The plinth: up to the body's underside and the screws' pads, with the well,
-    the screw holes and the reset button's pinhole, and the socket bosses
-    standing on it."""
+    """The plinth: up to the body's underside and the screws' pads, with the well
+    and the screw holes, and the socket bosses standing on it."""
     pads = [R.cylinder(P.screw_pad_d, z + 1, (p[0], p[1], -1)) ^ Manifold.cube((400, 400, 100)).translate((-200, -200, 0))
             for p, z in zip(L.screw_points(), screw_seats())]
     shell = add(plinth_shell(), pads)
@@ -1147,8 +1146,7 @@ def wire_ends():
     if P.power_switch:
         notch = P.power_switch_mm[1] / 2 + P.power_switch_pins_mm[1] / 2
         ends.append(("the power switch", xform(power_switch_frame(), [0, notch, -d / 2])))
-    notch = P.reset_button_mm[1] / 2 + P.reset_button_pins_mm[1] / 2
-    ends.append(("the reset button", xform(reset_button_frame(), [0, notch, -d / 2])))
+    ends += [("the reset button", xform(reset_button_frame(), [x, y, 0])) for x, y in R.reset_wire_ways()]
     ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
     return ends
 

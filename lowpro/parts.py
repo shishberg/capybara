@@ -250,21 +250,40 @@ def power_switch_room():
 
 # ---------------------------------------------------------------- reset button
 def reset_button_part():
-    """The tact switch in its frame: body centred, plunger down."""
-    return pieces([box(P.reset_button_mm)], "black", "reset button")
+    """The switch in its frame, on edge: body centred, plunger out of -y (through
+    the wall), legs along the back at either side."""
+    b, (d, proud), (span, pitch, w, t) = P.reset_button_mm, P.reset_plunger_mm, P.reset_leg_mm
+    plunger = cylinder(d, proud).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0))
+    legs = [box((span, t, w), (0, b[1] / 2 - t / 2, s * pitch / 2)) for s in (-1, 1)]
+    return pieces([box(b), plunger], "black", "reset button") + pieces(legs, "silver", "reset button's legs")
+
+
+def reset_wire_ways():
+    """Where the two wires pass the stop, as (x, y) in the switch's frame: the
+    middle of each way, between the stop and the end of the legs' slot."""
+    c, (w, deep) = P.reset_button_clearance_mm, P.reset_stop_mm
+    x = (w / 2 + P.reset_leg_mm[0] / 2 + c) / 2
+    return [(s * x, P.reset_button_mm[1] / 2 + c + deep / 2) for s in (-1, 1)]
 
 
 def reset_button_room():
-    """The button's pocket in the plinth, a close fit round it, with a notch
-    behind for its pins and wires into the well, a wire deeper than the pocket,
-    both open up through the plinth's top: it drops in from above and the body's
-    underside holds it against a pin pushed up the hole through the plinth's base."""
-    b, c, pins = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_button_pins_mm
-    h = b[2] + 2 * c + 20
-    z = h / 2 - b[2] / 2 - c
-    return [box((b[0] + 2 * c, b[1] + 2 * c, h), (0, 0, z)),
-            box((pins[0], pins[1] + c, h + P.wire_d_mm), (0, b[1] / 2 + (pins[1] + c) / 2, z - P.wire_d_mm / 2)),
-            cylinder(P.reset_pinhole_d_mm, 30, (0, 0, -30))]
+    """The switch's pocket in the plinth, its body against the skin of the wall,
+    with a slot through the skin for the plunger, a wider slot along its back for
+    the legs, and a way for each wire either side of the stop into the well, all
+    open up through the plinth's top: it drops in from above, plunger in its slot,
+    and the body's underside closes over it. The stop takes the press."""
+    b, c, (d, _), (span, _, _, t) = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm, P.reset_leg_mm
+    w, deep = P.reset_stop_mm
+    top, floor = b[2] / 2 + 20, -b[2] / 2 - c
+
+    def rising(x, y, centre, z0=floor):
+        return box((x, y, top - z0), (centre[0], centre[1], (top + z0) / 2))
+
+    way = span / 2 + c - w / 2
+    return ([rising(b[0] + 2 * c, b[1] + c, (0, c / 2)),
+             rising(span + 2 * c, t + c, (0, b[1] / 2 + (c - t) / 2)),
+             rising(d + 2 * c, 10, (0, -b[1] / 2 - 5), -d / 2 - c)]
+            + [rising(way, deep + 1, (x, y - 0.5)) for x, y in reset_wire_ways()])
 
 
 # ---------------------------------------------------------------- screws

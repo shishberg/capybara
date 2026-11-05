@@ -235,14 +235,17 @@ power_switch_mm = (8.0, 2.8, 1.4)
 power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out
 power_switch_pins_mm = (4.5, 2.0)       # the notch behind it, into the well: wide, deep
 power_switch_clearance_mm = 0.1
-# Reset button: the board has none, so a PROVISIONAL 6 x 3 x 2.5 mm tact switch
-# is wired to RST and GND. It sits in the plinth north of the power switch,
-# plunger down over a pinhole in the plinth's base (layout.py reset_button_frame).
-reset_button_mm = (6.0, 3.0, 2.5)   # long, wide, tall with its plunger
-reset_button_pins_mm = (4.0, 2.0)   # the notch behind it, into the well: wide, deep
+# Reset button: the board has none, so the main build's PROVISIONAL SMD tactile
+# switch (docs/pro-micro.md) is wired to RST and GND. It stands on edge in the
+# plinth north of the power switch, its plunger out through the inner side wall
+# (layout.py reset_button_frame).
+reset_button_mm = (6.5, 2.0, 6.5)   # across, thick, tall
+reset_plunger_mm = (3.25, 1.0)      # diameter, how far it stands out of the body
+reset_leg_mm = (8.7, 4.4, 0.8, 0.3) # span, pitch, width, thick
+reset_stop_mm = (4.5, 4.0)          # the stop behind it, with the wires either side: wide, deep to the well
+reset_skin_mm = 0.5                 # the wall left in front of the body
 reset_button_clearance_mm = 0.1
 reset_button_gap_mm = 3             # from the power switch's north end
-reset_pinhole_d_mm = 2
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
