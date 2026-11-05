@@ -292,7 +292,7 @@ def cap_top(k):
 # axes: the board along the column with its port out of the back wall and the
 # battery in front of the board. The bay's rectangles are ((x0, y0), (x1, y1))
 # in plan; the parts' frames here are on z = 0, chassis.py lifts them to the
-# well's floor, and the power switch, over the battery, up into the body.
+# well's floor, and the power switch, beside the board, to the plinth's top.
 def cell_back(k):
     return max(c[1] for c in cell_corners(k))
 
@@ -329,11 +329,11 @@ def mcu_frame():
 
 
 def power_switch_frame():
-    """The power switch's frame in plan: over the battery's outer edge, halfway
-    along it, its knob out of the inner side wall (-x) and flush with it."""
-    b = battery_bay()
+    """The power switch's frame in plan: in the strip beside the board, at the
+    battery's end of it, its knob out of the inner side wall (-x) and flush with it."""
     x = bay_rect()[0][0] - P.wall_mm + P.power_switch_knob_mm[2] + P.power_switch_mm[1] / 2
-    return trans([x, (b[0][1] + b[1][1]) / 2, 0]) @ rot_z(-90)
+    y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] / 2
+    return trans([x, y, 0]) @ rot_z(-90)
 
 
 @cached

@@ -586,10 +586,10 @@ def battery_frame():
 
 
 def power_switch_frame():
-    """The switch up in the body, just clear of the underside under all of it."""
+    """The switch in the plinth, just under the body's underside over all of it."""
     m, s = L.power_switch_frame(), P.power_switch_mm
-    z = max(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
-    return trans([0, 0, z + s[2] / 2 + P.power_switch_clearance_mm]) @ m
+    z = min(floor_z(*xform(m, [i * s[0] / 2, j * s[1] / 2, 0])[:2]) for i in (-1, 1) for j in (-1, 1))
+    return trans([0, 0, z - s[2] / 2 - P.power_switch_clearance_mm]) @ m
 
 
 def floor_box(r, h):
@@ -824,10 +824,10 @@ def key_room(k):
 def bay_rooms(plinth=False):
     """The parts' rooms in the well, cut from the plinth and from the body where
     they reach above the plate's top. The battery's lead notch is one of them,
-    as tall as the pocket; the power switch's is the body's alone."""
+    as tall as the pocket; the power switch's is the plinth's alone."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
-    if P.power_switch and not plinth:
+    if P.power_switch and plinth:
         out += place(power_switch_frame(), R.power_switch_room())
     return out
 
@@ -867,19 +867,6 @@ def socket_boss(k):
             ^ half_space(k.frame, -L.floor_drop() - P.plate_gap_mm - put_back_mm, below=False))
 
 
-def power_switch_seat():
-    """The plinth's rim raised into the switch's pocket up to the switch's
-    underside, on the knob's side: it holds the switch against the pocket's
-    ceiling and leaves the pins' side open to the battery's bay."""
-    m, s, c = power_switch_frame(), P.power_switch_mm, P.power_switch_clearance_mm
-    front = -s[1] / 2 - c + P.boss_clearance_mm
-    rim = L.bay_rect()[0][0] - origin(m)[0]
-    length = s[0] + 2 * c - 2 * P.boss_clearance_mm
-    low = min(plate_z(*xform(m, [i * length / 2, y, 0])[:2]) for i in (-1, 1) for y in (front, rim))
-    h = origin(m)[2] - s[2] / 2 - low + put_back_mm
-    return placed(m, R.box((length, rim - front, h), (0, (front + rim) / 2, -s[2] / 2 - h / 2)))
-
-
 def screw_holes():
     return [h.translate((p[0], p[1], 0)) for p in L.screw_points() for h in R.screw_hole(plate_z(p[0], p[1]))]
 
@@ -898,12 +885,10 @@ def plate_cutters():
 @cached
 def bottom_plate():
     """The plinth: up to the body's underside, with the well, the screw holes and
-    the pinhole over the reset button, and the socket bosses and the power
-    switch's seat standing on it."""
+    the pinhole over the reset button, and the socket bosses standing on it."""
     shell = plinth_shell()
     t = time.time()
-    bosses = [socket_boss(k) for k in keys()] + ([power_switch_seat()] if P.power_switch else [])
-    plate = add(subtract(shell, plate_cutters() + screw_holes()), bosses)
+    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
     plate.num_tri()
     stage("plinth cuts and bosses", t)
     return plate

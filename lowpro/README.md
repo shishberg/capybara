@@ -223,13 +223,13 @@ at the top and closed by the body: the
 board along the column, components down, its USB-C port out of the back wall
 through a chamfered opening; the battery in front of the board, in its own
 pocket, its leads through a notch in the wall between them
-(`battery_lead_notch_mm`). The power switch is not in the well: it sits in a
-pocket in the body's underside over the battery's outer edge, its knob flush
-through the inner side wall. The pocket fits it to `power_switch_clearance_mm`
-all round, and it goes in from below before the plinth does, the knob up a slot
-open at the bottom. A seat on the plinth's rim then holds it against the
-ceiling, and a notch behind it (`power_switch_pins_mm`) leaves the pins room and
-passes their wires down into the battery's bay.
+(`battery_lead_notch_mm`). The power switch is in the plinth with them, so the
+only wires between plinth and body are the keys': a pocket in the strip beside
+the board, at the battery's end, its knob flush through the inner side wall. The
+pocket fits it to `power_switch_clearance_mm` all round and opens up through the
+plinth's top, so the switch drops in from above, knob down its slot, and the
+body's underside closes over it. A notch behind it (`power_switch_pins_mm`)
+leaves the pins room and passes their wires into the well.
 The well's floor is `bay_under_mm` below the parts' room
 under the lowest point of the body over the bay (6 mm over the desk), never
 less than `bottom_plate_mm`; if the plinth is ever too thin there the parts'
