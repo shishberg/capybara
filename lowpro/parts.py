@@ -267,23 +267,26 @@ def reset_wire_ways():
 
 
 def reset_button_room():
-    """The switch's pocket in the plinth, its body against the skin of the wall,
-    with a slot through the skin for the plunger, a wider slot along its back for
-    the legs, and a way for each wire either side of the stop into the well, all
-    open up through the plinth's top: it drops in from above, plunger in its slot,
-    and the body's underside closes over it. The stop takes the press."""
+    """The switch's pocket, its body against the skin of the wall, with a round
+    hole through the skin for the plunger, a wider slot along its back for the
+    legs, and a way for each wire either side of the stop into the well. It's cut
+    from the plinth and the body alike: the frame's on the seam between them, so
+    each has half, and each half of the stop takes half the press."""
     b, c, (d, _), (span, _, _, t) = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm, P.reset_leg_mm
     w, deep = P.reset_stop_mm
-    top, floor = b[2] / 2 + 20, -b[2] / 2 - c
-
-    def rising(x, y, centre, z0=floor):
-        return box((x, y, top - z0), (centre[0], centre[1], (top + z0) / 2))
-
+    h = b[2] + 2 * c
     way = span / 2 + c - w / 2
-    return ([rising(b[0] + 2 * c, b[1] + c, (0, c / 2)),
-             rising(span + 2 * c, t + c, (0, b[1] / 2 + (c - t) / 2)),
-             rising(d + 2 * c, 10, (0, -b[1] / 2 - 5), -d / 2 - c)]
-            + [rising(way, deep + 1, (x, y - 0.5)) for x, y in reset_wire_ways()])
+    return ([box((b[0] + 2 * c, b[1] + c, h), (0, c / 2, 0)),
+             box((span + 2 * c, t + c, h), (0, b[1] / 2 + (c - t) / 2, 0)),
+             cylinder(d + 2 * c, 10).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0))]
+            + [box((way, deep + 1, h), (x, y - 0.5, 0)) for x, y in reset_wire_ways()])
+
+
+def reset_plunger_slot():
+    """The plinth's half of the hole, opened upward so that the plunger drops
+    in from above wherever the seam, which slopes, is over the frame's middle."""
+    b, c, d = P.reset_button_mm, P.reset_button_clearance_mm, P.reset_plunger_mm[0]
+    return [box((d + 2 * c, 10, b[2] / 2), (0, -b[1] / 2 - 5, b[2] / 4))]
 
 
 # ---------------------------------------------------------------- screws

@@ -95,9 +95,10 @@ are the chip's NFC pins, so the left half's firmware has to set them as GPIOs.
 
 The board has no reset button, so the main build's
 [tactile switch](../docs/pro-micro.md) is wired to RST and GND. It stands on edge
-in the plinth, north of the power switch, its plunger out through the inner side
-wall to press with a fingertip. It drops in from above, plunger in a slot in the
-wall, and a stop behind it takes the press.
+north of the power switch, its plunger out through the inner side wall to press
+with a fingertip. The plunger sits on the seam between the plinth and the body, so
+the hole is half in each: the switch drops into the plinth's half of its pocket and
+the body closes over it. The wall of the pocket behind it takes the press.
 
 B+ and B− are in line with the header pins at the board's north end, B+ in the
 north-west corner and B− in the north-east, so the battery's wires run its

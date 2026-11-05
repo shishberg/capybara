@@ -607,7 +607,10 @@ def power_switch_frame():
 
 
 def reset_button_frame():
-    return strip_frame(L.reset_button_frame(), P.reset_button_mm, P.reset_button_clearance_mm)
+    """The switch's frame, its plunger's centre on the seam between the plinth
+    and the body, so the hole in the wall is half in each."""
+    m = L.reset_button_frame()
+    return trans([0, 0, floor_z(*xform(m, [0, -P.reset_button_mm[1] / 2, 0])[:2])]) @ m
 
 
 def floor_box(r, h):
@@ -974,13 +977,15 @@ def key_room(k):
 def bay_rooms(plinth=False):
     """The parts' rooms in the well, cut from the plinth and from the body where
     they reach above the plate's top. The battery's lead notch is one of them,
-    as tall as the pocket; the power switch's and reset button's are the plinth's alone."""
+    as tall as the pocket; the power switch's is the plinth's alone, and the reset
+    button's is half in each."""
     out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
     if P.power_switch and plinth:
         out += place(power_switch_frame(), R.power_switch_room())
+    out += place(reset_button_frame(), R.reset_button_room())
     if plinth:
-        out += place(reset_button_frame(), R.reset_button_room())
+        out += place(reset_button_frame(), R.reset_plunger_slot())
     return out
 
 

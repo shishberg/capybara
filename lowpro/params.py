@@ -236,9 +236,9 @@ power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stan
 power_switch_pins_mm = (4.5, 2.0)       # the notch behind it, into the well: wide, deep
 power_switch_clearance_mm = 0.1
 # Reset button: the board has none, so the main build's PROVISIONAL SMD tactile
-# switch (docs/pro-micro.md) is wired to RST and GND. It stands on edge in the
-# plinth north of the power switch, its plunger out through the inner side wall
-# (layout.py reset_button_frame).
+# switch (docs/pro-micro.md) is wired to RST and GND. It stands on edge north of
+# the power switch, its plunger out through the inner side wall, on the seam
+# between the plinth and the body (layout.py and chassis.py reset_button_frame).
 reset_button_mm = (6.5, 2.0, 6.5)   # across, thick, tall
 reset_plunger_mm = (3.25, 1.0)      # diameter, how far it stands out of the body
 reset_leg_mm = (8.7, 4.4, 0.8, 0.3) # span, pitch, width, thick
