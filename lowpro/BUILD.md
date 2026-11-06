@@ -203,8 +203,9 @@ through three slots in the wall on the keys' side.
   A strip down the middle of it, padded with foam, holds the board against the floor.
   The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
-  plinth's top, knob in a slot through the inner side wall. The knob's tip is flush with the outside of the
-  wall, so you slide it with a fingernail.
+  plinth's top, knob in a slot through the inner side wall. The knob stands proud of the wall's
+  outside (`power_switch_proud_mm`), so you can reach it. That leaves a thin wall outside the
+  pocket, on purpose.
 - **Reset button:** in the same strip, north of the power switch, on edge, the
   plunger's tip flush with the outside of the inner side wall in a chamfered round
   hole. It sits on the seam, so the plinth

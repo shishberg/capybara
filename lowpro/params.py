@@ -262,8 +262,9 @@ battery_lead_notch_mm = 4
 # It sits on the well's floor beside the board (layout.py power_switch_frame).
 power_switch = True
 power_switch_mm = (8.0, 2.8, 1.4)
-power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out
-power_switch_pins_mm = (4.5, 2.0)       # the notch behind it, into the well: wide, deep
+power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out of the switch
+power_switch_proud_mm = 1.0             # how far its tip stands past the wall's outside, to reach it; the wall outside the pocket goes under min_wall_mm for this
+power_switch_pins_mm = (5.5, 3.0)       # the notch behind it, into the well: wide, deep
 power_switch_clearance_mm = 0.2
 # Reset button: the board has none, so the main build's PROVISIONAL SMD tactile
 # switch (docs/pro-micro.md) is wired to RST and GND. It stands on edge north of

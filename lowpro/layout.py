@@ -343,8 +343,8 @@ def mcu_frame():
 
 def power_switch_frame():
     """The power switch's frame in plan: in the strip beside the board, at the
-    battery's end of it, its knob out of the inner side wall (-x) and flush with it."""
-    x = bay_rect()[0][0] - P.wall_mm + P.power_switch_knob_mm[2] + P.power_switch_mm[1] / 2
+    battery's end of it, its knob out through the inner side wall (-x) and proud of it."""
+    x = bay_rect()[0][0] - P.wall_mm - P.power_switch_proud_mm + P.power_switch_knob_mm[2] + P.power_switch_mm[1] / 2
     y = mcu_bay()[0][1] + P.power_switch_clearance_mm + P.power_switch_mm[0] / 2
     return trans([x, y, 0]) @ rot_z(-90)
 
