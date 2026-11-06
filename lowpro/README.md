@@ -105,7 +105,7 @@ cross the column wires. The channels are a first cut, straight slots that merge
 where they meet: look at `wiring-below.png` before trusting a route, and edit
 `channels()` in `chassis.py` to change one.
 
-The six screws locate the plinth under the body. A pinky
+The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap's
 sweep its room, which notches that plate's edge.
 

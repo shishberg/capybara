@@ -48,8 +48,8 @@ For each half, so double it for the pair:
 | 402030 LiPo, about 200 mAh, with protection circuit | 1 | 30 × 20 × 4.2 mm at most |
 | MSK-12C02 slide switch | 1 | |
 | 6.5 × 6.5 mm SMD tactile switch, 2 mm body | 1 | Pick a firm one, so that a knock doesn't reset the board. |
-| M2 × 3 heat-set insert | 6 | For a 3.2 mm hole |
-| M2 × 5 socket-head screw | 6 | |
+| M2 × 3 heat-set insert | 7 | For a 3.2 mm hole |
+| M2 × 5 socket-head screw | 7 | |
 | Double-sided foam tape, about 1 mm thick | a little | Holds the battery in its bay and pads the strip over the board. |
 | Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal. |
 
@@ -223,7 +223,7 @@ is on.
 
 ### 1. Inserts
 
-Press the six heat-set inserts into the six holes in the body's underside until
+Press the seven heat-set inserts into the seven holes in the body's underside until
 flush with it. Keep them square.
 
 ### 2. Sockets and switches
@@ -294,7 +294,7 @@ drops straight in. Try each one dry first.
 
 1. Lay the plinth on the upside-down body. No wire joins them, so it goes straight on,
    and its bosses and screws locate it. Check that no wire sits on the seam.
-2. Fit the six screws and tighten them gently. The seam should close without forcing,
+2. Fit the seven screws and tighten them gently. The seam should close without forcing,
    and stop and look if it doesn't. The parts are designed 0.1 mm apart across the
    seam, so a hair of a gap away from the screws is expected.
 3. Turn it over, turn the switch on and plug in USB-C. The plinth now holds the board
