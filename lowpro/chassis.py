@@ -543,11 +543,15 @@ def bay_frame():
 
 
 def mcu_frame():
-    return bay_frame() @ L.mcu_frame()
+    """The board's plan, level on the desk: z = 0 the top of its rest, on the seam
+    at the middle of the port end."""
+    m = L.mcu_frame()
+    return trans([0, 0, float(seam_z(m[0, 3], m[1, 3]))]) @ m
 
 
 def battery_frame():
-    return bay_frame() @ L.battery_frame()
+    """The battery's plan on the floor of its pocket in the plinth."""
+    return bay_frame() @ trans([0, 0, -P.bay_pocket_mm]) @ L.battery_frame()
 
 
 def power_switch_frame():
@@ -571,10 +575,9 @@ def well():
     """The well: the board's room with the port end's slot in the back wall, the
     battery's bay and its lead notch, each from the seam up to well_roof_mm under
     the top."""
-    (x0, y0), (x1, y1) = L.mcu_bay()
-    board = ((x0, y0), (x1, y1 + P.mcu_usb_overhang_mm + P.mcu_clearance_mm))
     ceiling = body_shell().translate((0, 0, -P.well_roof_mm))
-    return [floor_box(r, 100) ^ ceiling for r in (board, L.battery_bay(), L.lead_notch())]
+    board = placed(mcu_frame(), R.mcu_pocket(100))
+    return [s ^ ceiling for s in (board, floor_box(L.battery_bay(), 100), floor_box(L.lead_notch(), 100))]
 
 
 def press_strip():
@@ -1060,6 +1063,13 @@ def socket_boss(k):
             ^ half_space(L.seam_frame(), -P.plate_gap_mm - put_back_mm, below=False, size=600))
 
 
+def mcu_rest():
+    """The rest in the plinth's pocket: the port stands on it, from the port's end
+    along the board's middle, and it reaches put_back_mm into the pocket's floor."""
+    w, n, h = P.mcu_usb_mm[0], P.mcu_rest_mm, P.bay_pocket_mm + put_back_mm
+    return placed(mcu_frame(), R.box((w, n, h), (0, n / 2 - P.mcu_usb_overhang_mm, -h / 2)))
+
+
 def screw_holes():
     return [h.translate((p[0], p[1], 0)) for p, z in zip(L.screw_points(), screw_seats()) for h in R.screw_hole(z)]
 
@@ -1076,10 +1086,10 @@ def plate_cutters():
 
 @cached
 def bottom_plate():
-    """The plinth: up to the seam, with the screw holes, and the socket bosses standing on it."""
+    """The plinth: up to the seam, with the screw holes, and the socket bosses and the board's rest standing on it."""
     shell = plinth_shell()
     t = time.time()
-    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
+    plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()] + [mcu_rest()])
     plate.num_tri()
     stage("plinth cuts and bosses", t)
     return plate

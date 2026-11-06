@@ -191,16 +191,20 @@ columns, so every wire has to stay insulated except at a joint.
 ### The well
 
 The well's walls and ceiling are the body's and its floor is the plinth's top, so all
-the electronics are in the body and no wire crosses the seam. The key wires come in
+the electronics are in the body and no wire crosses the seam. The plinth's top has a
+shallow pocket under the battery and another under the board. The key wires come in
 through three slots in the wall on the keys' side.
 
 - **Battery:** in the south bay, leads at its north end, through the notch in the
   wall into the controller's bay.
-- **Controller:** in the north bay, components down, USB-C port out through the back
-  wall. The battery's leads run north under the board to its north end. The ceiling
+- **Controller:** in the north bay, level on the desk, components down, USB-C port out
+  through the back wall. A rest in the plinth's pocket runs down the board's middle,
+  and the port stands on it, which sets the port's height in its hole. The pin rows'
+  solder sits in the gutters either side of the rest. The battery's leads run north
+  along a gutter to the board's north end. The ceiling
   follows the top surface, at least 8 mm over the board's top, so the wires have room
   round the board.
-  A strip down the middle of it, padded with foam, holds the board against the floor.
+  A strip down the middle of it, padded with foam, holds the board against the rest.
   The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
   plinth's top, knob in a slot through the inner side wall. The knob stands proud of the wall's
@@ -278,7 +282,7 @@ drops straight in. Try each one dry first.
    tape, leads through the notch, so that it stays in the body when the plinth comes
    off. The ceiling curves away toward the south and the keys, so put the tape on the
    battery's north end, where the ceiling comes closest. The battery hangs well clear
-   of the plinth's floor, so tape it firmly.
+   of the plinth's pocket, so tape it firmly.
 5. Stick foam tape along the strip that stands down from the ceiling of the board's
    bay, and leave its liner on so that the board can move on it. The strip stands
    0.7 mm off the board, so 1 mm of foam is squeezed a little, which is what holds the

@@ -245,6 +245,14 @@ mcu_clearance_mm = 0.3
 # seam, so all the electronics are in the body and the plinth comes away free of
 # them. Its ceiling follows the top surface this far under it.
 well_roof_mm = 2
+# The board and its port are level on the desk, the port's middle on the seam, so
+# the seam crosses the hole at seam_tent_deg. Under the board and the battery the
+# plinth has a pocket this far under the seam. The port stands on a rest as wide
+# as it is, down the board's middle, which leaves the pin rows' solder a gutter
+# either side: how far the rest runs from the port's end, stopping short of the
+# board's south end so the battery's leads can turn into a gutter.
+bay_pocket_mm = 2
+mcu_rest_mm = 28
 # A strip stands down from the ceiling along the middle of the board, clear of the
 # wires, and foam on it holds the board down: wide, long, how far from the port
 # end it starts, and the gap the foam takes up.

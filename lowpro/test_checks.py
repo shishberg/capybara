@@ -130,6 +130,43 @@ class Openings(unittest.TestCase):
         self.assertEqual(int(across.sum()), 0)
 
 
+class Bay(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        L.reset()
+        self.plinth = C.bottom_plate()
+        self.parts = {p.label: p.solid for p in C.electronics()}
+
+    def plinth_in(self, frame, size, centre):
+        return (self.plinth ^ C.placed(frame, R.box(size, centre))).volume()
+
+    def test_the_board_and_its_port_lie_level(self):
+        for label, thick in (("board", P.mcu_board_mm[2]), ("usb", P.mcu_usb_mm[1])):
+            box = self.parts[label].bounding_box()
+            self.assertAlmostEqual(box[5] - box[2], thick, places=6)
+
+    def test_the_hole_for_the_port_is_level(self):
+        hole = C.place(C.mcu_frame(), R.mcu_room())[2].bounding_box()
+        self.assertAlmostEqual(hole[5] - hole[2], P.mcu_usb_relief_mm[1] + 10, places=6)
+
+    def test_the_port_stands_on_the_rest(self):
+        w = P.mcu_usb_mm[0] - 0.2
+        self.assertEqual(self.plinth_in(C.mcu_frame(), (w, 5, 1), (0, 3, 0.5)), 0)
+        self.assertAlmostEqual(self.plinth_in(C.mcu_frame(), (w, 5, 1), (0, 3, -0.5)), w * 5, places=6)
+
+    def test_the_pin_rows_have_a_gutter_either_side_of_the_rest(self):
+        b, u, d = P.mcu_board_mm, P.mcu_usb_mm, P.bay_pocket_mm
+        wide = (b[0] - u[0]) / 2
+        for side in (-1, 1):
+            at = (side * (u[0] + wide) / 2, b[1] / 2, 1 - d / 2)
+            self.assertEqual(self.plinth_in(C.mcu_frame(), (wide - 0.1, b[1], d + 2 - 0.1), at), 0)
+
+    def test_the_battery_has_a_pocket_to_lie_in(self):
+        b, d = P.battery_mm, P.bay_pocket_mm
+        self.assertEqual(self.plinth_in(C.battery_frame(), (b[0], b[1], d), (0, 0, d / 2)), 0)
+        self.assertAlmostEqual(self.plinth_in(C.battery_frame(), (b[0], b[1], 1), (0, 0, -0.5)), b[0] * b[1], places=6)
+
+
 class Lands(unittest.TestCase):
     def setUp(self):
         self.addCleanup(L.reset)
@@ -170,8 +207,8 @@ class Seam(unittest.TestCase):
             self.assertGreater(z.min(), -1e-6)
             self.assertGreater((z < 1e-6).sum(), len(C.outline()) / 2)
 
-    def test_the_plinth_stops_under_the_seam_but_for_its_bosses(self):
-        """Cut away the bosses and the plinth's top is plate_gap_mm under the plane,
+    def test_the_plinth_stops_under_the_seam_but_for_what_stands_on_it(self):
+        """Without the bosses and the board's rest, the plinth's top is plate_gap_mm under the plane,
         so it meets the body flat."""
         P.half = "right"
         L.reset()

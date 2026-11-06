@@ -96,7 +96,8 @@ each switch's hole for its lip to sit on, `switch_land_mm` wide, tapering over
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
 button and power switch lie in a well beside the inner column. The well's walls and
-ceiling are the body's and its floor is the plinth's top. All the electronics are then in the body with the keys, and no wire
+ceiling are the body's and its floor is the plinth's top, with a shallow pocket under the
+battery and the board, which lies level on a rest in it. All the electronics are then in the body with the keys, and no wire
 crosses the seam: the plinth is a lid that goes on last and comes off with everything
 still wired. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by

@@ -205,14 +205,14 @@ def diode():
 
 # ---------------------------------------------------------------- controller (nRF52840 Pro Micro)
 def mcu_pcb_z():
-    """The board's underside (its component side) is this far over the well's floor."""
+    """The board's underside (its component side) is this far over the rest."""
     return P.mcu_parts_mm
 
 
 def mcu_board():
-    """The board in its frame (layout.py mcu_frame): origin at the middle of its
-    port end on the well's floor, +y along the board into the hand, components
-    down toward the bottom plate."""
+    """The board in its frame (chassis.py mcu_frame): origin at the middle of its
+    port end on the rest, +y along the board into the hand, components down
+    toward the bottom plate."""
     b, u = P.mcu_board_mm, P.mcu_usb_mm
     board = box(b, (0, b[1] / 2, mcu_pcb_z() + b[2] / 2))
     usb_len = 7.5 + P.mcu_usb_overhang_mm
@@ -220,13 +220,18 @@ def mcu_board():
     return pieces([board], "red", "board") + pieces([usb], "silver", "usb")
 
 
+def mcu_pocket(h):
+    """The board's room in plan, from the floor of the plinth's pocket up to h."""
+    b, c, d = P.mcu_board_mm, P.mcu_clearance_mm, P.bay_pocket_mm
+    return box((b[0] + 2 * c, b[1] + 2 * c, h + d), (0, b[1] / 2, (h - d) / 2))
+
+
 def mcu_room():
-    """The board's pocket: from the well's floor up over the board, the port's slot
-    past the board's end, and the hole for the plug and its moulding, from the
-    port's end out through the wall's face, flaring at 45 degrees."""
+    """The board's pocket: from the plinth's pocket up over the board, the port's
+    slot past the board's end, and the hole for the plug and its moulding, from
+    the port's end out through the wall's face, flaring at 45 degrees."""
     b, c, u, r = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_mm, P.mcu_usb_relief_mm
-    h = mcu_pcb_z() + b[2] + c
-    pocket = box((b[0] + 2 * c, b[1] + 2 * c, h), (0, b[1] / 2, h / 2))
+    pocket = mcu_pocket(mcu_pcb_z() + b[2] + c)
     # The hole runs along -y through the back wall: drawn along z, then turned so
     # that its z runs along +y, in to the port's end.
     centre = mcu_pcb_z() - u[1] / 2
