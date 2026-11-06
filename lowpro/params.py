@@ -167,6 +167,9 @@ front_trunk_wall_mm = 1.95
 # build checks every pair.
 min_wall_mm = 1
 wall_mm = 3                 # the body's wall past the key cells and the bays
+# The well's wall on the keys' side. It stands up to 14 mm tall with three slots
+# through it, and the well's support has to be cleared from it.
+mcu_bay_wall_mm = 1.5
 # The outline: "hulls" joins a convex hull round the finger field and one
 # round the thumb cluster (straight sides); "closed" follows the cells.
 outline_style = "closed"

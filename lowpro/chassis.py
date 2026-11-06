@@ -633,12 +633,12 @@ def floor_box(r, h):
 
 def bay_block(grow=0):
     """Everything round the bays over the well's floor, `grow` past the step where
-    the seam comes up to the underside: min_wall_mm past the bays toward the keys,
+    the seam comes up to the underside: mcu_bay_wall_mm past the bays toward the keys,
     and past the wall in front of the battery. It's the body's, not the plinth's,
     so that all the electronics and their wires are in the body and the plinth
     comes away free of them."""
     (_, y0), (x1, _) = L.bay_rect()[0], L.bay_rect()[1]
-    x1, y0 = x1 + P.min_wall_mm + grow, y0 - P.wall_mm - grow
+    x1, y0 = x1 + P.mcu_bay_wall_mm + grow, y0 - P.wall_mm - grow
     return Manifold.cube((400, 400, 100)).translate((x1 - 400, y0, bay_z()))
 
 

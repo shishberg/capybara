@@ -87,7 +87,7 @@ slots before printing the rest.
 - **Body:** its top surface faces up, laid on the 6° tent plane, on supports or a
   raft. The underside is curved and tilted, so it has no flat face to stand on. The
   well fills with support too. Take care clearing it from the well's wall on the keys'
-  side, which is 1 mm thick and stands up to 14 mm tall.
+  side, which is 1.5 mm thick and stands up to 14 mm tall.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
   PLA, since several walls near solder joints are about 1 mm thick.
 - Clear all the support out of the channels, shafts and diode pockets. A wire has to
@@ -130,8 +130,9 @@ is P0.08.
 | C3 | 008 | 002 |
 | C4 | 017 | 031 |
 
-The right half skips 024 because the board's battery divider is on it. The left
-half's edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), and two of
+The right half skips 024 because the board's battery divider is on it, as
+[traced on this board family](https://github.com/sasodoma/nrf52840-promicro). The
+left half's edge has only eight GPIOs (RAW, GND, RST and VCC take the rest), and two of
 those, 009 and 010, are the chip's NFC pins, which need the firmware to free them. So
 it leaves those two empty, and its RH, RB and RX take the same three holes as the
 right half's, at the far edge's south end. On the left half those three wires run
@@ -334,7 +335,9 @@ matrix, with these changes:
 - **Link:** Bluetooth between the halves, not serial. The left half is the central,
   as it is in the main build, and the right the peripheral.
 - **Host:** Bluetooth to the host, from the left half.
-- **Battery:** each half reports its own level, the right's through the left.
+- **Battery:** each half reports its own level, the right's through the left. It
+  reads the chip's VDDH pin, because the divider's pin isn't an analog input, so the
+  level reads high while USB is plugged in.
 - **Reset:** the button is on RST, so it needs nothing from the firmware.
 
 ## Running

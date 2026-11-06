@@ -15,7 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | 132 × 131 mm, 11,983 mm² |
+| Plan per half | | 132 × 131 mm, 12,060 mm² |
 | Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | Tenstar red ProMicro NRF52840 per hand, BLE, USB-C for charging only |

@@ -99,5 +99,22 @@ class SocketWalls(unittest.TestCase):
             self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's north collar"])
 
 
+class WellWall(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        self.addCleanup(setattr, P, "half", P.half)
+
+    def test_the_keys_side_wall_reaches_its_thickness_on_both_halves(self):
+        """The seam's step is the wall's far face, so a seam set from the wrong
+        thickness moves the wall with the bay and leaves it no thicker. The wall's
+        far 0.4 mm has to be solid but for the wires' slots."""
+        for half in ("right", "left"):
+            P.half = half
+            L.reset()
+            (_, y0), (x1, y1) = L.mcu_bay()
+            skin = C.Manifold.cube((0.4, y1 - y0, 2)).translate((x1 + P.mcu_bay_wall_mm - 0.45, y0, C.bay_z() + 2))
+            self.assertGreater((C.body() ^ skin).volume() / skin.volume(), 0.5)
+
+
 if __name__ == "__main__":
     unittest.main()

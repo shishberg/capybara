@@ -314,7 +314,7 @@ def mcu_bay():
     forward as the board's room (the board sits mcu_usb_overhang_mm back past
     the bay's back, toward the port's opening: mcu_frame)."""
     c = P.mcu_clearance_mm
-    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.min_wall_mm
+    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.mcu_bay_wall_mm
     y1 = cell_back(column_key(0, P.rows_above))
     y0 = y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c
     return ((x1 - P.mcu_board_mm[0] - 2 * c, y0), (x1, y1))
