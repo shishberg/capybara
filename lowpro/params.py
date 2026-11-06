@@ -235,6 +235,7 @@ mcu_usb_overhang_mm = 1.3
 # The hole through the back wall for the plug and its moulding: this size at the
 # port's end, flaring out to the wall's face.
 mcu_usb_relief_mm = (13, 7)
+mcu_usb_recess_mm = 1.25        # how far the port's end sits back from the wall's face: the flare's depth
 mcu_clearance_mm = 0.3
 # The board lies in a well on the inner side of the inner column (layout.py
 # mcu_bay), along the column, its USB-C port out of the back wall. The well's

@@ -386,10 +386,10 @@ def bay_rect():
 
 
 def bay_outline_rect():
-    """bay_rect as the outline's wall goes round it: short at the back, so that the
-    back wall leaves min_wall_mm behind the board's end and not wall_mm behind the bay."""
+    """bay_rect as the outline's wall goes round it: its back wall's face square to
+    the port, mcu_usb_recess_mm past the port's end."""
     (x0, y0), (x1, y1) = bay_rect()
-    return ((x0, y0), (x1, y1 + P.mcu_usb_overhang_mm + P.mcu_clearance_mm + P.min_wall_mm - P.wall_mm))
+    return ((x0, y0), (x1, y1 + 2 * P.mcu_usb_overhang_mm + P.mcu_usb_recess_mm - P.wall_mm))
 
 
 def lead_notch():

@@ -156,9 +156,10 @@ def circle_points(p, r, n=36):
 def channel_points():
     """The channel paths in plan with min_wall_mm of wall round them, as the
     point sets of a stadium per segment: its polygon's sides, not its corners, at
-    that wall, and mesh_tol_mm over it for the outline's chords to cut across."""
+    that wall, and mesh_tol_mm over it twice, for the outline's spline and then
+    its chords to cut across."""
     n = 36
-    r = P.min_wall_mm + P.mesh_tol_mm
+    r = P.min_wall_mm + 2 * P.mesh_tol_mm
     around = lambda p, w: circle_points(p, (w / 2 + r) / np.cos(np.pi / n), n)
     return [around(a, w) + around(b, w)
             for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
@@ -192,30 +193,6 @@ def hulls_2d():
     return fused([finger, thumb, bridge])
 
 
-def back_edge():
-    """A hull along the back from the bay's corners to the middle column's top
-    cell, its wall included, under one full-height arc: from the bay's back
-    corner to the rearmost point of what it covers, the flattest arc between
-    them that clears the column stagger and the back trunk, so nothing behind
-    it leaves a crease: a straight line if nothing stands over it."""
-    (x0, _), (x1, y1) = L.bay_outline_rect()
-    corners = [(x0, y1), (x1, y1)] + [c for col in (0, 1, 2) for c in cell_corners(L.column_key(col, P.rows_above))[2:]]
-    walls = [p for c in corners for p in circle_points(c, P.wall_mm)]
-    under = np.array(walls + [p for pts in channel_points() for p in pts])
-    a, b = np.array((x0, y1 + P.wall_mm)), under[np.argmax(under[:, 1])]
-    half, mid = np.linalg.norm(b - a) / 2, (a + b) / 2
-    along = (b - a) / (2 * half)
-    up = np.array((-along[1], along[0]))
-    u, v = (under - mid) @ along, (under - mid) @ up
-    over = (np.abs(u) < half) & (v > 0)
-    if not over.any():
-        return hull_of(walls + [tuple(b)])
-    centre = mid + up * ((u[over] ** 2 + v[over] ** 2 - half ** 2) / (2 * v[over])).max()
-    r = np.linalg.norm(a - centre)
-    turn = np.linspace(*(np.arctan2(*(p - centre)[::-1]) for p in (a, b)), 64)
-    return hull_of(walls + [tuple(centre + r * np.array((np.cos(t), np.sin(t)))) for t in turn])
-
-
 def signed_area(pts):
     x, y = pts[:, 0], pts[:, 1]
     return 0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
@@ -226,8 +203,7 @@ def outline_curve():
     """The body's outline as a smooth closed curve: outline_style "hulls" is the
     hulls joined, "closed" the cells and bays closed up (gaps narrower than
     2 * outline_close_mm filled). Either way the gaps that remain get a round
-    of outline_close_mm, the wall goes round it, the back edge is laid over it,
-    the inside corners are rounded to what the wall leaves of outline_close_mm
+    of outline_close_mm, the wall goes round it, the inside corners are rounded to what the wall leaves of outline_close_mm
     and the convex ones to outline_round_mm, and the channels are kept
     min_wall_mm inside, after the rounding so that it can't cut into their wall.
     The offsets leave a polygon of straight
@@ -243,7 +219,7 @@ def outline_curve():
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
     channel_walls = [hull_of(pts) for pts in channel_points()]
-    s = fused([s, back_edge(), ring_corner()] + channel_walls)
+    s = fused([s, ring_corner()] + channel_walls)
     inside = P.outline_close_mm - P.wall_mm
     for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
         s = offset(s, amount)
@@ -1410,7 +1386,7 @@ def screw_walls():
         if h < P.screw_grip_mm + P.screw_head_h_mm:
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
-        round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, 0))
+        round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, put_back_mm))
         under = h - P.screw_grip_mm - (round_it - plinth_shell()).bounding_box()[2]
         if under > 0:
             hits.append((name, "the plinth's top (the counterbore breaks out through it)", np.pi * (R.counterbore_d() / 2) ** 2 * under))
