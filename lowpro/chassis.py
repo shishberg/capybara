@@ -1004,7 +1004,7 @@ def bay_rooms(plinth=False):
     they reach under the well's floor. The battery's lead notch is one of them,
     as tall as the pocket; the power switch's is the body's alone, and the reset
     button's is half in each."""
-    out = place(mcu_frame(), R.mcu_room()) + place(battery_frame(), R.battery_room())
+    out = place(mcu_frame(), R.mcu_room(plinth)) + place(battery_frame(), R.battery_room())
     out.append(floor_box(L.lead_notch(), bay_pocket_h()))
     if P.power_switch and not plinth:
         out += place(power_switch_frame(), R.power_switch_room())

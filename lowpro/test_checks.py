@@ -154,6 +154,13 @@ class Bay(unittest.TestCase):
         self.assertEqual(self.plinth_in(C.mcu_frame(), (w, 5, 1), (0, 3, 0.5)), 0)
         self.assertAlmostEqual(self.plinth_in(C.mcu_frame(), (w, 5, 1), (0, 3, -0.5)), w * 5, places=6)
 
+    def test_the_rest_runs_through_the_wall_with_no_groove_beside_it(self):
+        c, u = P.mcu_clearance_mm, P.mcu_usb_mm
+        o = P.mcu_usb_overhang_mm
+        wall = o - c - 0.02
+        under = C.placed(C.mcu_frame(), R.box((u[0] + 2 * c + 1, wall, 1), (0, -(o + c) / 2, -0.5)))
+        self.assertLess(((C.plinth_shell() ^ under) - self.plinth).volume(), 1e-6)
+
     def test_the_pin_rows_have_a_gutter_either_side_of_the_rest(self):
         b, u, d = P.mcu_board_mm, P.mcu_usb_mm, P.bay_pocket_mm
         wide = (b[0] - u[0]) / 2

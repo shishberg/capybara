@@ -226,16 +226,19 @@ def mcu_pocket(h):
     return box((b[0] + 2 * c, b[1] + 2 * c, h + d), (0, b[1] / 2, (h - d) / 2))
 
 
-def mcu_room():
+def mcu_room(plinth=False):
     """The board's pocket: from the plinth's pocket up over the board, the port's
     slot past the board's end, and the hole for the plug and its moulding, from
-    the port's end out through the wall's face, flaring at 45 degrees."""
+    the port's end out through the wall's face, flaring at 45 degrees. The port
+    stands on the rest, so the plinth's slot stops level with the rest's top; the
+    body's goes on under it, past the seam, which dips under the rest on one side."""
     b, c, u, r = P.mcu_board_mm, P.mcu_clearance_mm, P.mcu_usb_mm, P.mcu_usb_relief_mm
     pocket = mcu_pocket(mcu_pcb_z() + b[2] + c)
     # The hole runs along -y through the back wall: drawn along z, then turned so
     # that its z runs along +y, in to the port's end.
     centre = mcu_pcb_z() - u[1] / 2
-    port = box((u[0] + 2 * c, P.mcu_usb_overhang_mm + 2, u[1] + 2 * c), (0, -P.mcu_usb_overhang_mm / 2, centre))
+    floor, roof = 0 if plinth else -c, u[1] + c
+    port = box((u[0] + 2 * c, P.mcu_usb_overhang_mm + 2, roof - floor), (0, -P.mcu_usb_overhang_mm / 2, (floor + roof) / 2))
     flare = 5
     hole = frustum((r[0] + 2 * flare, r[1] + 2 * flare), r, 0, flare)
     turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.mcu_usb_overhang_mm - flare, centre))
