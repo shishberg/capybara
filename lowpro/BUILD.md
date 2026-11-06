@@ -24,8 +24,8 @@ Keys go by the names they have in `right-assembly.3mf`:
 | Pinky column | `pinky_1` | `pinky_0` | `pinky_-1` |
 
 The thumb has five: `thumb_near`, `thumb_home` and `thumb_far` in a row, `near`
-closest to the index column, and `thumb_x1` and `thumb_x2` in a second row toward
-the base of the thumb.
+closest to the index column, and `thumb_x1` and `thumb_x2` in a fourth row under the
+middle and ring columns.
 
 `make lowpro` writes the parts to `output/lowpro/`, and `make lowpro-render`
 writes the pictures this guide refers to into `output/lowpro/renders/`:
@@ -85,7 +85,7 @@ slots before printing the rest.
 
 - **Plinth:** flat on its base, top up, with supports under the screws' seats.
 - **Body:** flat on its underside, top surface up. The STL is in the desk's axes, so
-  use the slicer's Lay on Face on the underside to take out the 6° tilt. Support goes
+  use the slicer's Lay on Face on the underside to take out the seam's tilt. Support goes
   only in the pockets, channels and well, so none touches the top surface. Take care
   clearing it from the well's wall on the keys' side, which is thin.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
@@ -171,20 +171,20 @@ Compare this with `wiring-top.png`, where trunks are red and channels blue.
 | RT | Out of the well's north-east corner (north-west on the left half) along the back trunk. At each column it goes down that column's channel to the top key's row terminal and back up to the trunk: `inner_1`, `index_1`, `middle_1`, `ring_1`, `pinky_1`. |
 | RH | Out of the well through the wider exit level with `inner_0`, to that key's row terminal. Then north up the column channel, along the key's north edge into the next column, and south down that channel to the next key's row terminal, and so on to `pinky_0`. |
 | RB | Out through the same exit, south down the inner trunk to `inner_-1`'s row terminal. Then as RH along the bottom row to `pinky_-1`. |
-| RX | Out through the same exit, south down the inner trunk and on past `inner_-1` to the fork in the bridge to the thumbs. There it divides. One branch goes to `thumb_home`'s corner, then `thumb_near`'s north edge. The other goes to `thumb_far`'s corner, down that key's column channel, then across to `thumb_x2`'s corner and on to `thumb_x1`'s. Each key takes a short spur to its row terminal. |
-| C0 | Starts at `thumb_x2`, along to `thumb_x1`'s corner, down the thumb trunk to the foot of the middle column, east along the front trunk to the pinky column, which it joins north of `pinky_-1`'s diode. A spur doubles back south to that diode, about 26 mm of extra wire. The wire goes on up past `pinky_0` and `pinky_1`, and west along the back trunk into the well. |
-| C1 | Starts at `thumb_near`, straight across to the thumb trunk, along it and the front trunk to the ring column, which it joins north of `ring_-1`'s diode. A spur doubles back south to that diode, about 12 mm of extra wire. The wire goes on up the column and along the back trunk into the well. |
-| C2 | Starts at `thumb_x1`, down the thumb trunk to the foot of the middle column, up it, and along the back trunk into the well. |
+| RX | Out through the same exit, south down the inner trunk and on past `inner_-1` to the fork in the bridge to the thumbs. There it divides. One branch goes to `thumb_far`'s corner. The other goes to `thumb_home`'s corner, along `thumb_near`'s north edge to its corner, down the thumb trunk to the foot of the middle column and east along the front trunk, with a branch south to `thumb_x1`'s corner and one to `thumb_x2`'s. Each key takes a short spur to its row terminal. |
+| C0 | Starts at `thumb_x2`, north from its corner into the front trunk and east along it to the pinky column, which it joins north of `pinky_-1`'s diode. A spur doubles back south to that diode, about 26 mm of extra wire. The wire goes on up past `pinky_0` and `pinky_1`, and west along the back trunk into the well. |
+| C1 | Starts at `thumb_near`, up to its corner, along the thumb trunk and the front trunk to the ring column, which it joins north of `ring_-1`'s diode. A spur doubles back south to that diode, about 12 mm of extra wire. The wire goes on up the column and along the back trunk into the well. |
+| C2 | Starts at `thumb_x1`, north from its corner to the foot of the middle column, up it, and along the back trunk into the well. |
 | C3 | Starts at `thumb_home`, across from its corner to the foot of the index column, up it, and along the back trunk into the well. |
 | C4 | Starts at `thumb_far`, up to the fork, north up the inner trunk past `inner_-1`, `inner_0` and `inner_1`'s diodes, then straight out through the narrower exit level with `inner_1`'s diode, into the well. |
 
 So nine wires reach the well: RH, RB and RX through the wider exit, C4 through the
 narrower one, and RT, C0, C1, C2 and C3 down the back trunk's neck.
 
-Channels are grooves in the body's underside, at least 2.2 mm wide and about 2.5 to
-10 mm deep, deepest where the keys stand highest over the seam, and they go on 1 mm
-into the plinth's top. Trunks are 3.5 mm wide, up to 11 mm deep in the body, and go on
-5.5 mm into the plinth. So you lay the wires in the
+Channels are grooves in the body's underside, at least 2.2 mm wide and about 3 to
+15 mm deep, deepest where the keys stand highest over the seam, and they go on 1 mm
+into the plinth's top. Trunks are 3.5 mm wide, up to 18 mm deep in the body, and go on
+into the plinth as far as it allows, up to 5.5 mm. So you lay the wires in the
 body with it upside down, and they can cross and lie side by side. Rows cross
 columns, so every wire has to stay insulated except at a joint.
 
@@ -198,9 +198,8 @@ through three slots in the wall on the keys' side.
   wall into the controller's bay.
 - **Controller:** in the north bay, components down, USB-C port out through the back
   wall. The battery's leads run north under the board to its north end. The ceiling
-  follows the top surface, so the room over the board's top grows from 1.5 mm at the
-  south end by the inner side wall to over 9 mm toward the keys. Route the wires to the
-  board's south end on the keys' side of the strip where you can.
+  follows the top surface, at least 8 mm over the board's top, so the wires have room
+  round the board.
   A strip down the middle of it, padded with foam, holds the board against the floor.
   The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
@@ -277,8 +276,8 @@ drops straight in. Try each one dry first.
    off, and insulate the joint. Stick the battery to the ceiling of its bay with foam
    tape, leads through the notch, so that it stays in the body when the plinth comes
    off. The ceiling curves away toward the south and the keys, so put the tape on the
-   battery's north end, where the ceiling comes closest. 1 mm of foam leaves the battery
-   about 0.3 mm off the plinth's floor, and 1.3 mm of foam would leave it none.
+   battery's north end, where the ceiling comes closest. The battery hangs well clear
+   of the plinth's floor, so tape it firmly.
 5. Stick foam tape along the strip that stands down from the ceiling of the board's
    bay, and leave its liner on so that the board can move on it. The strip stands
    0.7 mm off the board, so 1 mm of foam is squeezed a little, which is what holds the

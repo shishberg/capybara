@@ -70,11 +70,11 @@ the pinky, so the top and bottom keys tilt 14 to 19° toward the home key and
 rise 2 to 3 mm. The fifth, inner column is the index column carried toward the
 thumb.
 
-**Thumb.** The three thumb keys lie on the circle the thumb's pad swept in the
-photographs, the home key at the resting print's angle, which puts the near and
-far keys within a few mm of the swept-in and swept-out prints. The extra pair x1
-and x2 lies on a smaller circle inside the row, and the measured curled-in print
-lands on x2.
+**Thumb.** The three thumb keys start on the circle the thumb's pad swept in the
+photographs, the home key at the resting print's angle. The row is then turned
+counterclockwise in plan about the near key and leaned about the near key's y, the
+far key going down, so home and far no longer sit on the prints. The extra pair x1
+and x2 is a flat fourth row under the middle and ring columns.
 
 **Matrix.** The same 4 × 5 as the Capybara: each thumb key chains onto a finger
 column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
@@ -85,9 +85,11 @@ wiring and how it should behave when running.
 ## The chassis
 
 The chassis is two printed parts: the body, which holds the keys, and the plinth
-under it, flat on the desk. The seam between them is one plane, parallel to the
-home plates and under every key's room, so the body prints flat on it with its
-top surface up, and the plinth takes up the height to the desk. Each socket goes up a shaft from below, and a boss on the
+under it, flat on the desk. The seam between them is one plane under every key's
+room, so the body prints flat on it with its top surface up, and the plinth takes
+up the height to the desk. `seam_tent_deg` sets its tilt: a flatter seam lets the
+thumb row lean further for the same case height, and gives a thicker body, deeper
+shafts and a longer print. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
 button and power switch lie in a well beside the inner column. The well's walls and

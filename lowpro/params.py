@@ -58,14 +58,19 @@ thumb_fan = 0
 # + facing the thumb's base.
 thumb_well_deg = 6
 thumb_tilt_deg = 0
+# The row is then turned counterclockwise in plan about the near key's centre,
+# and leaned about the near key's y through its centre, the far key going down.
+thumb_turn_deg = 20
+thumb_lean_deg = 10
 # The home thumb key's cap, in key units (1 or 1.5; 1.5 lies along the row).
 thumb_home_u = 1
-# A second thumb row (x1, x2) toward the thumb's base: flat, on the circle
-# inside the row's by thumb_row_gap_mm, a cell apart and centred on the home
-# key's angle plus thumb_extra_around_deg, this much lower along their normals.
+# The extra pair (x1, x2): a fourth row under the middle and ring columns, flat
+# and a cell apart, past the south edge of the column's bottom key by the gap,
+# which keeps min_wall_mm from the front trunk to their sockets, x1 this far
+# toward the thumb, and this much lower.
 thumb_extra = True
-thumb_row_gap_mm = 22
-thumb_extra_around_deg = 0
+thumb_extra_gap_mm = 4.2
+thumb_extra_left_mm = 3
 thumb_extra_lower_mm = 0
 
 # ---------------------------------------------------------------- the switch (MX)
@@ -159,7 +164,7 @@ diode_leg_slot_mm = 1.0
 # The wall between a bottom-row diode's pocket and the front trunk, in the key's
 # frame at the socket's top: the end rows lean, so the pocket comes closer below,
 # on its way down to the seam, and this leaves min_wall_mm at the seam.
-front_trunk_wall_mm = 3.5
+front_trunk_wall_mm = 3.9
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the
@@ -176,22 +181,22 @@ mcu_bay_wall_mm = 1.6
 outline_style = "closed"
 outline_round_mm = 3        # round of the outline's convex corners
 outline_close_mm = 6        # gaps narrower than twice this are filled, with a round of this radius
-# The notch between the battery and the thumb is one arc of this radius, which leaves
-# the wall for the screw there. The notch's sides are nearly parallel, so a little more
-# moves the arc a long way: 7 leaves too little wall and 7.5 fills in 2 mm more.
-neck_round_mm = 7.2
 ring_corner_round_mm = 4    # the corner at the ring column's foot: the one arc that takes in both the cell's round and the trunk's end
 cell_mm = 19.05             # the cell each key owns in plan, square
 # The body's top edge is rounded (a rolling-ball fillet) to this radius; 0 leaves
 # it sharp. It must leave room at the outline's convex corners: outline_round_mm
 # less this, less this times the sine of the top's tilt there, has to stay positive.
 top_round_mm = 1.5
-# The seam between the body and the plinth is one plane, parallel to the home
-# plates, so the body prints flat on it: under every key's room (the socket's
-# bottom and this much under it, room for the wires and the print's tolerance),
-# with bottom_plate_mm of plinth at its lowest, and plate_gap_mm between the parts.
+# The seam between the body and the plinth is one plane, so the body prints flat
+# on it: tilted seam_tent_deg up toward the thumb (tent_deg is parallel to the home
+# plates, and flatter lets the thumb row lean further for the same case height),
+# and under every key's room (the socket's bottom and this much under it, room for
+# the wires and the print's tolerance), with bottom_plate_mm of plinth at its
+# lowest, which the lowest screw's head has to sink into, and plate_gap_mm between
+# the parts.
+seam_tent_deg = 2
 under_socket_mm = 0.6
-bottom_plate_mm = 2
+bottom_plate_mm = 3.2
 plate_gap_mm = 0.1
 # The plinth's skirt, past the outline in its concave stretches: the radius of
 # the arcs that bridge them, its height over the desk, and the cove where it
@@ -218,7 +223,6 @@ screw_head_d = 3.8
 screw_head_h_mm = 2
 screw_head_clearance_mm = 0.4
 screw_grip_mm = 2
-neck_screw_mm = (5.5, 8.8)      # the screw south of the battery, from the bay's south corner on the keys' side
 
 # ---------------------------------------------------------------- controller, battery, switch
 # The Tenstar red ProMicro NRF52840, its size PROVISIONAL until measured:
@@ -237,7 +241,7 @@ mcu_clearance_mm = 0.3
 # walls and ceiling are the body's and its floor is the plinth's top, on the
 # seam, so all the electronics are in the body and the plinth comes away free of
 # them. Its ceiling follows the top surface this far under it.
-well_roof_mm = 1.2
+well_roof_mm = 2
 # A strip stands down from the ceiling along the middle of the board, clear of the
 # wires, and foam on it holds the board down: wide, long, how far from the port
 # end it starts, and the gap the foam takes up.

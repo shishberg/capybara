@@ -78,10 +78,10 @@ class SocketWalls(unittest.TestCase):
             self.assertIn("thumb_home's shaft", [wall[0] for wall in self.left_walls()])
 
     def test_a_thumb_column_crowding_the_next_key_is_caught(self):
-        """A whole wire's gap past the left half's further tip left 0.74 mm between
-        thumb_x2's column channel and thumb_x1's solder well."""
+        """A whole wire's gap past the left half's further tip leaves too little
+        between thumb_x1's column channel and thumb_x2's solder well."""
         with mock.patch.object(C, "thumb_col_x", lambda: R.socket_tab_tip(1)[0] + P.wire_gap_mm + P.wire_d_mm / 2):
-            self.assertIn(("thumb_x2's column channel", "thumb_x1"), [wall[:2] for wall in self.left_walls()])
+            self.assertIn(("thumb_x1's column channel", "thumb_x2"), [wall[:2] for wall in self.left_walls()])
 
     def test_a_channel_leaving_a_fin_beside_a_socket_is_caught(self):
         """The row channel along the cell's north edge left 0.2 to 0.3 mm of wall

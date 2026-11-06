@@ -12,7 +12,7 @@ A Key has:
            column whose wire they chain onto, as the matrix in
            docs/design-status.md has it (x2 C0, near C1, x1 C2, home C3, far C4)
   row      finger rows counted from the home row, + away from you; thumb row
-           keys -2 (the row), extras -3
+           keys -2 (the row), x1 and x2 -3
   cap_row  the Cherry row (1..4) of its cap
   units    the cap's width in units along the key's x
   cell     (width along x, depth along y) of the plate it owns, in its frame
@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from . import params as P
-from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rot_x, rot_y, rot_z,
+from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -184,9 +184,11 @@ THUMB_ROW = [("near", -1, 1), ("home", 0, 3), ("far", 1, 4)]
 
 
 def thumb_keys():
-    """The thumb's row of three on the measured arc, step s: -1 near (swept in),
-    0 home (thumb_around_deg), +1 far (swept out). The key's y points out along
-    the radius (away from the thumb's base), x along the arc."""
+    """The thumb's row of three, laid out on the measured arc, step s: -1 near
+    (swept in), 0 home (thumb_around_deg), +1 far (swept out), the key's y out
+    along the radius (away from the thumb's base) and x along the arc. The row
+    is then turned thumb_turn_deg counterclockwise in plan about near's centre,
+    and leaned thumb_lean_deg about near's y through its centre, far going down."""
     w = P.thumb_well_deg
     R = hand()["thumb_arc"][1]
     keys = []
@@ -196,21 +198,24 @@ def thumb_keys():
         u = P.thumb_home_u if name == "home" else 1
         keys.append(Key(f"thumb_{name}", thumb_key_frame(P.thumb_around_deg + s * thumb_step_deg(), R, 0, rise, s * w),
                         "thumb", col, -2, P.cap_row_thumb, u, (thumb_plate_pitch() + (u - 1) * P.cap_unit_mm, P.cell_mm)))
-    return keys
+    p = origin(keys[0].frame)
+    turn = trans(p) @ rot_z(P.thumb_turn_deg) @ trans(-p)
+    near = turn @ keys[0].frame
+    return [k.moved(near @ rot_y(-P.thumb_lean_deg) @ rinv(near) @ turn) for k in keys]
 
 
 def extra_keys():
-    """The extra pair on the circle thumb_row_gap_mm inside the row's, flat, a
-    cell apart along it and centred on the home key's angle: x1 toward the
-    index, x2 toward the far key. The measured curled-in print falls on x2."""
+    """The extra pair, a fourth row under the middle (x1) and ring (x2) columns:
+    flat and square to the layout, a cell apart, each thumb_extra_gap_mm south of
+    its column's bottom key's south edge, x1 thumb_extra_left_mm toward the thumb."""
     if not P.thumb_extra:
         return []
-    Ri = hand()["thumb_arc"][1] - P.thumb_row_gap_mm
-    step = math.degrees(2 * math.asin(P.cell_mm / (2 * Ri)))
-    return [Key(f"thumb_{name}",
-                thumb_key_frame(P.thumb_around_deg + P.thumb_extra_around_deg + s * step, Ri, P.thumb_extra_lower_mm, 0, 0),
-                "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm))
-            for name, s, col in (("x1", -0.5, 2), ("x2", 0.5, 0))]
+    edges = [xform(finger_keys(i, i + 1)[0].frame, [0, -finger_keys(i, i + 1)[0].cell[1] / 2, 0]) for i in (1, 2)]
+    edges[0][0] -= P.thumb_extra_left_mm
+    edges[1][0] = edges[0][0] + P.cell_mm
+    place = trans([0, -P.cell_mm / 2 - P.thumb_extra_gap_mm, -P.thumb_extra_lower_mm])
+    return [Key(f"thumb_{name}", frame_at(e, [0, 0, 1], [0, 1, 0]) @ place, "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm))
+            for name, col, e in (("x1", 2, edges[0]), ("x2", 0, edges[1]))]
 
 
 # ---------------------------------------------------------------- all keys, world
@@ -234,18 +239,25 @@ def body_depth():
     return P.switch_below_plate_mm + P.pcb_layer_mm + P.socket_body_mm[2] + P.under_socket_mm
 
 
+def seam_turn():
+    """The seam's turn from the home plates, in layout axes."""
+    return rot_y(P.seam_tent_deg - P.tent_deg)
+
+
 def seam_in_layout():
-    """The seam's height in layout axes, where the home plates lie level: under
-    the room every key needs (body_depth) at all four corners of its cell."""
-    return min(xform(k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, -body_depth()])[2]
+    """The seam's height along its normal: under the room every key needs
+    (body_depth) at all four corners of its cell."""
+    m = rinv(seam_turn())
+    return min(xform(m @ k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, -body_depth()])[2]
                for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1))
 
 
 def lowest_seam_in(T):
     """The seam's lowest point under the key field and its wall, in tented axes."""
-    s = seam_in_layout()
-    return min(xform(T, [*xform(k.frame, [sx * (k.cell[0] / 2 + P.wall_mm), sy * (k.cell[1] / 2 + P.wall_mm), 0])[:2], s])[2]
-               for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1))
+    m, s = rinv(seam_turn()), seam_in_layout()
+    edge = [xform(m @ k.frame, [sx * (k.cell[0] / 2 + P.wall_mm), sy * (k.cell[1] / 2 + P.wall_mm), 0])
+            for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1)]
+    return min(xform(T @ seam_turn(), [p[0], p[1], s])[2] for p in edge)
 
 
 @cached
@@ -259,8 +271,8 @@ def world_frame():
 @cached
 def seam_frame():
     """The seam, the plane between the body and the plinth, as a frame: its z = 0
-    the plane, its z up out of the plinth. It lies parallel to the home plates."""
-    return world_frame() @ trans([0, 0, seam_in_layout()])
+    the plane, its z up out of the plinth."""
+    return world_frame() @ seam_turn() @ trans([0, 0, seam_in_layout()])
 
 
 @cached
@@ -391,14 +403,6 @@ def lead_notch():
 
 
 # ---------------------------------------------------------------- screws
-def neck_screw():
-    """The screw south of the battery, in the wall that the notch's round leaves, past
-    where the top falls away from the battery's end, so that it has room for its insert."""
-    (_, y0), (x1, _) = battery_bay()
-    return (x1 - P.neck_screw_mm[0], y0 - P.neck_screw_mm[1])
-
-
-@cached
 def screw_points():
     """Where the bottom plate screws into the body, in world plan. The wall is
     too thin to hold an insert, so the screws stand inside the field: in a
@@ -406,12 +410,11 @@ def screw_points():
     layer, where no socket, tab or channel comes (the (x, y) in the key's frame
     are picked for the wall they leave, which a key's lean moves); and one in
     the strip beside the board, which is narrower than the battery, midway
-    between the well and the outline and near the USB port; and one south of the
-    battery (neck_screw)."""
+    between the well and the outline and near the USB port."""
     def cell(name, x, y):
         return xy(xform(key_named(name).frame, [x, y, 0]))
 
     m = mcu_bay()
     strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
     return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 5, -10.5), neck_screw()]
+            cell("thumb_x2", 9, -8.5) if P.thumb_extra else cell("ring_-1", 4, -9.5), strip, cell("thumb_home", 10, -9.5), cell("thumb_far", -9, -9.5)]

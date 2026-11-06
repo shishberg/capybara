@@ -185,8 +185,8 @@ def hulls_2d():
     nearest it and the bays on the inner side, so the inner edge runs straight
     from the bays to the thumb."""
     bays = bay_points(L.bay_outline_rect())
-    finger = hull_of([c for k in keys() if k.group == "finger" for c in cell_corners(k)] + bays)
-    thumb = hull_of([c for k in keys() if k.group != "finger" for c in cell_corners(k)])
+    finger = hull_of([c for k in keys() if k.group != "thumb" for c in cell_corners(k)] + bays)
+    thumb = hull_of([c for k in keys() if k.group == "thumb" for c in cell_corners(k)])
     bridge = hull_of([c for k in keys() if k.group == "thumb" or (k.group == "finger" and k.col <= 1 and k.row == -P.rows_below)
                       for c in cell_corners(k)] + bays)
     return fused([finger, thumb, bridge])
@@ -230,7 +230,6 @@ def outline_curve():
     the inside corners are rounded to what the wall leaves of outline_close_mm
     and the convex ones to outline_round_mm, and the channels are kept
     min_wall_mm inside, after the rounding so that it can't cut into their wall.
-    The notch south of the battery is then rolled out to neck_round_mm.
     The offsets leave a polygon of straight
     sides and arcs (as chords four times finer than mesh_tol_mm asks, or the
     spline bends too tightly at each chord's end for the top edge's round);
@@ -251,8 +250,6 @@ def outline_curve():
     s = fused([s] + channel_walls)
     for amount in (inside, -inside):
         s = offset(s, amount)
-    neck = polygon(circle_points(L.neck_screw(), 3 * P.neck_round_mm))
-    s = fused([s, offset(offset(s, P.neck_round_mm), -P.neck_round_mm) ^ neck])
     piece = max(s.decompose(), key=lambda c: c.area())
     pts = max((np.asarray(c, float) for c in piece.to_polygons()), key=signed_area)
     pts = np.r_[pts, pts[:1]]
@@ -856,47 +853,38 @@ def thumb_fork():
     return np.r_[at(k, (col_x(), trunk_y(-1) - 6))[:2], (front_pt(k)[2] + thumb_corner(thumb("home"))[2]) / 2]
 
 
-def thumb_bend():
-    """Where the wires from the outer thumb keys turn north, past near's south-east corner."""
-    return at(thumb("near"), (thumb_col_x(), -P.cell_mm / 2))
-
-
-def thumb_tap():
-    """Where near's diode's line, carried on east, meets the trunk."""
-    k = thumb("near")
-    a, b = thumb_bend(), front_pt(finger_key(2, -P.rows_below))
-    ya, yb = ((rinv(k.frame) @ np.append(p, 1))[1] for p in (a, b))
-    return a + (b - a) * (diode_y() - ya) / (yb - ya)
+def onto(p, pts):
+    """The point of the polyline pts nearest p in plan, at the polyline's height."""
+    ends = [(a, b) for a, b in zip(pts[:-1], pts[1:])]
+    near = [a + (b - a) * np.clip(np.dot((p - a)[:2], (b - a)[:2]) / np.dot((b - a)[:2], (b - a)[:2]), 0, 1) for a, b in ends]
+    return min(near, key=lambda q: np.linalg.norm((q - p)[:2]))
 
 
 def thumb_column(k):
-    """A thumb key's column wire's way from its diode: past its +x tab's tip to
-    its corner, but near's goes straight on to the trunk."""
-    return [thumb_joint(k), thumb_tap() if k.name == "thumb_near" else thumb_corner(k)]
+    """A thumb key's column wire's way from its diode: past its +x tab's tip to its corner."""
+    return [thumb_joint(k), thumb_corner(k)]
 
 
 def thumb_channels():
-    """The thumb cluster's channels. Each key has its column's channel and a
-    short one from the +x tab to the north edge. The row wire comes down the
-    inner column to the fork and divides: east to home's corner and near's north
-    edge, west to far's corner, then down far's column and across to x2's and
-    x1's corners. Far's column wire goes up to the fork with the row wire, and
-    home's on to the index column's foot. The rest join a trunk to the middle
-    column's foot, x2's and x1's from x1's corner and near's beside its key; its
-    sink keeps them room where the straight run leaves the curving plinth."""
+    """The thumb keys' channels. Each key has its column's channel and a short
+    one from the +x tab to the north edge. The row wire comes down the inner
+    column to the fork and divides: west to far's corner, east to home's corner
+    and on along near's north edge to its corner. There it joins near's column
+    wire in the thumb trunk, south of the index column's bottom diode and past that
+    cell's +x corner to the middle column's foot, and goes on along the
+    front trunk over x1 and x2, whose wires come up from their corners into it.
+    Far's column wire goes up to the fork with the row wire, and home's on to the
+    index column's foot."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     near, home, far = (thumb(n) for n in ("near", "home", "far"))
-    trunk = [thumb_bend(), front_pt(finger_key(2, -P.rows_below))]
-    out = [(w, [thumb_corner(far), thumb_fork(), thumb_corner(home), ne(near)]),
-           (w, [thumb_corner(home), front_pt(finger_key(1, -P.rows_below))])]
-    if P.thumb_extra:
-        x1, x2 = thumb("x1"), thumb("x2")
-        out.append((w, [thumb_joint(far), thumb_corner(x2), thumb_corner(x1)]))
-        trunk.insert(0, thumb_corner(x1))
-    out.append((t, trunk))
+    out = [(w, [thumb_corner(far), thumb_fork(), thumb_corner(home), ne(near), thumb_corner(near)]),
+           (w, [thumb_corner(home), front_pt(finger_key(1, -P.rows_below))]),
+           (t, [thumb_corner(near), at(finger_key(1, -P.rows_below), (out_y(), trunk_y(-1))), front_pt(finger_key(2, -P.rows_below))])]
     for k in keys():
         if k.group != "finger":
             out += [(w, thumb_column(k)), (w, [x_tab(k), ne(k)])]
+        if k.group == "extra":
+            out.append((w, [thumb_corner(k), onto(thumb_corner(k), front_trunk())]))
     return out
 
 
