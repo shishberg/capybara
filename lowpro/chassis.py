@@ -1,14 +1,12 @@
 """The body: the key field's top surface blended from the key cells, walled,
-a shell of one thickness, with the switch and socket pockets and the wire
-channels, reaching down round the well for the controller and battery; and the
-bottom plate: a plinth up to the body's underside and the well's floor, with the
-socket bosses.
+down to a flat underside on the seam, with the switch and socket pockets, the
+wire channels and the well for the controller and battery; and the bottom plate:
+a plinth up to the seam, with the socket bosses.
 
-Everything here is in world axes (layout.py). The body's and the plinth's
-blanks are meshes built here (the top surface, the underside and the round
-sampled from their functions, the walls one vertical quad per outline
-segment); everything cut from them or added to them is an exact Manifold
-solid, and the booleans are Manifold's. The expensive results are cached,
+Everything here is in world axes (layout.py). The body's blank is a mesh built
+here (the top surface and the round sampled from their functions, the walls one
+vertical quad per outline segment); everything cut from it or added to it, and
+the plinth, is an exact Manifold solid, and the booleans are Manifold's. The expensive results are cached,
 see layout.reset().
 """
 import math
@@ -65,8 +63,6 @@ def add(solid, tools):
 # spline through this field sampled every surface_step_mm (top_fit): taking
 # each plane at its cell's nearest point creases the field along the lines
 # that carry the cells' edges out, and the spline smooths those over a step.
-# The body's underside is the same surface floor_drop() lower, the plate's
-# top plate_gap_mm under that.
 def field(x, y):
     """The key field's height over the world points (x, y) (arrays)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
@@ -93,12 +89,16 @@ def top_z(x, y):
     return float(field([x], [y])[0])
 
 
-def floor_z(x, y):
-    return top_z(x, y) - L.floor_drop()
+def seam_up():
+    """The seam's normal, the way the shafts and channels run and the way the
+    parts come together: the body prints on the seam, so this is its print's z."""
+    return L.seam_frame()[:3, 2]
 
 
-def plate_z(x, y):
-    return floor_z(x, y) - P.plate_gap_mm
+def seam_z(x, y):
+    """The seam's height over the world points (x, y)."""
+    n, o = seam_up(), origin(L.seam_frame())
+    return o[2] - (n[0] * (np.asarray(x) - o[0]) + n[1] * (np.asarray(y) - o[1])) / n[2]
 
 
 @cached
@@ -335,7 +335,7 @@ def round_sections():
     top = np.c_[p, top_surface(p)]
     centre = np.c_[a, top[:, 2] - r / s]
     wall = np.c_[q, centre[:, 2]]
-    floor = top_surface(q) - L.floor_drop()
+    floor = seam_z(q[:, 0], q[:, 1])
     if (wall[:, 2] <= floor).any():
         x, y = q[(wall[:, 2] - floor).argmin()]
         raise ValueError(f"the top edge's round: top_round_mm {r} reaches under the body's underside at ({x:.1f}, {y:.1f})")
@@ -403,14 +403,11 @@ def solid_from(vertices, triangles, what):
     return solid
 
 
-# The body's and the plinth's blanks are each one closed mesh, and their
-# outer walls are built here and nothing cuts them afterwards except what is
-# meant to go through the wall (the USB opening, the power switch's knob):
-# each wall is one vertical quad per outline segment, its corners on the
-# stations, so it is exactly vertical. Both blanks' undersides and tops over
-# the plan are one triangulation of the outline (plan): the body's underside
-# is the top surface floor_drop() lower on it, and the plinth's top the same
-# plate_gap_mm lower, vertex for vertex.
+# The body's blank is one closed mesh, and its outer wall is built here and
+# nothing cuts it afterwards except what is meant to go through the wall (the USB
+# opening, the power switch's knob): one vertical quad per outline segment, its
+# corners on the stations, so it is exactly vertical. Its underside is one
+# triangulation of the outline (plan), on the seam.
 @cached
 def plan():
     """The plan inside the outline, triangulated: its vertices (the outline's
@@ -419,9 +416,9 @@ def plan():
 
 
 def body_blank():
-    """The body's blank: its vertices the underside's (the outline's stations
-    first), the round's sections (the first of each on the outline, level with
-    the ball's centre: the wall's top), then the top's inside the round."""
+    """The body's blank: its vertices the underside's, on the seam (the outline's
+    stations first), the round's sections (the first of each on the outline,
+    level with the ball's centre: the wall's top), then the top's inside the round."""
     t = time.time()
     q = outline()
     n = len(q)
@@ -433,7 +430,7 @@ def body_blank():
     station = np.arange(n)
     ring = [u + station * m + j for j in range(m)]
     top = np.where(ti < n, u + ti * m + m - 1, u + n * m + ti - n)
-    vertices = np.r_[np.c_[vu, top_surface(vu) - L.floor_drop()], rows.reshape(-1, 3),
+    vertices = np.r_[np.c_[vu, seam_z(vu[:, 0], vu[:, 1])], rows.reshape(-1, 3),
                      np.c_[vi[n:], top_surface(vi[n:])]]
     triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
     blank = solid_from(vertices, np.concatenate(triangles), "body's blank")
@@ -441,35 +438,16 @@ def body_blank():
     return blank
 
 
-def plinth_blank():
-    """The plinth's blank: from the desk up to the body's underside lowered
-    plate_gap_mm."""
-    q = outline()
-    n = len(q)
-    vu, tu = plan()
-    u = len(vu)
-    z = top_surface(vu) - L.floor_drop() - P.plate_gap_mm
-    if z.min() <= 0:
-        x, y = vu[z.argmin()]
-        raise ValueError(f"the plinth's top reaches the desk at ({x:.1f}, {y:.1f})")
-    _, tb = plan_mesh(q, fill=False)
-    station = np.arange(n)
-    vertices = np.r_[np.c_[vu, z], np.c_[q, np.zeros(n)]]
-    return solid_from(vertices, np.r_[tu, u + tb[:, ::-1], walled(u + station, station)], "plinth's blank")
-
-
 # Every cell's plane is put back exactly, cell_step_mm past its edge: over the
 # cell, whatever the body's blank has above the plane is cut away and a block
-# under it added, and likewise under the plane floor_drop() lower (the
-# underside), which the plinth's top follows (plinth_shell). Where two cells overlap, so the
-# top steps at the higher cell's edge (with nothing left standing in the gap)
-# and the underside at the lower's. Inside a cell a blank's surface lies on the
-# plane to within rounding, and a boolean between faces that nearly coincide
-# leaves slivers, so the cuts start put_back_mm inside the block, and they are
-# ring_mm narrower than the blocks so that no face of a cut lies on a face of a
-# block: the blocks meet the blanks in volumes, and where a blank stands higher
-# than the plane at the cell's edge the step comes ring_mm inside it. Keys whose
-# plates share a plane share one block.
+# under it added, down to the seam. Where two cells overlap, so the top steps at
+# the higher cell's edge, with nothing left standing in the gap. Inside a cell
+# the blank's surface lies on the plane to within rounding, and a boolean between
+# faces that nearly coincide leaves slivers, so the cuts start put_back_mm inside
+# the block, and they are ring_mm narrower than the blocks so that no face of a
+# cut lies on a face of a block: the blocks meet the blank in volumes, and where
+# the blank stands higher than the plane at the cell's edge the step comes ring_mm
+# inside it. Keys whose plates share a plane share one block.
 put_back_mm = 0.1
 ring_mm = 0.01
 
@@ -498,11 +476,6 @@ def half_space(m, z, below=True, size=200):
     return placed(m, Manifold.cube((size, size, size)).translate((-size / 2, -size / 2, z - size if below else z)))
 
 
-def slab(m, z_top, z_bottom, size=200):
-    """Everything in frame m between its planes z_bottom and z_top, within `size`."""
-    return placed(m, Manifold.cube((size, size, z_top - z_bottom)).translate((-size / 2, -size / 2, z_bottom)))
-
-
 @cached
 def body_shell():
     """The body before anything is cut from it: its blank, every cell's plane put back."""
@@ -512,10 +485,10 @@ def body_shell():
         x0, y0, _, _ = reach.bounds()
         raise ValueError(f"a cell's plane reaches the top edge's round near ({x0:.1f}, {y0:.1f}): "
                          "top_round_mm is too large for wall_mm")
-    d, cut, block = L.floor_drop(), P.cell_step_mm - ring_mm, P.cell_step_mm
+    cut, block = P.cell_step_mm - ring_mm, P.cell_step_mm
+    above = half_space(L.seam_frame(), 0, below=False, size=600)
     caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
-    caps += [column(g, cut) ^ half_space(g[0].frame, -d + put_back_mm) for g in plane_groups()]
-    blocks = [column(g, block) ^ slab(g[0].frame, 0, -d) for g in plane_groups()]
+    blocks = [column(g, block) ^ half_space(g[0].frame, 0) ^ above for g in plane_groups()]
     shell = add(subtract(body_blank(), caps), blocks)
     stage("the body's shell", t)
     return shell
@@ -523,27 +496,14 @@ def body_shell():
 
 @cached
 def plinth_shell():
-    """The plinth before anything is cut from it: its blank, with every cell's
-    plane under the body put back as the body's underside has it, lowered
-    plate_gap_mm: everything over each cell's plane taken away and everything
-    under it added (from put_back_mm over the desk), so the plinth's top steps
-    where the underside does, and where two cells' columns overlap it is the
-    lower plane's, as the underside is. It then loses what stands within
-    step_clearance_mm of the underside lowered plate_gap_mm, sideways: at the
-    steps' faces and on the steepest slopes that's what stands them off, and on
-    a key's tilted plane it only widens the gap a little."""
-    t = time.time()
-    d = L.floor_drop()
-    z = -d - P.plate_gap_mm
-    floor = Manifold.cube((400, 400, 100)).translate((-200, -200, put_back_mm))
-    fill = [column(g, P.cell_step_mm - ring_mm) ^ half_space(g[0].frame, z + put_back_mm) ^ floor
-            for g in plane_groups()]
-    clear = [column(g, P.cell_step_mm) ^ half_space(g[0].frame, z, below=False) for g in plane_groups()]
-    c = P.step_clearance_mm
-    beside = [body_shell().translate((c * math.cos(a), c * math.sin(a), -P.plate_gap_mm)) for a in np.radians(range(0, 360, 45))]
-    shell = subtract(add(subtract(add(plinth_blank(), fill), clear), [skirt()]), beside)
-    stage("the plinth's shell", t)
-    return shell
+    """The plinth before anything is cut from it: the outline and the skirt, from
+    the desk up to plate_gap_mm under the seam."""
+    q = outline()
+    low = seam_z(q[:, 0], q[:, 1]) - P.plate_gap_mm
+    if low.min() <= 0:
+        x, y = q[low.argmin()]
+        raise ValueError(f"the plinth's top reaches the desk at ({x:.1f}, {y:.1f})")
+    return add(polygon(q).extrude(100), [skirt()]) ^ half_space(L.seam_frame(), -P.plate_gap_mm, size=600)
 
 
 # ---------------------------------------------------------------- the skirt
@@ -584,8 +544,7 @@ def cove_ring():
 
 def skirt():
     """The skirt as a solid, flat with the cove along the wall, lapping into the
-    plinth (whose wall stands higher here: the body and plinth check would
-    catch one that didn't) so the two are one solid."""
+    plinth so the two are one solid."""
     closed, gaps = skirt_faces()
     lapped = gaps.offset(1, JoinType.Round, 2.0, 16) ^ closed
     return union([lapped.extrude(P.skirt_h_mm), cove_ring() ^ lapped.extrude(100)])
@@ -599,89 +558,48 @@ def bay_pocket_h():
 
 
 @cached
-def bay_z():
-    """The well's floor: bay_under_mm below the parts' room under the lowest point
-    of the body's underside over the bays, but never thinner than the plate's minimum."""
-    lows = [floor_z(b[0][0] + (b[1][0] - b[0][0]) * i / 4, b[0][1] + (b[1][1] - b[0][1]) * j / 4)
-            for b in L.bays() for i in range(5) for j in range(5)]
-    return max(P.bottom_plate_mm, min(lows) - bay_pocket_h() - P.bay_under_mm)
+def bay_frame():
+    """The bays' plan carried onto the seam, which is the well's floor: z = 0 of
+    the plan on the seam, turned about the middle of the bays."""
+    c = np.mean(L.bay_rect(), axis=0)
+    m = L.seam_frame().copy()
+    m[:3, 3] = (c[0], c[1], seam_z(c[0], c[1]))
+    return m @ trans([-c[0], -c[1], 0])
 
 
 def mcu_frame():
-    return trans([0, 0, bay_z()]) @ L.mcu_frame()
+    return bay_frame() @ L.mcu_frame()
 
 
 def battery_frame():
-    return trans([0, 0, bay_z()]) @ L.battery_frame()
+    return bay_frame() @ L.battery_frame()
 
 
 def power_switch_frame():
     """The switch's frame, a clearance over the well's floor, which holds it in its pocket."""
-    return trans([0, 0, bay_z() + P.power_switch_mm[2] / 2 + P.power_switch_clearance_mm]) @ L.power_switch_frame()
+    return bay_frame() @ trans([0, 0, P.power_switch_mm[2] / 2 + P.power_switch_clearance_mm]) @ L.power_switch_frame()
 
 
 def reset_button_frame():
     """The switch's frame, its plunger's centre on the seam between the plinth
     and the body, so the hole in the wall is half in each."""
-    return trans([0, 0, bay_z()]) @ L.reset_button_frame()
+    return bay_frame() @ L.reset_button_frame()
 
 
 def floor_box(r, h):
-    """The plan rectangle r ((x0, y0), (x1, y1)) from the well's floor up h."""
-    return Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h)).translate((r[0][0], r[0][1], bay_z()))
-
-
-def bay_block(grow=0):
-    """Everything round the bays over the well's floor, `grow` past the step where
-    the seam comes up to the underside: mcu_bay_wall_mm past the bays toward the keys,
-    and past the wall in front of the battery. It's the body's, not the plinth's,
-    so that all the electronics and their wires are in the body and the plinth
-    comes away free of them."""
-    (_, y0), (x1, _) = L.bay_rect()[0], L.bay_rect()[1]
-    x1, y0 = x1 + P.mcu_bay_wall_mm + grow, y0 - P.wall_mm - grow
-    return Manifold.cube((400, 400, 100)).translate((x1 - 400, y0, bay_z()))
-
-
-@cached
-def body_mass():
-    """The body before anything is cut from it: its shell, and the block round
-    the bays down to plate_gap_mm over the well's floor."""
-    return add(body_shell(), [plinth_blank().translate((0, 0, 1)) ^ bay_block().translate((0, 0, P.plate_gap_mm))])
-
-
-@cached
-def plinth_mass():
-    """The plinth before anything is cut from it: its shell, less the block round
-    the bays, step_clearance_mm past it."""
-    return subtract(plinth_shell(), [bay_block(P.step_clearance_mm)])
-
-
-@cached
-def board_ceiling():
-    """The well's ceiling over the board, as (a, b, c) of the plane z = ax + by + c:
-    flat, at the channels' depth, where they come in: the plane that best fits
-    well_point's depth over the bay, raised so that no channel's end stands over it."""
-    (x0, y0), (x1, y1) = L.mcu_bay()
-    x, y = (g.ravel() for g in np.meshgrid(np.linspace(x0, x1, 9), np.linspace(y0, y1, 9)))
-    z = np.array([well_point(j, i)[2] for i, j in zip(x, y)])
-    a, b, c = np.linalg.lstsq(np.c_[x, y, np.ones_like(x)], z, rcond=None)[0]
-    return a, b, c + max(p[2] - a * p[0] - b * p[1] - c for p in well_ends())
-
-
-def board_room():
-    """The board's bay, and the port end's slot in the back wall, from the well's
-    floor up to its ceiling."""
-    (x0, y0), (x1, y1) = L.mcu_bay()
-    y1 += P.mcu_usb_overhang_mm + P.mcu_clearance_mm
-    a, b, c = board_ceiling()
-    return Manifold.hull_points([(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (bay_z(), a * x + b * y + c)])
+    """The plan rectangle r ((x0, y0), (x1, y1)) from just under the well's floor,
+    so that it opens through the seam, up h."""
+    return placed(bay_frame(), Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h + put_back_mm)).translate((r[0][0], r[0][1], -put_back_mm)))
 
 
 def well():
-    """The well: the board's room, and the battery's bay and its lead notch cut
-    from the block up to the body's underside."""
-    ceiling = plinth_blank().translate((0, 0, P.plate_gap_mm + ring_mm))
-    return [board_room()] + [floor_box(b, 100) ^ ceiling for b in (L.battery_bay(), L.lead_notch())]
+    """The well: the board's room with the port end's slot in the back wall, the
+    battery's bay and its lead notch, each from the seam up to well_roof_mm under
+    the top."""
+    (x0, y0), (x1, y1) = L.mcu_bay()
+    board = ((x0, y0), (x1, y1 + P.mcu_usb_overhang_mm + P.mcu_clearance_mm))
+    ceiling = body_shell().translate((0, 0, -P.well_roof_mm))
+    return [floor_box(r, 100) ^ ceiling for r in (board, L.battery_bay(), L.lead_notch())]
 
 
 def press_strip():
@@ -689,11 +607,8 @@ def press_strip():
     the board by mcu_press_gap_mm, which foam takes up. The wires reach the board
     either side of it and past its south end."""
     (w, length), y0 = P.mcu_press_mm, P.mcu_press_start_mm
-    corners = [xform(mcu_frame(), [i * w / 2, y, 0])[:2] for i in (-1, 1) for y in (y0, y0 + length)]
     z = R.mcu_pcb_z() + P.mcu_board_mm[2] + P.mcu_press_gap_mm
-    a, b, c = board_ceiling()
-    h = max(a * p[0] + b * p[1] + c for p in corners) + 1 - bay_z() - z
-    return placed(mcu_frame(), R.box((w, length, h), (0, y0 + length / 2, z + h / 2)))
+    return placed(mcu_frame(), R.box((w, length, 30), (0, y0 + length / 2, z + 15))) ^ body_shell()
 
 
 # ---------------------------------------------------------------- wiring points
@@ -874,10 +789,10 @@ def front_trunk():
 
 
 def well_point(y, x=None):
-    """A point at the channels' depth just inside the well, by the column's wall,
-    level with y (or at x)."""
+    """A point just under the well's ceiling, by the column's wall, level with y
+    (or at x): where the channels come in."""
     x = L.mcu_bay()[1][0] - 3 if x is None else x
-    return np.array([x, y, floor_z(x, y) + 3])
+    return np.array([x, y, top_z(x, y) - P.well_roof_mm - 1])
 
 
 def bay_entry():
@@ -904,7 +819,7 @@ def well_ways():
     """The runs into the well, carried on down through the block's wall, so that
     a wire lies into them from below."""
     ends = well_ends()
-    down = np.array([0, 0, 30])
+    down = 30 * seam_up()
     return [Manifold.hull_points(post_points(a, w) + post_points(b, w) + post_points(a - down, w) + post_points(b - down, w))
             for a, b, w in channel_segments() if any(np.array_equal(b, p) for p in ends)]
 
@@ -1010,12 +925,11 @@ def channels():
 
 def post_points(p, w):
     """A channel post's points at a world point: a circle of w, so a channel is w
-    wide whichever way it runs and keeps the wall the outline allows it, from 3 mm
-    under the deepest sink below the body's underside up to the point (so the hull
-    between two posts stays open to the underside where that curves up between
-    them, and reaches the sink's floor)."""
-    f = floor_z(p[0], p[1]) - 3 - P.trunk_sink_mm
-    return [(x, y, z) for x, y in circle_points(p, w / 2) for z in (f, p[2])]
+    wide whichever way it runs and keeps the wall the outline allows it, from the
+    point down the seam's normal to 3 mm under the deepest sink below the seam, so
+    the hull between two posts stays open to the seam and reaches the sink's floor."""
+    down = (p[2] - seam_z(p[0], p[1]) + 3 + P.trunk_sink_mm) / seam_up()[2]
+    return [(x, y, p[2]) for x, y in circle_points(p, w / 2)] + [tuple(np.array((x, y, p[2])) - down * seam_up()) for x, y in circle_points(p, w / 2)]
 
 
 def channel_segments():
@@ -1033,14 +947,12 @@ def channel_solids():
 
 def channel_sinks():
     """The channels' sinks into the plinth's top, each as deep as its kind and
-    stopping bottom_plate_mm over the desk. A sink reaches up through all the
-    plinth over it: the plinth's top can rise over a straight run's top line,
-    and a run's own height would leave a cap of it loose across the channel."""
+    stopping bottom_plate_mm over the desk."""
     shell = plinth_shell()
     above = Manifold.cube((400, 400, 100)).translate((-200, -200, P.bottom_plate_mm))
-    up = np.array([0, 0, 100])
+    up = 100 * seam_up()
     runs = [(a + up, b + up, w) for a, b, w in channel_segments()]
-    return [(union([run_solid(*r) for r in runs if (r[2] == P.trunk_w_mm) == trunk]) ^ above) - shell.translate((0, 0, -d))
+    return [(union([run_solid(*r) for r in runs if (r[2] == P.trunk_w_mm) == trunk]) ^ above) - shell.translate(tuple(-d * seam_up()))
             for trunk, d in ((False, P.channel_sink_mm), (True, P.trunk_sink_mm))]
 
 
@@ -1081,10 +993,11 @@ def diode_room(k):
 
 
 def swept(m, size, centre, depth=60):
-    """A box drawn in frame m carried straight down (in world) by `depth`, so
-    shafts and wells stand square to the desk however the key tilts."""
+    """A box drawn in frame m carried down the seam's normal by `depth`, so
+    shafts and wells stand square to the seam however the key tilts, and the
+    plinth's bosses go straight up them."""
     pts = np.array([xform(m, c) for c in box_corners(size, centre)])
-    return Manifold.hull_points(np.r_[pts, pts - (0, 0, depth)])
+    return Manifold.hull_points(np.r_[pts, pts - depth * seam_up()])
 
 
 def normal_swept(m, size, centre, depth=60):
@@ -1104,7 +1017,9 @@ def solder_wells(k):
     cell at the socket's top, so it keeps that wall from the next key's room
     and from the bay. The -x well then ends just past its tab's tip."""
     s = P.solder_well_mm
-    inside = polygon(cell_corners(k, -P.solder_well_inset_mm, R.socket_top_z())).extrude(203).translate((0, 0, -2))
+    x, y = k.cell[0] / 2 - P.solder_well_inset_mm, k.cell[1] / 2 - P.solder_well_inset_mm
+    edge = np.array([xform(k.frame, [i * x, j * y, R.socket_top_z()]) for i in (-1, 1) for j in (-1, 1)])
+    inside = Manifold.hull_points(np.r_[edge + 10 * seam_up(), edge - 60 * seam_up()])
     return [swept(k.frame, (s[0], s[1], 0.6), R.socket_tab_tip(side) + (side * (P.solder_well_reach_mm - s[0] / 2), 0, -0.3)) ^ inside
             for side in (-1, 1)]
 
@@ -1129,20 +1044,8 @@ def bay_rooms(plinth=False):
 
 @cached
 def screw_seats():
-    """The level of each screw's pad: the plinth's highest point under it. The
-    underside tilts and steps, so the pad levels it for the screw: the plinth
-    comes up to this level over the pad and the body is cut back plate_gap_mm
-    above it, so every insert's mouth is flat and square to its hole, and the
-    screw clamps flat on flat."""
-    shell = plinth_mass()
-    return [float((R.cylinder(P.screw_pad_d, 100, (p[0], p[1], -1)) ^ shell).bounding_box()[5]) for p in L.screw_points()]
-
-
-def screw_pad(p, seat):
-    """Screw p's pad as the body loses it: a little wider than the plinth's, up
-    to plate_gap_mm over the seat."""
-    z = seat + P.plate_gap_mm
-    return R.cylinder(P.screw_pad_d + 2 * P.boss_clearance_mm, z + 1, (p[0], p[1], -1))
+    """The plinth's top at each screw."""
+    return [float(seam_z(*p)) - P.plate_gap_mm for p in L.screw_points()]
 
 
 def insert_hole_at(p, seat):
@@ -1150,8 +1053,7 @@ def insert_hole_at(p, seat):
 
 
 def insert_holes():
-    """The insert holes and the pads they open from."""
-    return [c for p, z in zip(L.screw_points(), screw_seats()) for c in (screw_pad(p, z), insert_hole_at(p, z))]
+    return [insert_hole_at(p, z) for p, z in zip(L.screw_points(), screw_seats())]
 
 
 @cached
@@ -1175,7 +1077,7 @@ def cap_rooms():
 
 @cached
 def body():
-    shell = body_mass()
+    shell = body_shell()
     t = time.time()
     body = add(subtract(shell, body_cutters() + cap_rooms() + insert_holes()), [press_strip()])
     body.num_tri()   # Manifold evaluates lazily: make the cut happen here
@@ -1186,10 +1088,10 @@ def body():
 # ---------------------------------------------------------------- the bottom plate
 def socket_boss(k):
     """The boss under key k's socket: the socket's shaft, inset, standing on the
-    plinth's top under the cell up to just under the socket (and reaching
-    put_back_mm into the plinth, so the two meet in a volume)."""
+    plinth's top up to just under the socket (and reaching put_back_mm into the
+    plinth, so the two meet in a volume)."""
     return (union(socket_shaft(k, -P.boss_inset_mm)) ^ half_space(k.frame, R.socket_bottom_z() - P.boss_clearance_mm)
-            ^ half_space(k.frame, -L.floor_drop() - P.plate_gap_mm - put_back_mm, below=False))
+            ^ half_space(L.seam_frame(), -P.plate_gap_mm - put_back_mm, below=False, size=600))
 
 
 def screw_holes():
@@ -1208,11 +1110,8 @@ def plate_cutters():
 
 @cached
 def bottom_plate():
-    """The plinth: up to the body's underside, the well's floor and the screws'
-    pads, with the screw holes, and the socket bosses standing on it."""
-    pads = [R.cylinder(P.screw_pad_d, z + 1, (p[0], p[1], -1)) ^ Manifold.cube((400, 400, 100)).translate((-200, -200, 0))
-            for p, z in zip(L.screw_points(), screw_seats())]
-    shell = add(plinth_mass(), pads)
+    """The plinth: up to the seam, with the screw holes, and the socket bosses standing on it."""
+    shell = plinth_shell()
     t = time.time()
     plate = add(subtract(shell, plate_cutters() + screw_holes()), [socket_boss(k) for k in keys()])
     plate.num_tri()
@@ -1275,16 +1174,8 @@ def cap_collisions():
 
 def part_overlap():
     """How much the body and the plinth overlap, mm^3 (0 when the plinth stays
-    under the body's underside)."""
+    under the seam)."""
     return (body() ^ bottom_plate()).volume()
-
-
-def seam_binds():
-    """The directions, in degrees, in which the plinth can't slide
-    step_clearance_mm against the body (a hair less, for the chords)."""
-    d = 0.95 * P.step_clearance_mm
-    return [a for a in range(0, 360, 45)
-            if (body() ^ bottom_plate().translate((d * math.cos(math.radians(a)), d * math.sin(math.radians(a)), 0))).volume() > 1e-3]
 
 
 def part_clashes():
@@ -1305,7 +1196,7 @@ def blocked_parts():
     down: what each meets of the body on its way past the seam, as (part, overlap
     mm^3)."""
     steps = np.arange(0, 12.25, 0.25)
-    swept = [(p.label, Manifold.batch_boolean([p.solid.translate((0, 0, -d)) for d in steps], OpType.Add)) for p in electronics()]
+    swept = [(p.label, Manifold.batch_boolean([p.solid.translate(tuple(-d * seam_up())) for d in steps], OpType.Add)) for p in electronics()]
     return [(label, v) for label, s in swept for v in [(s ^ body()).volume()] if v > 1e-3]
 
 
@@ -1341,19 +1232,19 @@ def wire_ends():
     for k in keys():
         row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
         ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
-    m, b, z = L.mcu_bay(), L.battery_bay(), bay_z() + d
-    ends.append(("the battery's leads", np.array([(b[0][0] + b[1][0]) / 2, b[1][1] - d, z])))
+    m, b = L.mcu_bay(), L.battery_bay()
+    ends.append(("the battery's leads", xform(bay_frame(), [(b[0][0] + b[1][0]) / 2, b[1][1] - d, d])))
     if P.power_switch:
         notch = P.power_switch_mm[1] / 2 + P.power_switch_pins_mm[1] / 2
         ends.append(("the power switch", xform(power_switch_frame(), [0, notch, d / 2])))
     ends += [("the reset button", xform(reset_button_frame(), [x, y, 0])) for x, y in R.reset_wire_ways()]
-    ends.append(("the controller", np.array([(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, z])))
+    ends.append(("the controller", xform(bay_frame(), [(m[0][0] + m[1][0]) / 2, (m[0][1] + m[1][1]) / 2, d])))
     return ends
 
 
 def wire_space():
     """The spaces cut from the body and the plinth (channels, pockets, the well; see lost)."""
-    return union([lost(body_mass(), body_cutters(), True), lost(plinth_mass(), plate_cutters())])
+    return union([lost(body_shell(), body_cutters(), True), lost(plinth_shell(), plate_cutters())])
 
 
 def crowded_keys():
@@ -1428,11 +1319,10 @@ def unwired():
 
 def pinched_runs():
     """The channels' straight runs that a wire can't lie along from end to end:
-    inside the run, below the underside's surface (a wire left proud is pinched at
-    the seam), past the terminals and whatever of the plinth stands into the body.
+    inside the run, above the seam (a wire left proud of it is pinched), past the terminals and whatever of the plinth stands into the body.
     A run from a terminal counts from where its wire ends, tab_off from the tab.
     As a list of (run, mm a wire gets along it, its length)."""
-    centres = wire_centres(subtract(body_mass() ^ union(body_cutters()), [bottom_plate()] + terminals()))
+    centres = wire_centres(subtract(body_shell() ^ union(body_cutters()), [bottom_plate()] + terminals()))
     tabs = [x_tab(k) for k in keys() if k.group != "finger"]
     out = []
     for a, b, w in channel_segments():
@@ -1466,26 +1356,26 @@ def thin_walls():
     as a finger column's is. The other channels join keys by design, so they are
     held only to these, and a row channel to opening into the shaft it runs along,
     wherever a solder well hasn't already cut that wall away."""
-    rooms = [(k.name, lost(body_mass(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
+    rooms = [(k.name, lost(body_shell(), [key_room(k), *solder_wells(k), *diode_room(k)], True)) for k in keys()]
     named = dict(zip([k.name for k in keys()], rooms))
-    bay = union([lost(body_mass(), bay_rooms() + well(), True), lost(plinth_mass(), bay_rooms(plinth=True))])
+    bay = union([lost(body_shell(), bay_rooms() + well(), True), lost(plinth_shell(), bay_rooms(plinth=True))])
     rooms.append(("the bay", bay))
     pairs = [(a, b) for i, a in enumerate(rooms) for b in rooms[i + 1:]]
     into_well = well_ends()
     pairs += [((f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})",
-                lost(body_mass(), [run_solid(a, b, w)], True)), ("the bay", bay))
+                lost(body_shell(), [run_solid(a, b, w)], True)), ("the bay", bay))
               for a, b, w in channel_segments() if not any(np.array_equal(b, p) for p in into_well)]
     for c, (w, pts) in enumerate(channels()[:5]):
-        run = (f"column {c}'s channel", lost(body_mass(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
+        run = (f"column {c}'s channel", lost(body_shell(), [run_solid(a, b, w) for a, b in zip(pts[:-1], pts[1:])], True))
         pairs += [(run, named[k.name]) for k in keys() if not (k.group == "finger" and k.col == c)]
     for k in keys():
         pts = channels()[k.col][1] if k.group == "finger" else thumb_column(k)
         if k.group != "finger":
-            run = (f"{k.name}'s column channel", lost(body_mass(), [run_solid(*pts, P.channel_w_mm)], True))
+            run = (f"{k.name}'s column channel", lost(body_shell(), [run_solid(*pts, P.channel_w_mm)], True))
             pairs += [(run, named[j.name]) for j in keys() if j is not k]
         own = {(tuple(a), tuple(b)) for a, b in zip(pts[:-1], pts[1:])}
-        pocket = (f"{k.name}'s diode pocket", lost(body_mass(), diode_room(k)[:1], True))
-        pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_mass(), [run_solid(a, b, w)], True)))
+        pocket = (f"{k.name}'s diode pocket", lost(body_shell(), diode_room(k)[:1], True))
+        pairs += [(pocket, (f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})", lost(body_shell(), [run_solid(a, b, w)], True)))
                   for a, b, w in channel_segments() if (tuple(a), tuple(b)) not in own]
     out = []
     for (a, sa), (b, sb) in pairs:
@@ -1498,9 +1388,9 @@ def thin_walls():
     if well_y < shaft_edge_y():
         beside += [(k, at(k, (row_x(), well_y)), at(k, (row_x(), shaft_edge_y()))) for k in keys() if k.group != "finger"]
     for k, a, b in beside:
-        run = lost(body_mass(), [run_solid(a, b, P.channel_w_mm)], True)
+        run = lost(body_shell(), [run_solid(a, b, P.channel_w_mm)], True)
         for name, room in (("shaft", socket_shaft(k, P.socket_clearance_mm)), ("north collar", north_collar(k))):
-            d = lost(body_mass(), room, True).min_gap(run, P.min_wall_mm)
+            d = lost(body_shell(), room, True).min_gap(run, P.min_wall_mm)
             if 1e-6 < d < P.min_wall_mm:
                 out.append((f"{k.name}'s {name}", "its row channel", d))
     for a, b, w in channel_segments():
@@ -1533,11 +1423,11 @@ def screw_walls():
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
         round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, 0))
-        under = h - P.screw_grip_mm - (round_it - plinth_mass()).bounding_box()[2]
+        under = h - P.screw_grip_mm - (round_it - plinth_shell()).bounding_box()[2]
         if under > 0:
             hits.append((name, "the plinth's top (the counterbore breaks out through it)", np.pi * (R.counterbore_d() / 2) ** 2 * under))
         holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]
-        holes += [(insert_hole_at(p, h), body_cuts()), (screw_pad(p, h), body_cuts())]
+        holes.append((insert_hole_at(p, h), body_cuts()))
         for hole, cuts in holes:
             box = hole.bounding_box()
             walls = [(outline_distance((x, y)) - (box[3] - box[0]) / 2, "the outline")]
@@ -1563,11 +1453,12 @@ def report():
     (x0, y0), (x1, y1) = outline().min(axis=0), outline().max(axis=0)
     tops = [L.cap_top(k)[2] for k in ks]
     plates = [origin(k.frame)[2] for k in ks]
-    floors = [floor_z(*origin(k.frame)[:2]) for k in ks]
+    floors = [float(seam_z(*origin(k.frame)[:2])) for k in ks]
+    rise = [(xform(k.frame, [0, 0, R.socket_bottom_z()])[2] - float(seam_z(*xform(k.frame, [0, 0, R.socket_bottom_z()])[:2]))) * seam_up()[2] for k in ks]
     reach = [r2(L.finger_plate_pitch(i) * L.finger_reach_radius(i) / L.finger_plate_radius(i)) for i in range(4)]
     (wall, screw, what), _ = screw_walls()
     return (f"plate tops {r2(min(plates))} to {r2(max(plates))} mm over the desk; cap tops {r2(min(tops))} to "
-            f"{r2(max(tops))} mm; body shell {r2(L.floor_drop())} mm thick; plinth {r2(min(floors))} to "
-            f"{r2(max(floors))} mm under the keys; well floor {r2(bay_z())} mm; fingertip reach between rows "
+            f"{r2(max(tops))} mm; plinth {r2(min(floors))} to {r2(max(floors))} mm under the keys; sockets {r2(min(rise))} to "
+            f"{r2(max(rise))} mm over the seam; fingertip reach between rows "
             f"{reach} mm (index to pinky); plan {r2(x1 - x0)} x {r2(y1 - y0)} mm, {round(polygon(outline()).area())} mm^2; "
             f"least wall round a screw {r2(wall)} mm ({screw} to {what})")

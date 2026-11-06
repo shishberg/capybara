@@ -85,27 +85,22 @@ wiring and how it should behave when running.
 ## The chassis
 
 The chassis is two printed parts: the body, which holds the keys, and the plinth
-under it, flat on the desk. The body's underside is its top surface dropped
-straight down, so every wiring channel is the same depth and the plinth takes up
-the height to the desk. Each socket goes up a shaft from below, and a boss on the
+under it, flat on the desk. The seam between them is one plane, parallel to the
+home plates and under every key's room, so the body prints flat on it with its
+top surface up, and the plinth takes up the height to the desk. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
-button and power switch lie in a well beside the inner column. The seam drops to the
-well's floor round it, so the well's walls and ceiling are the body's and its floor is
-the plinth's top. All the electronics are then in the body with the keys, and no wire
+button and power switch lie in a well beside the inner column. The well's walls and
+ceiling are the body's and its floor is the plinth's top. All the electronics are then in the body with the keys, and no wire
 crosses the seam: the plinth is a lid that goes on last and comes off with everything
 still wired. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by
 side without adding height or footprint. Use insulated wire for the rows, which
 cross the column wires. The channels are a first cut, straight slots that merge
 where they meet: look at `wiring-below.png` before trusting a route, and edit
-`channels()` in `chassis.py` to change one. The body's underside is curved and
-tilted, so it prints on support or a raft, laid on the tent plane. The plinth
-prints flat.
+`channels()` in `chassis.py` to change one.
 
-The plinth's top steps where the underside does, and down to the well's floor round
-the well, standing `step_clearance_mm` off it sideways, and those steps are what
-locate the plinth under the body. A pinky
+The six screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap's
 sweep its room, which notches that plate's edge.
 
@@ -117,8 +112,8 @@ writes the files, then exits 1.
 
 The wiring has two checks. One finds a way for a wire from every end to the
 controller, by any path. The other holds each channel to its own route: a wire
-has to lie along every straight run from end to end, below the underside's
-surface, or it gets pinched at the seam.
+has to lie along every straight run from end to end, clear of the seam, or it
+gets pinched there.
 
 Not checked:
 

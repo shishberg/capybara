@@ -234,26 +234,33 @@ def body_depth():
     return P.switch_below_plate_mm + P.pcb_layer_mm + P.socket_body_mm[2] + P.under_socket_mm
 
 
-def floor_drop_in(T):
-    """The body's underside is the top surface dropped straight down by this much:
-    body_depth() along the normal of the most tilted key, so no socket's room
-    comes up short."""
-    return body_depth() / min(axis_z(T @ k.frame)[2] for k in layout_keys())
+def seam_in_layout():
+    """The seam's height in layout axes, where the home plates lie level: under
+    the room every key needs (body_depth) at all four corners of its cell."""
+    return min(xform(k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, -body_depth()])[2]
+               for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1))
 
 
-def tented_floor_z(T):
-    """The lowest point any key's cell puts the body's underside, in tented axes."""
-    zs = [xform(T @ k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, 0])[2]
-          for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1)]
-    return min(zs) - floor_drop_in(T)
+def lowest_seam_in(T):
+    """The seam's lowest point under the key field and its wall, in tented axes."""
+    s = seam_in_layout()
+    return min(xform(T, [*xform(k.frame, [sx * (k.cell[0] / 2 + P.wall_mm), sy * (k.cell[1] / 2 + P.wall_mm), 0])[:2], s])[2]
+               for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1))
 
 
 @cached
 def world_frame():
-    """Layout axes to world: tented, then lifted so the body's lowest point sits
+    """Layout axes to world: tented, then lifted so the seam's lowest point sits
     bottom_plate_mm over the desk, which is z = 0."""
     T = tent_frame()
-    return trans([0, 0, P.bottom_plate_mm - tented_floor_z(T)]) @ T
+    return trans([0, 0, P.bottom_plate_mm - lowest_seam_in(T)]) @ T
+
+
+@cached
+def seam_frame():
+    """The seam, the plane between the body and the plinth, as a frame: its z = 0
+    the plane, its z up out of the plinth. It lies parallel to the home plates."""
+    return world_frame() @ trans([0, 0, seam_in_layout()])
 
 
 @cached
@@ -265,12 +272,6 @@ def keys():
 
 def key_named(name):
     return next(k for k in keys() if k.name == name)
-
-
-@cached
-def floor_drop():
-    """The body's underside drops this far below its top surface (chassis.py floor_z)."""
-    return floor_drop_in(tent_frame())
 
 
 def cell_corners(k, grow=0, z=0):
@@ -392,7 +393,7 @@ def lead_notch():
 # ---------------------------------------------------------------- screws
 def neck_screw():
     """The screw south of the battery, in the wall that the notch's round leaves, past
-    where the underside falls away from the battery's end, so that it has a level pad."""
+    where the top falls away from the battery's end, so that it has room for its insert."""
     (_, y0), (x1, _) = battery_bay()
     return (x1 - P.neck_screw_mm[0], y0 - P.neck_screw_mm[1])
 
@@ -413,4 +414,4 @@ def screw_points():
     m = mcu_bay()
     strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
     return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 2, -9.5), neck_screw()]
+            cell("thumb_x2" if P.thumb_extra else "thumb_far", 8, -9.5), strip, cell("thumb_home", 5, -10.5), neck_screw()]

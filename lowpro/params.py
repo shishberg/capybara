@@ -157,9 +157,9 @@ diode_room_mm = 0.4         # the diode's room round it
 diode_leg_d_mm = 0.5
 diode_leg_slot_mm = 1.0
 # The wall between a bottom-row diode's pocket and the front trunk, in the key's
-# frame at the socket's top: the end rows lean, so the trunk comes closer below,
-# and this leaves min_wall_mm at the pocket's bottom.
-front_trunk_wall_mm = 1.95
+# frame at the socket's top: the end rows lean, so the pocket comes closer below,
+# on its way down to the seam, and this leaves min_wall_mm at the seam.
+front_trunk_wall_mm = 3.5
 
 # ---------------------------------------------------------------- the body and bottom plate
 # The thinnest wall between the rooms of different parts (each key's, the
@@ -167,9 +167,10 @@ front_trunk_wall_mm = 1.95
 # build checks every pair.
 min_wall_mm = 1
 wall_mm = 3                 # the body's wall past the key cells and the bays
-# The well's wall on the keys' side. It stands up to 14 mm tall with three slots
-# through it, and the well's support has to be cleared from it.
-mcu_bay_wall_mm = 1.5
+# The well's wall on the keys' side, in plan at the seam, which has three slots
+# through it. The well leans with the seam, so the wall thins as it climbs, and
+# this leaves min_wall_mm to the back trunk at the top.
+mcu_bay_wall_mm = 1.6
 # The outline: "hulls" joins a convex hull round the finger field and one
 # round the thumb cluster (straight sides); "closed" follows the cells.
 outline_style = "closed"
@@ -185,18 +186,13 @@ cell_mm = 19.05             # the cell each key owns in plan, square
 # it sharp. It must leave room at the outline's convex corners: outline_round_mm
 # less this, less this times the sine of the top's tilt there, has to stay positive.
 top_round_mm = 1.5
-# The body is a shell of one thickness: its underside is its top surface
-# dropped by the room every key needs, the socket's bottom and this much
-# under it (room for the wires under it and the print's tolerance). The
-# bottom plate is a plinth, flat on the desk, its top the same surface
-# plate_gap_mm lower; it is at least bottom_plate_mm thick.
+# The seam between the body and the plinth is one plane, parallel to the home
+# plates, so the body prints flat on it: under every key's room (the socket's
+# bottom and this much under it, room for the wires and the print's tolerance),
+# with bottom_plate_mm of plinth at its lowest, and plate_gap_mm between the parts.
 under_socket_mm = 0.6
 bottom_plate_mm = 2
 plate_gap_mm = 0.1
-# Where the underside steps between the cells' planes, the plinth's top steps
-# too, and stands this far off it sideways (on the steepest slopes as well).
-# The steps are what locates the plinth under the body.
-step_clearance_mm = 0.15
 # The plinth's skirt, past the outline in its concave stretches: the radius of
 # the arcs that bridge them, its height over the desk, and the cove where it
 # meets the plinth's wall (less than outline_close_mm - wall_mm - 0.5).
@@ -213,8 +209,8 @@ boss_inset_mm = 0.6         # the boss is this much smaller than the socket body
 # plate every screw grips under the body (the counterbore goes up to it, so one
 # screw length fits everywhere: screw_grip_mm + the insert's 3 mm, M2 x 5). The
 # build checks the holes against everything else and that each head sinks into
-# the plinth. Each stands on a level pad screw_pad_d across, flat in both parts
-# (chassis.py screw_seats). Where they stand: screw_points() in layout.py.
+# the plinth. The screws are what locate the plinth under the body. Where they
+# stand: screw_points() in layout.py.
 insert_d = 3.2
 insert_depth_mm = 3.5
 screw_d = 2.4
@@ -222,7 +218,6 @@ screw_head_d = 3.8
 screw_head_h_mm = 2
 screw_head_clearance_mm = 0.4
 screw_grip_mm = 2
-screw_pad_d = 3.8
 neck_screw_mm = (5.5, 8.8)      # the screw south of the battery, from the bay's south corner on the keys' side
 
 # ---------------------------------------------------------------- controller, battery, switch
@@ -237,12 +232,12 @@ mcu_usb_overhang_mm = 1.3
 # port's end, flaring out to the wall's face.
 mcu_usb_relief_mm = (13, 7)
 mcu_clearance_mm = 0.3
-bay_under_mm = 1
 # The board lies in a well on the inner side of the inner column (layout.py
-# mcu_bay), along the column, its USB-C port out of the back wall; the well's
-# floor sits bay_under_mm below the parts' room under the body. The well's walls
-# and ceiling are the body's and its floor is the plinth's top, so all the
-# electronics are in the body and the plinth comes away free of them.
+# mcu_bay), along the column, its USB-C port out of the back wall. The well's
+# walls and ceiling are the body's and its floor is the plinth's top, on the
+# seam, so all the electronics are in the body and the plinth comes away free of
+# them. Its ceiling follows the top surface this far under it.
+well_roof_mm = 1.2
 # A strip stands down from the ceiling along the middle of the board, clear of the
 # wires, and foam on it holds the board down: wide, long, how far from the port
 # end it starts, and the gap the foam takes up.

@@ -99,21 +99,30 @@ class SocketWalls(unittest.TestCase):
             self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's north collar"])
 
 
-class WellWall(unittest.TestCase):
+class Seam(unittest.TestCase):
     def setUp(self):
         self.addCleanup(L.reset)
         self.addCleanup(setattr, P, "half", P.half)
 
-    def test_the_keys_side_wall_reaches_its_thickness_on_both_halves(self):
-        """The seam's step is the wall's far face, so a seam set from the wrong
-        thickness moves the wall with the bay and leaves it no thicker. The wall's
-        far 0.4 mm has to be solid but for the wires' slots."""
+    def test_the_body_stands_on_one_plane_on_both_halves(self):
+        """The body prints on the seam, so nothing of it may stand below the plane,
+        and the plane has to carry the whole of the body's outline."""
         for half in ("right", "left"):
             P.half = half
             L.reset()
-            (_, y0), (x1, y1) = L.mcu_bay()
-            skin = C.Manifold.cube((0.4, y1 - y0, 2)).translate((x1 + P.mcu_bay_wall_mm - 0.45, y0, C.bay_z() + 2))
-            self.assertGreater((C.body() ^ skin).volume() / skin.volume(), 0.5)
+            m = C.rinv(L.seam_frame())
+            v = C.body().to_mesh64().vert_properties[:, :3]
+            z = (m[:3, :3] @ v.T).T[:, 2] + m[2, 3]
+            self.assertGreater(z.min(), -1e-6)
+            self.assertGreater((z < 1e-6).sum(), len(C.outline()) / 2)
+
+    def test_the_plinth_stops_under_the_seam_but_for_its_bosses(self):
+        """Cut away the bosses and the plinth's top is plate_gap_mm under the plane,
+        so it meets the body flat."""
+        P.half = "right"
+        L.reset()
+        below = C.half_space(L.seam_frame(), -P.plate_gap_mm + 1e-3, below=False, size=600)
+        self.assertLess((C.plinth_shell() ^ below).volume(), 1e-6)
 
 
 if __name__ == "__main__":

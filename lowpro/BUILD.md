@@ -84,10 +84,10 @@ slots before printing the rest.
 ## Printing
 
 - **Plinth:** flat on its base, top up, with supports under the screws' seats.
-- **Body:** its top surface faces up, laid on the 6° tent plane, on supports or a
-  raft. The underside is curved and tilted, so it has no flat face to stand on. The
-  well fills with support too. Take care clearing it from the well's wall on the keys'
-  side, which is 1.5 mm thick and stands up to 14 mm tall.
+- **Body:** flat on its underside, top surface up. The STL is in the desk's axes, so
+  use the slicer's Lay on Face on the underside to take out the 6° tilt. Support goes
+  only in the pockets, channels and well, so none touches the top surface. Take care
+  clearing it from the well's wall on the keys' side, which is thin.
 - **Material:** something that survives an iron nearby. PETG or ASA is safer than
   PLA, since several walls near solder joints are about 1 mm thick.
 - Clear all the support out of the channels, shafts and diode pockets. A wire has to
@@ -181,9 +181,10 @@ Compare this with `wiring-top.png`, where trunks are red and channels blue.
 So nine wires reach the well: RH, RB and RX through the wider exit, C4 through the
 narrower one, and RT, C0, C1, C2 and C3 down the back trunk's neck.
 
-Channels are grooves in the body's underside, at least 2.2 mm wide and about 4 to
-5 mm deep, and they go on 1 mm into the plinth's top. Trunks are 3.5 mm wide, about
-5 mm deep in the body, and go on 5.5 mm into the plinth. So you lay the wires in the
+Channels are grooves in the body's underside, at least 2.2 mm wide and about 2.5 to
+10 mm deep, deepest where the keys stand highest over the seam, and they go on 1 mm
+into the plinth's top. Trunks are 3.5 mm wide, up to 11 mm deep in the body, and go on
+5.5 mm into the plinth. So you lay the wires in the
 body with it upside down, and they can cross and lie side by side. Rows cross
 columns, so every wire has to stay insulated except at a joint.
 
@@ -197,8 +198,9 @@ through three slots in the wall on the keys' side.
   wall into the controller's bay.
 - **Controller:** in the north bay, components down, USB-C port out through the back
   wall. The battery's leads run north under the board to its north end. The ceiling
-  over the board is one flat surface at the channels' depth, tilted a little to follow
-  them, and at least 4 mm over the board's top, so the wires have room round the board.
+  follows the top surface, so the room over the board's top grows from 1.5 mm at the
+  south end by the inner side wall to over 9 mm toward the keys. Route the wires to the
+  board's south end on the keys' side of the strip where you can.
   A strip down the middle of it, padded with foam, holds the board against the floor.
   The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
@@ -221,9 +223,8 @@ is on.
 
 ### 1. Inserts
 
-Press the six heat-set inserts into the body's underside, in the six holes with
-round flat pads round them, until flush with the pad. Keep them square: the pads are
-level but the surface round them isn't.
+Press the six heat-set inserts into the six holes in the body's underside until
+flush with it. Keep them square.
 
 ### 2. Sockets and switches
 
@@ -277,7 +278,7 @@ drops straight in. Try each one dry first.
    tape, leads through the notch, so that it stays in the body when the plinth comes
    off. The ceiling curves away toward the south and the keys, so put the tape on the
    battery's north end, where the ceiling comes closest. 1 mm of foam leaves the battery
-   about 0.5 mm off the plinth's floor, and 1.5 mm of foam would leave it none.
+   about 0.3 mm off the plinth's floor, and 1.3 mm of foam would leave it none.
 5. Stick foam tape along the strip that stands down from the ceiling of the board's
    bay, and leave its liner on so that the board can move on it. The strip stands
    0.7 mm off the board, so 1 mm of foam is squeezed a little, which is what holds the
@@ -292,7 +293,7 @@ drops straight in. Try each one dry first.
 ### 5. Close and test
 
 1. Lay the plinth on the upside-down body. No wire joins them, so it goes straight on,
-   and its steps locate it. Check that no wire sits on the seam.
+   and its bosses and screws locate it. Check that no wire sits on the seam.
 2. Fit the six screws and tighten them gently. The seam should close without forcing,
    and stop and look if it doesn't. The parts are designed 0.1 mm apart across the
    seam, so a hair of a gap away from the screws is expected.
