@@ -168,13 +168,13 @@ def thumb_step_deg():
     return math.degrees(math.asin(thumb_plate_pitch() / hand()["thumb_arc"][1]))
 
 
-def thumb_key_frame(a, radius, lower, rise, well):
+def thumb_key_frame(a, radius, well):
     """A thumb key's frame at `a` degrees round the arc, `radius` from its centre,
-    its cap top `lower` mm under the finger home keys' less `rise`, tilted `well`
-    degrees about its y (+ facing -x, toward greater angles). Its heading is the
+    its cap top thumb_drop_mm under the finger home keys', tilted `well` degrees
+    about its y (+ facing -x, toward greater angles). Its heading is the
     home key's turned toward its own radius by thumb_fan."""
     centre = hand()["thumb_arc"][0]
-    top = np.array([centre[0] + radius * cosd(a), centre[1] + radius * sind(a), -P.thumb_drop_mm - lower + rise])
+    top = np.array([centre[0] + radius * cosd(a), centre[1] + radius * sind(a), -P.thumb_drop_mm])
     heading = P.thumb_around_deg + P.thumb_fan * (a - P.thumb_around_deg)
     F0 = trans(top) @ rot_z(heading - 90) @ rot_x(P.thumb_tilt_deg) @ rot_y(well)
     return F0 @ trans([0, 0, -cap_top_height(P.cap_row_thumb)])
@@ -193,10 +193,8 @@ def thumb_keys():
     R = hand()["thumb_arc"][1]
     keys = []
     for name, s, col in THUMB_ROW:
-        Rw = 0 if w == 0 else thumb_plate_pitch() / math.radians(w)
-        rise = 0 if w == 0 else Rw * (1 - cosd(s * w))
         u = P.thumb_home_u if name == "home" else 1
-        keys.append(Key(f"thumb_{name}", thumb_key_frame(P.thumb_around_deg + s * thumb_step_deg(), R, 0, rise, s * w),
+        keys.append(Key(f"thumb_{name}", thumb_key_frame(P.thumb_around_deg + s * thumb_step_deg(), R, s * w),
                         "thumb", col, -2, P.cap_row_thumb, u, (thumb_plate_pitch() + (u - 1) * P.cap_unit_mm, P.cell_mm)))
     p = origin(keys[0].frame)
     turn = trans(p) @ rot_z(P.thumb_turn_deg) @ trans(-p)

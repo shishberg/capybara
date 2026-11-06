@@ -12,6 +12,7 @@ from . import chassis as C
 from . import layout as L
 from . import params as P
 from . import parts as R
+from .build import mesh_of
 
 
 def key_plane_meet(k, p, q):
@@ -97,6 +98,36 @@ class SocketWalls(unittest.TestCase):
         with mock.patch.object(C, "shaft_edge_y", lambda: shaft):
             L.reset()
             self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's north collar"])
+
+
+class Openings(unittest.TestCase):
+    """Two cuts that only touch leave a skin of no thickness between them, which
+    has no volume for a check to see and prints as a wall across the opening."""
+
+    def setUp(self):
+        self.addCleanup(L.reset)
+        L.reset()
+        v, t = mesh_of(C.body())
+        c = v[t]
+        self.centres = c.mean(axis=1)
+        n = np.cross(c[:, 1] - c[:, 0], c[:, 2] - c[:, 0])
+        self.normals = n / np.maximum(np.linalg.norm(n, axis=1), 1e-12)[:, None]
+
+    def test_nothing_crosses_the_usb_port(self):
+        x0, _, z0, x1, _, z1 = C.place(C.mcu_frame(), R.mcu_room())[1].bounding_box()
+        x, y, z = self.centres.T
+        past_well = L.mcu_bay()[1][1] + P.mcu_usb_overhang_mm + P.mcu_clearance_mm + 0.1
+        across = (x > x0) & (x < x1) & (z > z0) & (z < z1) & (y > past_well) & (np.abs(self.normals[:, 1]) > 0.5)
+        self.assertEqual(int(across.sum()), 0)
+
+    def test_nothing_crosses_the_reset_hole(self):
+        f = C.reset_button_frame()
+        d = self.centres - f[:3, 3]
+        along, axis = d @ f[:3, 1], f[:3, 1]
+        off_axis = np.linalg.norm(d - np.outer(along, axis), axis=1)
+        hole = P.reset_plunger_mm[0] / 2 + P.reset_button_clearance_mm
+        across = (off_axis < hole - 0.05) & (along < 0) & (np.abs(self.normals @ axis) > 0.5)
+        self.assertEqual(int(across.sum()), 0)
 
 
 class Seam(unittest.TestCase):

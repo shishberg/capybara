@@ -230,7 +230,7 @@ def mcu_room():
     # The hole runs along -y through the back wall: drawn along z, then turned so
     # that its z runs along +y, in to the port's end.
     centre = mcu_pcb_z() - u[1] / 2
-    port = box((u[0] + 2 * c, P.mcu_usb_overhang_mm + 1, u[1] + 2 * c), (0, (1 - P.mcu_usb_overhang_mm) / 2, centre))
+    port = box((u[0] + 2 * c, P.mcu_usb_overhang_mm + 2, u[1] + 2 * c), (0, -P.mcu_usb_overhang_mm / 2, centre))
     flare = 5
     hole = frustum((r[0] + 2 * flare, r[1] + 2 * flare), r, 0, flare)
     turn = basis((1, 0, 0), (0, 0, -1), (0, 1, 0), (0, -P.mcu_usb_overhang_mm - flare, centre))
@@ -302,7 +302,7 @@ def reset_button_room():
     chamfer = Manifold.cylinder(k + 1, d / 2 + c + k + 1, d / 2 + c).rotate((-90, 0, 0)).translate((0, -b[1] / 2 - skin - 1, 0))
     return ([box((b[0] + 2 * c, b[1] + c, h), (0, c / 2, 0)),
              box((span + 2 * c, t + c, h), (0, b[1] / 2 + (c - t) / 2, 0)),
-             cylinder(d + 2 * c, 10).rotate((90, 0, 0)).translate((0, -b[1] / 2, 0)), chamfer]
+             cylinder(d + 2 * c, 11).rotate((90, 0, 0)).translate((0, 1 - b[1] / 2, 0)), chamfer]
             + [box((way, deep + 1, h), (x, y - 0.5, 0)) for x, y in reset_wire_ways()])
 
 
