@@ -27,6 +27,7 @@ and the way it moves. What changes:
 | File | What it is |
 |---|---|
 | `BUILD.md` | How to build a pair of halves, the pins, and what they do when running. |
+| `REVIEW.md` | The blind build review of 6 November 2026, and the decisions it left open. |
 | `build.py` | The command: builds the parts to STL and the assembly to 3MF; see its header. |
 | `render.py` | PNGs of the right half for a person to look over; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |

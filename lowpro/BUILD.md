@@ -180,9 +180,11 @@ Compare this with `wiring-top.png`, where trunks are red and channels blue.
 So nine wires reach the well: RH, RB and RX through the wider exit, C4 through the
 narrower one, and RT, C0, C1, C2 and C3 down the back trunk's neck.
 
-Channels sink 1 mm into the plinth and trunks 5.5 mm, so wires can cross and lie
-side by side. Rows cross columns, so every wire has to stay insulated except at a
-joint.
+Channels are grooves in the body's underside, at least 2.2 mm wide and about 4 to
+5 mm deep, and they go on 1 mm into the plinth's top. Trunks are 3.5 mm wide, about
+5 mm deep in the body, and go on 5.5 mm into the plinth. So you lay the wires in the
+body with it upside down, and they can cross and lie side by side. Rows cross
+columns, so every wire has to stay insulated except at a joint.
 
 ### The well
 
@@ -229,9 +231,11 @@ against its ceiling.
 
 1. Drop a socket down each shaft, its collars in their holes, until it sits flat.
    Check every one against `pocket-closeup.png`.
-2. Press each switch in from the top, pins straight, holding its socket against the
-   ceiling with a finger from below, since the plinth's boss isn't there yet to take
-   the push. The switch then holds the socket, so the body can be turned either way up.
+2. Lift the body, still upside down, so that the sockets stay against their ceilings.
+   Press each switch up into the top face, which now faces down, pins straight, with a
+   finger on its socket from the underside, since the plinth's boss isn't there yet to
+   take the push. The switch then holds the socket, so the body can be turned either
+   way up.
 
 ### 3. Diodes and matrix
 
@@ -269,31 +273,36 @@ drops straight in. Try each one dry first.
 4. Check the battery's polarity with a meter: lead colours aren't reliable. Solder
    battery − to B−, and battery + to the slide switch's other wire, with the switch
    off, and insulate the joint. Stick the battery to the ceiling of its bay with foam
-   tape, leads through the notch.
+   tape, leads through the notch, so that it stays in the body when the plinth comes
+   off. The ceiling curves away toward the south and the keys, so put the tape on the
+   battery's north end, where the ceiling comes closest. 1 mm of foam leaves the battery
+   about 0.5 mm off the plinth's floor, and 1.5 mm of foam would leave it none.
 5. Stick foam tape along the strip that stands down from the ceiling of the board's
-   bay, and leave its liner on so that the board can move on it.
-6. Cut the nine key wires to reach their holes with about 20 mm to spare. Feed each one
+   bay, and leave its liner on so that the board can move on it. The strip stands
+   0.7 mm off the board, so 1 mm of foam is squeezed a little, which is what holds the
+   board.
+6. Cut the nine key wires (four rows and five columns) to reach their holes with about
+   20 mm to spare. Feed each one
    through its hole from the board's top face, and lay the board in its bay, top face
    down on the strip, port in its notch. The wires then lie between the board and the
    ceiling, either side of the strip and past its south end.
 7. Solder the nine wires from the side now facing you and trim them flush.
-8. Turn the switch on. Hold the board down and plug in USB-C. Press reset twice,
-   holding the button in with a finger, as the other half of its pocket is in the
-   plinth. The board should mount as a drive: flash the firmware, then press every
-   key. Everything can still be reached, so fix anything that's wrong now. Then
-   unplug it and turn the switch off.
 
-### 5. Close the case
+### 5. Close and test
 
 1. Lay the plinth on the upside-down body. No wire joins them, so it goes straight on,
    and its steps locate it. Check that no wire sits on the seam.
 2. Fit the six screws and tighten them gently. The seam should close without forcing,
    and stop and look if it doesn't. The parts are designed 0.1 mm apart across the
    seam, so a hair of a gap away from the screws is expected.
-3. Turn it over and fit the caps: R2 top row, R3 home row, R4 bottom row, R3 thumbs.
+3. Turn it over, turn the switch on and plug in USB-C. The plinth now holds the board
+   and the reset button, and the bosses hold the sockets. Press reset twice, and the
+   board should mount as a drive. Flash the firmware, then press every switch by its
+   stem. Unplug it and turn the switch off.
+4. Fit the caps: R2 top row, R3 home row, R4 bottom row, R3 thumbs.
 
 To get back in, undo the screws and lift the plinth off with the body upside down.
-Everything stays wired.
+Everything stays wired and can be reached, so fix anything step 3 finds this way.
 
 ### 6. Left half
 
