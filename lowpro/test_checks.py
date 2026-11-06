@@ -90,6 +90,14 @@ class SocketWalls(unittest.TestCase):
             L.reset()
             self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's shaft"])
 
+    def test_a_channel_leaving_a_rib_beside_a_collar_is_caught(self):
+        """Stopping at the shaft left 0.12 mm of wall to the north collar's hole,
+        where a row channel climbs into the collar's layer toward a higher key."""
+        shaft = P.socket_centre_mm[1] + P.socket_body_mm[1] / 2 + P.socket_clearance_mm - 0.1
+        with mock.patch.object(C, "shaft_edge_y", lambda: shaft):
+            L.reset()
+            self.assertTrue([wall for wall in C.thin_walls() if wall[0] == "ring_0's north collar"])
+
 
 if __name__ == "__main__":
     unittest.main()

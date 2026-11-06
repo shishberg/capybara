@@ -754,8 +754,16 @@ def row_x():
 
 def shaft_edge_y():
     """The channels north of a socket overlap its shaft, as a column channel does,
-    because a wall between them would be too thin to print."""
-    return P.socket_centre_mm[1] + P.socket_body_mm[1] / 2 + P.socket_clearance_mm - 0.1
+    and the north collar's hole inside it, because a wall between them would be
+    too thin to print."""
+    return max(y for _, y in R.switch_pins()) + P.socket_collar_mm[0] / 2 + P.socket_clearance_mm - 0.1
+
+
+def north_collar(k):
+    """The hole for the socket's north collar, from just under the socket's top,
+    which a row channel climbing to a higher key reaches."""
+    x, y = max(R.switch_pins(), key=lambda p: p[1])
+    return place(k.frame, [R.cylinder(P.socket_collar_mm[0] + 2 * P.socket_clearance_mm, 3, (x, y, R.socket_top_z() - 0.2))])
 
 
 def ne_y():
@@ -1490,10 +1498,11 @@ def thin_walls():
     if well_y < shaft_edge_y():
         beside += [(k, at(k, (row_x(), well_y)), at(k, (row_x(), shaft_edge_y()))) for k in keys() if k.group != "finger"]
     for k, a, b in beside:
-        shaft = lost(body_mass(), socket_shaft(k, P.socket_clearance_mm), True)
-        d = shaft.min_gap(lost(body_mass(), [run_solid(a, b, P.channel_w_mm)], True), P.min_wall_mm)
-        if 1e-6 < d < P.min_wall_mm:
-            out.append((f"{k.name}'s shaft", "its row channel", d))
+        run = lost(body_mass(), [run_solid(a, b, P.channel_w_mm)], True)
+        for name, room in (("shaft", socket_shaft(k, P.socket_clearance_mm)), ("north collar", north_collar(k))):
+            d = lost(body_mass(), room, True).min_gap(run, P.min_wall_mm)
+            if 1e-6 < d < P.min_wall_mm:
+                out.append((f"{k.name}'s {name}", "its row channel", d))
     for a, b, w in channel_segments():
         along = [a + (b - a) * t for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))]
         name = f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})"
