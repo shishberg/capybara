@@ -38,24 +38,24 @@ inner_angle_deg = 0
 finger_sink_mm = 0
 
 # ---------------------------------------------------------------- the thumb
-# The thumb keys lie on the circle the thumb's pad swept (the hand), at this
-# pitch along it (at the caps' skirts, as row_pitch_mm). thumb_around_deg is the
-# home key's place round that circle (the resting print is at 112 deg; swept in
+# The near and far thumb keys lie on the circle the thumb's pad swept (the hand),
+# the home key on the line between them, at this pitch along it (at the caps'
+# skirts, as row_pitch_mm). thumb_around_deg is the home key's angle round that circle (the resting print is at 112 deg; swept in
 # 92, swept out 140, pulled back 168); the far key is further round (swept
 # out), the near key less (swept in).
 thumb_pitch_mm = 19.05
 thumb_around_deg = 112
 # The thumb keys' cap tops this far below the finger home keys' (0: level, as
 # the pads were on the paper).
-thumb_drop_mm = 0
+thumb_drop_mm = 1
 # How much the keys fan round the arc: 1 each key's y along its own radius,
 # 0 every key headed like the home key (parallel, as Swung in has them).
 # Fanned 1u Cherry caps need a pitch of about 23 mm not to meet at their
 # inner corners; parallel ones fit at 19.05.
 thumb_fan = 0
-# Each thumb key tilted toward the cluster's middle, degrees per key step, their
-# cap tops' centres in line, and the whole row tilted about its length, + facing
-# the thumb's base.
+# Each thumb key tilted toward the cluster's middle, degrees per key step
+# (a shallow well along the row), and the whole row tilted about its length,
+# + facing the thumb's base.
 thumb_well_deg = 6
 thumb_tilt_deg = 0
 # The row is then turned counterclockwise in plan about the near key's centre,

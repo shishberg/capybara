@@ -70,10 +70,11 @@ the pinky, so the top and bottom keys tilt 14 to 19° toward the home key and
 rise 2 to 3 mm. The fifth, inner column is the index column carried toward the
 thumb.
 
-**Thumb.** The three thumb keys start on the circle the thumb's pad swept in the
-photographs, the home key at the resting print's angle. The row is then turned
-counterclockwise in plan about the near key and leaned about the near key's y, the
-far key going down, so home and far no longer sit on the prints. The extra pair x1
+**Thumb.** The near and far thumb keys start on the circle the thumb's pad swept in
+the photographs, either side of the resting print's angle, and the home key on the
+straight line between them at that angle. The row is then turned counterclockwise
+in plan about the near key and leaned about the near key's y, the far key going
+down, so home and far no longer sit on the prints. The extra pair x1
 and x2 is a flat fourth row under the middle and ring columns.
 
 **Matrix.** The same 4 × 5 as the Capybara: each thumb key chains onto a finger
