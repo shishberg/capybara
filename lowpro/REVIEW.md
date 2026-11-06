@@ -2,11 +2,11 @@
 
 The question was whether a person could build lowpro from [BUILD.md](BUILD.md) and the generated parts, and whether it would then work. An independent reviewer answered it from only the STLs, the assemblies, the renders and the guide. It saw none of the code. Each finding was then re-measured on the meshes before anything changed.
 
-**Result:** nothing stops the build or the keyboard working. The reviewer traced every net on both halves through the real channels to the well, and every part drops in along the guide's path with no intersection. The matrix, diode direction, pin table, route table and firmware section all agree. One thin wall was a real defect and is fixed. Three items need your decision, and they're listed first.
+**Result:** nothing stops the build or the keyboard working. The reviewer traced every net on both halves through the real channels to the well, and every part drops in along the guide's path with no intersection. The matrix, diode direction, pin table, route table and firmware section all agree. One thin wall was a real defect and is fixed. Your decisions on the open items are listed first.
 
 Nothing here has been printed, so all of this is from the model.
 
-## For you to decide
+## Decided
 
 ### 1. Should the switch and reset pockets get 0.2 mm of clearance?
 
@@ -14,7 +14,7 @@ Both pockets have 0.1 mm a side (`power_switch_clearance_mm`, `reset_button_clea
 
 The one-key test print doesn't cover these pockets.
 
-Recommendation: 0.2 mm for both. A trial with both set to 0.2 passed every check on both halves. To apply it, change the two parameters in `params.py`.
+Decision: 0.2 mm for both, now applied. Every check passes on both halves. The guide's sizes don't change.
 
 ### 2. Do the thin slivers in the body need fixing?
 
@@ -27,13 +27,13 @@ After the collar fix below, an exact ray-cast still finds about 160 mm² of para
 
 None of them carries load, and each tip is attached to solid material along its base. If a slicer drops one, a channel opens a little further into a hole or pocket, which is harmless. The risk is a loose wisp of plastic left in a shaft.
 
-Recommendation: accept them and clear any loose wisps with the support. I didn't classify every small patch, so a few may be neither kind.
+Decision: accept them and clear any loose wisps with the support. I didn't classify every small patch, so a few may be neither kind.
 
 ### 3. Is a flush reset plunger pressable with a fingertip?
 
 The plunger's tip is flush with the wall's face at the bottom of a chamfered hole about 5 mm across, and the guide says to press it with a fingertip. The reviewer doubts that. The shape can't answer it, and with a firm button as the parts list asks for, a fingertip may not reach. A pen or fingernail does.
 
-Recommendation: find out on the first print, then either keep the sentence or say "a pen". The other option is to let the plunger stand a little proud, which risks a knock resetting the board.
+Decision: find out on the first print, then either keep the sentence or say "a pen". The other option is to let the plunger stand a little proud, which risks a knock resetting the board.
 
 ## Changed in the chassis
 

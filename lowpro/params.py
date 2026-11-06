@@ -265,7 +265,7 @@ power_switch = True
 power_switch_mm = (8.0, 2.8, 1.4)
 power_switch_knob_mm = (1.0, 3.0, 1.6)  # width, travel + width, how far it stands out
 power_switch_pins_mm = (4.5, 2.0)       # the notch behind it, into the well: wide, deep
-power_switch_clearance_mm = 0.1
+power_switch_clearance_mm = 0.2
 # Reset button: the board has none, so the main build's PROVISIONAL SMD tactile
 # switch (docs/pro-micro.md) is wired to RST and GND. It stands on edge north of
 # the power switch, its plunger out through the inner side wall, on the seam
@@ -275,7 +275,7 @@ reset_plunger_mm = (3.25, 1.0)      # diameter, how far it stands out of the bod
 reset_leg_mm = (8.7, 4.4, 0.8, 0.3) # span, pitch, width, thick
 reset_stop_mm = (4.5, 4.0)          # the stop behind it, with the wires either side: wide, deep to the well
 reset_chamfer_mm = 0.8              # the hole's chamfer at the wall's face
-reset_button_clearance_mm = 0.1
+reset_button_clearance_mm = 0.2
 reset_button_gap_mm = 3             # from the power switch's north end
 
 # ---------------------------------------------------------------- modelling
