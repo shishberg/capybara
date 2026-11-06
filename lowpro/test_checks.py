@@ -130,6 +130,29 @@ class Openings(unittest.TestCase):
         self.assertEqual(int(across.sum()), 0)
 
 
+class Lands(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        L.reset()
+
+    def test_each_land_is_flat_on_its_plate_and_meets_the_top_past_its_taper(self):
+        for k in C.keys():
+            flat, past = C.land_half(), C.land_half() + P.switch_taper_mm
+            on = C.land_loop(k, flat)
+            self.assertLess(np.abs(C.top_height(on) - C.plate_at(k, *on.T)[0]).max(), 1e-9)
+            beyond = C.land_loop(k, past + 0.01)
+            self.assertLess(np.abs(C.top_height(beyond) - C.top_surface(beyond)).max(), 1e-9)
+
+    def test_a_room_reaching_the_top_past_a_land_is_caught(self):
+        self.assertEqual(C.thin_tops(), [])
+        k = C.keys()[0]
+        p = C.land_loop(k, C.land_half() + 0.8)[0]
+        z = float(C.top_height(p[None])[0])
+        room = R.box((0.4, 0.4, 2), (p[0], p[1], z - 1))
+        with mock.patch.object(C, "body_cuts", lambda: [("a plug", [room])]):
+            self.assertEqual([w for w, _ in C.thin_tops()], ["a plug"])
+
+
 class Seam(unittest.TestCase):
     def setUp(self):
         self.addCleanup(L.reset)

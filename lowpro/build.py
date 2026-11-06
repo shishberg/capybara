@@ -150,6 +150,12 @@ def check():
         ok = False
     else:
         print("walls between rooms clear")
+    bare = C.thin_tops()
+    if bare:
+        print(f"under {C.P.min_wall_mm} mm of top: " + ", ".join(f"{w} ({v:.2f} mm^3)" for w, v in bare))
+        ok = False
+    else:
+        print("every room stays under the top")
     lost = C.unwired()
     if lost:
         print("no path to the controller from: " + ", ".join(lost))

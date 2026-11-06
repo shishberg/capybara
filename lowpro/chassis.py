@@ -57,22 +57,29 @@ def add(solid, tools):
 # every cell, the nearby cells' planes blended by distance (inverse cube), each
 # taken at its cell's nearest point, so no plane is extrapolated. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
-# heights abut it ramps between them over twice that rather than stepping; the
-# cells' planes are put back exactly afterwards (plane_groups), which turns the
-# ramp into a step at the higher cell's edge. The top surface is a quadratic
-# spline through this field sampled every surface_step_mm (top_fit): taking
-# each plane at its cell's nearest point creases the field along the lines
-# that carry the cells' edges out, and the spline smooths those over a step.
+# heights abut it ramps between them over twice that rather than stepping. The
+# top surface is a quadratic spline through this field sampled every
+# surface_step_mm (top_fit): taking each plane at its cell's nearest point
+# creases the field along the lines that carry the cells' edges out, and the
+# spline smooths those over a step. Each key's land is then laid into it
+# (top_height): the plate's plane for switch_land_mm round the switch's hole,
+# tapering over switch_taper_mm to the spline.
+def plate_at(k, x, y):
+    """Key k's plate plane over the world points (x, y): its height there, and
+    the points' x and y in the key's frame."""
+    inv = rinv(k.frame)
+    o, n = origin(k.frame), k.frame[:3, 2]
+    pz = o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2]
+    return (pz, inv[0, 0] * x + inv[0, 1] * y + inv[0, 2] * pz + inv[0, 3],
+            inv[1, 0] * x + inv[1, 1] * y + inv[1, 2] * pz + inv[1, 3])
+
+
 def field(x, y):
     """The key field's height over the world points (x, y) (arrays)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
     D, Z = [], []
     for k in keys():
-        inv = rinv(k.frame)
-        o, n = origin(k.frame), k.frame[:3, 2]
-        pz = o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2]
-        lx = inv[0, 0] * x + inv[0, 1] * y + inv[0, 2] * pz + inv[0, 3]
-        ly = inv[1, 0] * x + inv[1, 1] * y + inv[1, 2] * pz + inv[1, 3]
+        _, lx, ly = plate_at(k, x, y)
         sx, sy = k.cell[0] / 2, k.cell[1] / 2
         cx, cy = np.clip(lx, -sx, sx), np.clip(ly, -sy, sy)
         b = P.surface_blend_mm
@@ -344,14 +351,22 @@ def top_contact_2d():
 
 
 # ---------------------------------------------------------------- the blanks
-def plan_mesh(boundary, fill=True):
+def plan_mesh(boundary, fill=True, rings=()):
     """A triangulation of a counterclockwise plan polygon (N x 2) whose sides it
-    keeps whole, with points inside about mesh_mm apart (fill) or none. Returns
-    the vertices, the polygon's first, and the triangles, counterclockwise."""
+    keeps whole, with points inside about mesh_mm apart (fill) or none. Each of
+    `rings` inside it, a pair of closed loops of as many points, has edges along
+    both and from each point of one to the same point of the other. Returns the
+    vertices, the polygon's first, and the triangles, counterclockwise."""
     n = len(boundary)
-    sides = np.c_[np.arange(n), (np.arange(n) + 1) % n]
+    around = lambda i: np.c_[i, np.roll(i, -1)]
+    sides, start = [around(np.arange(n))], n
+    for inner, outer in rings:
+        i = start + np.arange(len(inner))
+        o = i + len(inner)
+        sides += [around(i), around(o), np.c_[i, o]]
+        start = o[-1] + 1
     opts = "pYQ" + (f"q25a{0.5 * P.mesh_mm ** 2:.6f}" if fill else "")
-    out = triangle.triangulate({"vertices": boundary, "segments": sides}, opts)
+    out = triangle.triangulate({"vertices": np.vstack((boundary, *(c for r in rings for c in r))), "segments": np.vstack(sides)}, opts)
     v, t = out["vertices"], out["triangles"]
     if len(v) < n or not np.array_equal(v[:n], boundary):
         raise RuntimeError("the plan's triangulation lost the outline's points")
@@ -376,8 +391,8 @@ def solid_from(vertices, triangles, what):
     return solid
 
 
-# The body's blank is one closed mesh, and its outer wall is built here and
-# nothing cuts it afterwards except what is meant to go through the wall (the USB
+# The body before anything is cut from it is one closed mesh, and its outer wall is
+# built here and nothing cuts it afterwards except what is meant to go through the wall (the USB
 # opening, the power switch's knob): one vertical quad per outline segment, its
 # corners on the stations, so it is exactly vertical. Its underside is one
 # triangulation of the outline (plan), on the seam.
@@ -388,83 +403,70 @@ def plan():
     return plan_mesh(outline())
 
 
-def body_blank():
-    """The body's blank: its vertices the underside's, on the seam (the outline's
-    stations first), the round's sections (the first of each on the outline,
-    level with the ball's centre: the wall's top), then the top's inside the round."""
+def land_half():
+    """Half the side of a key's flat land, in the key's frame."""
+    return P.switch_cutout_mm / 2 + P.switch_land_mm
+
+
+def land_loop(k, half):
+    """The square `half` from key k's centre on its plate, in plan, counterclockwise,
+    as many points whatever its size, about mesh_mm apart on the taper's outer edge."""
+    s = np.linspace(-half, half, math.ceil(2 * (land_half() + P.switch_taper_mm) / P.mesh_mm), endpoint=False)
+    h = np.full_like(s, half)
+    sq = np.r_[np.c_[s, -h], np.c_[h, s], np.c_[-s, h], np.c_[-h, -s]]
+    return sq @ k.frame[:2, :2].T + k.frame[:2, 3]
+
+
+def top_height(xy):
+    """The finished top's height over the plan points xy (N x 2): the top surface,
+    with each key's land laid into it."""
+    z = top_surface(xy)
+    x, y = xy[:, 0], xy[:, 1]
+    for k in keys():
+        plate, lx, ly = plate_at(k, x, y)
+        t = (np.maximum(np.abs(lx), np.abs(ly)) - land_half()) / P.switch_taper_mm
+        z = np.where(t < 1, plate + (z - plate) * np.clip(t, 0, 1), z)
+    return z
+
+
+@cached
+def body_shell():
+    """The body before anything is cut from it: its vertices the underside's, on the
+    seam (the outline's stations first), the round's sections (the first of each on
+    the outline, level with the ball's centre: the wall's top), then the top's
+    inside the round, with edges round each land's taper and across it."""
     t = time.time()
+    rings = [(land_loop(k, land_half()), land_loop(k, land_half() + P.switch_taper_mm)) for k in keys()]
+    reach = fused([polygon(outer) for _, outer in rings]) - top_contact_2d()
+    if reach.area() > 1e-6:
+        x0, y0, _, _ = reach.bounds()
+        raise ValueError(f"a key's land reaches the top edge's round near ({x0:.1f}, {y0:.1f})")
     q = outline()
     n = len(q)
     rows = round_sections()
     m = rows.shape[1]
     vu, tu = plan()
     u = len(vu)
-    vi, ti = plan_mesh(rows[:, -1, :2])
+    vi, ti = plan_mesh(rows[:, -1, :2], rings=rings)
     station = np.arange(n)
     ring = [u + station * m + j for j in range(m)]
     top = np.where(ti < n, u + ti * m + m - 1, u + n * m + ti - n)
     vertices = np.r_[np.c_[vu, seam_z(vu[:, 0], vu[:, 1])], rows.reshape(-1, 3),
-                     np.c_[vi[n:], top_surface(vi[n:])]]
+                     np.c_[vi[n:], top_height(vi[n:])]]
     triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
-    blank = solid_from(vertices, np.concatenate(triangles), "body's blank")
-    stage("the body's blank", t)
-    return blank
+    shell = solid_from(vertices, np.concatenate(triangles), "body's shell")
+    stage("the body's shell", t)
+    return shell
 
 
-# Every cell's plane is put back exactly, cell_step_mm past its edge: over the
-# cell, whatever the body's blank has above the plane is cut away and a block
-# under it added, down to the seam. Where two cells overlap, so the top steps at
-# the higher cell's edge, with nothing left standing in the gap. Inside a cell
-# the blank's surface lies on the plane to within rounding, and a boolean between
-# faces that nearly coincide leaves slivers, so the cuts start put_back_mm inside
-# the block, and they are ring_mm narrower than the blocks so that no face of a
-# cut lies on a face of a block: the blocks meet the blank in volumes, and where
-# the blank stands higher than the plane at the cell's edge the step comes ring_mm
-# inside it. Keys whose plates share a plane share one block.
+# A cut that meets a face it should pass through starts this far inside it, as
+# faces that nearly coincide leave slivers.
 put_back_mm = 0.1
-ring_mm = 0.01
-
-
-def plane_groups():
-    """The keys grouped by their plates' planes."""
-    groups = []
-    for k in keys():
-        for g in groups:
-            m = g[0].frame
-            if np.abs(k.frame[:3, 2] - m[:3, 2]).max() < 1e-9 and abs(m[:3, 2] @ (origin(k.frame) - origin(m))) < 1e-9:
-                g.append(k)
-                break
-        else:
-            groups.append([k])
-    return groups
-
-
-def column(group, grow):
-    """The group's cells, `grow` past their edges, as a vertical column from z = -2 up."""
-    return fused([cell_face(k, grow) for k in group]).extrude(203).translate((0, 0, -2))
 
 
 def half_space(m, z, below=True, size=200):
     """Everything in frame m below (or above) its plane z, within `size`."""
     return placed(m, Manifold.cube((size, size, size)).translate((-size / 2, -size / 2, z - size if below else z)))
-
-
-@cached
-def body_shell():
-    """The body before anything is cut from it: its blank, every cell's plane put back."""
-    t = time.time()
-    reach = fused([cell_face(k, P.cell_step_mm) for k in keys()]) - top_contact_2d()
-    if reach.area() > 1e-6:
-        x0, y0, _, _ = reach.bounds()
-        raise ValueError(f"a cell's plane reaches the top edge's round near ({x0:.1f}, {y0:.1f}): "
-                         "top_round_mm is too large for wall_mm")
-    cut, block = P.cell_step_mm - ring_mm, P.cell_step_mm
-    above = half_space(L.seam_frame(), 0, below=False, size=600)
-    caps = [column(g, cut) ^ half_space(g[0].frame, -put_back_mm, below=False) for g in plane_groups()]
-    blocks = [column(g, block) ^ half_space(g[0].frame, 0) ^ above for g in plane_groups()]
-    shell = add(subtract(body_blank(), caps), blocks)
-    stage("the body's shell", t)
-    return shell
 
 
 @cached
@@ -1361,9 +1363,19 @@ def thin_walls():
         along = [a + (b - a) * t for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))]
         name = f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})"
         side = min(outline_distance(p) for p in along) - w / 2
-        roof = min(float(top_surface(np.array(circle_points(p, w / 2))).min()) - p[2] for p in along)
+        roof = min(float(top_height(np.array(circle_points(p, w / 2))).min()) - p[2] for p in along)
         out += [(name, wall, d) for wall, d in (("the outside", side), ("the top", roof)) if d < P.min_wall_mm - 1e-6]
     return out
+
+
+def thin_tops():
+    """What is cut from the body to within min_wall_mm of the top outside the keys'
+    lands, as (what, volume mm^3): the lands stand on their plates, but past them
+    the top falls away from what's under it."""
+    shell = body_shell()
+    lands = union([polygon(land_loop(k, land_half())).extrude(200) for k in keys()])
+    skin = shell - shell.translate((0, 0, -P.min_wall_mm)) - lands
+    return [(what, v) for what, group in body_cuts() for v in [sum((skin ^ s).volume() for s in group)] if v > 1e-6]
 
 
 def gap(a, b):

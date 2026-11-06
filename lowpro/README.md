@@ -89,7 +89,9 @@ under it, flat on the desk. The seam between them is one plane under every key's
 room, so the body prints flat on it with its top surface up, and the plinth takes
 up the height to the desk. `seam_tent_deg` sets its tilt: a flatter seam lets the
 thumb row lean further for the same case height, and gives a thicker body, deeper
-shafts and a longer print. Each socket goes up a shaft from below, and a boss on the
+shafts and a longer print. The top is one smooth surface, with a flat land round
+each switch's hole for its lip to sit on, `switch_land_mm` wide, tapering over
+`switch_taper_mm` into the surface. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
 button and power switch lie in a well beside the inner column. The well's walls and

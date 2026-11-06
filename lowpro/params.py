@@ -78,6 +78,8 @@ thumb_extra_lower_mm = 0
 # the housing below the plate.
 switch_cutout_mm = 14
 switch_cutout_clearance_mm = 0.15
+switch_land_mm = 1                # the plate's flat past the cutout, for the switch's 0.8 mm lip to sit on
+switch_taper_mm = 1               # past that, the taper to the top surface
 plate_mm = 1.5
 switch_rim_mm = 15.6              # the housing flange over the plate, square
 switch_below_plate_mm = 5         # lower housing, from the plate top to its bottom
@@ -285,8 +287,6 @@ reset_button_gap_mm = 3             # from the power switch's north end
 # far inside each cell's edge (chassis.py field).
 surface_step_mm = 2
 surface_blend_mm = 3
-# Each cell's plane is put back exactly this far past its edge (chassis.py plane_groups).
-cell_step_mm = 0.6
 # The meshes: the top surface, the underside and the plinth's top are
 # triangles about this big, with the outline's stations no further apart;
 # every curve (the outline's arcs, the top edge's round, the cylinders) is
