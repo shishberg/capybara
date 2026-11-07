@@ -1421,6 +1421,17 @@ def screw_walls():
     return least, hits
 
 
+def screw_length_faults():
+    reach = P.screw_len_mm - P.screw_grip_mm - P.plate_gap_mm
+    faults = []
+    if reach <= 0:
+        faults.append(f"the screws stop {-reach:.1f} mm short of the inserts")
+    if reach > P.insert_len_mm:
+        faults.append(f"the screws run {reach - P.insert_len_mm:.1f} mm past the inserts")
+    if P.insert_len_mm > P.insert_depth_mm:
+        faults.append(f"the inserts stand {P.insert_len_mm - P.insert_depth_mm:.1f} mm out of their holes")
+    return faults
+
 def report():
     """The board's heights and sizes, as text."""
     ks = keys()

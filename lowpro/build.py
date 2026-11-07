@@ -144,6 +144,12 @@ def check():
         ok = False
     else:
         print("screw holes clear")
+    faults = C.screw_length_faults()
+    if faults:
+        print(f"M2 x {C.P.screw_len_mm} screws don't fit: " + ", ".join(faults))
+        ok = False
+    else:
+        print(f"M2 x {C.P.screw_len_mm} screws fit every insert")
     thin = C.thin_walls()
     if thin:
         print(f"walls under {C.P.min_wall_mm} mm: " + ", ".join(f"{a} to {b} ({d:.2f} mm)" for a, b, d in thin))

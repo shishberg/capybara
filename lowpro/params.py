@@ -210,16 +210,17 @@ skirt_cove_mm = 2
 # Bosses on the bottom plate hold each socket up against its pocket's ceiling.
 boss_clearance_mm = 0.15
 boss_inset_mm = 0.6         # the boss is this much smaller than the socket body all round
-# M2 socket-head screws from below into heat-set inserts (M2 x 3) in the body,
-# inside the key field: insert hole and depth (the depth leaves the PCB layer
-# over the hole), the screw's clearance hole through the plate, the head's
-# diameter, height and the clearance round it (its counterbore), and how much
-# plate every screw grips under the body (the counterbore goes up to it, so one
-# screw length fits everywhere: screw_grip_mm and the seam's gap and most of the
-# insert's 3 mm, M2 x 4). The screws are what locate the plinth under the body.
-# Where they stand: screw_points() in layout.py.
+# M2 socket-head screws from below into M2 heat-set inserts in the body, inside
+# the key field: the insert's length, its hole and the hole's depth (the depth
+# leaves the PCB layer over the hole), the screw's length and its clearance hole
+# through the plate, the head's diameter, height and the clearance round it (its
+# counterbore), and how much plate every screw grips under the body (the
+# counterbore goes up to it, so one screw length fits everywhere). The screws are
+# what locate the plinth under the body. Where they stand: screw_points() in layout.py.
+insert_len_mm = 3
 insert_d = 3.2
 insert_depth_mm = 3.5
+screw_len_mm = 4
 screw_d = 2.4
 screw_head_d = 3.8
 screw_head_h_mm = 1.2

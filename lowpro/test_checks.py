@@ -245,5 +245,21 @@ class Seam(unittest.TestCase):
         self.assertLess((C.plinth_shell() ^ below).volume(), 1e-6)
 
 
+class Screws(unittest.TestCase):
+    def test_the_screws_fit_the_inserts(self):
+        self.assertEqual(C.screw_length_faults(), [])
+
+    def test_a_screw_past_the_insert_is_caught(self):
+        with mock.patch.object(P, "screw_len_mm", 6):
+            self.assertTrue(C.screw_length_faults())
+
+    def test_a_screw_short_of_the_insert_is_caught(self):
+        with mock.patch.object(P, "screw_len_mm", P.screw_grip_mm):
+            self.assertTrue(C.screw_length_faults())
+
+    def test_an_insert_longer_than_its_hole_is_caught(self):
+        with mock.patch.object(P, "insert_len_mm", P.insert_depth_mm + 1):
+            self.assertTrue(C.screw_length_faults())
+
 if __name__ == "__main__":
     unittest.main()
