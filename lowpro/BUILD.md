@@ -49,13 +49,12 @@ For each half, so double it for the pair:
 | MSK-12C02 slide switch | 1 | |
 | 6.5 × 6.5 mm SMD tactile switch, 2 mm body | 1 | Pick a firm one, so that a knock doesn't reset the board. |
 | M2 × 3 heat-set insert | 7 | For a 3.2 mm hole |
-| M2 × 5 socket-head screw | 7 | |
+| M2 × 4 screw | 7 | Its head no more than 1.2 mm tall |
 | Double-sided foam tape, about 1 mm thick | a little | Holds the battery in its bay and pads the strip over the board. |
 | Insulated stranded hookup wire | about 3 m | About 1.0 mm over the insulation: 28 to 30 AWG with thin insulation, PTFE if you can get it, since it stands up to the iron beside it. The current is a few milliamps. The channels pass 1.6 mm at the very most, with a struggle at every terminal. |
 
 You also need a soldering iron with a fine tip, flush cutters, wire strippers,
-tweezers, a multimeter and a long-armed 1.5 mm hex key: the deepest screw is 10.5 mm up
-its hole.
+tweezers, a multimeter and a driver for the screws: the deepest is 4 mm up its hole.
 
 ## Measure first
 
@@ -70,6 +69,7 @@ parameter in `lowpro/params.py` before printing:
 | Reset switch | Body, plunger and legs | `reset_button_mm`, `reset_plunger_mm`, `reset_leg_mm` |
 | Keycaps | Base, top and height of each row | `cap_base_mm`, `cap_top_mm`, `cap_height_mm` |
 | Sockets | The terminals, which vary between batches | `socket_tab_mm` |
+| Screws | Head's height and diameter | `screw_head_h_mm`, `screw_head_d` |
 
 Check the controller's pads too, with a meter and against its own silkscreen, before
 wiring it. The pin names below are the board's, and clones of it differ: confirm
@@ -141,7 +141,8 @@ across the top of the board's south end to reach them.
 ### At a finger key
 
 The socket lies in the north half of the key, with a terminal sticking out at each
-end. Each terminal has a solder well round it, open to the underside.
+end. Each terminal has a solder well round it, open to the underside. Keep solder off
+the terminal's underside: at `pinky_0` the tip is 0.3 mm over the plinth.
 
 - The **diode** lies across the key in its own pocket south of the centre post.
 - Its band end's leg goes out to the inner side, to the column wire.
@@ -182,9 +183,9 @@ So nine wires reach the well: RH, RB and RX through the wider exit, C4 through t
 narrower one, and RT, C0, C1, C2 and C3 down the back trunk's neck.
 
 Channels are grooves in the body's underside, at least 2.2 mm wide and about 3 to
-15 mm deep, deepest where the keys stand highest over the seam, and they go on 1 mm
-into the plinth's top. Trunks are 3.5 mm wide, up to 18 mm deep in the body, and go on
-into the plinth as far as it allows, up to 5.5 mm. So you lay the wires in the
+16 mm deep, deepest where the keys stand highest over the seam, and they go on 1 mm
+into the plinth's top. Trunks are 3.5 mm wide, up to 17 mm deep in the body, and go on
+into the plinth as far as it allows, up to 3 mm. So you lay the wires in the
 body with it upside down, and they can cross and lie side by side. Rows cross
 columns, so every wire has to stay insulated except at a joint.
 

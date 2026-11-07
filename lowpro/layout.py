@@ -28,6 +28,7 @@ from pathlib import Path
 import numpy as np
 
 from . import params as P
+from . import parts as R
 from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
@@ -235,8 +236,8 @@ def tent_frame():
 
 
 def body_depth():
-    """How far below a key's plate top the body's underside must reach along the
-    key's normal: the socket's bottom and the room under it."""
+    """How far a key's cuts reach below its plate top along its normal, near
+    enough: the socket's bottom and the room under it."""
     return P.switch_below_plate_mm + P.pcb_layer_mm + P.socket_body_mm[2] + P.under_socket_mm
 
 
@@ -246,11 +247,14 @@ def seam_turn():
 
 
 def seam_in_layout():
-    """The seam's height along its normal: under the room every key needs
-    (body_depth) at all four corners of its cell."""
+    """The seam's height along its normal: under what hangs from every key. Both
+    halves have the same seam, so it clears a socket either way round."""
     m = rinv(seam_turn())
-    return min(xform(m @ k.frame, [sx * k.cell[0] / 2, sy * k.cell[1] / 2, -body_depth()])[2]
-               for k in layout_keys() for sx in (-1, 1) for sy in (-1, 1))
+
+    def lowest(k, points):
+        return min(xform(m @ k.frame, p)[2] for p in points)
+    return min(min(lowest(k, R.socket_underside()) - P.under_socket_mm, lowest(k, R.diode_ends()) - P.under_diode_mm)
+               for k in layout_keys())
 
 
 def lowest_seam_in(T):

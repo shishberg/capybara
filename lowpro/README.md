@@ -86,11 +86,12 @@ wiring and how it should behave when running.
 ## The chassis
 
 The chassis is two printed parts: the body, which holds the keys, and the plinth
-under it, flat on the desk. The seam between them is one plane under every key's
-room, so the body prints flat on it with its top surface up, and the plinth takes
-up the height to the desk. `seam_tent_deg` sets its tilt: a flatter seam lets the
-thumb row lean further for the same case height, and gives a thicker body, deeper
-shafts and a longer print. The top is one smooth surface, with a flat land round
+under it, flat on the desk. The seam between them is one plane under every socket
+and diode, so the body prints flat on it with its top surface up, and the plinth takes
+up the height to the desk. `seam_tent_deg` sets its tilt: 1.6° gives the lowest case,
+with the pinky-home socket and thumb-far diode holding the seam down and the screws at
+the pinky end holding it up. A flatter seam gives a thicker body, deeper shafts and a
+longer print. The top is one smooth surface, with a flat land round
 each switch's hole for its lip to sit on, `switch_land_mm` wide, tapering over
 `switch_taper_mm` into the surface. Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those

@@ -214,6 +214,30 @@ class Seam(unittest.TestCase):
             self.assertGreater(z.min(), -1e-6)
             self.assertGreater((z < 1e-6).sum(), len(C.outline()) / 2)
 
+    def test_the_seam_clears_what_hangs_from_the_keys_by_no_more_than_it_must(self):
+        """It sits under_socket_mm under the lowest socket or terminal and under_diode_mm
+        under the lowest diode, whichever comes first, and one of them is that close."""
+        slack = []
+        for half in ("right", "left"):
+            P.half = half
+            L.reset()
+            m = C.rinv(L.seam_frame())
+
+            def over_seam(pieces):
+                v = np.vstack([p.solid.to_mesh64().vert_properties[:, :3] for p in pieces])
+                return ((m[:3, :3] @ v.T).T[:, 2] + m[2, 3]).min()
+            slack += [over_seam(C.sockets()) - P.under_socket_mm, over_seam(C.diodes()) - P.under_diode_mm]
+        self.assertGreater(min(slack), -0.01)
+        self.assertLess(min(slack), 0.01)
+
+    def test_both_halves_stand_at_one_height(self):
+        tops = []
+        for half in ("right", "left"):
+            P.half = half
+            L.reset()
+            tops.append(max(L.cap_top(k)[2] for k in C.keys()))
+        self.assertAlmostEqual(*tops)
+
     def test_the_plinth_stops_under_the_seam_but_for_what_stands_on_it(self):
         """Without the bosses and the board's rest, the plinth's top is plate_gap_mm under the plane,
         so it meets the body flat."""

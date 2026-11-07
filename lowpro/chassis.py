@@ -606,11 +606,6 @@ def lane_x():
     return socket_end_x() - P.socket_tab_mm[0] - P.wire_gap_mm - P.wire_d_mm / 2
 
 
-def diode_y():
-    """A diode's line across its key, south of the centre post's hole."""
-    return -P.switch_centre_post_d / 2 - P.post_clearance_mm - P.min_wall_mm - P.diode_room_mm - P.diode_mm[1] / 2
-
-
 def leg_x():
     """How far off the key's middle a diode's leg runs north to its terminal, past the side post's hole."""
     return P.switch_side_post_x + P.switch_side_post_d / 2 + P.post_clearance_mm + P.diode_room_mm + P.diode_leg_slot_mm / 2
@@ -676,7 +671,7 @@ def trunk_y(side):
     the trunk, which stands square to the desk, leans in under the pocket."""
     if side > 0:
         return shaft_edge_y() + P.trunk_w_mm / 2
-    return diode_y() - P.diode_mm[1] / 2 - P.diode_room_mm - P.front_trunk_wall_mm - P.trunk_w_mm / 2
+    return R.diode_y() - P.diode_mm[1] / 2 - P.diode_room_mm - P.front_trunk_wall_mm - P.trunk_w_mm / 2
 
 
 def at(k, p):
@@ -727,7 +722,7 @@ def column_line(c):
     joins it higher up, so it starts level with its bottom key's diode), past its
     keys' -x tabs, back trunk point."""
     bottom = finger_key(c, -P.rows_below)
-    start = [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), diode_y()))]
+    start = [front_pt(bottom)] if c < 4 else [at(bottom, (col_x(), R.diode_y()))]
     return (start + [c_tab(finger_key(c, r)) for r in range(-P.rows_below, P.rows_above + 1)]
             + [back_pt(finger_key(c, P.rows_above))])
 
@@ -784,7 +779,7 @@ def well_exits():
     rows' wires, whose runs end there, and one from the top key's diode joint,
     where the column's wire ends, for that wire alone."""
     tab = c_tab(finger_key(0, 0))
-    joint = at(finger_key(0, P.rows_above), (col_x(), diode_y()))
+    joint = at(finger_key(0, P.rows_above), (col_x(), R.diode_y()))
     return [(P.trunk_w_mm, [tab, well_point(tab[1])]), (P.channel_w_mm, [joint, well_point(joint[1])])]
 
 
@@ -818,7 +813,7 @@ def thumb(name):
 
 def thumb_joint(k):
     """Where a thumb key's column wire meets its diode's +x leg."""
-    return at(k, (thumb_col_x(), diode_y()))
+    return at(k, (thumb_col_x(), R.diode_y()))
 
 
 def thumb_corner(k):
@@ -925,14 +920,10 @@ def channel_sinks():
             for trunk, d in ((False, P.channel_sink_mm), (True, P.trunk_sink_mm))]
 
 
-def diode_z():
-    return R.socket_top_z() - P.diode_mm[1] / 2 - P.diode_room_mm
-
-
 def diode_frame(k):
     """The diode's frame, across the key in its own pocket south of the centre
     post, its band toward the column wire."""
-    return k.frame @ trans([0, diode_y(), diode_z()]) @ rot_z(90 if k.group == "finger" else -90)
+    return k.frame @ trans([0, R.diode_y(), R.diode_z()]) @ rot_z(90 if k.group == "finger" else -90)
 
 
 def leg_slots(k):
@@ -940,7 +931,7 @@ def leg_slots(k):
     out to the column wire, the other's out past the side post's hole and north
     into its terminal's solder well. A finger key's terminal is the +x tab and
     its column wire on the -x side; a thumb key's are the other way round."""
-    s, x0, y, z = P.diode_leg_slot_mm, P.diode_mm[0] / 2, diode_y(), diode_z()
+    s, x0, y, z = P.diode_leg_slot_mm, P.diode_mm[0] / 2, R.diode_y(), R.diode_z()
     side, wire = (1, shaft_edge_x()) if k.group == "finger" else (-1, thumb_col_x())
     tab = R.socket_tab_tip(side)[1]
     well = tab - P.solder_well_mm[1] / 2 + s
@@ -958,7 +949,7 @@ def diode_room(k):
     post holes."""
     d, r = P.diode_mm, P.diode_room_mm
     size = (d[0] + 2 * r, d[1] + 2 * r, d[1] + 2 * r)
-    return [normal_swept(k.frame, *b) for b in [(size, (0, diode_y(), diode_z())), *leg_slots(k)]]
+    return [normal_swept(k.frame, *b) for b in [(size, (0, R.diode_y(), R.diode_z())), *leg_slots(k)]]
 
 
 def swept(m, size, centre, depth=60):
@@ -1156,9 +1147,9 @@ def part_overlap():
 
 def part_clashes():
     """The bought parts that meet the body or the plinth, as (part, which, overlap
-    mm^3): the switches, sockets and electronics in place and the caps at the
+    mm^3): the switches, sockets, diodes and electronics in place and the caps at the
     bottom of their travel."""
-    groups = [switches(), sockets(), electronics(), keycaps(P.cap_travel_mm)]
+    groups = [switches(), sockets(), diodes(), electronics(), keycaps(P.cap_travel_mm)]
     out = []
     for solid, which in ((body(), "the body"), (bottom_plate(), "the plinth")):
         for group in groups:
@@ -1206,7 +1197,7 @@ def wire_ends():
     d = P.wire_d_mm
     ends = []
     for k in keys():
-        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
+        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), R.diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
         ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
     m, b = L.mcu_bay(), L.battery_bay()
     ends.append(("the battery's leads", xform(bay_frame(), [(b[0][0] + b[1][0]) / 2, b[1][1] - d, d])))
@@ -1232,7 +1223,7 @@ def crowded_keys():
     solid = union([body(), bottom_plate()])
     (size, centre), _ = R.socket_tab_boxes()
     tab = R.box((size[0], size[1], 40), (centre[0], centre[1], -20))
-    y0 = diode_y()
+    y0 = R.diode_y()
     s = R.box((12, ne_y() - y0, 12), (-8, (y0 + ne_y()) / 2, -9.5))
     x0 = lane_x() - 2 * P.wire_d_mm
     window = CrossSection.square((socket_end_x() - x0, 12)).translate((x0, -15.5))
@@ -1255,7 +1246,7 @@ def cramped_diodes():
     glass and the line of each leg."""
     solid = union([body(), bottom_plate()])
     d, leg = P.diode_mm, P.diode_leg_d_mm
-    glass = ((d[0], d[1], d[1]), (0, diode_y(), diode_z()))
+    glass = ((d[0], d[1], d[1]), (0, R.diode_y(), R.diode_z()))
     out = []
     for k in keys():
         s = solid.transform(np.asarray(rinv(k.frame)[:3, :4], float))

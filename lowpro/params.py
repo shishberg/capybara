@@ -192,13 +192,15 @@ top_round_mm = 1.5
 # The seam between the body and the plinth is one plane, so the body prints flat
 # on it: tilted seam_tent_deg up toward the thumb (tent_deg is parallel to the home
 # plates, and flatter lets the thumb row lean further for the same case height),
-# and under every key's room (the socket's bottom and this much under it, room for
-# the wires and the print's tolerance), with bottom_plate_mm of plinth at its
-# lowest, which the lowest screw's head has to sink into, and plate_gap_mm between
-# the parts.
-seam_tent_deg = 2
-under_socket_mm = 0.6
-bottom_plate_mm = 3.2
+# and under what hangs from every key, in either half: the sockets and their
+# terminals by under_socket_mm, for the print's tolerance and the boss, and the
+# diodes' glass by under_diode_mm. It has bottom_plate_mm of plinth at its lowest,
+# as the screws' heads need where the seam is lowest (screw_grip_mm and
+# screw_head_h_mm), and plate_gap_mm between the parts.
+seam_tent_deg = 1.6
+under_socket_mm = 0.3
+under_diode_mm = 0.1
+bottom_plate_mm = 1.75
 plate_gap_mm = 0.1
 # The plinth's skirt, past the outline in its concave stretches: the radius of
 # the arcs that bridge them, its height over the desk, and the cove where it
@@ -214,17 +216,17 @@ boss_inset_mm = 0.6         # the boss is this much smaller than the socket body
 # over the hole), the screw's clearance hole through the plate, the head's
 # diameter, height and the clearance round it (its counterbore), and how much
 # plate every screw grips under the body (the counterbore goes up to it, so one
-# screw length fits everywhere: screw_grip_mm + the insert's 3 mm, M2 x 5). The
-# build checks the holes against everything else and that each head sinks into
+# screw length fits everywhere: screw_grip_mm and the seam's gap and most of the
+# insert's 3 mm, M2 x 4). The build checks the holes against everything else and that each head sinks into
 # the plinth. The screws are what locate the plinth under the body. Where they
 # stand: screw_points() in layout.py.
 insert_d = 3.2
 insert_depth_mm = 3.5
 screw_d = 2.4
 screw_head_d = 3.8
-screw_head_h_mm = 2
+screw_head_h_mm = 1.2
 screw_head_clearance_mm = 0.4
-screw_grip_mm = 2
+screw_grip_mm = 1.2
 
 # ---------------------------------------------------------------- controller, battery, switch
 # The Tenstar red ProMicro NRF52840, its size PROVISIONAL until measured:

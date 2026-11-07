@@ -191,7 +191,7 @@ def check():
         print("parts meet the case: " + ", ".join(f"{p} and {w} ({v:.2f} mm^3)" for p, w, v in clashes))
         ok = False
     else:
-        print("switches, sockets, electronics and caps at full travel clear the case")
+        print("switches, sockets, diodes, electronics and caps at full travel clear the case")
     blocked = C.blocked_parts()
     if blocked:
         print("parts can't drop into the well: " + ", ".join(f"{p} ({v:.2f} mm^3)" for p, v in blocked))
