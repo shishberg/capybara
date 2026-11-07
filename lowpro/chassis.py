@@ -1146,9 +1146,6 @@ def part_overlap():
 
 
 def part_clashes():
-    """The bought parts that meet the body or the plinth, as (part, which, overlap
-    mm^3): the switches, sockets, diodes and electronics in place and the caps at the
-    bottom of their travel."""
     groups = [switches(), sockets(), diodes(), electronics(), keycaps(P.cap_travel_mm)]
     out = []
     for solid, which in ((body(), "the body"), (bottom_plate(), "the plinth")):

@@ -195,8 +195,7 @@ top_round_mm = 1.5
 # and under what hangs from every key, in either half: the sockets and their
 # terminals by under_socket_mm, for the print's tolerance and the boss, and the
 # diodes' glass by under_diode_mm. It has bottom_plate_mm of plinth at its lowest,
-# as the screws' heads need where the seam is lowest (screw_grip_mm and
-# screw_head_h_mm), and plate_gap_mm between the parts.
+# and plate_gap_mm between the parts.
 seam_tent_deg = 1.6
 under_socket_mm = 0.3
 under_diode_mm = 0.1
@@ -217,9 +216,8 @@ boss_inset_mm = 0.6         # the boss is this much smaller than the socket body
 # diameter, height and the clearance round it (its counterbore), and how much
 # plate every screw grips under the body (the counterbore goes up to it, so one
 # screw length fits everywhere: screw_grip_mm and the seam's gap and most of the
-# insert's 3 mm, M2 x 4). The build checks the holes against everything else and that each head sinks into
-# the plinth. The screws are what locate the plinth under the body. Where they
-# stand: screw_points() in layout.py.
+# insert's 3 mm, M2 x 4). The screws are what locate the plinth under the body.
+# Where they stand: screw_points() in layout.py.
 insert_d = 3.2
 insert_depth_mm = 3.5
 screw_d = 2.4

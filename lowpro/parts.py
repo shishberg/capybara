@@ -165,9 +165,7 @@ def socket_tab_boxes(grow=0):
                    for s, y in ((-1, P.socket_tab_y[0]), (1, P.socket_tab_y[1]))], key=lambda b: b[1][0])
 
 
-def socket_underside():
-    """The corners of the socket's and its terminals' undersides in a key's frame,
-    either way round: the two halves' sockets are mirror images on one seam."""
+def socket_underside_either_hand():
     return [(hand * (c[0] + i * s[0] / 2), c[1] + j * s[1] / 2, socket_bottom_z())
             for s, c in socket_boxes() + socket_tab_boxes() for i in (-1, 1) for j in (-1, 1) for hand in (-1, 1)]
 
@@ -202,7 +200,6 @@ def hotswap_socket_room():
 
 # ---------------------------------------------------------------- diode
 def diode_y():
-    """A diode's line across its key, south of the centre post's hole."""
     return -P.switch_centre_post_d / 2 - P.post_clearance_mm - P.min_wall_mm - P.diode_room_mm - P.diode_mm[1] / 2
 
 
@@ -210,8 +207,7 @@ def diode_z():
     return socket_top_z() - P.diode_mm[1] / 2 - P.diode_room_mm
 
 
-def diode_ends():
-    """The rims of a diode's glass in its key's frame, for how far it hangs."""
+def diode_rim_points():
     n, r = 24, P.diode_mm[1] / 2
     return [(x, diode_y() + r * math.cos(a), diode_z() + r * math.sin(a))
             for x in (-P.diode_mm[0] / 2, P.diode_mm[0] / 2) for a in (2 * math.pi * i / n for i in range(n))]

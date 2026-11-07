@@ -236,9 +236,7 @@ def tent_frame():
 
 
 def body_depth():
-    """How far a key's cuts reach below its plate top along its normal, near
-    enough: the socket's bottom and the room under it."""
-    return P.switch_below_plate_mm + P.pcb_layer_mm + P.socket_body_mm[2] + P.under_socket_mm
+    return P.under_socket_mm - R.socket_bottom_z()
 
 
 def seam_turn():
@@ -247,13 +245,11 @@ def seam_turn():
 
 
 def seam_in_layout():
-    """The seam's height along its normal: under what hangs from every key. Both
-    halves have the same seam, so it clears a socket either way round."""
     m = rinv(seam_turn())
 
     def lowest(k, points):
         return min(xform(m @ k.frame, p)[2] for p in points)
-    return min(min(lowest(k, R.socket_underside()) - P.under_socket_mm, lowest(k, R.diode_ends()) - P.under_diode_mm)
+    return min(min(lowest(k, R.socket_underside_either_hand()) - P.under_socket_mm, lowest(k, R.diode_rim_points()) - P.under_diode_mm)
                for k in layout_keys())
 
 

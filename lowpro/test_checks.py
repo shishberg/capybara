@@ -215,8 +215,6 @@ class Seam(unittest.TestCase):
             self.assertGreater((z < 1e-6).sum(), len(C.outline()) / 2)
 
     def test_the_seam_clears_what_hangs_from_the_keys_by_no_more_than_it_must(self):
-        """It sits under_socket_mm under the lowest socket or terminal and under_diode_mm
-        under the lowest diode, whichever comes first, and one of them is that close."""
         slack = []
         for half in ("right", "left"):
             P.half = half
