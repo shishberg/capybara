@@ -1,7 +1,8 @@
 // The soldering jig: the chassis turned over, its tiles parts side up, each in
 // the place it has under its switch, so the wires come out the lengths they
 // need. Each tile lies on two ledges with posts in its corner notches, and is
-// open underneath. A frame round the outside carries the lot.
+// open underneath. A frame round the outside carries the lot, and stands on a
+// rail at either end so the jig can be turned over.
 import type { Manifold, ManifoldToplevel, Vec2, Vec3 } from 'manifold-3d';
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import {
@@ -42,6 +43,8 @@ export const JIG = {
   close: 8,
   /** From the bed to the lowest point of any tile. */
   drop: 12,
+  /** From the highest point of any tile to the stand, what the jig rests on turned over. */
+  rise: 12,
   /** The frame: the struts' diameter, how far out their feet stand, and the rail's width and
    * height. A chord under `merge` long has no struts. */
   strut: 3,
@@ -318,8 +321,10 @@ function ring(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[]): V3[] {
 }
 
 /** The frame: a chord round the ring, from each edge's ends two struts to a foot out from its
- * middle, and a rail on the bed through the feet. */
-function perimeter(wasm: ManifoldToplevel, nodes: V3[]) {
+ * middle, a rail on the bed through the feet, and from each foot clear of `rooms` a column
+ * to a like rail at `stand`. The columns start from the feet because the chord is too close to the
+ * tiles to rise from. */
+function perimeter(wasm: ManifoldToplevel, nodes: V3[], stand: number, rooms: Manifold) {
   const M = wasm.Manifold,
     r = JIG.strut / 2,
     [width, height] = JIG.rail,
@@ -342,20 +347,34 @@ function perimeter(wasm: ManifoldToplevel, nodes: V3[]) {
         r,
       ];
       feet.push(foot);
-      return [chord, capsule(M, a, foot, r, 12), capsule(M, b, foot, r, 12)];
+      const column = capsule(M, foot, [foot[0], foot[1], stand - r], r, 12);
+      return [
+        chord,
+        capsule(M, a, foot, r, 12),
+        capsule(M, b, foot, r, 12),
+        ...(column.intersect(rooms).isEmpty() ? [column] : []),
+      ];
     }),
     line = new wasm.CrossSection([feet.map((f) => [f[0], f[1]] as Vec2)], 'NonZero'),
     rail = line
       .offset(width / 2, 'Round', 2, 48)
       .subtract(line.offset(-width / 2, 'Round', 2, 48))
       .extrude(height);
-  return M.union([rail, ...members]).trimByPlane([0, 0, 1], 0);
+  return M.union([rail, rail.translate([0, 0, stand - height]), ...members]).trimByPlane(
+    [0, 0, 1],
+    0,
+  );
 }
 
 /** The jig for these tiles. The frame stands outside their rooms, but can dip under a steep tile. */
 export function buildJig(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[]) {
   const M = wasm.Manifold,
-    beside = roomsBeside(cfg, pockets);
+    beside = roomsBeside(cfg, pockets),
+    { half, under: parts } = sizes(cfg),
+    rooms = M.union(pockets.map((p) => room(M, cfg, p))),
+    stand =
+      JIG.rise +
+      Math.max(...pockets.flatMap((p) => rectangle(p.frame, half, half, parts).map((c) => c[2])));
   return M.union(
     pockets.flatMap((p) => [
       bars(M, cfg, p),
@@ -364,8 +383,8 @@ export function buildJig(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[])
       ...webs(M, cfg, p, beside.get(p)!),
     ]),
   )
-    .subtract(M.union(pockets.map((p) => room(M, cfg, p))))
-    .add(perimeter(wasm, ring(wasm, cfg, pockets)))
+    .subtract(rooms)
+    .add(perimeter(wasm, ring(wasm, cfg, pockets), stand, rooms))
     .subtract(M.union(pockets.map((p) => under(M, cfg, p, beside.get(p)!))))
     .add(M.union(pockets.map((p) => posts(M, cfg, p))));
 }
