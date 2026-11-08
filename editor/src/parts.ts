@@ -23,8 +23,9 @@ export interface Part {
   top?: [number, number];
   /** Round holes through a box along its z axis: centres in its x and y. */
   holes?: { at: number[]; diameter: number }[];
-  /** A box's corners (along its z axis) are notched: a round of this radius centred on each is cut out. */
-  notch?: number;
+  /** A box's corners (along its z axis) are notched: a round of radius_mm centred inset_mm in from
+   * both edges is cut out, and the corner outside it. */
+  notch?: { radius_mm: number; inset_mm: number };
 }
 export function hardware(project: Project, nodes = componentFrames(project.config)): Part[] {
   const cfg = project.config;
@@ -54,7 +55,7 @@ export function hardware(project: Project, nodes = componentFrames(project.confi
   for (const [name, m] of Object.entries(nodes))
     if (isKey(name)) {
       add(name, 'pcb', tile.size_mm, [0, 0, tileTop - tile.size_mm[2] / 2], m);
-      parts[parts.length - 1].notch = tile.corner_notch_radius_mm;
+      parts[parts.length - 1].notch = tile.corner_notch_mm;
       for (const c of tile.components)
         add(name + ': ' + c.name, 'components', c.size_mm, tilePartCentre(cfg, c), m);
       add(name, 'switch', sw.body_mm, [0, 0, sw.body_mm[2] / 2 - sw.body_below_plate_mm], m);

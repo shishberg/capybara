@@ -349,16 +349,21 @@ function shapeOfPart(M: Factory, part: Part) {
   let shape = part.cylinder
     ? M.cylinder(part.size[2], part.cylinder, part.cylinder, 64, true).translate(part.center)
     : box(M, part.size, part.center);
-  if (part.notch)
+  if (part.notch) {
+    const { radius_mm: r, inset_mm: i } = part.notch,
+      h = part.size[2] + 2;
     for (const x of [-1, 1])
-      for (const y of [-1, 1])
-        shape = shape.subtract(
-          M.cylinder(part.size[2] + 2, part.notch, part.notch, 32, true).translate([
-            part.center[0] + (x * part.size[0]) / 2,
-            part.center[1] + (y * part.size[1]) / 2,
-            part.center[2],
-          ]),
-        );
+      for (const y of [-1, 1]) {
+        const c: V3 = [
+          part.center[0] + x * (part.size[0] / 2 - i),
+          part.center[1] + y * (part.size[1] / 2 - i),
+          part.center[2],
+        ];
+        shape = shape
+          .subtract(M.cylinder(h, r, r, 32, true).translate(c))
+          .subtract(box(M, [i, i, h], [c[0] + (x * i) / 2, c[1] + (y * i) / 2, c[2]]));
+      }
+  }
   for (const h of part.holes ?? [])
     shape = shape.subtract(
       M.cylinder(part.size[2] + 2, h.diameter / 2, h.diameter / 2, 32, true).translate([

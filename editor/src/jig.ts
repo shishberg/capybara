@@ -63,7 +63,9 @@ export interface Pocket {
 
 const sizes = (cfg: Config) => ({
   half: cfg.tile.size_mm[0] / 2,
-  post: cfg.tile.corner_notch_radius_mm - JIG.fit,
+  post: cfg.tile.corner_notch_mm.radius_mm - JIG.fit,
+  /** A notch's centre, in from the tile's edges. */
+  inset: cfg.tile.corner_notch_mm.inset_mm,
   top: tileTop(cfg),
   under: tileUnderside(cfg),
 });
@@ -152,10 +154,10 @@ function roomsBeside(cfg: Config, pockets: Pocket[]) {
 
 /** A bar's box in its tile's frame, at +y for `sign` 1: its ledge, and on past the tile's edge. */
 function barBox(cfg: Config, sign: number) {
-  const { half, post, top } = sizes(cfg),
+  const { half, top } = sizes(cfg),
     z = [top - JIG.overlap, top + JIG.depth],
     y = [JIG.ledge, half + JIG.bar],
-    x = half + post;
+    x = half + JIG.side;
   return {
     size: [2 * x, y[1] - y[0], z[1] - z[0]] as Vec3,
     centre: [0, (sign * (y[0] + y[1])) / 2, (z[0] + z[1]) / 2] as Vec3,
@@ -261,11 +263,11 @@ function room(M: Factory, cfg: Config, p: Pocket) {
 
 /** The posts in a tile's corner notches, from the bars up to its parts side. */
 function posts(M: Factory, cfg: Config, p: Pocket) {
-  const { half, post, top, under: parts } = sizes(cfg),
+  const { half, inset, post, top, under: parts } = sizes(cfg),
     h = top - parts + JIG.overlap;
   return place(
     M.union(
-      rectangle(new Matrix4(), half, half, parts).map((c) =>
+      rectangle(new Matrix4(), half - inset, half - inset, parts).map((c) =>
         M.cylinder(h, post, post, 48).translate(c),
       ),
     ),
@@ -392,7 +394,7 @@ export function buildJig(wasm: ManifoldToplevel, cfg: Config, pockets: Pocket[])
 /** The jig's faults, in words. */
 export function jigFaults(wasm: ManifoldToplevel, cfg: Config, jig: Manifold, pockets: Pocket[]) {
   const M = wasm.Manifold,
-    { half, top, under: parts } = sizes(cfg),
+    { half, inset, top, under: parts } = sizes(cfg),
     tiny = 1e-3,
     faults: string[] = [],
     inJig = (part: Manifold) => jig.intersect(part).volume(),
@@ -403,12 +405,17 @@ export function jigFaults(wasm: ManifoldToplevel, cfg: Config, jig: Manifold, po
       `The jig is ${pieces.length} pieces: ${pieces.map((x) => x.volume().toFixed(1)).join(', ')} mm3.`,
     );
   const radius = cfg.tile.pads.ring_mm / 2,
-    notch = cfg.tile.corner_notch_radius_mm,
+    notch = cfg.tile.corner_notch_mm.radius_mm,
     h = top - parts + JIG.above,
     notches = M.union(
-      rectangle(new Matrix4(), half, half, top - h / 2).map((c) =>
+      rectangle(new Matrix4(), half - inset, half - inset, top - h / 2).flatMap((c) => [
         M.cylinder(h + 1, notch, notch, 48, true).translate(c),
-      ),
+        box(
+          M,
+          [inset, inset, h + 1],
+          [c[0] + (Math.sign(c[0]) * inset) / 2, c[1] + (Math.sign(c[1]) * inset) / 2, c[2]],
+        ),
+      ]),
     ),
     tile = box(M, [2 * half, 2 * half, h], [0, 0, top - h / 2]).subtract(notches);
   for (const p of pockets) {
@@ -427,7 +434,7 @@ export function jigFaults(wasm: ManifoldToplevel, cfg: Config, jig: Manifold, po
         ledge = place(
           box(
             M,
-            [2 * (half - notch), half - JIG.ledge, slab],
+            [2 * (half - inset - notch), half - JIG.ledge, slab],
             [0, (sign * (half + JIG.ledge)) / 2, top + slab / 2],
           ),
           p.frame,

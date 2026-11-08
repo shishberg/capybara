@@ -2,7 +2,7 @@
 // that decide which of them show.
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { hardware } from './parts';
+import { hardware, type Part } from './parts';
 import type { BuildResult } from './solid';
 import type { Wiring } from './wiring';
 import { disposeChildren } from './three-util';
@@ -119,20 +119,33 @@ const taperedBox = (size: number[], top: number[]) => {
   g.computeVertexNormals();
   return g;
 };
-// A box (size, centred) with a round notch of radius r centred on each corner
-// of its z faces.
-const notchedBox = (size: number[], r: number) => {
+// A box (size, centred) with a round notch at each corner of its z faces: a
+// circle of radius r centred i in from both edges, and the corner outside it.
+// Round each corner counterclockwise: in along the edge to the notch's square,
+// along its side to the circle, round the circle's far three quarters, and out
+// along its other side to the next edge.
+const notchedBox = (size: number[], { radius_mm: r, inset_mm: i }: Part['notch'] & object) => {
   const [hx, hy] = [size[0] / 2, size[1] / 2];
+  const corners = [
+    [-hx, -hy],
+    [hx, -hy],
+    [hx, hy],
+    [-hx, hy],
+  ];
   const s = new T.Shape();
-  s.moveTo(-hx + r, -hy);
-  s.lineTo(hx - r, -hy);
-  s.absarc(hx, -hy, r, Math.PI, Math.PI / 2, true);
-  s.lineTo(hx, hy - r);
-  s.absarc(hx, hy, r, -Math.PI / 2, -Math.PI, true);
-  s.lineTo(-hx + r, hy);
-  s.absarc(-hx, hy, r, 0, -Math.PI / 2, true);
-  s.lineTo(-hx, -hy + r);
-  s.absarc(-hx, -hy, r, Math.PI / 2, 0, true);
+  corners.forEach(([x, y], k) => {
+    const [px, py] = corners[(k + 3) % 4],
+      [nx, ny] = corners[(k + 1) % 4],
+      din = [Math.sign(x - px), Math.sign(y - py)],
+      dout = [Math.sign(nx - x), Math.sign(ny - y)],
+      c = [x - i * din[0] + i * dout[0], y - i * din[1] + i * dout[1]],
+      start = Math.atan2(y, x) - Math.PI / 4;
+    if (k) s.lineTo(x - i * din[0], y - i * din[1]);
+    else s.moveTo(x - i * din[0], y - i * din[1]);
+    s.lineTo(c[0] - r * dout[0], c[1] - r * dout[1]);
+    s.absarc(c[0], c[1], r, start, start - 1.5 * Math.PI, true);
+    s.lineTo(x + i * dout[0], y + i * dout[1]);
+  });
   return new T.ExtrudeGeometry(s, {
     depth: size[2],
     bevelEnabled: false,
