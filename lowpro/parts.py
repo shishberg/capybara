@@ -393,16 +393,44 @@ def tile_boxes(clear=False):
     return boxes
 
 
+def notch_corners():
+    """Each corner notch's centre in the key frame's plan, and the corner's signs."""
+    t = P.capybara["tile"]
+    d = t["size_mm"][0] / 2 - t["corner_notch_mm"]["inset_mm"]
+    return [((sx * d, sy * d), (sx, sy)) for sx in (-1, 1) for sy in (-1, 1)]
+
+
+def notch_cuts(r, out, z0, h):
+    """What a notch takes out of the tile, from z0 up by h: the circle of radius
+    r at its centre, and the square from there out by `out` to the corner."""
+    return [s for (cx, cy), (sx, sy) in notch_corners()
+            for s in (cylinder(2 * r, h, (cx, cy, z0)), box((out, out, h), (cx + sx * out / 2, cy + sy * out / 2, z0 + h / 2)))]
+
+
 def tile():
-    board, *parts = tile_boxes()
+    (bs, bc), *parts = tile_boxes()
+    t = P.capybara["tile"]
+    board = box(bs, bc) - union(notch_cuts(t["corner_notch_mm"]["radius_mm"], t["corner_notch_mm"]["inset_mm"], bc[2] - bs[2] / 2 - 1, bs[2] + 2))
     colours = {"hotswap socket": "dimgray", "RGB LED": "white", "diode": "orange"}
-    return (pieces([box(*board)], "darkgreen", "tile")
-            + [Piece(p["name"], colours[p["name"]], box(*b)) for p, b in zip(P.capybara["tile"]["components"], parts)])
+    return (pieces([board], "darkgreen", "tile")
+            + [Piece(p["name"], colours[p["name"]], box(*b)) for p, b in zip(t["components"], parts)])
+
+
+def posts():
+    """The pegs in the tile's corner notches, in the key frame: round, the
+    notch less peg_fit_mm, from the board's underside up into the sleeve, each
+    webbed out to the pocket's corner (the tile's corner outside the notch is
+    cut away too)."""
+    t = P.capybara["tile"]
+    under = tile_top_z() - t["size_mm"][2]
+    out = t["corner_notch_mm"]["inset_mm"] + t["clearance_mm"] + 0.1
+    return union(notch_cuts(t["corner_notch_mm"]["radius_mm"] - P.peg_fit_mm, out, under, sleeve_bottom_z() + 0.1 - under))
 
 
 def tile_room():
-    """The tile and its parts with their clearances: its pocket."""
-    return [box(s, c) for s, c in tile_boxes(True)]
+    """The tile and its parts with their clearances, less the pegs: its pocket."""
+    (bs, bc), *parts = tile_boxes(True)
+    return [box(bs, bc) - posts()] + [box(s, c) for s, c in parts]
 
 
 def tile_bottom_z():

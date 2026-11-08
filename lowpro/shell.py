@@ -235,9 +235,23 @@ def interior():
     return inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm))
 
 
+def pocket_block():
+    """A tile's pocket before the room is cut from it, in the key frame: a block
+    round the tile's clearance and pocket_wall_mm more, from inside the plate
+    down to the board's underside."""
+    t = P.capybara["tile"]
+    w = t["size_mm"][0] + 2 * (t["clearance_mm"] + P.pocket_wall_mm)
+    top, under = -P.top_skin_mm / 2, R.tile_top_z() - t["size_mm"][2]
+    return R.box((w, w, top - under), (0, 0, (top + under) / 2))
+
+
 def plates():
-    """Every key's plate and sleeve, hanging from the top skin."""
-    return union([placed(k.frame, R.plate_block()) for k in keys()]) ^ C.body_shell()
+    """Every key's plate and sleeve, and its pocket block kept out of every
+    tile's way in (a pocket's wall can cross a leaning neighbour's way),
+    hanging from the top skin."""
+    ks = keys()
+    pockets = union([placed(k.frame, pocket_block()) for k in ks]) - union([tile_way(k) for k in ks])
+    return (union([placed(k.frame, R.plate_block()) for k in ks]) + pockets) ^ C.body_shell()
 
 
 @cached
@@ -319,11 +333,14 @@ def parts(body, plate):
 def tile_way(k):
     """The way key k's tile comes up into its pocket from the open underside, in
     world: the pocket's room carried down square to the plate for the hang and
-    tile_lead_mm more, then straight down."""
-    room = union(R.tile_room())
-    hang = R.sleeve_bottom_z() - R.tile_bottom_z() + P.tile_lead_mm
-    square = placed(k.frame, (room + room.translate((0, 0, -hang))).hull())
-    return (square + square.translate((0, 0, -60))).hull()
+    tile_lead_mm more, less the pegs' columns the notches ride down, then
+    straight down."""
+    room, posts = union([R.box(s, c) for s, c in R.tile_boxes(True)]), R.posts()
+    hang = R.tile_way_mm()
+    down = (0, 0, -hang)
+    square = placed(k.frame, (room + room.translate(down)).hull() - (posts + posts.translate(down)).hull())
+    foot = placed(k.frame, room.hull().translate(down))
+    return square + (foot + foot.translate((0, 0, -60))).hull()
 
 
 def blocked_tiles():

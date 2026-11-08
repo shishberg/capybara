@@ -321,6 +321,15 @@ top_skin_mm = _capybara["chassis"]["plate_thickness_mm"]
 # footprint, stopping this far over the tile's top for solder proud of its
 # holes (the editor's sleeve, docs/editor-chassis.md).
 sleeve_gap_mm = 0.4
+# Under the sleeve each tile hangs in a pocket: walls this thick round the
+# tile's clearance, from the plate down to the board's underside and no
+# further, so the wires that leave under the board's edges pass beneath the
+# rim (docs/editor-chassis.md, Paths). A round peg stands down from the sleeve
+# into each corner notch, the notch's radius less this fit (the solder jig's,
+# editor/src/jig.ts JIG.fit), webbed out to the pocket's corner, which the
+# tile's cut-away corner leaves free.
+pocket_wall_mm = 1.2
+peg_fit_mm = 0.15
 # A tile goes into its pocket square to its plate for its own hang and this much
 # more, then straight down to the open underside: the way the build keeps clear.
 tile_lead_mm = 0.5
