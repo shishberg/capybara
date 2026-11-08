@@ -1,6 +1,6 @@
 .mcp.json
 .DS_Store
-node_modules/
+node_modules
 __pycache__/
 
 # KiCad per-user state and lock files.
@@ -23,4 +23,4 @@ editor/playwright-report/
 firmware/target/
 
 # Python environment for lowpro, made by the Makefile
-.venv/
+.venv
