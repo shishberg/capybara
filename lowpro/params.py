@@ -381,6 +381,8 @@ surface_blend_mm = 3
 # chords no further than mesh_tol_mm from it.
 mesh_mm = 1
 mesh_tol_mm = 0.01
+# The printer's bed, square, which a print 3MF centres its part on (Anycubic Kobra X).
+print_bed_mm = 260
 
 
 # ---------------------------------------------------------------- presets

@@ -10,7 +10,9 @@ Any parameter in params.py can be overridden with --set, after a --preset's
 (params.py PRESETS). Files go to output/lowpro/ (output/lowpro/<preset>/ with a
 preset; --out): <half>-body.stl, <half>-plate.stl and <half>-assembly.3mf
 (body, plinth, switches, caps and the design's other parts, each piece a
-named, coloured mesh). The left half is the right mirrored, but for the
+named, coloured mesh), and for the capybara design <half>-print.3mf (the body
+as it prints, with its support enforcers and blockers, for Anycubic Slicer
+Next or Bambu Studio). The left half is the right mirrored, but for the
 switches and sockets, which are the same parts in both, so each half is its
 own build. The design's module (chassis.py or shell.py) builds the parts,
 reports its heights and runs its checks.
@@ -19,6 +21,7 @@ import argparse
 import ast
 import sys
 import time
+import uuid
 import zipfile
 from dataclasses import replace
 from pathlib import Path
@@ -28,7 +31,7 @@ import numpy as np
 from .params import PRESETS
 
 ROOT = Path(__file__).resolve().parent.parent
-PARTS = ("body", "plate", "assembly")
+PARTS = ("body", "plate", "assembly", "print")
 
 COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "808080", "gold": "FFD700",
            "dimgray": "696969", "silver": "C0C0C0", "orange": "FFA500", "darkgreen": "006400", "white": "FFFFFF",
@@ -93,35 +96,88 @@ def write_stl(solid, path):
     print(f"wrote {path} ({len(t)} triangles)", flush=True)
 
 
-def write_3mf(pieces, path):
-    """Named, coloured pieces to one 3MF: each piece an object with one colour."""
-    names = sorted({p.colour for p in pieces})
-    out = ['<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" '
-           'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n<resources>\n<basematerials id="1">\n']
-    out += [f'<base name="{c}" displaycolor="#{COLOURS[c]}"/>\n' for c in names]
-    out.append("</basematerials>\n")
-    for i, piece in enumerate(pieces, start=2):
-        v, t = mesh_of(piece.solid)
-        out.append(f'<object id="{i}" type="model" name="{piece.label}" pid="1" pindex="{names.index(piece.colour)}">'
-                   "<mesh><vertices>\n")
-        out.append("\n".join(map('<vertex x="%.4f" y="%.4f" z="%.4f"/>'.__mod__, map(tuple, v))))
-        out.append("\n</vertices><triangles>\n")
-        out.append("\n".join(map('<triangle v1="%d" v2="%d" v3="%d"/>'.__mod__, map(tuple, t))))
-        out.append("\n</triangles></mesh></object>\n")
-    out.append("</resources>\n<build>\n")
-    out += [f'<item objectid="{i}"/>\n' for i in range(2, len(pieces) + 2)]
-    out.append("</build>\n</model>\n")
+CORE = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+MODEL_REL = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
+
+
+def mesh_xml(solid):
+    v, t = mesh_of(solid)
+    return ("<mesh><vertices>\n" + "\n".join(map('<vertex x="%.4f" y="%.4f" z="%.4f"/>'.__mod__, map(tuple, v)))
+            + "\n</vertices><triangles>\n" + "\n".join(map('<triangle v1="%d" v2="%d" v3="%d"/>'.__mod__, map(tuple, t)))
+            + "\n</triangles></mesh>")
+
+
+def rels(target):
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            f'<Relationship Target="{target}" Id="rel0" Type="{MODEL_REL}"/></Relationships>')
+
+
+def write_package(path, files):
+    """A 3MF package: the content types, the root relationship to 3D/3dmodel.model, then `files`."""
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         z.writestr("[Content_Types].xml",
                    '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
                    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
                    '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>')
-        z.writestr("_rels/.rels",
-                   '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-                   '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
-                   'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-        z.writestr("3D/3dmodel.model", "".join(out))
+        z.writestr("_rels/.rels", rels("/3D/3dmodel.model"))
+        for name, text in files.items():
+            z.writestr(name, text)
+
+
+def write_3mf(pieces, path):
+    """Named, coloured pieces to one 3MF: each piece an object with one colour."""
+    names = sorted({p.colour for p in pieces})
+    out = [f'<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" xmlns="{CORE}">\n'
+           '<resources>\n<basematerials id="1">\n']
+    out += [f'<base name="{c}" displaycolor="#{COLOURS[c]}"/>\n' for c in names]
+    out.append("</basematerials>\n")
+    out += [f'<object id="{i}" type="model" name="{piece.label}" pid="1" pindex="{names.index(piece.colour)}">'
+            f"{mesh_xml(piece.solid)}</object>\n" for i, piece in enumerate(pieces, start=2)]
+    out.append("</resources>\n<build>\n")
+    out += [f'<item objectid="{i}"/>\n' for i in range(2, len(pieces) + 2)]
+    out.append("</build>\n</model>\n")
+    write_package(path, {"3D/3dmodel.model": "".join(out)})
     print(f"wrote {path} ({len(pieces)} pieces)", flush=True)
+
+
+def write_print_3mf(name, volumes, settings, path):
+    """One object made of named volumes, each (name, subtype, solid) with a Bambu
+    Studio subtype (normal_part, support_enforcer, support_blocker), and the
+    object's own slicer settings, to a 3MF in Bambu Studio's project format,
+    which Anycubic Slicer Next shares: the meshes in 3D/Objects, the object
+    their components, the subtypes and settings in Metadata/model_settings.config.
+    It is centred on the bed (params.py print_bed_mm). It carries no printer or
+    process settings, so the slicer's own apply."""
+    from . import params as P
+
+    ns = (f'xmlns="{CORE}" xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
+          'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" requiredextensions="p"')
+    head = f'<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" {ns}>\n'
+    uid = lambda s: str(uuid.uuid5(uuid.NAMESPACE_URL, f"lowpro/{path.name}/{s}"))
+    meshes = "".join(f'<object id="{i}" p:UUID="{uid(n)}" type="model">{mesh_xml(s)}</object>\n'
+                     for i, (n, _, s) in enumerate(volumes, start=1))
+    whole = len(volumes) + 1
+    comps = "".join(f'<component p:path="/3D/Objects/object_1.model" objectid="{i}" p:UUID="{uid("part " + n)}" '
+                    'transform="1 0 0 0 1 0 0 0 1 0 0 0"/>\n' for i, (n, _, _) in enumerate(volumes, start=1))
+    box = volumes[0][2].bounding_box()
+    at = [P.print_bed_mm / 2 - (box[i] + box[i + 3]) / 2 for i in (0, 1)]
+    root = (head + '<metadata name="Application">BambuStudio-2.0.0.3</metadata>\n'
+            '<metadata name="BambuStudio:3mfVersion">1</metadata>\n<resources>\n'
+            f'<object id="{whole}" p:UUID="{uid(name)}" type="model"><components>\n{comps}</components></object>\n'
+            f'</resources>\n<build p:UUID="{uid("build")}"><item objectid="{whole}" p:UUID="{uid("item")}" '
+            f'transform="1 0 0 0 1 0 0 0 1 {at[0]:.4f} {at[1]:.4f} 0" printable="1"/></build>\n</model>\n')
+    meta = lambda k, v: f'<metadata key="{k}" value="{v}"/>\n'
+    config = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>\n'
+              f'<object id="{whole}">\n{meta("name", name)}{meta("extruder", 1)}'
+              + "".join(meta(k, v) for k, v in settings.items())
+              + "".join(f'<part id="{i}" subtype="{kind}">\n{meta("name", n)}{meta("matrix", "1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1")}</part>\n'
+                        for i, (n, kind, _) in enumerate(volumes, start=1))
+              + f'</object>\n<plate>\n{meta("plater_id", 1)}<model_instance>\n{meta("object_id", whole)}'
+              f'{meta("instance_id", 0)}</model_instance>\n</plate>\n</config>\n')
+    write_package(path, {"3D/3dmodel.model": root, "3D/_rels/3dmodel.model.rels": rels("/3D/Objects/object_1.model"),
+                         "3D/Objects/object_1.model": head + f"<resources>\n{meshes}</resources>\n<build/>\n</model>\n",
+                         "Metadata/model_settings.config": config})
+    print(f"wrote {path} ({', '.join(f'{n}: {kind}' for n, kind, _ in volumes)})", flush=True)
 
 
 def for_half(solid, half):
@@ -139,7 +195,6 @@ def main(argv=None):
     ap.add_argument("--no-check", action="store_true", help="skip the checks")
     ap.add_argument("--verbose", action="store_true", help="print how long each stage takes")
     args = ap.parse_args(argv)
-    parts = args.part or list(PARTS)
     halves = ("right", "left") if args.half == "both" else (args.half,)
     out = Path(args.out or ROOT / "output" / "lowpro" / (args.preset or ""))
     out.mkdir(parents=True, exist_ok=True)
@@ -151,6 +206,9 @@ def main(argv=None):
     C.VERBOSE = args.verbose
     set_params(args.set, args.preset)
     D = L.design()
+    parts = args.part or list(D.OUTPUTS)
+    if set(parts) - set(D.OUTPUTS):
+        sys.exit(f"the {C.P.design} design has no {', '.join(sorted(set(parts) - set(D.OUTPUTS)))} part")
     ok = True
     for half in halves:
         # Each half is its own build: the switches and sockets don't mirror (params.py half).
@@ -162,7 +220,7 @@ def main(argv=None):
         s = C.stage("checks", s)
         if args.check:
             continue
-        body = D.body() if {"body", "assembly"} & set(parts) else None
+        body = D.body() if {"body", "assembly", "print"} & set(parts) else None
         plate = D.bottom_plate() if {"plate", "assembly"} & set(parts) else None
         s = time.time()
         for name, solid in (("body", body), ("plate", plate)):
@@ -174,7 +232,12 @@ def main(argv=None):
             refuse_invalid(plate, "the assembly's plinth")
             pieces = [replace(p, solid=for_half(p.solid, half)) for p in D.parts(body, plate)]
             write_3mf(pieces, out / f"{half}-assembly.3mf")
-            C.stage("3MF", s)
+            s = C.stage("3MF", s)
+        if "print" in parts:
+            refuse_invalid(body, "the print's body")
+            volumes = [(n, kind, for_half(solid, half)) for n, kind, solid in D.print_parts(body)]
+            write_print_3mf(f"{half} body", volumes, D.PRINT_SETTINGS, out / f"{half}-print.3mf")
+            C.stage("print 3MF", s)
     if args.check:
         return 0 if ok else 1
     print(f"built in {time.time() - t:.1f} s", flush=True)

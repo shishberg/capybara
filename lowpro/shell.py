@@ -29,6 +29,8 @@ from .lib import origin, r2, rot_z, trans, xdir, xform
 from .parts import Piece, segments, union
 
 PARTS = ("pro_micro", "trrs", "reset")
+# What build.py writes for this design.
+OUTPUTS = ("body", "plate", "assembly", "print")
 # The Pro Micro and the jack face -x in their frames: each one's room, which
 # stays inside the walls, its port out through the wall (given the wall's face's
 # x in its frame) and its mouth's x, where the plug meets it.
@@ -290,14 +292,19 @@ def interior():
                     [s.minkowski_sum(ball) for s in C.cap_rooms()])
 
 
+def pocket_span():
+    """A tile's pocket's side, round the tile's clearance and pocket_wall_mm
+    more, and its rim's z, the board's underside, in the key frame."""
+    t = P.capybara["tile"]
+    return t["size_mm"][0] + 2 * (t["clearance_mm"] + P.pocket_wall_mm), R.tile_top_z() - t["size_mm"][2]
+
+
 def pocket_block():
     """A tile's pocket before the room is cut from it, in the key frame: a block
-    round the tile's clearance and pocket_wall_mm more, from inside the plate
-    down to the board's underside."""
-    t = P.capybara["tile"]
-    w = t["size_mm"][0] + 2 * (t["clearance_mm"] + P.pocket_wall_mm)
-    top, under = -P.top_skin_mm / 2, R.tile_top_z() - t["size_mm"][2]
-    return R.box((w, w, top - under), (0, 0, (top + under) / 2))
+    pocket_span() wide from inside the plate down to its rim."""
+    w, rim = pocket_span()
+    top = -P.top_skin_mm / 2
+    return R.box((w, w, top - rim), (0, 0, (top + rim) / 2))
 
 
 def plates():
@@ -380,6 +387,32 @@ def plugs():
 def parts(body, plate):
     return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
             + C.switches() + C.keycaps() + tiles() + electronics())
+
+
+# ---------------------------------------------------------------- printing
+# The body prints top up on the seam, and away from the pockets' rims a sag on
+# its underside holds nothing, so it asks the slicer for only critical support.
+PRINT_SETTINGS = {"enable_support": "1", "support_critical_regions_only": "1"}
+
+
+def print_parts(body):
+    """The body as it prints, top up with the seam on the bed, and its support
+    volumes (build.py write_print_3mf). Each pocket's rim starts in mid air and
+    is the tile's way in, so an enforcer round it gives it full support; a
+    blocker fills each tile's room, so the room's ceiling bridges and no support
+    is left behind the pegs. Each volume reaches past the faces it marks."""
+    reach = 0.4
+    w, rim = pocket_span()
+    side, top, _ = R.tile_room_box()
+    ring = (R.box((w + 2 * reach, w + 2 * reach, 2 * reach), (0, 0, rim))
+            - R.box((side, side, 3 * reach), (0, 0, rim)))
+    room = R.box((side, side, top - rim + 2 * reach), (0, 0, (top + rim) / 2))
+    rooms = union([placed(k.frame, room) for k in keys()])
+    rings = union([placed(k.frame, ring) for k in keys()]) - rooms
+    down = lambda s: s.translate((0, 0, -seam()))
+    return [("body", "normal_part", down(body)),
+            ("support round the pockets' rims", "support_enforcer", down(rings)),
+            ("no support in the tiles' rooms", "support_blocker", down(rooms))]
 
 
 # ---------------------------------------------------------------- checks

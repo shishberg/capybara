@@ -34,7 +34,7 @@ and the way it moves. What changes:
 | `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions; and the Capybara's own key frames for the capybara design. |
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes; and the Capybara's key tile, Pro Micro, TRRS jack and reset switch. |
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
-| `shell.py` | The capybara design's body and plinth, and its checks (below). |
+| `shell.py` | The capybara design's body and plinth, its support volumes for printing, and its checks (below). |
 | `lib.py` | Frames as 4 × 4 matrices. |
 | `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
 | `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
@@ -123,7 +123,7 @@ RGB key tiles, matrix and pins, and its [Pro Micro, TRRS jack and reset
 switch](../docs/pro-micro.md), so a harness wired for the Capybara drops in.
 `params.py design` picks it, and the sizes it shares with the editor are read
 from `editor/src/default-config.json`, so each lives in one place. The files go
-to `output/lowpro/capybara/`.
+to `output/lowpro/capybara/`, and a `<half>-print.3mf` for each half as well (Printing, below).
 
 ```sh
 .venv/bin/python -m lowpro.build --preset capybara
@@ -192,6 +192,26 @@ plinth. The top
 steps between columns, since Swung in's columns sit at different heights and
 the pinky top key is tilted 46°; the top's round is 1 mm here, since 1.5 won't
 roll round the edge at the far thumb key.
+
+### Printing
+
+The body prints top up with the seam on the bed, since upside down leaves the
+top marked. `<half>-print.3mf` is the body placed that way, in Bambu Studio's
+project format, which Anycubic Slicer Next shares. It carries no printer or
+process settings, so the slicer's own apply. It has two support volumes and
+asks for only critical support elsewhere, since a sag on the underside away
+from the pockets holds nothing:
+
+- An enforcer round each pocket's rim, which starts in mid air and is the tile's
+  way in, so it gets full support and interface.
+- A blocker filling each tile's room, so the room's ceiling bridges and no
+  support is left behind the pegs.
+
+Sliced with tree support at 15° and 0.08 mm layers, a half takes about 112 cm³
+of support, against 88 without the volumes. The extra support is under the
+pockets' rims, which are at least 95% supported against a median of 55%
+without it. About 3 cm³ ends inside the pockets, at their rims, which clears
+from the open underside.
 
 ## Checks and what they don't cover
 

@@ -24,6 +24,9 @@ from .layout import cached, cell_corners, keys, key_named
 from .lib import origin, r2, rinv, rot_z, trans, xform
 from .parts import Piece, box_corners, segments, union
 
+# What build.py writes for this design.
+OUTPUTS = ("body", "plate", "assembly")
+
 VERBOSE = False
 
 
