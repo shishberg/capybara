@@ -114,16 +114,6 @@ def mx_switch_room():
     return rooms
 
 
-def mx_switch_rim_room():
-    """The room over the plate for the switch's rim (its seat's footprint, with
-    the hole's clearance) up to where the cap's room takes over, as the
-    Capybara keeps it (docs/editor-chassis.md): a tilted key's rim leans out
-    past the plate's land."""
-    w = P.switch_rim_mm + 2 * P.switch_cutout_clearance_mm
-    h = P.cap_bottom_above_plate_mm - P.cap_travel_mm + 0.1
-    return [box((w, w, h), (0, 0, h / 2))]
-
-
 # ---------------------------------------------------------------- keycap (Cherry profile)
 def keycap(r, u=1, pressed=0, grow=0):
     """The cap for Cherry row r, u units wide along x, `pressed` mm down, grown
@@ -141,12 +131,12 @@ def keycap_probe(r, u=1, pressed=0):
 
 def keycap_room(r, u=1):
     """The room the cap takes from whatever stands near it: its base's outline,
-    with the clearance caps keep, straight up from the bottom of its travel and
+    with the clearance caps keep, straight up from the plate (which takes in the
+    switch's rim, and a tilted key's rim leaning out past the plate's land) and
     on out of the case, since the finger comes in from above."""
     g = P.cap_clearance_mm / 2
     base = (P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g)
-    z0 = P.cap_bottom_above_plate_mm - P.cap_travel_mm - g
-    return frustum(base, base, z0, P.finger_room_mm - z0)
+    return frustum(base, base, 0, P.finger_room_mm)
 
 
 # ---------------------------------------------------------------- hotswap socket

@@ -308,7 +308,7 @@ def plates():
 def body_cuts():
     """Everything cut from the body but the screws' insert holes, in named groups."""
     ks = keys()
-    return [("a switch's room", [s for k in ks for s in place(k.frame, R.mx_switch_room() + R.mx_switch_rim_room())]),
+    return [("a switch's room", [s for k in ks for s in place(k.frame, R.mx_switch_room())]),
             ("a tile's pocket", [s for k in ks for s in place(k.frame, R.tile_room())]),
             ("a cap's room", C.cap_rooms()), ("a part's room", part_rooms())]
 
