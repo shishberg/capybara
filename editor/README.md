@@ -71,9 +71,11 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
   Capybara's tiles and parts in lowpro's enclosed shell) and **Low-profile**
   (lowpro's own design). The low-profile cases are on the dev server only: it
   runs `make` to build each half's assembly (the first time takes a few
-  seconds) from the repository's default project, not from your edits. The View
-  checkboxes still apply to their pieces, the handles, clearance checks, wiring and
-  STL export are the frame's and hide, and the frame keeps building behind them.
+  seconds) from the repository's default project, not from your edits. Keycaps,
+  Bottom section, Tiles and components (the controller included), the bounding
+  box, the wireframe and the opacity still apply to their pieces. The handles,
+  wiring, controller toggle, Rebuild & check, clearance checks and STL export are
+  the frame's and hide, and the frame keeps building behind them.
   The case is remembered with the view, not saved in the project.
 - **Half** (in View) picks the hand. Both halves share one key layout, set in
   the right half's axes (+X pinky), so a handle drag on the left half makes the

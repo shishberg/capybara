@@ -32,6 +32,7 @@ for (const [id, label] of [
       expect(c.pieces.some((p: any) => p.kind === 'keycaps')).toBe(true);
       await expect(page.locator('#size')).toContainText(/Size: [\d.]+ W/);
       await expect(page.locator('#stl')).toBeHidden();
+      await expect(page.locator('#rebuild')).toBeHidden();
     }
 
     await page.getByLabel('Keycaps').check();
