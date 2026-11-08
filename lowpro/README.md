@@ -110,8 +110,9 @@ where they meet: look at `wiring-below.png` before trusting a route, and edit
 `channels()` in `chassis.py` to change one.
 
 The seven screws locate the plinth under the body. A pinky
-cap comes down past the ring key's plate beside it, so the body gives every cap's
-sweep its room, which notches that plate's edge.
+cap comes down past the ring key's plate beside it, so the body gives every cap its
+room (its base's outline straight up from the bottom of its travel to its top
+at rest), which notches that plate's edge.
 
 ## The capybara design
 
@@ -137,7 +138,7 @@ rooms, so both stand wholly inside the walls) and the
 thumb cluster's, walled and rounded, so it runs straight past the steps between
 keys and turns in only where the thumb cluster meets the finger block. The body
 is this design's shell, hollowed to its walls and a 3 mm skin, which stays
-3 mm clear of each cap's sweep where the sweep cuts down through the top: each
+3 mm clear of each cap's room where the room cuts down through the top: each
 switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the

@@ -1119,7 +1119,7 @@ def body_cutters():
 
 
 def cap_rooms():
-    """Each cap's sweep. A key lower than its neighbour has its cap come down
+    """Each cap's room. A key lower than its neighbour has its cap come down
     past the neighbour's plate, so it takes a notch out of the plate's edge."""
     return [placed(k.frame, R.keycap_room(k.cap_row, k.units)) for k in keys()]
 

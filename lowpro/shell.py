@@ -282,8 +282,8 @@ def seat_pads():
 @cached
 def interior():
     """The hollow: inside the walls, up to top_skin_mm under the top and
-    top_skin_mm clear of every cap's sweep, so where a sweep cuts down through
-    the top the skin follows it (the sweeps are convex, so the sum is exact)."""
+    top_skin_mm clear of every cap's room, so where a room cuts down through
+    the top the skin follows it (the rooms are convex, so the sum is exact)."""
     ball = Manifold.sphere(P.top_skin_mm, 16)
     return subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
                     [s.minkowski_sum(ball) for s in C.cap_rooms()])
@@ -310,7 +310,7 @@ def body_cuts():
     ks = keys()
     return [("a switch's room", [s for k in ks for s in place(k.frame, R.mx_switch_room() + R.mx_switch_rim_room())]),
             ("a tile's pocket", [s for k in ks for s in place(k.frame, R.tile_room())]),
-            ("a cap's sweep", C.cap_rooms()), ("a part's room", part_rooms())]
+            ("a cap's room", C.cap_rooms()), ("a part's room", part_rooms())]
 
 
 def body_cutters():
@@ -399,12 +399,12 @@ def headers_in_tiles():
 
 def thin_tops():
     """What is cut from the body to within min_wall_mm of its top, as (what,
-    volume mm^3): the switches' rooms and the caps' sweeps go out through the
+    volume mm^3): the switches' rooms and the caps' rooms go out through the
     top, nothing else may come near it, the screws' insert holes included (the
     body is low over the thumb's outer corner)."""
     shell = C.body_shell()
     skin = shell - shell.translate((0, 0, -P.min_wall_mm))
-    cuts = [(what, group) for what, group in body_cuts() if what not in ("a switch's room", "a cap's sweep")]
+    cuts = [(what, group) for what, group in body_cuts() if what not in ("a switch's room", "a cap's room")]
     return [(what, v) for what, group in cuts + [("a screw's insert hole", insert_holes())]
             for v in [sum((skin ^ s).volume() for s in group)] if v > 1e-6]
 

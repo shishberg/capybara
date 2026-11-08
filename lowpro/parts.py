@@ -116,7 +116,7 @@ def mx_switch_room():
 
 def mx_switch_rim_room():
     """The room over the plate for the switch's rim (its seat's footprint, with
-    the hole's clearance) up to where the cap's sweep takes over, as the
+    the hole's clearance) up to where the cap's room takes over, as the
     Capybara keeps it (docs/editor-chassis.md): a tilted key's rim leans out
     past the plate's land."""
     w = P.switch_rim_mm + 2 * P.switch_cutout_clearance_mm
@@ -140,9 +140,13 @@ def keycap_probe(r, u=1, pressed=0):
 
 
 def keycap_room(r, u=1):
-    """The room the cap takes from whatever stands near it: its sweep from rest
-    to the bottom of its travel, with the clearance caps keep."""
-    return (keycap_probe(r, u) + keycap_probe(r, u, P.cap_travel_mm)).hull()
+    """The room the cap takes from whatever stands near it: its base's outline,
+    with the clearance caps keep, straight up from the bottom of its travel to
+    its top at rest."""
+    g = P.cap_clearance_mm / 2
+    base = (P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g)
+    z0 = P.cap_bottom_above_plate_mm - P.cap_travel_mm - g
+    return frustum(base, base, z0, P.cap_travel_mm + P.cap_height_mm[r - 1] + 2 * g)
 
 
 # ---------------------------------------------------------------- hotswap socket
