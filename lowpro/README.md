@@ -136,8 +136,7 @@ walls and a 3 mm skin: each switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
 board's underside and no further, so the wires that leave under the board's
-edges pass beneath the rim; neighbouring pockets share a wall, and a pocket is
-cut back where it would cross a leaning neighbour's way in. A round peg stands
+edges pass beneath the rim; neighbouring pockets share a wall. A round peg stands
 from the sleeve into each of the tile's corner notches, 0.65 mm in radius (the
 notch's 0.8 less the solder jig's 0.15 fit) at the notch's centre, webbed out
 to the pocket's corner, which the tile's cut-away corner leaves free. There
@@ -151,28 +150,29 @@ chamfered through the wall, the reset switch sits behind a 0.5 mm skin of the
 wall with a stop behind it, and each part has a cradle on the plinth. There is
 room over the Pro Micro's pins for Dupont housings and their wires.
 
-Six M2 x 4 screws hold the plinth, at the outline's corners that turn 60° or
-more: the finger block's four and the thumb cluster's two. The plinth is too
-thin for a screw's head and its 1.2 mm grip, so each screw has a seat: a 6.2 mm
-pad on the plinth up to 2.4 mm, into a recess in the body's underside, with the
-boss from there up. No screw can stand inside the outline: the tiles' ways in
-fill the plan to the walls (0.4 mm² of plan clears a boss), so each boss is
-pushed out through the wall into a lug, 8.4 mm across to keep a wall outside
-the recess. The inserts stay 3 mm: a 4 mm insert's hole would come within the
-top's 1 mm skin over the thumb's outer corner, where the body is 8.3 mm tall,
-and the insert holes are in the under-the-top check.
+Four M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
+for each of the outline's corners that turns 60° or more, the nearest spot
+clear of the tiles, the parts and their cradles, unless a screw already stands
+within 40 mm. The corners themselves are pockets to the wall, so the screws
+stand between the key columns and in the thumb cluster's crook, each boss a
+6 mm post from its seat up to the top. The body stands on the plinth, so its
+weight holds the plinth's edges to the wall; the screws hold the two together
+when it's lifted. The plinth is too thin for a screw's head and its 1.2 mm
+grip, so each screw has a seat: a 6.2 mm pad on the plinth up to 2.4 mm, into
+a recess in the body's underside, kept 1 mm inside the outline.
 
 The harness goes in from the underside with the plinth off: the body upside
 down, each tile up into its pocket, then the switches in from the top through
-the plates into the tiles' sockets, then the plinth and its screws. The build
-checks that way is clear for every tile (the way loses the pegs' columns the
-notches ride down), that the switches, notched tiles, caps at full travel, Pro
+the plates into the tiles' sockets, then the plinth and its screws. With the
+plinth off, the opening is far bigger than a tile and the pockets have room
+round them to turn one in, so the build doesn't model the tiles' ways in. It
+checks that the switches, notched tiles, caps at full travel, Pro
 Micro with its housings, jack and reset switch clear the case, that the plugs
 go in through the walls, and the shared checks on the screws, the top's skin
 and the body against the plinth.
 
 The highest cap corner is 62.61 mm over the desk, the Capybara's: the keys and
-the plinth are the Capybara's, so the height is too. The plan is 114 × 149 mm
+the plinth are the Capybara's, so the height is too. The plan is 114 × 146 mm
 per half. The lowest tile, the far thumb's, has 1.7 mm between it and the
 plinth. The top
 steps between columns, since Swung in's columns sit at different heights and

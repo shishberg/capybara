@@ -53,7 +53,7 @@ class Key:
     # What hangs under the plate that the top has to cover (chassis.field), as
     # (half, top, bottom, skin): a square slab of that half side in the key's
     # frame from `top` to `bottom` below the plate's top (the tile's pocket and
-    # the tile's way in below it), which the top stays `skin` over wherever the
+    # the tile in it), which the top stays `skin` over wherever the
     # slab leans out past the cell. Empty when nothing hangs below.
     pocket: tuple = ()
 
@@ -255,7 +255,7 @@ def swung_in_keys():
     hand layout's are. Each cell is a key unit square, wider along x for a wider cap."""
     out = []
     room = R.tile_room_box()
-    pocket = (room[0] / 2, -room[1], -room[1] + room[2] + R.tile_way_mm(), P.top_skin_mm)
+    pocket = (room[0] / 2, -room[1], -room[1] + room[2], P.top_skin_mm)
     for name, u in swung_in()["units"].items():
         m = np.array(swung_in()["frames"][name], float)
         cell = (P.cell_mm + (u - 1) * P.cap_unit_mm, P.cell_mm)

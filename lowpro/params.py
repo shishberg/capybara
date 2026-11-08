@@ -330,31 +330,25 @@ sleeve_gap_mm = 0.4
 # tile's cut-away corner leaves free.
 pocket_wall_mm = 1.2
 peg_fit_mm = 0.15
-# A tile goes into its pocket square to its plate for its own hang and this much
-# more, then straight down to the open underside: the way the build keeps clear.
-tile_lead_mm = 0.5
-# Each screw's insert sits in a boss in the wall, this wide and
-# screw_boss_h_mm tall from its seat. The seat is the plinth's top or, where
-# the plinth is thinner than a screw's head and screw_grip_mm, a round pad on
-# the plinth up to that, min_wall_mm wide round the head's counterbore, which
-# goes up into a recess in the body's underside plate_gap_mm wider (shell.py
-# screw_seat_z, seat_pads). The screws stand at the outline's corners that
-# turn screw_corner_deg or more, sharpest first, none within screw_apart_mm
-# of another along the outline, with the runs between split so none is over
-# screw_gap_mm: the fewest that hold the plinth at its corners. The tiles'
-# ways in fill the plan to the wall, so no boss fits inside the outline: each
-# is pushed out through the wall, where the wall lugs out round it (the lug's
-# radius leaves min_wall_mm outside the recess), until it's screw_clearance_mm
-# clear of every tile's way in and part's room; a spot slides along the
-# outline, screw_slide_mm at a time, when that needs less push (shell.py
-# screw_points).
+# Each screw's insert sits in a boss this wide, from its seat up to the
+# body's top, inside the outline. The seat is the plinth's top or, where the
+# plinth is thinner than a screw's head and screw_grip_mm, a round pad on the
+# plinth up to that, min_wall_mm wide round the head's counterbore, which goes
+# up into a recess in the body's underside plate_gap_mm wider (shell.py
+# screw_seat_z, seat_pads). For the outline's corners that turn
+# screw_corner_deg or more, sharpest first, none within screw_apart_mm of
+# another along the outline, with the runs between split so none is over
+# screw_gap_mm, a screw stands at the nearest spot inside the outline that's
+# screw_clearance_mm clear of every tile's and part's room and cradle, with min_wall_mm
+# of wall outside its recess, unless one already stands within
+# screw_apart_mm (shell.py screw_points). The body stands on the plinth, so
+# its weight holds the plinth's edges to the wall; the screws hold the two
+# together when it's lifted.
 screw_boss_mm = 6
-screw_boss_h_mm = 4.5
 screw_corner_deg = 60
 screw_apart_mm = 40
 screw_gap_mm = 120
 screw_clearance_mm = 0.5
-screw_slide_mm = 0.5
 # The ports: the wall grips the USB-C receptacle and the jack's barrel with
 # this fit, each plug's opening is chamfered this much at the wall's face and
 # reaches this far out past it, and the reset switch sits behind a skin of the
@@ -386,9 +380,8 @@ PRESETS = {
     # The capybara design with the Capybara's keycaps (one profile, every row)
     # and its switches' sizes. The plinth is a flat plate on the desk, as thick
     # as the editor's base plate; a screw's head and screw_grip_mm don't fit in
-    # it, so each screw has a seat on it (screw_boss_mm). The screws stay M2 x 4
-    # in 3 mm inserts: a 4 mm insert's hole would come within min_wall_mm of
-    # the top over the thumb's outer corner, where the body is 8.3 mm tall.
+    # it, so each screw has a seat on it (screw_boss_mm). The bosses run to the
+    # top, so they take 5 mm inserts and M2 x 6 screws.
     "capybara": {
         "design": "capybara",
         "cap_base_mm": _switch["keycap_mm"][0],
@@ -401,6 +394,9 @@ PRESETS = {
         "switch_rim_mm": _switch["seat_outer_mm"][0],
         "switch_below_plate_mm": _switch["body_below_plate_mm"],
         "bottom_plate_mm": _capybara["chassis"]["skin_mm"],
+        "insert_len_mm": 5,
+        "insert_depth_mm": 5.5,
+        "screw_len_mm": 6,
         # The skirt's flat and its cove add up to the plinth's top.
         "skirt_h_mm": 1,
         "skirt_cove_mm": 0.9,

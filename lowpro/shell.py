@@ -44,15 +44,14 @@ def plinth_top():
 
 
 # ---------------------------------------------------------------- the outline
-def way_plans():
-    """Each tile's way in (tile_way), in plan: the pocket with its plate's square
-    over it, and the lean of the way's square run below it; grown by the
-    outline's chord tolerance, so the wall it's drawn round can't touch it."""
-    return [(tile_way(k) + placed(k.frame, R.plate_block())).project().offset(2 * P.mesh_tol_mm, JoinType.Miter) for k in keys()]
+def key_plans():
+    """Each key's plate and its pocket, which holds its tile, in plan; grown by
+    the outline's chord tolerance, so the wall it's drawn round can't touch it."""
+    return [placed(k.frame, R.plate_block() + pocket_block()).project().offset(2 * P.mesh_tol_mm, JoinType.Miter) for k in keys()]
 
 
 def base_faces():
-    """What the outline closes round: the tiles' ways in, and the Pro Micro's and
+    """What the outline closes round: the keys' plates and pockets, and the Pro Micro's and
     the jack's footprints where the editor puts them."""
     b, j = R.mcu(), R.jack()
     bx, by, bz = b["board_mm"]
@@ -60,21 +59,19 @@ def base_faces():
     c, d = b["clearance_mm"], j["clearance_mm"]
     board = placed(L.editor_frame("pro_micro"), R.box((bx + 2 * c, by + 2 * c, bz), (0, 0, bz / 2))).project()
     jack = placed(L.editor_frame("trrs"), R.box((jx + 2 * d, jy + 2 * d, jz), (0, 0, jz / 2))).project()
-    return fused(way_plans() + [board, jack])
+    return fused(key_plans() + [board, jack])
 
 
 @cached
-def bare_outline():
-    """The outline before the screws' lugs, which the parts and the screws are
-    placed from: its stations and inward normals (chassis.stations_of)."""
+def outline_stations():
+    """The outline's stations and inward normals (chassis.stations_of), which
+    the parts and the screws are placed from."""
     return C.stations_of(C.outline_curve_of(base_faces(), [], []))
 
 
 def outline_faces():
-    """The outline (chassis.outline_curve): the base faces walled, hugged by a
-    lug round each screw's seat."""
-    r = lug_r()
-    return base_faces(), [CrossSection.circle(r, 4 * segments(r)).translate(tuple(p)) for p in screw_points()], []
+    """The outline (chassis.outline_curve): the base faces walled."""
+    return base_faces(), [], []
 
 
 def inside(extra=0):
@@ -91,7 +88,7 @@ def inside_prism(extra=0):
 def to_outline(p, d):
     """How far the bare outline is from the plan point p along the direction d:
     the nearest crossing either way (negative behind)."""
-    a = bare_outline()[0]
+    a = outline_stations()[0]
     e = np.roll(a, -1, axis=0) - a
     w = a - p
     den = d[0] * e[:, 1] - d[1] * e[:, 0]
@@ -128,7 +125,7 @@ def part_rooms():
 def outline_spot(s):
     """The point s along the bare outline from its first station, and the
     inward normal there."""
-    q, n = bare_outline()
+    q, n = outline_stations()
     along = np.r_[0, np.cumsum(np.linalg.norm(np.diff(np.r_[q, q[:1]], axis=0), axis=1))]
     s %= along[-1]
     i = int(np.searchsorted(along, s, side="right") - 1)
@@ -141,7 +138,7 @@ def corners():
     """The bare outline's convex corners as (turn in degrees, s along the
     outline at the corner's middle): each run of stations bending tighter than
     outline_round_mm + 1 mm turning the same way, counted up."""
-    q = bare_outline()[0]
+    q = outline_stations()[0]
     n = len(q)
     e = np.roll(q, -1, axis=0) - q
     length = np.linalg.norm(e, axis=1)
@@ -166,8 +163,11 @@ def corners():
 
 
 def blocked_plan():
-    """What a screw's boss must keep clear of, in plan: the tiles' ways in and the parts' rooms."""
-    return fused(way_plans() + [union(part_rooms()).project()])
+    """What a screw's boss must keep clear of, in plan: the tiles' rooms, the
+    parts' rooms and the cradles on the plinth. A boss can join a plate or a
+    pocket's wall: they're the body."""
+    return fused([union(place(k.frame, R.tile_room())).project() for k in keys()]
+                 + [union(part_rooms()).project(), union(cradles()).project()])
 
 
 def pad_r():
@@ -179,18 +179,35 @@ def recess_r():
     return pad_r() + P.plate_gap_mm
 
 
-def lug_r():
-    """A lug's radius round its screw: min_wall_mm of wall outside the recess."""
+def seat_wall_r():
+    """How far a screw stands inside the outline: min_wall_mm of wall outside its seat's recess."""
     return recess_r() + P.min_wall_mm
+
+
+def nearest_in(area, p):
+    """The point of the plan area nearest p: p itself when it's inside."""
+    if (CrossSection.circle(0.01, 4).translate(tuple(p)) ^ area).area() > 0:
+        return np.asarray(p, float)
+    best = None
+    for ring in area.to_polygons():
+        a = np.asarray(ring, float)
+        e = np.roll(a, -1, axis=0) - a
+        t = np.clip(((p - a) * e).sum(axis=1) / np.maximum((e * e).sum(axis=1), 1e-12), 0, 1)
+        q = a + t[:, None] * e
+        c = q[int(np.argmin(np.linalg.norm(q - p, axis=1)))]
+        if best is None or np.linalg.norm(c - p) < np.linalg.norm(best - p):
+            best = c
+    return best
 
 
 @cached
 def screw_points():
-    """Where the plinth screws into the body: the rule (params.py screw_boss_mm)
-    on the bare outline, each boss then pushed out through the wall, where
-    it's lugged, until it's clear of the tiles' ways in and the parts' rooms;
-    a spot slides along the outline when a slide needs less push."""
-    q = bare_outline()[0]
+    """Where the plinth screws into the body: for each corner the rule picks on
+    the outline (params.py screw_boss_mm), the nearest spot inside it that's
+    screw_clearance_mm clear of the tiles' and the parts' rooms and far enough
+    in for the seat's recess and its wall, unless a screw is already within
+    screw_apart_mm of it."""
+    q = outline_stations()[0]
     around = float(np.linalg.norm(np.diff(np.r_[q, q[:1]], axis=0), axis=1).sum())
 
     def apart(a, b):
@@ -207,25 +224,13 @@ def screw_points():
         run = (kept[(i + 1) % len(kept)] - s) % around or around
         parts = math.ceil(run / P.screw_gap_mm)
         spots += [(s + run * j / parts) % around for j in range(parts)]
-    blocked, r = blocked_plan(), P.screw_boss_mm / 2 + P.screw_clearance_mm
-    disc = CrossSection.circle(r, segments(r))
-
-    def push(u):
-        """The least push out for the boss at u along the outline to be clear, and its centre."""
-        p, n = outline_spot(u)
-        n = n / np.linalg.norm(n)
-        for k in np.arange(0, lug_r() + r, 0.1):
-            c = p + (lug_r() - k) * n
-            if (disc.translate(tuple(c)) ^ blocked).area() < 1e-6:
-                return k, c
-        return None
-
+    r = P.screw_boss_mm / 2 + P.screw_clearance_mm
+    free = polygon(q).offset(-seat_wall_r(), JoinType.Round, 2.0, segments(r)) - blocked_plan().offset(r, JoinType.Round, 2.0, segments(r))
     points = []
     for s in spots:
-        tries = [push(s + t * sign) for t in np.arange(0, P.screw_apart_mm / 2, P.screw_slide_mm) for sign in ((1,) if t == 0 else (1, -1))]
-        k, c = min(filter(None, tries), key=lambda x: x[0])
-        points.append(c)
-        blocked = fused([blocked, disc.translate(tuple(c))])
+        c = nearest_in(free, outline_spot(s)[0])
+        if all(np.linalg.norm(c - o) >= P.screw_apart_mm for o in points):
+            points.append(c)
     return points
 
 
@@ -244,8 +249,10 @@ def insert_holes():
 
 
 def boss(p):
-    """A screw's boss in the lug, from its seat up, lapping put_back_mm into the plinth's gap."""
-    return R.cylinder(P.screw_boss_mm, P.screw_boss_h_mm + put_back_mm, (p[0], p[1], screw_seat_z() + P.plate_gap_mm - put_back_mm))
+    """A screw's boss, from its seat up through the body's top (the body clips
+    it, so inside the outline it hangs from the top), lapping put_back_mm into
+    the plinth's gap."""
+    return R.cylinder(P.screw_boss_mm, 200, (p[0], p[1], screw_seat_z() + P.plate_gap_mm - put_back_mm))
 
 
 def recesses():
@@ -284,12 +291,8 @@ def pocket_block():
 
 
 def plates():
-    """Every key's plate and sleeve, and its pocket block kept out of every
-    tile's way in (a pocket's wall can cross a leaning neighbour's way),
-    hanging from the top skin."""
-    ks = keys()
-    pockets = union([placed(k.frame, pocket_block()) for k in ks]) - union([tile_way(k) for k in ks])
-    return (union([placed(k.frame, R.plate_block()) for k in ks]) + pockets) ^ C.body_shell()
+    """Every key's plate and sleeve, and its pocket block, hanging from the top skin."""
+    return union([placed(k.frame, R.plate_block() + pocket_block()) for k in keys()]) ^ C.body_shell()
 
 
 @cached
@@ -370,29 +373,6 @@ def parts(body, plate):
 
 
 # ---------------------------------------------------------------- checks
-def tile_way(k):
-    """The way key k's tile comes up into its pocket from the open underside, in
-    world: the pocket's room carried down square to the plate for the hang and
-    tile_lead_mm more, less the pegs' columns the notches ride down, then
-    straight down."""
-    room, posts = union([R.box(s, c) for s, c in R.tile_boxes(True)]), R.posts()
-    hang = R.tile_way_mm()
-    down = (0, 0, -hang)
-    square = placed(k.frame, (room + room.translate(down)).hull() - (posts + posts.translate(down)).hull())
-    foot = placed(k.frame, room.hull().translate(down))
-    return square + (foot + foot.translate((0, 0, -60))).hull()
-
-
-def blocked_tiles():
-    """What stops a tile on its way in, as (key, overlap mm^3)."""
-    out = []
-    for k in keys():
-        v = (tile_way(k) ^ body()).volume()
-        if v > 1e-3:
-            out.append((k.name, v))
-    return out
-
-
 def part_clashes():
     groups = [C.switches(), tiles(), electronics(), C.keycaps(P.cap_travel_mm)]
     return C.clashes_of(groups, [(body(), "the body"), (bottom_plate(), "the plinth")])
@@ -468,12 +448,6 @@ def checks():
         ok = False
     else:
         print("the USB-C and TRRS plugs go in through the walls")
-    blocked = blocked_tiles()
-    if blocked:
-        print("tiles can't come up into their pockets: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in blocked))
-        ok = False
-    else:
-        print("every tile comes up into its pocket from below")
     hits = headers_in_tiles()
     if hits:
         print("Dupont housings meet: " + ", ".join(f"{p} ({v:.2f} mm^3)" for p, v in hits))

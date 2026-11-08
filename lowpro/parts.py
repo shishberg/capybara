@@ -443,12 +443,6 @@ def tile_room_box():
     return s[0], c[2] + s[2] / 2, c[2] + s[2] / 2 - tile_bottom_z()
 
 
-def tile_way_mm():
-    """How far below its pocket a tile comes in square to the plate (shell.tile_way):
-    its own hang and tile_lead_mm more."""
-    return sleeve_bottom_z() - tile_bottom_z() + P.tile_lead_mm
-
-
 def plate_half():
     """Half the plate's side: past the switch's seat by the Capybara's margin, or
     out to the tile's clearance when that's further, so the plate covers the tile."""
