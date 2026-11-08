@@ -2,8 +2,26 @@
 
 The layout (layout.py) reads the hand from hand/left-hand.json; everything else
 is here. Sizes marked PROVISIONAL are from datasheets or memory, not measured
-parts. Override any of them from the command line: see build.py.
+parts. Override any of them from the command line: see build.py. PRESETS at
+the end are named sets of overrides (build.py --preset).
 """
+import json
+from pathlib import Path
+
+# The Capybara's editor project: the parts this design shares with it are read
+# from there, so each size lives in one place.
+_capybara = json.loads((Path(__file__).resolve().parent.parent / "editor" / "src" / "default-config.json").read_text())
+
+# ---------------------------------------------------------------- the design
+# "lowpro": the keys laid out here from the measured hand (the key field and the
+# thumb below), hotswap sockets in pockets in a solid body with wire channels,
+# and the nRF52840 board, battery and power switch in a well beside the keys
+# (chassis.py). "capybara": the Capybara's keys as its editor places them, its
+# RGB key tiles hanging from the switches in an open shell for loose hand
+# wiring, and its Pro Micro, TRRS jack and reset switch where the editor puts
+# them (layout.py swung_in, shell.py). The parameters below hold for both,
+# except those the editor's project fixes (the tent, the lift, the parts).
+design = "lowpro"
 
 # Which half is being built. The left half is the right's mirror image, but a
 # switch and its socket are the same parts in both, and they can't be mirrored:
@@ -290,6 +308,49 @@ reset_chamfer_mm = 0.8              # the hole's chamfer at the wall's face
 reset_button_clearance_mm = 0.2
 reset_button_gap_mm = 3             # from the power switch's north end
 
+# ---------------------------------------------------------------- the open shell (design "capybara")
+# The Capybara's parts are its editor project's (default-config.json), read
+# here as it has them so each size lives in one place: the key tile, the Pro
+# Micro with its Dupont housings, the TRRS jack and the reset switch, and the
+# project's switch, cap and wiring sizes. parts.py draws them from this.
+capybara = _capybara
+# The shell's top between the keys, measured straight down, and the plate at each key:
+# the Capybara's plate thickness. The body's walls are wall_mm.
+top_skin_mm = _capybara["chassis"]["plate_thickness_mm"]
+# Under each plate the body fills down round the switch body over the tile's
+# footprint, stopping this far over the tile's top for solder proud of its
+# holes (the editor's sleeve, docs/editor-chassis.md).
+sleeve_gap_mm = 0.4
+# A tile goes into its pocket square to its plate for its own hang and this much
+# more, then straight down to the open underside: the way the build keeps clear.
+tile_lead_mm = 0.5
+# Each screw's insert sits in a boss on the inside of the wall, this wide and
+# screw_boss_h_mm tall from the seam, its centre screw_inset_mm in from the
+# outline. The bosses stand where the Capybara's rule puts them on this
+# outline (docs/editor-chassis.md, screwSpots): at the outline's corners that
+# turn screw_corner_deg or more, sharpest first, none within screw_apart_mm of
+# another along the outline, and the runs between split so none is over
+# screw_gap_mm; a boss that would come within screw_clearance_mm of a tile's
+# way in or a part's room slides along the outline by screw_slide_mm at a time
+# until it is clear.
+screw_boss_mm = 6
+screw_boss_h_mm = 4.5
+screw_inset_mm = 3.1
+screw_corner_deg = 45
+screw_apart_mm = 40
+screw_gap_mm = 80
+screw_clearance_mm = 0.5
+screw_slide_mm = 0.5
+# The ports: the wall grips the USB-C receptacle and the jack's barrel with
+# this fit, each plug's opening is chamfered this much at the wall's face and
+# reaches this far out past it, and the reset switch sits behind a skin of the
+# wall this thick (docs/pro-micro.md). Each part sits where the editor puts it,
+# slid along its port's axis until its mouth is on the wall's face.
+port_grip_mm = 0.15
+port_chamfer_mm = 1
+plug_way_mm = 40
+reset_skin_mm = 0.5
+
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
 # at this step. Between cells the field blends the cells' planes, from this
@@ -302,3 +363,26 @@ surface_blend_mm = 3
 # chords no further than mesh_tol_mm from it.
 mesh_mm = 1
 mesh_tol_mm = 0.01
+
+
+# ---------------------------------------------------------------- presets
+# Named sets of overrides (build.py and render.py --preset).
+_switch = _capybara["switch"]
+PRESETS = {
+    # The capybara design with the Capybara's keycaps (one profile, every row)
+    # and its switches' sizes. The plinth is a flat plate on the desk, the
+    # editor's base plate: thick enough for a screw's head and screw_grip_mm.
+    "capybara": {
+        "design": "capybara",
+        "cap_base_mm": _switch["keycap_mm"][0],
+        "cap_top_mm": tuple(_switch["keycap_top_mm"]),
+        "cap_height_mm": (_switch["keycap_mm"][2],) * 4,
+        "cap_bottom_above_plate_mm": _switch["keycap_bottom_above_plate_mm"],
+        "cap_travel_mm": _switch["travel_mm"],
+        "cap_clearance_mm": _switch["keycap_clearance_mm"],
+        "switch_cutout_clearance_mm": _switch["cutout_clearance_mm"],
+        "switch_rim_mm": _switch["seat_outer_mm"][0],
+        "switch_below_plate_mm": _switch["body_below_plate_mm"],
+        "bottom_plate_mm": 2.5,
+    },
+}

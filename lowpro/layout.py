@@ -1,10 +1,13 @@
-"""The key layout from the measured hand: every key's frame, and the world
-frame (the tent and the lift that stands the body on the bottom plate).
+"""The key layout: every key's frame, and the world frame (the tent and the
+lift that stands the body on the bottom plate). The lowpro design lays the
+keys out from the measured hand; the capybara design takes them from the
+Capybara's editor (swung_in), with the Pro Micro, jack and reset switch.
 
 A key frame has its origin at the plate's top at the stem centre, +z out of
 the key (up through the cap), +y along the column away from you (the switch's
 pin side, north) and +x across it toward the pinky. Layout axes are the
-hand's (see hand()); world axes are those tented, pitched and lifted.
+hand's (see hand()); world axes are those tented, pitched and lifted. The
+editor's frames are already in world axes but for the plinth's thickness.
 
 A Key has:
   group    "finger", "thumb" or "extra"
@@ -22,6 +25,7 @@ Everything is cached; call reset() after changing a parameter.
 import functools
 import json
 import math
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -220,10 +224,56 @@ def extra_keys():
             for name, col, e in (("x1", 2, edges[0]), ("x2", 0, edges[1]))]
 
 
+# ---------------------------------------------------------------- Swung in (design "capybara")
+# The Capybara's default project, Swung in, as its editor places it, through
+# editor/tests/key-frames.ts: every key, the Pro Micro, the TRRS jack and the
+# reset switch in the editor's world axes (the desk z = 0, the base plate's top
+# skin_mm over it), tent and lift included, for this half (the left half is
+# built as the right and mirrored, as the editor does, docs/editor-chassis.md).
+@cached
+def swung_in():
+    run = subprocess.run(["node", "--import", "tsx", "tests/key-frames.ts", P.half], cwd=ROOT / "editor",
+                         capture_output=True, text=True)
+    if run.returncode:
+        raise RuntimeError(f"editor/tests/key-frames.ts failed (npm --prefix editor install?):\n{run.stderr}")
+    return json.loads(run.stdout)
+
+
+COLUMNS = ["inner", "index", "middle", "ring", "pinky"]
+ROWS = {"top": 1, "home": 0, "bottom": -1}
+THUMB_COLS = {name: col for name, _, col in THUMB_ROW} | {"x1": 2, "x2": 0}
+
+
+def swung_in_keys():
+    """Swung in's keys under the editor's names, in its world axes, grouped as the
+    hand layout's are. Each cell is a key unit square, wider along x for a wider cap."""
+    out = []
+    for name, u in swung_in()["units"].items():
+        m = np.array(swung_in()["frames"][name], float)
+        cell = (P.cell_mm + (u - 1) * P.cap_unit_mm, P.cell_mm)
+        if name.startswith("matrix_"):
+            _, col, row = name.split("_")
+            r = ROWS[row]
+            out.append(Key(name, m, "finger", COLUMNS.index(col), r, row_cap_row(r), u, cell))
+        else:
+            t = name.removeprefix("thumb_")
+            in_row = t in THUMB_COLS and t not in ("x1", "x2")
+            out.append(Key(name, m, "thumb" if in_row else "extra", THUMB_COLS[t], -2 if in_row else -3, P.cap_row_thumb, u, cell))
+    return out
+
+
+def design():
+    """The module that builds this design's body and plinth."""
+    from . import chassis, shell
+    return shell if P.design == "capybara" else chassis
+
+
 # ---------------------------------------------------------------- all keys, world
 @cached
 def layout_keys():
     """Every key in layout axes."""
+    if P.design == "capybara":
+        return swung_in_keys()
     keys = list(inner_keys())
     for i in range(4):
         keys += finger_keys(i, i + 1)
@@ -264,7 +314,10 @@ def lowest_seam_in(T):
 @cached
 def world_frame():
     """Layout axes to world: tented, then lifted so the seam's lowest point sits
-    bottom_plate_mm over the desk, which is z = 0."""
+    bottom_plate_mm over the desk, which is z = 0. The editor's axes are the
+    world's with its base plate's top at the seam."""
+    if P.design == "capybara":
+        return trans([0, 0, P.bottom_plate_mm - swung_in()["skin_mm"]])
     T = tent_frame()
     return trans([0, 0, P.bottom_plate_mm - lowest_seam_in(T)]) @ T
 
@@ -272,7 +325,10 @@ def world_frame():
 @cached
 def seam_frame():
     """The seam, the plane between the body and the plinth, as a frame: its z = 0
-    the plane, its z up out of the plinth."""
+    the plane, its z up out of the plinth. The capybara design's is the flat
+    plinth's top, the floor the wires lie on, so it's level."""
+    if P.design == "capybara":
+        return trans([0, 0, P.bottom_plate_mm])
     return world_frame() @ seam_turn() @ trans([0, 0, seam_in_layout()])
 
 
@@ -285,6 +341,11 @@ def keys():
 
 def key_named(name):
     return next(k for k in keys() if k.name == name)
+
+
+def editor_frame(name):
+    """A part's frame as the editor places it ("pro_micro", "trrs" or "reset"), in world."""
+    return world_frame() @ np.array(swung_in()["frames"][name], float)
 
 
 def cell_corners(k, grow=0, z=0):

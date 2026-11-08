@@ -2,6 +2,7 @@
 
     .venv/bin/python -m lowpro.render                     # into output/lowpro/renders/
     .venv/bin/python -m lowpro.render --set tent_deg=4
+    .venv/bin/python -m lowpro.render --preset capybara   # into output/lowpro/capybara/renders/
 
 Builds the parts in-process (as lowpro.build does, without the checks or the
 files) and writes: the assembly and the body with plinth from above, the
@@ -16,6 +17,8 @@ import sys
 from pathlib import Path
 
 import numpy as np
+
+from .params import PRESETS
 
 ROOT = Path(__file__).resolve().parent.parent
 BODY, PLATE = "burlywood", "peru"
@@ -100,10 +103,11 @@ def section(solids, normal, at, box=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", default=str(ROOT / "output" / "lowpro" / "renders"))
+    ap.add_argument("--out", help="where to write (default output/lowpro/renders/, or output/lowpro/<preset>/renders/)")
+    ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of overrides (params.py PRESETS)")
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a parameter")
     args = ap.parse_args(argv)
-    out = Path(args.out)
+    out = Path(args.out or ROOT / "output" / "lowpro" / (args.preset or "") / "renders")
     out.mkdir(parents=True, exist_ok=True)
 
     from . import build as B
@@ -111,7 +115,7 @@ def main(argv=None):
     from . import layout as L
     from .lib import origin
 
-    B.set_params(args.set)
+    B.set_params(args.set, args.preset)
     L.reset()
     body, plate = C.body(), C.bottom_plate()
     pieces = [(p.solid, p.colour) for p in B.assembly(body, plate)]

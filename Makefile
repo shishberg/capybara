@@ -58,6 +58,6 @@ lowpro-render: $(LOWPRO_ENV)
 	$(LOWPRO_PY) -m lowpro.render
 
 lowpro-test: $(LOWPRO_ENV)
-	$(LOWPRO_PY) -m unittest lowpro.test_checks
+	$(LOWPRO_PY) -m unittest lowpro.test_checks lowpro.test_swung_in
 
 .PHONY: lowpro lowpro-check lowpro-render lowpro-test
