@@ -138,8 +138,10 @@ block's (its keys' plates and pockets, and the Pro Micro's and the jack's
 rooms, so both stand wholly inside the walls) and the
 thumb cluster's, walled and rounded, so it runs straight past the steps between
 keys and turns in only where the thumb cluster meets the finger block. The body
-is this design's shell, hollowed to its walls and a 3 mm skin, which stays
-3 mm clear of each cap's room where the room cuts down through the top: each
+is this design's shell, hollowed to its walls and a 3 mm skin, with a 1.2 mm
+wall round each cap's room where the room cuts down through the top (a lower
+key's room rises beside its higher neighbour's pocket, where a full skin would
+stand in that tile's way out): each
 switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
@@ -155,7 +157,7 @@ cluster (1 mm flat, 0.9 mm cove). The Pro Micro, the jack and the reset switch
 stand where the editor puts them. The USB-C and TRRS mouths sit 2.2 and
 1.4 mm in from the wall's outer face, behind plug openings chamfered at that
 face; the reset switch is turned (8.3°) square to the wall its plunger points
-at, behind an even 0.5 mm skin with a stop behind it; and each part has a
+at, behind an even 0.8 mm skin with a stop 0.1 mm behind it; and each part has a
 cradle on the plinth. There is
 room over the Pro Micro's pins for Dupont housings and their wires.
 
@@ -164,18 +166,21 @@ for each of the outline's corners that turns 60° or more, the nearest spot
 clear of the tiles, the parts and their cradles, unless a screw already stands
 within 40 mm. They stand behind the middle column, in front of the inner
 column, at the far thumb key and at the pinky's front corner, each boss a 6 mm
-post from its seat up to the top. The body stands on the plinth, so its
+post from its seat to 1 mm over its insert, standing in the wall, so it stays
+out of the tiles' and the wires' way. The body stands on the plinth, so its
 weight holds the plinth's edges to the wall; the screws hold the two together
 when it's lifted. The plinth is too thin for a screw's head and its 1.2 mm
 grip, so each screw has a seat: a 6.2 mm pad on the plinth up to 2.4 mm, into
-a recess in the body's underside, kept 1 mm inside the outline.
+a recess 0.3 mm wider all round in the body's underside, room for the
+elephant's foot, kept 1 mm inside the outline.
 
 The harness goes in from the underside with the plinth off: the body upside
 down, each tile up into its pocket, then the switches in from the top through
 the plates into the tiles' sockets, then the plinth and its screws. With the
-plinth off, the opening is far bigger than a tile and the pockets have room
-round them to turn one in, so the build doesn't model the tiles' ways in. It
-checks that the switches, notched tiles, caps at full travel, Pro
+plinth off, the opening is far bigger than a tile, so the build doesn't model
+the tiles' whole ways in. It checks that each tile comes straight down off its
+pegs, out past its pocket's rim, without meeting the body, since below that
+the underside is open to turn it out; that the switches, notched tiles, caps at full travel, Pro
 Micro with its housings, jack and reset switch clear the case, that the plugs
 go in through the walls, and the shared checks on the screws, the top's skin
 and the body against the plinth.

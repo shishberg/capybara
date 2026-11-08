@@ -331,12 +331,17 @@ sleeve_gap_mm = 0.4
 # tile's cut-away corner leaves free.
 pocket_wall_mm = 1.2
 peg_fit_mm = 0.15
-# Each screw's insert sits in a boss this wide, from its seat up to the
-# body's top, inside the outline. The seat is the plinth's top or, where the
+# Where a cap's room cuts down through the top, the wall round it: a pocket's
+# wall, not the top's skin, since a lower key's room rises beside its higher
+# neighbour's pocket and a skin's thickness there stands in that tile's way in.
+cap_wall_mm = 1.2
+# Each screw's insert sits in a boss this wide, from its seat up to
+# min_wall_mm over the insert's hole, inside the outline. The seat is the plinth's top or, where the
 # plinth is thinner than a screw's head and screw_grip_mm, a round pad on the
 # plinth up to that, min_wall_mm wide round the head's counterbore, which goes
-# up into a recess in the body's underside plate_gap_mm wider (shell.py
-# screw_seat_z, seat_pads). For the outline's corners that turn
+# up into a recess in the body's underside seat_fit_mm wider all round, room
+# for the elephant's foot that closes the recess on the body's first layers
+# (shell.py screw_seat_z, seat_pads). For the outline's corners that turn
 # screw_corner_deg or more, sharpest first, none within screw_apart_mm of
 # another along the outline, with the runs between split so none is over
 # screw_gap_mm, a screw stands at the nearest spot inside the outline that's
@@ -346,6 +351,7 @@ peg_fit_mm = 0.15
 # its weight holds the plinth's edges to the wall; the screws hold the two
 # together when it's lifted.
 screw_boss_mm = 6
+seat_fit_mm = 0.3
 screw_corner_deg = 60
 screw_apart_mm = 40
 screw_gap_mm = 120
@@ -353,11 +359,15 @@ screw_clearance_mm = 0.5
 # The ports: the wall grips the USB-C receptacle and the jack's barrel with
 # this fit, each plug's opening is chamfered this much at the wall's face and
 # runs this far out from the mouth, and the reset switch sits behind a skin of
-# the wall this thick (docs/pro-micro.md).
+# the wall this thick, two lines of a 0.4 mm nozzle (docs/pro-micro.md), with
+# its stop this far behind its body, so the plunger still stands 0.1 mm proud
+# against the stop, as it did behind a 0.5 mm skin with the pocket's 0.4 mm fit
+# behind the body.
 port_grip_mm = 0.15
 port_chamfer_mm = 1
 plug_way_mm = 40
-reset_skin_mm = 0.5
+reset_skin_mm = 0.8
+reset_stop_gap_mm = 0.1
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
@@ -380,8 +390,8 @@ PRESETS = {
     # The capybara design with the Capybara's keycaps (one profile, every row)
     # and its switches' sizes. The plinth is a flat plate on the desk, as thick
     # as the editor's base plate; a screw's head and screw_grip_mm don't fit in
-    # it, so each screw has a seat on it (screw_boss_mm). The bosses run to the
-    # top, so they take 5 mm inserts and M2 x 6 screws.
+    # it, so each screw has a seat on it (screw_boss_mm). The bosses take 5 mm
+    # inserts and M2 x 6 screws.
     "capybara": {
         "design": "capybara",
         "cap_base_mm": _switch["keycap_mm"][0],

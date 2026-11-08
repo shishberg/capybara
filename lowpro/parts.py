@@ -605,13 +605,13 @@ def trrs_port(face_x):
 
 def jack_cradle():
     """The jack's cradle on the plinth: a pedestal under its body from the
-    plinth's top to its standoff, with walls (editor pro_micro.cradle.jack_walls)
-    along its sides and across its back end up to its top."""
-    j = jack()
+    plinth's top to its standoff, with the cradle's walls along its sides and
+    across its back end, as high as the editor's: jack_walls of the body's height."""
+    j, k = jack(), mcu()["cradle"]
     jx, jy, jz = j["body_mm"]
-    c, w = j["clearance_mm"], mcu()["cradle"]["jack_walls"]
+    c, w, top = j["clearance_mm"], k["wall_mm"], jz * k["jack_walls"]
     floor = -j["standoff_mm"] - P.plate_gap_mm - 0.1
-    outer = box((jx + 2 * c + w, jy + 2 * c + 2 * w, jz - floor), (w / 2, 0, (jz + floor) / 2))
+    outer = box((jx + 2 * c + w, jy + 2 * c + 2 * w, top - floor), (w / 2, 0, (top + floor) / 2))
     return [outer - box((jx + 2 * c, jy + 2 * c, jz + 1), (0, 0, jz / 2 + 0.5))]
 
 
@@ -658,5 +658,5 @@ def reset_stop():
     rx, ry, rz = r["body_mm"]
     w, deep = P.reset_stop_mm
     x0, x1 = reset_seam_x() - P.plate_gap_mm - 0.1, rx / 2
-    z0 = rz + r["clearance_mm"]
+    z0 = rz + P.reset_stop_gap_mm
     return [box((x1 - x0, w, deep), ((x0 + x1) / 2, 0, z0 + deep / 2))]

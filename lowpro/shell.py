@@ -181,7 +181,7 @@ def pad_r():
 
 
 def recess_r():
-    return pad_r() + P.plate_gap_mm
+    return pad_r() + P.seat_fit_mm
 
 
 def seat_wall_r():
@@ -254,10 +254,11 @@ def insert_holes():
 
 
 def boss(p):
-    """A screw's boss, from its seat up through the body's top (the body clips
-    it, so inside the outline it hangs from the top), lapping put_back_mm into
-    the plinth's gap."""
-    return R.cylinder(P.screw_boss_mm, 200, (p[0], p[1], screw_seat_z() + P.plate_gap_mm - put_back_mm))
+    """A screw's boss, from its seat to min_wall_mm over its insert's hole,
+    lapping put_back_mm into the plinth's gap. It stands in the wall, so it
+    needn't reach the top, which keeps it out of the tiles' and wires' way."""
+    h = P.plate_gap_mm + P.insert_depth_mm + P.min_wall_mm
+    return R.cylinder(P.screw_boss_mm, h + put_back_mm, (p[0], p[1], screw_seat_z() + P.plate_gap_mm - put_back_mm))
 
 
 def recesses():
@@ -282,9 +283,9 @@ def seat_pads():
 @cached
 def interior():
     """The hollow: inside the walls, up to top_skin_mm under the top and
-    top_skin_mm clear of every cap's room, so where a room cuts down through
-    the top the skin follows it (the rooms are convex, so the sum is exact)."""
-    ball = Manifold.sphere(P.top_skin_mm, 16)
+    cap_wall_mm clear of every cap's room, so where a room cuts down through
+    the top a wall follows it (the rooms are convex, so the sum is exact)."""
+    ball = Manifold.sphere(P.cap_wall_mm, 16)
     return subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
                     [s.minkowski_sum(ball) for s in C.cap_rooms()])
 
@@ -397,6 +398,26 @@ def headers_in_tiles():
     return [(p.label, v) for p in tiles() + C.switches() for v in [(p.solid ^ housings).volume()] if v > 1e-3]
 
 
+def tile_drop(d):
+    """The tile run straight down its key's axis by d, in the key frame: each of
+    its boxes reaching d further down, the board less its notches, which ride
+    down the pegs."""
+    (bs, bc), *rest = R.tile_boxes()
+    n = P.capybara["tile"]["corner_notch_mm"]
+    longer = lambda s, c: R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))
+    notches = R.notch_cuts(n["radius_mm"], n["inset_mm"], bc[2] - bs[2] / 2 - d - 1, bs[2] + d + 2)
+    return [longer(bs, bc) - union(notches)] + [longer(s, c) for s, c in rest]
+
+
+def stuck_tiles():
+    """The tiles that meet the body coming straight down off their pegs, out
+    past their pocket's rim (the board's thickness and its clearance), as
+    (key, mm^3): below that the underside is open to turn them out."""
+    t = P.capybara["tile"]
+    b, drop = body(), union(tile_drop(t["size_mm"][2] + t["clearance_mm"]))
+    return [(k.name, v) for k in keys() for v in [(placed(k.frame, drop) ^ b).volume()] if v > 1e-4]
+
+
 def thin_tops():
     """What is cut from the body to within min_wall_mm of its top, as (what,
     volume mm^3): the switches' rooms and the caps' rooms go out through the
@@ -439,6 +460,12 @@ def checks():
         ok = False
     else:
         print("every pocket and room stays under the top")
+    stuck = stuck_tiles()
+    if stuck:
+        print("tiles meet the body coming off their pegs: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in stuck))
+        ok = False
+    else:
+        print("every tile comes straight down off its pegs")
     v = (body() ^ bottom_plate()).volume()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")
