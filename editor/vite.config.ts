@@ -1,9 +1,12 @@
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
+const repo = fileURLToPath(new URL('..', import.meta.url));
 
 // Artifact marks painted on the editor (src/marks.ts), one JSON file and one
 // screenshot per mark in marks/. Dev server only.
@@ -80,5 +83,47 @@ function marks(): Plugin {
   };
 }
 
+// The low-profile cases (lowpro/README.md): one half's assembly as 3MF, built
+// by the Makefile when its inputs changed. Dev server only.
+//   GET /__lowpro/<capybara|lowpro>/<right|left>.3mf
+// Two requests for one file share one make.
+function lowproCases(): Plugin {
+  const run = promisify(execFile);
+  const making = new Map<string, Promise<unknown>>();
+  return {
+    name: 'lowpro-cases',
+    apply: 'serve',
+    config: () => ({ server: { watch: { ignored: [repo + 'output/**'] } } }),
+    configureServer(server) {
+      server.middlewares.use('/__lowpro', async (req, res) => {
+        const m = /^\/(capybara|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
+        res.setHeader('Content-Type', 'text/plain');
+        if (!m) {
+          res.statusCode = 400;
+          return res.end('bad case');
+        }
+        // The capybara design's files sit in a folder of their own (Makefile).
+        const target = `output/lowpro/${m[1] === 'capybara' ? 'capybara/' : ''}${m[2]}-assembly.3mf`;
+        let build = making.get(target);
+        if (!build) {
+          build = run('make', [target], { cwd: repo, maxBuffer: 1 << 26 }).finally(() =>
+            making.delete(target),
+          );
+          making.set(target, build);
+        }
+        try {
+          await build;
+          const file = await readFile(repo + target);
+          res.setHeader('Content-Type', 'model/3mf');
+          res.end(file);
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.end(`make ${target} failed:\n` + String(e.stderr || e.stdout || e).slice(-2000));
+        }
+      });
+    },
+  };
+}
+
 // Workers as modules: the build worker starts the wiring worker.
-export default defineConfig({ plugins: [marks()], worker: { format: 'es' } });
+export default defineConfig({ plugins: [marks(), lowproCases()], worker: { format: 'es' } });
