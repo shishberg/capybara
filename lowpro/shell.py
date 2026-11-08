@@ -7,9 +7,9 @@ The body is chassis.py's shell (its top surface, rounded top edge and vertical
 walls), hollowed to the walls and a top skin, with each key's plate, sleeve
 and pocket hanging from the skin, pegs in the tile's corner notches, and a
 post for each plinth screw. The Pro Micro, the TRRS jack and the reset switch
-stand where the editor puts them, slid along their ports' axes to meet this
-outline's wall, each on a cradle on the plinth; the ports go out through the
-walls. The harness goes in from the underside with the plinth off: each tile up
+stand where the editor puts them (the reset turned square to its wall), each
+on a cradle on the plinth; their rooms stay inside the walls and only their
+ports go out through them. The harness goes in from the underside with the plinth off: each tile up
 into its pocket, then the switches in from the top. Everything here is in world
 axes (layout.py), the seam the plinth's level top, bottom_plate_mm over the desk.
 """
@@ -17,7 +17,7 @@ import math
 import time
 
 import numpy as np
-from manifold3d import CrossSection, JoinType
+from manifold3d import CrossSection, JoinType, Manifold
 
 from . import chassis as C
 from . import layout as L
@@ -25,14 +25,16 @@ from . import params as P
 from . import parts as R
 from .chassis import add, fused, place, placed, polygon, put_back_mm, stage, subtract
 from .layout import cached, keys
-from .lib import origin, r2, trans, xdir, xform
+from .lib import origin, r2, rot_z, trans, xdir, xform
 from .parts import Piece, segments, union
 
 PARTS = ("pro_micro", "trrs", "reset")
-ROOMS = {"pro_micro": R.pro_micro_room, "trrs": R.trrs_room, "reset": R.reset_room}
-# Each part's mouth (what meets the wall's face) in its frame, and the way out.
-MOUTHS = {"pro_micro": lambda: (R.usb_mouth_x(), 0, 0), "trrs": lambda: (R.trrs_mouth_x(), 0, 0), "reset": lambda: (0, 0, 0)}
-OUTWARD = {"pro_micro": (-1, 0, 0), "trrs": (-1, 0, 0), "reset": (0, 0, -1)}
+# The Pro Micro and the jack face -x in their frames: each one's room, which
+# stays inside the walls, its port out through the wall (given the wall's face's
+# x in its frame) and its mouth's x, where the plug meets it.
+ROOMS = {"pro_micro": R.pro_micro_room, "trrs": R.trrs_room}
+PORTS = {"pro_micro": R.usb_port, "trrs": R.trrs_port}
+MOUTHS = {"pro_micro": R.usb_mouth_x, "trrs": R.trrs_mouth_x}
 
 
 def seam():
@@ -46,18 +48,13 @@ def plinth_top():
 # ---------------------------------------------------------------- the outline
 def base_faces():
     """What the outline closes round: the finger block (its keys' plates and
-    pockets, which hold the tiles, and the Pro Micro's and the jack's footprints
-    where the editor puts them) and the thumb cluster, each as its convex hull,
-    so the wall runs straight past the keys' jogs. The plans are grown by the
-    outline's chord tolerance, so the wall can't touch them."""
-    b, j = R.mcu(), R.jack()
-    bx, by, bz = b["board_mm"]
-    jx, jy, jz = j["body_mm"]
-    c, d = b["clearance_mm"], j["clearance_mm"]
-    board = placed(L.editor_frame("pro_micro"), R.box((bx + 2 * c, by + 2 * c, bz), (0, 0, bz / 2)))
-    jack = placed(L.editor_frame("trrs"), R.box((jx + 2 * d, jy + 2 * d, jz), (0, 0, jz / 2)))
+    pockets, which hold the tiles, and the Pro Micro's and the jack's rooms)
+    and the thumb cluster, each as its convex hull, so the wall runs straight
+    past the keys' jogs. The plans are grown by the outline's chord tolerance,
+    so the wall can't touch them."""
+    rooms = [s for name, room in ROOMS.items() for s in place(part_frame(name), room())]
     plan = lambda k: placed(k.frame, R.plate_block() + pocket_block())
-    finger = union([plan(k) for k in keys() if k.group == "finger"] + [board, jack])
+    finger = union([plan(k) for k in keys() if k.group == "finger"] + rooms)
     thumb = union([plan(k) for k in keys() if k.group != "finger"])
     return fused([s.project().hull().offset(2 * P.mesh_tol_mm, JoinType.Miter) for s in (finger, thumb)])
 
@@ -86,8 +83,9 @@ def inside_prism(extra=0):
 
 # ---------------------------------------------------------------- the parts' places
 def to_outline(p, d):
-    """How far the bare outline is from the plan point p along the direction d:
-    the nearest crossing either way (negative behind)."""
+    """Where the bare outline is from the plan point p along the unit direction
+    d, at the nearest crossing either way: how far (negative behind), and the
+    outline's outward normal there."""
     a = outline_stations()[0]
     e = np.roll(a, -1, axis=0) - a
     w = a - p
@@ -95,30 +93,37 @@ def to_outline(p, d):
     ok = np.abs(den) > 1e-12
     safe = np.where(ok, den, 1)
     t, u = (w[:, 0] * e[:, 1] - w[:, 1] * e[:, 0]) / safe, (w[:, 0] * d[1] - w[:, 1] * d[0]) / safe
-    hit = t[ok & (u >= 0) & (u <= 1)]
-    return float(hit[np.abs(hit).argmin()])
+    i = np.flatnonzero(ok & (u >= 0) & (u <= 1))
+    i = i[np.abs(t[i]).argmin()]
+    return float(t[i]), np.array([e[i, 1], -e[i, 0]]) / np.linalg.norm(e[i])
 
 
 @cached
-def slides():
-    """How far each part moves from the editor's placement, out along its
-    port's axis, for its mouth to sit on this outline's wall (the reset
-    switch's plunger face reset_skin_mm behind it)."""
-    out = {}
-    for name in PARTS:
-        m = L.editor_frame(name)
-        mouth, way = xform(m, MOUTHS[name]()), xdir(m, OUTWARD[name])
-        out[name] = to_outline(mouth[:2], way[:2]) - (P.reset_skin_mm if name == "reset" else 0)
-    return out
+def reset_frame():
+    """The reset switch where the editor puts it, turned square to the wall its
+    plunger points at, with its plunger face reset_skin_mm behind the wall's
+    face there, so the skin in front of it is even."""
+    m = L.editor_frame("reset")
+    o, way = origin(m), xdir(m, (0, 0, -1))[:2]
+    t, n = to_outline(o[:2], way)
+    at = o[:2] + t * way - P.reset_skin_mm * n
+    turn = math.degrees(math.atan2(way[0] * n[1] - way[1] * n[0], way @ n))
+    return trans((*at, o[2])) @ rot_z(turn) @ trans(-o) @ m
 
 
 def part_frame(name):
-    m = L.editor_frame(name)
-    return trans(slides()[name] * xdir(m, OUTWARD[name])) @ m
+    return reset_frame() if name == "reset" else L.editor_frame(name)
+
+
+def face_x(name):
+    """The wall's face in the Pro Micro's or the jack's frame, out along -x from its mouth."""
+    f, m = part_frame(name), MOUTHS[name]()
+    return m - to_outline(xform(f, (m, 0, 0))[:2], xdir(f, (-1, 0, 0))[:2])[0]
 
 
 def part_rooms():
-    return [s for name in PARTS for s in place(part_frame(name), ROOMS[name]())]
+    return ([s for name, room in ROOMS.items() for s in place(part_frame(name), room() + PORTS[name](face_x(name)))]
+            + place(part_frame("reset"), R.reset_room()))
 
 
 # ---------------------------------------------------------------- the screws
@@ -276,8 +281,12 @@ def seat_pads():
 # ---------------------------------------------------------------- the body
 @cached
 def interior():
-    """The hollow: inside the walls, up to top_skin_mm under the top."""
-    return inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm))
+    """The hollow: inside the walls, up to top_skin_mm under the top and
+    top_skin_mm clear of every cap's sweep, so where a sweep cuts down through
+    the top the skin follows it (the sweeps are convex, so the sum is exact)."""
+    ball = Manifold.sphere(P.top_skin_mm, 16)
+    return subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
+                    [s.minkowski_sum(ball) for s in C.cap_rooms()])
 
 
 def pocket_block():
@@ -470,9 +479,10 @@ def report():
     trrs = xform(part_frame("trrs"), [R.trrs_mouth_x(), 0, j["body_mm"][2] / 2])[2]
     reset = origin(part_frame("reset"))[2]
     (wall, screw, what), _ = screw_walls()
-    slid = ", ".join(f"{name} {r2(t)}" for name, t in slides().items())
+    m, f = L.editor_frame("reset"), reset_frame()
+    turn = math.degrees(math.acos(min(1, float(xdir(m, (0, 0, 1)) @ xdir(f, (0, 0, 1))))))
     return (f"cap tops {r2(min(tops))} to {r2(max(tops))} mm over the desk, the highest cap corner {r2(peak)} mm; plan "
             f"{r2(x1 - x0)} x {r2(y1 - y0)} mm, {round(polygon(C.outline()).area())} mm^2; plinth {r2(plinth_top())} mm thick, "
             f"the seam at {r2(seam())}; tiles {r2(min(under))} to {r2(max(under))} mm over the plinth; USB-C {r2(usb)} mm, "
-            f"TRRS {r2(trrs)} mm and reset {r2(reset)} mm over the desk at their mouths; parts slid out {slid} mm; "
+            f"TRRS {r2(trrs)} mm and reset {r2(reset)} mm over the desk at their mouths; the reset switch turned {r2(turn)} deg square to its wall; "
             f"{len(screw_points())} screws, least wall {r2(wall)} mm ({screw} to {what})")

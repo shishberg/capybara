@@ -132,10 +132,13 @@ The keys are the editor's Swung in layout at its 15° tent, each frame equal
 to the editor's to 1e-6 on both halves (`test_swung_in.py` runs the editor's
 own placement, `editor/tests/key-frames.ts`, to compare), with the editor's
 base plate top as the seam. The outline is two convex hulls, the finger
-block's (its keys' plates and pockets, the Pro Micro and the jack) and the
+block's (its keys' plates and pockets, and the Pro Micro's and the jack's
+rooms, so both stand wholly inside the walls) and the
 thumb cluster's, walled and rounded, so it runs straight past the steps between
 keys and turns in only where the thumb cluster meets the finger block. The body
-is this design's shell, hollowed to its walls and a 3 mm skin: each switch sits in a plate in the skin, with the
+is this design's shell, hollowed to its walls and a 3 mm skin, which stays
+3 mm clear of each cap's sweep where the sweep cuts down through the top: each
+switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
 board's underside and no further, so the wires that leave under the board's
@@ -147,10 +150,11 @@ are no channels, sockets or diodes: the inside is open, and the wiring lies
 loose on the plinth, which is a flat plate on the desk as thick as the editor's
 2 mm base plate, with lowpro's skirt bridging the notches round the thumb
 cluster (1 mm flat, 0.9 mm cove). The Pro Micro, the jack and the reset switch
-stand where the editor puts them, slid out along their ports' axes until each
-mouth meets the wall (2.2, 1.4 and 1.0 mm); the USB-C and TRRS openings are
-chamfered through the wall, the reset switch sits behind a 0.5 mm skin of the
-wall with a stop behind it, and each part has a cradle on the plinth. There is
+stand where the editor puts them. The USB-C and TRRS mouths sit 2.2 and
+1.4 mm in from the wall's outer face, behind plug openings chamfered at that
+face; the reset switch is turned (8.3°) square to the wall its plunger points
+at, behind an even 0.5 mm skin with a stop behind it; and each part has a
+cradle on the plinth. There is
 room over the Pro Micro's pins for Dupont housings and their wires.
 
 Four M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:

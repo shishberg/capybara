@@ -516,37 +516,42 @@ def usb_plug():
     return pieces([box((pl, pw, ph), (usb_mouth_x() - pl / 2, 0, b["board_mm"][2] + b["usb_mm"][2] / 2))], "silver", "USB-C plug")
 
 
-def plug_way(mouth_x, section, centre_z, c):
+def plug_way(mouth_x, face_x, section, centre_z, c):
     """The opening for a plug out through the wall: its section (a box's (w, h)
     or a cylinder's diameter) with clearance c, from the mouth out plug_way_mm,
-    chamfered port_chamfer_mm at the wall's face, which is at the mouth."""
+    chamfered port_chamfer_mm at the wall's face, at face_x."""
     k, far = P.port_chamfer_mm, P.plug_way_mm
     if isinstance(section, tuple):
         w, h = section[0] + 2 * c, section[1] + 2 * c
         hole = box((far, w, h), (mouth_x - far / 2, 0, centre_z))
-        flare = Manifold.hull_points([(mouth_x + k, sy * w / 2, centre_z + sz * h / 2) for sy in (-1, 1) for sz in (-1, 1)]
-                                     + [(mouth_x - 0.01, sy * (w / 2 + k), centre_z + sz * (h / 2 + k)) for sy in (-1, 1) for sz in (-1, 1)])
+        flare = Manifold.hull_points([(face_x + k, sy * w / 2, centre_z + sz * h / 2) for sy in (-1, 1) for sz in (-1, 1)]
+                                     + [(face_x - 0.01, sy * (w / 2 + k), centre_z + sz * (h / 2 + k)) for sy in (-1, 1) for sz in (-1, 1)])
     else:
         d = section + 2 * c
         hole = along_x(d, far, (mouth_x - far, 0, centre_z))
-        flare = along_x(d + 2 * k, k + 0.01, (mouth_x - 0.01, 0, centre_z), d)
+        flare = along_x(d + 2 * k, k + 0.01, (face_x - 0.01, 0, centre_z), d)
     return [hole, flare]
 
 
 def pro_micro_room():
-    """What the shell loses to the board: the board's room, the room over each
-    wired pin for its header, Dupont housing and wire, the receptacle's grip in
-    the wall and the plug's opening."""
+    """The board's room, which stays inside the walls: the board, and over each
+    wired pin its header, Dupont housing and wire."""
     b = mcu()
     bx, by, bz = b["board_mm"]
-    ux, uy, uz = b["usb_mm"]
-    c, g, m = b["clearance_mm"], P.port_grip_mm, usb_mouth_x()
+    c = b["clearance_mm"]
     spacer, (hx, hy, hz), exit = b["dupont"]["spacer_mm"], b["dupont"]["housing_mm"], b["dupont"]["exit_mm"]
     tall = spacer + hz + exit
     headers = [box((hx + 2 * c, hy + 2 * c, tall + c), (x, y, bz + tall / 2)) for x, y, _ in map(pin_at, plug_pins())]
-    return ([box((bx + 2 * c, by + 2 * c, bz + 2 * c), (0, 0, bz / 2)),
-             box((ux + 2 * g, uy + 2 * g, uz + 2 * g), (m + ux / 2, 0, bz + uz / 2))]
-            + headers + plug_way(m, tuple(b["plug_mm"][:2]), bz + uz / 2, c))
+    return [box((bx + 2 * c, by + 2 * c, bz + 2 * c), (0, 0, bz / 2))] + headers
+
+
+def usb_port(face_x):
+    """The USB-C port through the wall, whose face is at face_x: the receptacle's grip and the plug's opening."""
+    b = mcu()
+    ux, uy, uz = b["usb_mm"]
+    bz, g, m = b["board_mm"][2], P.port_grip_mm, usb_mouth_x()
+    return ([box((ux + 2 * g, uy + 2 * g, uz + 2 * g), (m + ux / 2, 0, bz + uz / 2))]
+            + plug_way(m, face_x, tuple(b["plug_mm"][:2]), bz + uz / 2, b["clearance_mm"]))
 
 
 def mcu_cradle():
@@ -589,13 +594,19 @@ def trrs_plug():
 
 
 def trrs_room():
-    """What the shell loses to the jack: its body's room, the barrel's grip in the wall and the plug's opening."""
+    """The jack's body's room, which stays inside the walls."""
     j = jack()
     jx, jy, jz = j["body_mm"]
-    bl, bd = j["barrel_mm"]
-    c, g, m = j["clearance_mm"], P.port_grip_mm, trrs_mouth_x()
-    return ([box((jx + 2 * c, jy + 2 * c, jz + 2 * c), (0, 0, jz / 2)), along_x(bd + 2 * g, bl + 0.1, (m - 0.05, 0, jz / 2))]
-            + plug_way(m, j["plug_mm"][0], jz / 2, c))
+    c = j["clearance_mm"]
+    return [box((jx + 2 * c, jy + 2 * c, jz + 2 * c), (0, 0, jz / 2))]
+
+
+def trrs_port(face_x):
+    """The TRRS port through the wall, whose face is at face_x: the barrel's grip and the plug's opening."""
+    j = jack()
+    jz, (bl, bd) = j["body_mm"][2], j["barrel_mm"]
+    g, m = P.port_grip_mm, trrs_mouth_x()
+    return [along_x(bd + 2 * g, bl + 0.1, (m - 0.05, 0, jz / 2))] + plug_way(m, face_x, j["plug_mm"][0], jz / 2, j["clearance_mm"])
 
 
 def jack_cradle():

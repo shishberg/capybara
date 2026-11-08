@@ -351,9 +351,8 @@ screw_gap_mm = 120
 screw_clearance_mm = 0.5
 # The ports: the wall grips the USB-C receptacle and the jack's barrel with
 # this fit, each plug's opening is chamfered this much at the wall's face and
-# reaches this far out past it, and the reset switch sits behind a skin of the
-# wall this thick (docs/pro-micro.md). Each part sits where the editor puts it,
-# slid along its port's axis until its mouth is on the wall's face.
+# runs this far out from the mouth, and the reset switch sits behind a skin of
+# the wall this thick (docs/pro-micro.md).
 port_grip_mm = 0.15
 port_chamfer_mm = 1
 plug_way_mm = 40
