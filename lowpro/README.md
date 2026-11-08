@@ -131,8 +131,11 @@ to `output/lowpro/capybara/`.
 The keys are the editor's Swung in layout at its 15° tent, each frame equal
 to the editor's to 1e-6 on both halves (`test_swung_in.py` runs the editor's
 own placement, `editor/tests/key-frames.ts`, to compare), with the editor's
-base plate top as the seam. The body is this design's shell, hollowed to its
-walls and a 3 mm skin: each switch sits in a plate in the skin, with the
+base plate top as the seam. The outline is two convex hulls, the finger
+block's (its keys' plates and pockets, the Pro Micro and the jack) and the
+thumb cluster's, walled and rounded, so it runs straight past the steps between
+keys and turns in only where the thumb cluster meets the finger block. The body
+is this design's shell, hollowed to its walls and a 3 mm skin: each switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
 board's underside and no further, so the wires that leave under the board's
@@ -145,7 +148,7 @@ loose on the plinth, which is a flat plate on the desk as thick as the editor's
 2 mm base plate, with lowpro's skirt bridging the notches round the thumb
 cluster (1 mm flat, 0.9 mm cove). The Pro Micro, the jack and the reset switch
 stand where the editor puts them, slid out along their ports' axes until each
-mouth meets the wall (2.2, 1.4 and 0.1 mm); the USB-C and TRRS openings are
+mouth meets the wall (2.2, 1.4 and 1.0 mm); the USB-C and TRRS openings are
 chamfered through the wall, the reset switch sits behind a 0.5 mm skin of the
 wall with a stop behind it, and each part has a cradle on the plinth. There is
 room over the Pro Micro's pins for Dupont housings and their wires.
@@ -153,9 +156,9 @@ room over the Pro Micro's pins for Dupont housings and their wires.
 Four M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
 for each of the outline's corners that turns 60° or more, the nearest spot
 clear of the tiles, the parts and their cradles, unless a screw already stands
-within 40 mm. The corners themselves are pockets to the wall, so the screws
-stand between the key columns and in the thumb cluster's crook, each boss a
-6 mm post from its seat up to the top. The body stands on the plinth, so its
+within 40 mm. They stand behind the middle column, in front of the inner
+column, at the far thumb key and at the pinky's front corner, each boss a 6 mm
+post from its seat up to the top. The body stands on the plinth, so its
 weight holds the plinth's edges to the wall; the screws hold the two together
 when it's lifted. The plinth is too thin for a screw's head and its 1.2 mm
 grip, so each screw has a seat: a 6.2 mm pad on the plinth up to 2.4 mm, into

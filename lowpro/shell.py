@@ -5,8 +5,8 @@ plinth on the desk that's the floor the hand wiring lies loose on.
 
 The body is chassis.py's shell (its top surface, rounded top edge and vertical
 walls), hollowed to the walls and a top skin, with each key's plate, sleeve
-and pocket hanging from the skin, pegs in the tile's corner notches, and a lug
-round each plinth screw's boss. The Pro Micro, the TRRS jack and the reset switch
+and pocket hanging from the skin, pegs in the tile's corner notches, and a
+post for each plinth screw. The Pro Micro, the TRRS jack and the reset switch
 stand where the editor puts them, slid along their ports' axes to meet this
 outline's wall, each on a cradle on the plinth; the ports go out through the
 walls. The harness goes in from the underside with the plinth off: each tile up
@@ -44,22 +44,22 @@ def plinth_top():
 
 
 # ---------------------------------------------------------------- the outline
-def key_plans():
-    """Each key's plate and its pocket, which holds its tile, in plan; grown by
-    the outline's chord tolerance, so the wall it's drawn round can't touch it."""
-    return [placed(k.frame, R.plate_block() + pocket_block()).project().offset(2 * P.mesh_tol_mm, JoinType.Miter) for k in keys()]
-
-
 def base_faces():
-    """What the outline closes round: the keys' plates and pockets, and the Pro Micro's and
-    the jack's footprints where the editor puts them."""
+    """What the outline closes round: the finger block (its keys' plates and
+    pockets, which hold the tiles, and the Pro Micro's and the jack's footprints
+    where the editor puts them) and the thumb cluster, each as its convex hull,
+    so the wall runs straight past the keys' jogs. The plans are grown by the
+    outline's chord tolerance, so the wall can't touch them."""
     b, j = R.mcu(), R.jack()
     bx, by, bz = b["board_mm"]
     jx, jy, jz = j["body_mm"]
     c, d = b["clearance_mm"], j["clearance_mm"]
-    board = placed(L.editor_frame("pro_micro"), R.box((bx + 2 * c, by + 2 * c, bz), (0, 0, bz / 2))).project()
-    jack = placed(L.editor_frame("trrs"), R.box((jx + 2 * d, jy + 2 * d, jz), (0, 0, jz / 2))).project()
-    return fused(key_plans() + [board, jack])
+    board = placed(L.editor_frame("pro_micro"), R.box((bx + 2 * c, by + 2 * c, bz), (0, 0, bz / 2)))
+    jack = placed(L.editor_frame("trrs"), R.box((jx + 2 * d, jy + 2 * d, jz), (0, 0, jz / 2)))
+    plan = lambda k: placed(k.frame, R.plate_block() + pocket_block())
+    finger = union([plan(k) for k in keys() if k.group == "finger"] + [board, jack])
+    thumb = union([plan(k) for k in keys() if k.group != "finger"])
+    return fused([s.project().hull().offset(2 * P.mesh_tol_mm, JoinType.Miter) for s in (finger, thumb)])
 
 
 @cached
