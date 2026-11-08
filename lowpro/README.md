@@ -43,7 +43,7 @@ It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
 
 Build from the repository root. `make lowpro` runs the checks and writes the
-right and left bodies and plinths as STL and the right assembly as 3MF into
+right and left bodies and plinths as STL and each half's assembly as 3MF into
 `output/lowpro/`. `make lowpro-check` runs only the checks. `make lowpro-render`
 writes PNGs of the right half into `output/lowpro/renders/`. One part at a time,
 or with a parameter changed:

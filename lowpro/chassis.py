@@ -1206,7 +1206,7 @@ def electronics():
 
 # ---------------------------------------------------------------- checks
 def parts(body, plate):
-    """The right half's pieces for the assembly: body, plinth, switches, caps, sockets, diodes and electronics."""
+    """The built half's pieces for the assembly, drawn as the right (the left's handed parts pre-mirrored): body, plinth, switches, caps, sockets, diodes and electronics."""
     return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
             + switches() + keycaps() + sockets() + diodes() + electronics())
 

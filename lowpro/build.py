@@ -1,6 +1,6 @@
 """Build the low-profile Capybara's parts to STL and 3MF. From the repository root:
 
-    .venv/bin/python -m lowpro.build                      # both halves' bodies and plinths, the right assembly, the check
+    .venv/bin/python -m lowpro.build                      # both halves' bodies, plinths and assemblies, the check
     .venv/bin/python -m lowpro.build --half left --part body
     .venv/bin/python -m lowpro.build --check              # only the checks (exit 1 when one fails)
     .venv/bin/python -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
@@ -8,7 +8,7 @@
 
 Any parameter in params.py can be overridden with --set, after a --preset's
 (params.py PRESETS). Files go to output/lowpro/ (output/lowpro/<preset>/ with a
-preset; --out): <half>-body.stl, <half>-plate.stl and right-assembly.3mf
+preset; --out): <half>-body.stl, <half>-plate.stl and <half>-assembly.3mf
 (body, plinth, switches, caps and the design's other parts, each piece a
 named, coloured mesh). The left half is the right mirrored, but for the
 switches and sockets, which are the same parts in both, so each half is its
@@ -20,6 +20,7 @@ import ast
 import sys
 import time
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -168,10 +169,11 @@ def main(argv=None):
             if name in parts:
                 write_stl(for_half(solid, half), out / f"{half}-{name}.stl")
         s = C.stage("STL", s)
-        if "assembly" in parts and half == "right":
+        if "assembly" in parts:
             refuse_invalid(body, "the assembly's body")
             refuse_invalid(plate, "the assembly's plinth")
-            write_3mf(D.parts(body, plate), out / "right-assembly.3mf")
+            pieces = [replace(p, solid=for_half(p.solid, half)) for p in D.parts(body, plate)]
+            write_3mf(pieces, out / f"{half}-assembly.3mf")
             C.stage("3MF", s)
     if args.check:
         return 0 if ok else 1

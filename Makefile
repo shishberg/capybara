@@ -60,4 +60,14 @@ lowpro-render: $(LOWPRO_ENV)
 lowpro-test: $(LOWPRO_ENV)
 	$(LOWPRO_PY) -m unittest lowpro.test_checks lowpro.test_swung_in
 
+# One half's assembly for the editor's Case picker (editor/README.md). The
+# capybara rule comes first: make takes the first pattern rule that matches.
+LOWPRO_SRC = $(LOWPRO_ENV) $(wildcard lowpro/*.py) hand/left-hand.json editor/src/default-config.json
+
+output/lowpro/capybara/%-assembly.3mf: $(LOWPRO_SRC) $(wildcard editor/src/*.ts) editor/tests/key-frames.ts
+	$(LOWPRO_PY) -m lowpro.build --preset capybara --half $* --part assembly --no-check
+
+output/lowpro/%-assembly.3mf: $(LOWPRO_SRC)
+	$(LOWPRO_PY) -m lowpro.build --half $* --part assembly --no-check
+
 .PHONY: lowpro lowpro-check lowpro-render lowpro-test
