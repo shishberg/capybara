@@ -347,7 +347,7 @@ tile_lead_mm = 0.5
 # radius leaves min_wall_mm outside the recess), until it's screw_clearance_mm
 # clear of every tile's way in and part's room; a spot slides along the
 # outline, screw_slide_mm at a time, when that needs less push (shell.py
-# screw_spots).
+# screw_points).
 screw_boss_mm = 6
 screw_boss_h_mm = 4.5
 screw_corner_deg = 60

@@ -4,9 +4,9 @@ a plate with its RGB key tile hanging under it in an open shell, and a flat
 plinth on the desk that's the floor the hand wiring lies loose on.
 
 The body is chassis.py's shell (its top surface, rounded top edge and vertical
-walls), hollowed to the walls and a top skin, with each key's plate and sleeve
-hanging from the skin over the tile's pocket, and bosses for the plinth's
-screws inside the walls. The Pro Micro, the TRRS jack and the reset switch
+walls), hollowed to the walls and a top skin, with each key's plate, sleeve
+and pocket hanging from the skin, pegs in the tile's corner notches, and a lug
+round each plinth screw's boss. The Pro Micro, the TRRS jack and the reset switch
 stand where the editor puts them, slid along their ports' axes to meet this
 outline's wall, each on a cradle on the plinth; the ports go out through the
 walls. The harness goes in from the underside with the plinth off: each tile up
