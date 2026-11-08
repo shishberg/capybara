@@ -72,8 +72,8 @@ def bare_outline():
 
 def outline_faces():
     """The outline (chassis.outline_curve): the base faces walled, hugged by a
-    lug round each screw's boss, screw_inset_mm past its centre."""
-    r = P.screw_inset_mm
+    lug round each screw's seat."""
+    r = lug_r()
     return base_faces(), [CrossSection.circle(r, 4 * segments(r)).translate(tuple(p)) for p in screw_points()], []
 
 
@@ -170,12 +170,26 @@ def blocked_plan():
     return fused(way_plans() + [union(part_rooms()).project()])
 
 
+def pad_r():
+    """The seat's pad: min_wall_mm round the head's counterbore."""
+    return R.counterbore_d() / 2 + P.min_wall_mm
+
+
+def recess_r():
+    return pad_r() + P.plate_gap_mm
+
+
+def lug_r():
+    """A lug's radius round its screw: min_wall_mm of wall outside the recess."""
+    return recess_r() + P.min_wall_mm
+
+
 @cached
-def screw_points():
-    """Where the plinth screws into the body: the Capybara's rule (params.py
-    screw_boss_mm) on the bare outline, each boss then pushed out through the
-    wall, where it's lugged, until it's clear of the tiles' ways in and the
-    parts' rooms; a spot slides along the outline when a slide needs less push."""
+def screw_spots():
+    """Where the plinth screws into the body: the rule (params.py screw_boss_mm)
+    on the bare outline, each boss then pushed out through the wall until it's
+    clear of the tiles' ways in and the parts' rooms; a spot slides along the
+    outline when a slide needs less push."""
     q = bare_outline()[0]
     around = float(np.linalg.norm(np.diff(np.r_[q, q[:1]], axis=0), axis=1).sum())
 
@@ -200,8 +214,8 @@ def screw_points():
         """The least push out for the boss at u along the outline to be clear, and its centre."""
         p, n = outline_spot(u)
         n = n / np.linalg.norm(n)
-        for k in np.arange(0, P.screw_inset_mm + r, 0.1):
-            c = p + (P.screw_inset_mm - k) * n
+        for k in np.arange(0, lug_r() + r, 0.1):
+            c = p + (lug_r() - k) * n
             if (disc.translate(tuple(c)) ^ blocked).area() < 1e-6:
                 return k, c
         return None
@@ -215,17 +229,45 @@ def screw_points():
     return points
 
 
+def screw_points():
+    return screw_spots()
+
+
+def screw_seat_z():
+    """Where the screws' heads bear: the plinth's top, or a pad up to what a
+    head and screw_grip_mm need when the plinth is thinner than that."""
+    return max(plinth_top(), P.screw_grip_mm + P.screw_head_h_mm)
+
+
 def screw_seats():
-    return [plinth_top()] * len(screw_points())
+    return [screw_seat_z()] * len(screw_points())
 
 
 def insert_holes():
-    return [C.insert_hole_at(p, plinth_top()) for p in screw_points()]
+    return [C.insert_hole_at(p, screw_seat_z()) for p in screw_points()]
 
 
 def boss(p):
-    """A screw's boss inside the wall, from the seam up."""
-    return R.cylinder(P.screw_boss_mm, P.screw_boss_h_mm + put_back_mm, (p[0], p[1], seam() - put_back_mm))
+    """A screw's boss in the lug, from its seat up, lapping put_back_mm into the plinth's gap."""
+    return R.cylinder(P.screw_boss_mm, P.screw_boss_h_mm + put_back_mm, (p[0], p[1], screw_seat_z() + P.plate_gap_mm - put_back_mm))
+
+
+def recesses():
+    """The recess in the body's underside over each seat's pad, from the seam
+    up to the boss's foot; nothing where the seat is the plinth's top."""
+    h = screw_seat_z() - plinth_top()
+    if h <= 0:
+        return []
+    return [R.cylinder(2 * recess_r(), h + put_back_mm, (p[0], p[1], seam() - put_back_mm)) for p in screw_points()]
+
+
+def seat_pads():
+    """The screws' seats on the plinth, where it's too thin for the heads: a
+    pad up from the plinth's top to the seat round each."""
+    h = screw_seat_z() - plinth_top()
+    if h <= 0:
+        return []
+    return [R.cylinder(2 * pad_r(), h + put_back_mm, (p[0], p[1], plinth_top() - put_back_mm)) for p in screw_points()]
 
 
 # ---------------------------------------------------------------- the body
@@ -270,8 +312,8 @@ def body_cutters():
 @cached
 def body():
     t = time.time()
-    shell = add(subtract(C.body_shell(), [interior()]), [plates()] + [boss(p) for p in screw_points()])
-    body = subtract(shell, body_cutters() + insert_holes())
+    shell = add(subtract(C.body_shell(), [interior()]), [plates(), union([boss(p) for p in screw_points()]) ^ C.body_shell()])
+    body = subtract(shell, body_cutters() + insert_holes() + recesses())
     body.num_tri()
     stage("body cuts", t)
     return body
@@ -279,7 +321,7 @@ def body():
 
 # ---------------------------------------------------------------- the plinth
 def screw_holes():
-    return [h.translate((p[0], p[1], 0)) for p in screw_points() for h in R.screw_hole(plinth_top())]
+    return [h.translate((p[0], p[1], 0)) for p in screw_points() for h in R.screw_hole(screw_seat_z())]
 
 
 def plate_cuts():
@@ -296,8 +338,9 @@ def cradles():
 
 @cached
 def plinth_shell():
-    """The plinth before anything is cut from it: a flat plate on the desk up to plate_gap_mm under the seam."""
-    return polygon(C.outline()).extrude(plinth_top())
+    """The plinth before anything is cut from it: a flat plate on the desk up
+    to plate_gap_mm under the seam, with the screws' seats on it."""
+    return add(polygon(C.outline()).extrude(plinth_top()), seat_pads())
 
 
 @cached
@@ -371,10 +414,12 @@ def headers_in_tiles():
 def thin_tops():
     """What is cut from the body to within min_wall_mm of its top, as (what,
     volume mm^3): the switches' rooms and the caps' sweeps go out through the
-    top, nothing else may come near it."""
+    top, nothing else may come near it, the screws' insert holes included (the
+    body is low over the thumb's outer corner)."""
     shell = C.body_shell()
     skin = shell - shell.translate((0, 0, -P.min_wall_mm))
-    return [(what, v) for what, group in body_cuts() if what not in ("a switch's room", "a cap's sweep")
+    cuts = [(what, group) for what, group in body_cuts() if what not in ("a switch's room", "a cap's sweep")]
+    return [(what, v) for what, group in cuts + [("a screw's insert hole", insert_holes())]
             for v in [sum((skin ^ s).volume() for s in group)] if v > 1e-6]
 
 
