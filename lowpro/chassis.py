@@ -77,19 +77,94 @@ def plate_at(k, x, y):
 def field(x, y):
     """The key field's height over the world points (x, y) (arrays)."""
     x, y = np.asarray(x, float), np.asarray(y, float)
-    D, Z = [], []
+    D, Z, covers = [], [], []
     for k in keys():
-        _, lx, ly = plate_at(k, x, y)
+        pz, lx, ly = plate_at(k, x, y)
         sx, sy = k.cell[0] / 2, k.cell[1] / 2
         cx, cy = np.clip(lx, -sx, sx), np.clip(ly, -sy, sy)
         b = P.surface_blend_mm
         inside = np.maximum(np.abs(lx) - sx, np.abs(ly) - sy)   # negative inside, by how much
         D.append(np.where(inside <= -b, 0, np.hypot(lx - cx, ly - cy) + np.minimum(inside + b, b)))
         Z.append(k.frame[2, 0] * cx + k.frame[2, 1] * cy + k.frame[2, 3])
+        if k.pocket:
+            covers.append(pocket_cover(k, pz, lx, ly))
     D, Z = np.array(D), np.array(Z)
     w = 1 / np.maximum(D, 1e-6) ** 3
     core = D <= 0
-    return np.where(core.any(0), np.where(core, Z, -1e9).max(0), (w * Z).sum(0) / w.sum(0))
+    z = np.where(core.any(0), np.where(core, Z, -1e9).max(0), (w * Z).sum(0) / w.sum(0))
+    return np.maximum(z, np.array(covers).max(0)) if covers else z
+
+
+def pocket_cover(k, pz, lx, ly):
+    """The least height of the top over the plan points under key k's plate
+    plane at pz, whose frame x and y there are lx and ly, to keep its skin over
+    its pocket slab (Key.pocket) wherever the slab leans out past the cell:
+    the top of the slab wrapped in the skin, the wrap rounded to the skin over
+    the slab's lip and falling away at 45 degrees past it. That's the slab's
+    upper envelope h (its highest point on each vertical line, in plane
+    coordinates q) raised by the wrap's profile at the plan distance from each
+    point: max over q of h(q) + wrap(|p - q|), which is concave in q, so a
+    nested ternary search finds it. -inf where the key is too far to matter."""
+    half, top, bottom, skin = k.pocket
+    m = k.frame
+    lean = m[2, :2] / m[2, 2]               # frame x, y per mm of frame depth, along a vertical line
+    plan = m[:2, :2]                        # frame x, y to world x, y, on the plane
+    far = 2 * half + bottom + 2 * skin
+    near = np.hypot(lx, ly) < far
+    lx, ly, pz = lx[near], ly[near], pz[near]
+    cover = np.full(len(near), -np.inf)
+    if not near.any():
+        return cover
+    ts = np.array([top, bottom])
+
+    def depth(qx, qy):
+        """The slab's highest point on the vertical line at plane point q, as a
+        frame depth; inf where the line misses it."""
+        lo, hi = np.full_like(qx, top), np.full_like(qx, bottom)
+        for l, s in ((qx, lean[0]), (qy, lean[1])):
+            if s == 0:
+                hi = np.where(np.abs(l) <= half, hi, -np.inf)
+            else:
+                lo = np.maximum(lo, np.minimum((l - half) / s, (l + half) / s))
+                hi = np.minimum(hi, np.maximum((l - half) / s, (l + half) / s))
+        return np.where(lo <= hi, lo, np.inf)
+
+    def wrap(d):
+        flat = skin / np.sqrt(2)
+        return np.where(d <= flat, np.sqrt(np.maximum(0, skin * skin - d * d)), skin * np.sqrt(2) - d)
+
+    def lifted(qx, qy):
+        """h(q) + wrap(|p - q|) for the plane points q, per evaluation point."""
+        dx, dy = qx - lx, qy - ly
+        d = np.hypot(plan[0, 0] * dx + plan[0, 1] * dy, plan[1, 0] * dx + plan[1, 1] * dy)
+        return pz + m[2, 0] * dx + m[2, 1] * dy - depth(qx, qy) / m[2, 2] + wrap(d)
+
+    def y_span(qx):
+        """The plane y over which the vertical line hits the slab, at plane x qx."""
+        if lean[0] == 0:
+            t0, t1 = ts
+        else:
+            t0, t1 = np.maximum(top, np.minimum((qx - half) / lean[0], (qx + half) / lean[0])), \
+                     np.minimum(bottom, np.maximum((qx - half) / lean[0], (qx + half) / lean[0]))
+        ys = (t0 * lean[1], t1 * lean[1])
+        return np.minimum(*ys) - half, np.maximum(*ys) + half
+
+    def best_y(qx):
+        lo, hi = y_span(qx)
+        for _ in range(30):
+            a, b = lo + (hi - lo) / 3, hi - (hi - lo) / 3
+            up = lifted(qx, a) < lifted(qx, b)
+            lo, hi = np.where(up, a, lo), np.where(up, hi, b)
+        return lifted(qx, (lo + hi) / 2)
+
+    xs = ts * lean[0]
+    lo, hi = np.full_like(lx, xs.min() - half), np.full_like(lx, xs.max() + half)
+    for _ in range(30):
+        a, b = lo + (hi - lo) / 3, hi - (hi - lo) / 3
+        up = best_y(a) < best_y(b)
+        lo, hi = np.where(up, a, lo), np.where(up, hi, b)
+    cover[near] = best_y((lo + hi) / 2)
+    return cover
 
 
 def top_z(x, y):
@@ -205,32 +280,43 @@ def signed_area(pts):
     return 0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
 
 
+def outline_faces():
+    """What the outline closes round (outline_curve): outline_style "hulls" is
+    the hulls joined, "closed" the cells and bays; then what hugs the wall once
+    it's drawn (the ring corner and the channels' walls), and what hugs it
+    again after the rounding, so that can't cut into the channels' wall."""
+    s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
+    channel_walls = [hull_of(pts) for pts in channel_points()]
+    return s, [ring_corner()] + channel_walls, channel_walls
+
+
 @cached
 def outline_curve():
-    """The body's outline as a smooth closed curve: outline_style "hulls" is the
-    hulls joined, "closed" the cells and bays closed up (gaps narrower than
-    2 * outline_close_mm filled). Either way the gaps that remain get a round
-    of outline_close_mm, the wall goes round it, the inside corners are rounded to what the wall leaves of outline_close_mm
-    and the convex ones to outline_round_mm, and the channels are kept
-    min_wall_mm inside, after the rounding so that it can't cut into their wall.
+    return outline_curve_of(*L.design().outline_faces())
+
+
+def outline_curve_of(s, hugs, again):
+    """The body's outline as a smooth closed curve: the faces s (outline_faces)
+    closed up (gaps narrower than 2 * outline_close_mm filled). The gaps that
+    remain get a round of outline_close_mm, the wall goes round it, the inside
+    corners are rounded to what the wall leaves of outline_close_mm and the
+    convex ones to outline_round_mm.
     The offsets leave a polygon of straight
     sides and arcs (as chords four times finer than mesh_tol_mm asks, or the
     spline bends too tightly at each chord's end for the top edge's round);
     the curve is a periodic cubic spline through points along it a tenth of
     mesh_mm apart, so that its normal turns smoothly where an arc meets a side.
     Returns the spline, over the polygon's length, counterclockwise."""
-    s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
     def offset(s, amount):
         return s.offset(amount, JoinType.Round, 2.0, 4 * segments(abs(amount)))
 
     for amount in (P.outline_close_mm, -P.outline_close_mm, P.wall_mm):
         s = offset(s, amount)
-    channel_walls = [hull_of(pts) for pts in channel_points()]
-    s = fused([s, ring_corner()] + channel_walls)
+    s = fused([s] + hugs)
     inside = P.outline_close_mm - P.wall_mm
     for amount in (inside, -inside, -P.outline_round_mm, P.outline_round_mm):
         s = offset(s, amount)
-    s = fused([s] + channel_walls)
+    s = fused([s] + again)
     for amount in (inside, -inside):
         s = offset(s, amount)
     piece = max(s.decompose(), key=lambda c: c.area())
@@ -245,11 +331,14 @@ def outline_curve():
 
 @cached
 def outline_stations():
+    return stations_of(outline_curve())
+
+
+def stations_of(curve):
     """The stations along the outline the walls and the top edge's round are
     built on: no further apart than mesh_mm, nor so far that the chord between
     two leaves the curve by more than mesh_tol_mm. Returns their points and
     the outline's inward normals there (each N x 2)."""
-    curve = outline_curve()
     s = np.linspace(0, curve.x[-1], len(curve.x) * 4)
     d1, d2 = curve(s, 1), curve(s, 2)
     bend = np.abs(d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]) / np.linalg.norm(d1, axis=1) ** 3
@@ -1116,6 +1205,12 @@ def electronics():
 
 
 # ---------------------------------------------------------------- checks
+def parts(body, plate):
+    """The right half's pieces for the assembly: body, plinth, switches, caps, sockets, diodes and electronics."""
+    return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
+            + switches() + keycaps() + sockets() + diodes() + electronics())
+
+
 def near_pairs():
     """Pairs of keys near enough for their caps to meet."""
     ks = keys()
@@ -1147,8 +1242,13 @@ def part_overlap():
 
 def part_clashes():
     groups = [switches(), sockets(), diodes(), electronics(), keycaps(P.cap_travel_mm)]
+    return clashes_of(groups, [(body(), "the body"), (bottom_plate(), "the plinth")])
+
+
+def clashes_of(groups, cases):
+    """Where the parts (groups of pieces) meet the cases ((solid, name)), as (part, case, overlap mm^3)."""
     out = []
-    for solid, which in ((body(), "the body"), (bottom_plate(), "the plinth")):
+    for solid, which in cases:
         for group in groups:
             if (union([p.solid for p in group]) ^ solid).volume() > 1e-3:
                 out += [(p.label, which, v) for p in group for v in [(p.solid ^ solid).volume()] if v > 1e-3]
@@ -1384,20 +1484,28 @@ def gap(a, b):
 
 @cached
 def screw_walls():
-    """The wall left round each screw: its holes (the plate's screw hole and
-    counterbore, the body's insert hole) against everything else cut from that
-    part, and against the outline. Returns the least wall as (mm, screw, what)
-    and the clashes as a list of (screw, what, overlap mm^3), empty when every
-    hole is clear."""
+    return screw_walls_of(L.screw_points(), screw_seats(), body_cuts, plate_cuts, plinth_shell)
+
+
+def screw_walls_of(points, seats, body_cuts, plate_cuts, plinth):
+    """The wall left round each screw at `points` on the plinth's top at `seats`:
+    its holes (the plate's screw hole and counterbore, the body's insert hole)
+    against everything else cut from that part (the named groups, from
+    body_cuts() and plate_cuts()) and against the outline, the counterbore
+    against the plinth's top (plinth()). Returns the least wall as (mm, screw,
+    what) and the clashes as a list of (screw, what, overlap mm^3), empty when
+    every hole is clear. The cuts and the plinth are asked for between the
+    first screw's holes, where this always made them: Manifold orders a mesh's
+    triangles by when its primitives were made, so the STLs' bytes depend on it."""
     least, hits = (float("inf"), None, None), []
-    for i, (p, h) in enumerate(zip(L.screw_points(), screw_seats())):
+    for i, (p, h) in enumerate(zip(points, seats)):
         x, y = float(p[0]), float(p[1])
         name = f"screw {i + 1} ({x:.1f}, {y:.1f})"
         if h < P.screw_grip_mm + P.screw_head_h_mm:
             proud = P.screw_grip_mm + P.screw_head_h_mm - h
             hits.append((name, "the desk (the head stands proud of the plinth)", np.pi * (P.screw_head_d / 2) ** 2 * proud))
         round_it = R.cylinder(R.counterbore_d() + 0.2, 60, (x, y, put_back_mm))
-        under = h - P.screw_grip_mm - (round_it - plinth_shell()).bounding_box()[2]
+        under = h - P.screw_grip_mm - (round_it - plinth()).bounding_box()[2]
         if under > 0:
             hits.append((name, "the plinth's top (the counterbore breaks out through it)", np.pi * (R.counterbore_d() / 2) ** 2 * under))
         holes = [(c.translate((x, y, 0)), plate_cuts()) for c in R.screw_hole(h)]
@@ -1431,6 +1539,92 @@ def screw_length_faults():
     if P.insert_len_mm > P.insert_depth_mm:
         faults.append(f"the inserts stand {P.insert_len_mm - P.insert_depth_mm:.1f} mm out of their holes")
     return faults
+
+def checks():
+    """Run every check, printing each; True when all pass."""
+    ok = True
+    hits = cap_collisions()
+    if hits:
+        print("keycaps meet: " + ", ".join(f"{a} with {b} ({v:.2f} mm^3)" for a, b, v in hits))
+        ok = False
+    else:
+        print("keycaps clear")
+    _, hits = screw_walls()
+    if hits:
+        print("screw holes break into: " + ", ".join(f"{s} into {w} ({v:.2f} mm^3)" for s, w, v in hits))
+        ok = False
+    else:
+        print("screw holes clear")
+    faults = screw_length_faults()
+    if faults:
+        print(f"M2 x {P.screw_len_mm} screws don't fit: " + ", ".join(faults))
+        ok = False
+    else:
+        print(f"M2 x {P.screw_len_mm} screws fit every insert")
+    thin = thin_walls()
+    if thin:
+        print(f"walls under {P.min_wall_mm} mm: " + ", ".join(f"{a} to {b} ({d:.2f} mm)" for a, b, d in thin))
+        ok = False
+    else:
+        print("walls between rooms clear")
+    bare = thin_tops()
+    if bare:
+        print(f"under {P.min_wall_mm} mm of top: " + ", ".join(f"{w} ({v:.2f} mm^3)" for w, v in bare))
+        ok = False
+    else:
+        print("every room stays under the top")
+    lost = unwired()
+    if lost:
+        print("no path to the controller from: " + ", ".join(lost))
+        ok = False
+    else:
+        print("every wire reaches the controller")
+    pinched = pinched_runs()
+    if pinched:
+        print(f"a {P.wire_d_mm} mm wire can't follow: " + ", ".join(f"{r} ({d:.1f} of {n:.1f} mm)" for r, d, n in pinched))
+        ok = False
+    else:
+        print("a wire follows every channel from end to end")
+    crowded = crowded_keys()
+    if crowded:
+        print("no straight wire fits beside the terminal at: " + ", ".join(crowded))
+        ok = False
+    else:
+        print("every column's wire runs straight beside its terminals")
+    cramped = cramped_diodes()
+    if cramped:
+        print("no room for the diode and its legs at: " + ", ".join(cramped))
+        ok = False
+    else:
+        print("every diode and its legs fit")
+    v = part_overlap()
+    if v > 1e-6:
+        print(f"body and plinth overlap ({v:.3f} mm^3)")
+        ok = False
+    else:
+        print("body and plinth clear")
+    clashes = part_clashes()
+    if clashes:
+        print("parts meet the case: " + ", ".join(f"{p} and {w} ({v:.2f} mm^3)" for p, w, v in clashes))
+        ok = False
+    else:
+        print("switches, sockets, diodes, electronics and caps at full travel clear the case")
+    blocked = blocked_parts()
+    if blocked:
+        print("parts can't drop into the well: " + ", ".join(f"{p} ({v:.2f} mm^3)" for p, v in blocked))
+        ok = False
+    else:
+        print("every part drops into the well")
+    wrong = true_part_clashes()
+    if wrong:
+        print("a real switch or socket doesn't fit the mirrored half at: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in wrong))
+        ok = False
+    elif P.half == "left":
+        print("real switches and sockets fit the mirrored half")
+    return ok
+
+
+
 
 def report():
     """The board's heights and sizes, as text."""

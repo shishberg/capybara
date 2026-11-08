@@ -326,13 +326,15 @@ sleeve_gap_mm = 0.4
 tile_lead_mm = 0.5
 # Each screw's insert sits in a boss on the inside of the wall, this wide and
 # screw_boss_h_mm tall from the seam, its centre screw_inset_mm in from the
-# outline. The bosses stand where the Capybara's rule puts them on this
-# outline (docs/editor-chassis.md, screwSpots): at the outline's corners that
-# turn screw_corner_deg or more, sharpest first, none within screw_apart_mm of
-# another along the outline, and the runs between split so none is over
-# screw_gap_mm; a boss that would come within screw_clearance_mm of a tile's
-# way in or a part's room slides along the outline by screw_slide_mm at a time
-# until it is clear.
+# outline. The bosses stand where the Capybara's rule puts them on the outline
+# drawn round the tiles' ways in and the parts (docs/editor-chassis.md,
+# screwSpots): at its corners that turn screw_corner_deg or more, sharpest
+# first, none within screw_apart_mm of another along the outline, and the runs
+# between split so none is over screw_gap_mm. A boss that would come within
+# screw_clearance_mm of a tile's way in or a part's room is pushed out through
+# the wall until it's clear, and the wall lugs out round it; it slides along
+# the outline instead, by screw_slide_mm at a time, when that needs less push
+# (shell.py screw_points).
 screw_boss_mm = 6
 screw_boss_h_mm = 4.5
 screw_inset_mm = 3.1
@@ -380,9 +382,12 @@ PRESETS = {
         "cap_bottom_above_plate_mm": _switch["keycap_bottom_above_plate_mm"],
         "cap_travel_mm": _switch["travel_mm"],
         "cap_clearance_mm": _switch["keycap_clearance_mm"],
-        "switch_cutout_clearance_mm": _switch["cutout_clearance_mm"],
+        "switch_cutout_clearance_mm": _switch["cutout_clearance_mm"] / 2,   # the editor's is the whole hole's
         "switch_rim_mm": _switch["seat_outer_mm"][0],
         "switch_below_plate_mm": _switch["body_below_plate_mm"],
         "bottom_plate_mm": 2.5,
+        # The top falls 45 degrees off the far thumb key's low corner to the
+        # next key: a 1.5 mm ball can't roll round the edge there.
+        "top_round_mm": 1,
     },
 }

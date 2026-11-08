@@ -4,15 +4,16 @@
     .venv/bin/python -m lowpro.build --half left --part body
     .venv/bin/python -m lowpro.build --check              # only the checks (exit 1 when one fails)
     .venv/bin/python -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
-    .venv/bin/python -m lowpro.build --preset capybara    # the Capybara's keys, tiles, caps and TRRS
+    .venv/bin/python -m lowpro.build --preset capybara    # the capybara design (params.py design)
 
 Any parameter in params.py can be overridden with --set, after a --preset's
 (params.py PRESETS). Files go to output/lowpro/ (output/lowpro/<preset>/ with a
-preset; --out): <half>-body.stl, <half>-plate.stl and
-right-assembly.3mf (body, plinth, switches, caps, sockets, diodes and
-electronics, each piece a named, coloured mesh). The left half is the right
-mirrored, but for the switches and sockets, which are the same parts in both, so
-each half is its own build.
+preset; --out): <half>-body.stl, <half>-plate.stl and right-assembly.3mf
+(body, plinth, switches, caps and the design's other parts, each piece a
+named, coloured mesh). The left half is the right mirrored, but for the
+switches and sockets, which are the same parts in both, so each half is its
+own build. The design's module (chassis.py or shell.py) builds the parts,
+reports its heights and runs its checks.
 """
 import argparse
 import ast
@@ -126,100 +127,6 @@ def for_half(solid, half):
     return solid.mirror((1, 0, 0)) if half == "left" else solid
 
 
-def assembly(body, plate):
-    """The right half's pieces: body, plinth, switches, caps, sockets, diodes and electronics."""
-    from . import chassis as C
-    from .parts import Piece
-
-    return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
-            + C.switches() + C.keycaps() + C.sockets() + C.diodes() + C.electronics())
-
-
-def check():
-    from . import chassis as C
-
-    ok = True
-    hits = C.cap_collisions()
-    if hits:
-        print("keycaps meet: " + ", ".join(f"{a} with {b} ({v:.2f} mm^3)" for a, b, v in hits))
-        ok = False
-    else:
-        print("keycaps clear")
-    _, hits = C.screw_walls()
-    if hits:
-        print("screw holes break into: " + ", ".join(f"{s} into {w} ({v:.2f} mm^3)" for s, w, v in hits))
-        ok = False
-    else:
-        print("screw holes clear")
-    faults = C.screw_length_faults()
-    if faults:
-        print(f"M2 x {C.P.screw_len_mm} screws don't fit: " + ", ".join(faults))
-        ok = False
-    else:
-        print(f"M2 x {C.P.screw_len_mm} screws fit every insert")
-    thin = C.thin_walls()
-    if thin:
-        print(f"walls under {C.P.min_wall_mm} mm: " + ", ".join(f"{a} to {b} ({d:.2f} mm)" for a, b, d in thin))
-        ok = False
-    else:
-        print("walls between rooms clear")
-    bare = C.thin_tops()
-    if bare:
-        print(f"under {C.P.min_wall_mm} mm of top: " + ", ".join(f"{w} ({v:.2f} mm^3)" for w, v in bare))
-        ok = False
-    else:
-        print("every room stays under the top")
-    lost = C.unwired()
-    if lost:
-        print("no path to the controller from: " + ", ".join(lost))
-        ok = False
-    else:
-        print("every wire reaches the controller")
-    pinched = C.pinched_runs()
-    if pinched:
-        print(f"a {C.P.wire_d_mm} mm wire can't follow: " + ", ".join(f"{r} ({d:.1f} of {n:.1f} mm)" for r, d, n in pinched))
-        ok = False
-    else:
-        print("a wire follows every channel from end to end")
-    crowded = C.crowded_keys()
-    if crowded:
-        print("no straight wire fits beside the terminal at: " + ", ".join(crowded))
-        ok = False
-    else:
-        print("every column's wire runs straight beside its terminals")
-    cramped = C.cramped_diodes()
-    if cramped:
-        print("no room for the diode and its legs at: " + ", ".join(cramped))
-        ok = False
-    else:
-        print("every diode and its legs fit")
-    v = C.part_overlap()
-    if v > 1e-6:
-        print(f"body and plinth overlap ({v:.3f} mm^3)")
-        ok = False
-    else:
-        print("body and plinth clear")
-    clashes = C.part_clashes()
-    if clashes:
-        print("parts meet the case: " + ", ".join(f"{p} and {w} ({v:.2f} mm^3)" for p, w, v in clashes))
-        ok = False
-    else:
-        print("switches, sockets, diodes, electronics and caps at full travel clear the case")
-    blocked = C.blocked_parts()
-    if blocked:
-        print("parts can't drop into the well: " + ", ".join(f"{p} ({v:.2f} mm^3)" for p, v in blocked))
-        ok = False
-    else:
-        print("every part drops into the well")
-    wrong = C.true_part_clashes()
-    if wrong:
-        print("a real switch or socket doesn't fit the mirrored half at: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in wrong))
-        ok = False
-    elif C.P.half == "left":
-        print("real switches and sockets fit the mirrored half")
-    return ok
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--half", choices=("right", "left", "both"), default="both")
@@ -242,19 +149,20 @@ def main(argv=None):
 
     C.VERBOSE = args.verbose
     set_params(args.set, args.preset)
+    D = L.design()
     ok = True
     for half in halves:
         # Each half is its own build: the switches and sockets don't mirror (params.py half).
         C.P.half = half
         L.reset()
-        print(f"the {half} half: {C.report()}", flush=True)
+        print(f"the {half} half: {D.report()}", flush=True)
         s = C.stage("report", t)
-        ok = (True if args.no_check else check()) and ok
+        ok = (True if args.no_check else D.checks()) and ok
         s = C.stage("checks", s)
         if args.check:
             continue
-        body = C.body() if {"body", "assembly"} & set(parts) else None
-        plate = C.bottom_plate() if {"plate", "assembly"} & set(parts) else None
+        body = D.body() if {"body", "assembly"} & set(parts) else None
+        plate = D.bottom_plate() if {"plate", "assembly"} & set(parts) else None
         s = time.time()
         for name, solid in (("body", body), ("plate", plate)):
             if name in parts:
@@ -263,7 +171,7 @@ def main(argv=None):
         if "assembly" in parts and half == "right":
             refuse_invalid(body, "the assembly's body")
             refuse_invalid(plate, "the assembly's plinth")
-            write_3mf(assembly(body, plate), out / "right-assembly.3mf")
+            write_3mf(D.parts(body, plate), out / "right-assembly.3mf")
             C.stage("3MF", s)
     if args.check:
         return 0 if ok else 1

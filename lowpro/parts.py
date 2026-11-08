@@ -52,6 +52,13 @@ def cylinder(d, h, at=(0, 0, 0)):
     return Manifold.cylinder(float(h), d / 2, d / 2, segments(d / 2)).translate(tuple(map(float, at)))
 
 
+def along_x(d, h, at=(0, 0, 0), d_end=None):
+    """A cylinder of diameter d (tapering to d_end) from `at` along +x by h."""
+    r1 = d / 2 if d_end is None else d_end / 2
+    return (Manifold.cylinder(float(h), d / 2, r1, segments(max(d, d_end or 0) / 2)).rotate((0, 90, 0))
+            .translate(tuple(map(float, at))))
+
+
 def frustum(base, top, z0, h):
     """A box tapering from `base` (w, d) at z0 to `top` at z0 + h."""
     pts = [(sx * w / 2, sy * d / 2, z) for (w, d), z in ((base, z0), (top, z0 + h)) for sx in (-1, 1) for sy in (-1, 1)]
@@ -105,6 +112,16 @@ def mx_switch_room():
     collar = P.socket_collar_mm[0] + 2 * P.socket_clearance_mm
     rooms += [cylinder(collar, depth + 0.1, (p[0], p[1], z)) for p in switch_pins()]
     return rooms
+
+
+def mx_switch_rim_room():
+    """The room over the plate for the switch's rim (its seat's footprint, with
+    the hole's clearance) up to where the cap's sweep takes over, as the
+    Capybara keeps it (docs/editor-chassis.md): a tilted key's rim leans out
+    past the plate's land."""
+    w = P.switch_rim_mm + 2 * P.switch_cutout_clearance_mm
+    h = P.cap_bottom_above_plate_mm - P.cap_travel_mm + 0.1
+    return [box((w, w, h), (0, 0, h / 2))]
 
 
 # ---------------------------------------------------------------- keycap (Cherry profile)
@@ -350,3 +367,269 @@ def screw_hole(h):
     if h > P.screw_grip_mm:
         holes.append(cylinder(counterbore_d(), h - P.screw_grip_mm + 1, (0, 0, -1)))
     return holes
+
+
+# ---------------------------------------------------------------- the Capybara's parts (design "capybara")
+# Drawn from the editor project (params.capybara; docs/editor-chassis.md and
+# docs/pro-micro.md describe them): the key tile in the key frame, its parts'
+# x handed like the switch's pins; and the Pro Micro, the TRRS jack and the
+# reset switch each in the editor's frame for it, which stands on the floor
+# (the seam) at the part's standoff. The rooms are what the shell loses to
+# them; the cradles are what the plinth gains.
+def tile_top_z():
+    return -P.capybara["tile"]["plate_top_to_pcb_top_mm"]
+
+
+def tile_boxes(clear=False):
+    """The tile's board and the parts under it as (size, centre) in the key
+    frame, each grown by its clearance when `clear`."""
+    t = P.capybara["tile"]
+    s, c = t["size_mm"], t["clearance_mm"] if clear else 0
+    boxes = [((s[0] + 2 * c, s[1] + 2 * c, s[2] + 2 * c), (0, 0, tile_top_z() - s[2] / 2))]
+    c = t["component_clearance_mm"] if clear else 0
+    for p in t["components"]:
+        ps, pc = p["size_mm"], p["center_mm"]
+        boxes.append(((ps[0] + 2 * c, ps[1] + 2 * c, ps[2] + 2 * c), (handed(pc[0]), pc[1], tile_top_z() + pc[2])))
+    return boxes
+
+
+def tile():
+    board, *parts = tile_boxes()
+    colours = {"hotswap socket": "dimgray", "RGB LED": "white", "diode": "orange"}
+    return (pieces([box(*board)], "darkgreen", "tile")
+            + [Piece(p["name"], colours[p["name"]], box(*b)) for p, b in zip(P.capybara["tile"]["components"], parts)])
+
+
+def tile_room():
+    """The tile and its parts with their clearances: its pocket."""
+    return [box(s, c) for s, c in tile_boxes(True)]
+
+
+def tile_bottom_z():
+    return min(c[2] - s[2] / 2 for s, c in tile_boxes(True))
+
+
+def tile_room_box():
+    """The pocket's bounding box in the key frame: (side, top z, depth)."""
+    s, c = tile_boxes(True)[0]
+    return s[0], c[2] + s[2] / 2, c[2] + s[2] / 2 - tile_bottom_z()
+
+
+def tile_way_mm():
+    """How far below its pocket a tile comes in square to the plate (shell.tile_way):
+    its own hang and tile_lead_mm more."""
+    return sleeve_bottom_z() - tile_bottom_z() + P.tile_lead_mm
+
+
+def plate_half():
+    """Half the plate's side: past the switch's seat by the Capybara's margin, or
+    out to the tile's clearance when that's further, so the plate covers the tile."""
+    t = P.capybara["tile"]
+    return max(P.switch_rim_mm / 2 + P.capybara["chassis"]["plate_margin_mm"], t["size_mm"][0] / 2 + t["clearance_mm"])
+
+
+def sleeve_bottom_z():
+    return tile_top_z() + P.sleeve_gap_mm
+
+
+def plate_block():
+    """The plate and the sleeve under it: the plate's square from just over its
+    top (the shell trims it to the top) down through its thickness, and the
+    sleeve over the tile's footprint from inside the plate down to the sleeve's
+    underside over the tile (the editor's seats.ts sleeveBox)."""
+    w, top, plate = 2 * plate_half(), 0.1, P.top_skin_mm
+    tile, bottom = P.capybara["tile"]["size_mm"], sleeve_bottom_z()
+    return union([box((w, w, top + plate), (0, 0, (top - plate) / 2)),
+                  box((tile[0], tile[1], -plate / 2 - bottom), (0, 0, (-plate / 2 + bottom) / 2))])
+
+
+def mcu():
+    return P.capybara["pro_micro"]
+
+
+def pin_at(n):
+    """Pro Micro pin n's centre on the board's top: pins 1 to 12 down one edge
+    from the port end, 13 to 24 back up the other, as on a DIP."""
+    b = mcu()
+    bx, _, bz = b["board_mm"]
+    left = n <= 12
+    i = n - 1 if left else 24 - n
+    return (-bx / 2 + b["first_pin_mm"] + i * b["pin_pitch_mm"], (-1 if left else 1) * b["row_spacing_mm"] / 2, bz)
+
+
+def plug_pins():
+    """The pins that take a Dupont housing: every net's, the jack's and the reset switch's."""
+    return sorted(set(mcu()["pins"].values()) | {w["pin"] for w in P.capybara["trrs"]["wires"]}
+                  | {w["pin"] for w in P.capybara["reset"]["wires"]})
+
+
+def usb_mouth_x():
+    """The USB-C receptacle's mouth, past the board's port end, which faces -x."""
+    return -mcu()["board_mm"][0] / 2 - mcu()["usb_overhang_mm"]
+
+
+def pro_micro():
+    """The board on its standoff, components up: its USB-C receptacle at the
+    port end, its parts behind that, and on each wired pin a header's spacer,
+    the Dupont housing on it and the room over that for its wire to come out."""
+    b = mcu()
+    bx, by, bz = b["board_mm"]
+    ux, uy, uz = b["usb_mm"]
+    px, py, pz = b["parts_mm"]
+    m = usb_mouth_x()
+    spacer, (hx, hy, hz), exit = b["dupont"]["spacer_mm"], b["dupont"]["housing_mm"], b["dupont"]["exit_mm"]
+    at = [pin_at(n) for n in plug_pins()]
+    housings = [box((hx, hy, spacer), (x, y, bz + spacer / 2)) for x, y, _ in at]
+    housings += [box((hx, hy, hz), (x, y, bz + spacer + hz / 2)) for x, y, _ in at]
+    exits = [box((hx, hy, exit), (x, y, bz + spacer + hz + exit / 2)) for x, y, _ in at]
+    return (pieces([box((bx, by, bz), (0, 0, bz / 2))], "red", "Pro Micro")
+            + pieces([box((ux, uy, uz), (m + ux / 2, 0, bz + uz / 2))], "silver", "USB-C receptacle")
+            + pieces([box((px, py, pz), (m + ux + px / 2, 0, bz + pz / 2))], "black", "Pro Micro parts")
+            + pieces(housings, "black", "Dupont housings") + pieces(exits, "gray", "the wires' room over the housings"))
+
+
+def usb_plug():
+    b = mcu()
+    pw, ph, pl = b["plug_mm"]
+    return pieces([box((pl, pw, ph), (usb_mouth_x() - pl / 2, 0, b["board_mm"][2] + b["usb_mm"][2] / 2))], "silver", "USB-C plug")
+
+
+def plug_way(mouth_x, section, centre_z, c):
+    """The opening for a plug out through the wall: its section (a box's (w, h)
+    or a cylinder's diameter) with clearance c, from the mouth out plug_way_mm,
+    chamfered port_chamfer_mm at the wall's face, which is at the mouth."""
+    k, far = P.port_chamfer_mm, P.plug_way_mm
+    if isinstance(section, tuple):
+        w, h = section[0] + 2 * c, section[1] + 2 * c
+        hole = box((far, w, h), (mouth_x - far / 2, 0, centre_z))
+        flare = Manifold.hull_points([(mouth_x + k, sy * w / 2, centre_z + sz * h / 2) for sy in (-1, 1) for sz in (-1, 1)]
+                                     + [(mouth_x - 0.01, sy * (w / 2 + k), centre_z + sz * (h / 2 + k)) for sy in (-1, 1) for sz in (-1, 1)])
+    else:
+        d = section + 2 * c
+        hole = along_x(d, far, (mouth_x - far, 0, centre_z))
+        flare = along_x(d + 2 * k, k + 0.01, (mouth_x - 0.01, 0, centre_z), d)
+    return [hole, flare]
+
+
+def pro_micro_room():
+    """What the shell loses to the board: the board's room, the room over each
+    wired pin for its header, Dupont housing and wire, the receptacle's grip in
+    the wall and the plug's opening."""
+    b = mcu()
+    bx, by, bz = b["board_mm"]
+    ux, uy, uz = b["usb_mm"]
+    c, g, m = b["clearance_mm"], P.port_grip_mm, usb_mouth_x()
+    spacer, (hx, hy, hz), exit = b["dupont"]["spacer_mm"], b["dupont"]["housing_mm"], b["dupont"]["exit_mm"]
+    tall = spacer + hz + exit
+    headers = [box((hx + 2 * c, hy + 2 * c, tall + c), (x, y, bz + tall / 2)) for x, y, _ in map(pin_at, plug_pins())]
+    return ([box((bx + 2 * c, by + 2 * c, bz + 2 * c), (0, 0, bz / 2)),
+             box((ux + 2 * g, uy + 2 * g, uz + 2 * g), (m + ux / 2, 0, bz + uz / 2))]
+            + headers + plug_way(m, tuple(b["plug_mm"][:2]), bz + uz / 2, c))
+
+
+def mcu_cradle():
+    """The board's cradle on the plinth (editor pro_micro.cradle): a rest down
+    the board's middle, between the pin rows' solder, from the plinth's top to
+    the board's underside, and guides round its far end, a wall thick, up to
+    above_mm over the board."""
+    b, cr = mcu(), mcu()["cradle"]
+    bx, by, bz = b["board_mm"]
+    c, w, g = b["clearance_mm"], cr["wall_mm"], cr["guide_in_mm"]
+    floor = -b["standoff_mm"] - P.plate_gap_mm - 0.1
+    top = bz + cr["above_mm"]
+    x0, x1 = -bx / 2 + cr["pedestal_in_mm"][0], bx / 2 - cr["pedestal_in_mm"][1]
+    rest = box((x1 - x0, cr["pedestal_width_mm"], -floor), ((x0 + x1) / 2, 0, floor / 2))
+    sides = [box((g, w, top - floor), (bx / 2 + c - g / 2, sy * (by / 2 + c + w / 2), (top + floor) / 2)) for sy in (-1, 1)]
+    end = box((w, by + 2 * c + 2 * w, top - floor), (bx / 2 + c + w / 2, 0, (top + floor) / 2))
+    return [rest, *sides, end]
+
+
+def jack():
+    return P.capybara["trrs"]
+
+
+def trrs_mouth_x():
+    """The barrel's end, out of the body's -x end."""
+    return -jack()["body_mm"][0] / 2 - jack()["barrel_mm"][0]
+
+
+def trrs_jack():
+    j = jack()
+    jx, jy, jz = j["body_mm"]
+    bl, bd = j["barrel_mm"]
+    return (pieces([box((jx, jy, jz), (0, 0, jz / 2))], "black", "TRRS jack")
+            + pieces([along_x(bd, bl, (trrs_mouth_x(), 0, jz / 2))], "silver", "TRRS barrel"))
+
+
+def trrs_plug():
+    jd, jl = jack()["plug_mm"]
+    return pieces([along_x(jd, jl, (trrs_mouth_x() - jl, 0, jack()["body_mm"][2] / 2))], "silver", "TRRS plug")
+
+
+def trrs_room():
+    """What the shell loses to the jack: its body's room, the barrel's grip in the wall and the plug's opening."""
+    j = jack()
+    jx, jy, jz = j["body_mm"]
+    bl, bd = j["barrel_mm"]
+    c, g, m = j["clearance_mm"], P.port_grip_mm, trrs_mouth_x()
+    return ([box((jx + 2 * c, jy + 2 * c, jz + 2 * c), (0, 0, jz / 2)), along_x(bd + 2 * g, bl + 0.1, (m - 0.05, 0, jz / 2))]
+            + plug_way(m, j["plug_mm"][0], jz / 2, c))
+
+
+def jack_cradle():
+    """The jack's cradle on the plinth: a pedestal under its body from the
+    plinth's top to its standoff, with walls (editor pro_micro.cradle.jack_walls)
+    along its sides and across its back end up to its top."""
+    j = jack()
+    jx, jy, jz = j["body_mm"]
+    c, w = j["clearance_mm"], mcu()["cradle"]["jack_walls"]
+    floor = -j["standoff_mm"] - P.plate_gap_mm - 0.1
+    outer = box((jx + 2 * c + w, jy + 2 * c + 2 * w, jz - floor), (w / 2, 0, (jz + floor) / 2))
+    return [outer - box((jx + 2 * c, jy + 2 * c, jz + 1), (0, 0, jz / 2 + 0.5))]
+
+
+# The reset switch's frame is the editor's: origin at the middle of its plunger
+# face, x up, y across the wall, z back from the face into the case, so the
+# plunger stands out along -z through the wall's skin.
+def reset():
+    return P.capybara["reset"]
+
+
+def reset_switch():
+    r = reset()
+    rx, ry, rz = r["body_mm"]
+    pd, pp = r["plunger_mm"]
+    out = (r["leg_span_mm"] - ry) / 2
+    legs = [box((0.8, out, 0.3), ((-1 if n % 2 else 1) * r["leg_pitch_mm"] / 2, (-1 if n <= 2 else 1) * (ry / 2 + out / 2), rz - 0.15))
+            for n in (1, 2, 3, 4)]
+    return (pieces([box((rx, ry, rz), (0, 0, rz / 2)), cylinder(pd, pp, (0, 0, -pp))], "black", "reset switch")
+            + pieces(legs, "silver", "reset switch's legs"))
+
+
+def reset_seam_x():
+    """The seam in the switch's frame: its x (up) runs from the floor."""
+    return -reset()["standoff_mm"] - reset()["body_mm"][0] / 2
+
+
+def reset_room():
+    """What the shell loses to the switch: a slot in the inside of the wall
+    behind its skin, from the seam up past the body and as wide as its legs,
+    open into the case; and the plunger's hole through the skin."""
+    r = reset()
+    rx, ry, rz = r["body_mm"]
+    pd, pp = r["plunger_mm"]
+    c, skin = r["clearance_mm"], P.reset_skin_mm
+    x0, x1 = reset_seam_x() - 1, rx / 2 + c
+    return [box((x1 - x0, r["leg_span_mm"] + 2 * c, 10), ((x0 + x1) / 2, 0, 5)),
+            cylinder(pd + 2 * c, skin + 2, (0, 0, -skin - 1))]
+
+
+def reset_stop():
+    """The stop on the plinth behind the switch's body, in its slot, which
+    takes the press, with the legs' wires either side of it."""
+    r = reset()
+    rx, ry, rz = r["body_mm"]
+    w, deep = P.reset_stop_mm
+    x0, x1 = reset_seam_x() - P.plate_gap_mm - 0.1, rx / 2
+    z0 = rz + r["clearance_mm"]
+    return [box((x1 - x0, w, deep), ((x0 + x1) / 2, 0, z0 + deep / 2))]

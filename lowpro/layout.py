@@ -50,9 +50,15 @@ class Key:
     cap_row: int
     units: float
     cell: tuple
+    # What hangs under the plate that the top has to cover (chassis.field), as
+    # (half, top, bottom, skin): a square slab of that half side in the key's
+    # frame from `top` to `bottom` below the plate's top (the tile's pocket and
+    # the tile's way in below it), which the top stays `skin` over wherever the
+    # slab leans out past the cell. Empty when nothing hangs below.
+    pocket: tuple = ()
 
     def moved(self, m):
-        return Key(self.name, m @ self.frame, self.group, self.col, self.row, self.cap_row, self.units, self.cell)
+        return Key(self.name, m @ self.frame, self.group, self.col, self.row, self.cap_row, self.units, self.cell, self.pocket)
 
 
 _cached = []
@@ -248,17 +254,19 @@ def swung_in_keys():
     """Swung in's keys under the editor's names, in its world axes, grouped as the
     hand layout's are. Each cell is a key unit square, wider along x for a wider cap."""
     out = []
+    room = R.tile_room_box()
+    pocket = (room[0] / 2, -room[1], -room[1] + room[2] + R.tile_way_mm(), P.top_skin_mm)
     for name, u in swung_in()["units"].items():
         m = np.array(swung_in()["frames"][name], float)
         cell = (P.cell_mm + (u - 1) * P.cap_unit_mm, P.cell_mm)
         if name.startswith("matrix_"):
             _, col, row = name.split("_")
             r = ROWS[row]
-            out.append(Key(name, m, "finger", COLUMNS.index(col), r, row_cap_row(r), u, cell))
+            out.append(Key(name, m, "finger", COLUMNS.index(col), r, row_cap_row(r), u, cell, pocket))
         else:
             t = name.removeprefix("thumb_")
             in_row = t in THUMB_COLS and t not in ("x1", "x2")
-            out.append(Key(name, m, "thumb" if in_row else "extra", THUMB_COLS[t], -2 if in_row else -3, P.cap_row_thumb, u, cell))
+            out.append(Key(name, m, "thumb" if in_row else "extra", THUMB_COLS[t], -2 if in_row else -3, P.cap_row_thumb, u, cell, pocket))
     return out
 
 
