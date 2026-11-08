@@ -6,11 +6,14 @@
 
 Builds the parts in-process (as lowpro.build does, without the checks or the
 files) and writes: the assembly and the body with plinth from above, the
-wiring (channels, sockets, diodes and the bay's parts through a see-through
-body, from above and from below), the body's underside, the plinth's top, a close-up of the middle finger's home key from
-below, sections across and along that key, and a section through the round at
-the outline's front. Needs pyvista. The checks, not these, are what say the
-build is right.
+body's underside, the plinth's top, a close-up of the middle finger's home key
+from below, sections across and along that key, and a section through the
+round at the outline's front; for lowpro the wiring (channels, sockets, diodes
+and the bay's parts through a see-through body, from above and from below);
+for capybara the harness seen from below with the plinth off (tiles, switches
+and the parts up in the body), the ports from outside, and a section along the
+USB plug's way. Needs pyvista. The checks, not these, are what say the build
+is right.
 """
 import argparse
 import sys
@@ -86,10 +89,23 @@ def wiring(C, body):
     return shown, labels
 
 
+def harness(S, body):
+    """The capybara body see-through with the tiles, switches and parts up in
+    it, the plugs in their ports, and a label at each part."""
+    from . import chassis as C
+    from .lib import origin
+
+    shown = [(body, BODY, 0.12)] + [(p.solid, p.colour) for p in S.tiles() + C.switches() + S.electronics() + S.plugs()]
+    labels = [(origin(S.part_frame(name)), label)
+              for name, label in (("pro_micro", "Pro Micro"), ("trrs", "TRRS jack"), ("reset", "reset switch"))]
+    return shown, labels
+
+
 def section(solids, normal, at, box=None):
     """The solids cut by the plane through `at`, keeping the side away from
-    `normal` (so the cut face looks along it), each still a closed solid; within
-    `box` ((x0, y0, z0), (x1, y1, z1)) when given."""
+    `normal` (so the cut face looks along it), each still a closed solid, less
+    any wholly on the cut side; within `box` ((x0, y0, z0), (x1, y1, z1)) when
+    given."""
     from manifold3d import Manifold
 
     n = np.array(normal, float)
@@ -98,7 +114,7 @@ def section(solids, normal, at, box=None):
         lo, hi = np.array(box[0], float), np.array(box[1], float)
         crop = Manifold.cube(tuple(hi - lo)).translate(tuple(lo))
         kept = [(s ^ crop, c) for s, c in kept]
-    return kept
+    return [(s, c) for s, c in kept if not s.is_empty()]
 
 
 def main(argv=None):
@@ -117,12 +133,13 @@ def main(argv=None):
 
     B.set_params(args.set, args.preset)
     L.reset()
-    body, plate = C.body(), C.bottom_plate()
-    pieces = [(p.solid, p.colour) for p in B.assembly(body, plate)]
+    D = L.design()
+    body, plate = D.body(), D.bottom_plate()
+    pieces = [(p.solid, p.colour) for p in D.parts(body, plate)]
     shell = [(body, BODY), (plate, PLATE)]
     box = np.array(body.bounding_box())
     c = (box[:3] + box[3:]) / 2
-    key = origin(C.finger_key(2, 0).frame)
+    key = origin(L.column_key(2, 0).frame)
     q = C.outline()
     front = np.append(q[np.argmin(q[:, 1])], c[2])
 
@@ -134,9 +151,18 @@ def main(argv=None):
     shot(out, "underside-body", shell[:1], away((0.25, -0.35, -1)), c, up=(0, 1, 0))
     shot(out, "plinth-top", shell[1:], away((0.2, -0.3, 1)), c, up=(0, 1, 0))
     shot(out, "pocket-closeup", shell[:1], away((0.25, -0.45, -0.8), key, 95), key, up=(0, 1, 0), zoom=1, fit=False)
-    wired, labels = wiring(C, body)
-    shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
-    shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
+    if D is C:
+        wired, labels = wiring(C, body)
+        shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
+        shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
+    else:
+        inside, labels = harness(D, body)
+        shot(out, "harness-below", inside, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
+        shot(out, "harness-top", inside, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
+        shot(out, "ports", shell + [(p.solid, p.colour) for p in D.plugs()], away((-1, 1.2, 0.5)), c)
+        usb = origin(D.part_frame("pro_micro"))
+        shot(out, "section-usb", section(shell + [(p.solid, p.colour) for p in D.electronics() + D.plugs()], (1, 0, 0), usb),
+             usb + (300, 0, 0), usb, parallel=True, zoom=2.5, fit=False)
     shot(out, "section-across", section(shell, (0, 1, 0), key), c + (0, 300, 0), c, parallel=True, zoom=1.4)
     shot(out, "section-along", section(shell, (1, 0, 0), key), c + (300, 0, 0), c, parallel=True, zoom=1.4)
     near = section(shell, (1, 0, 0), front, ((front[0] - 10, front[1] - 5, -1), (front[0] + 1, front[1] + 25, box[5] + 1)))
