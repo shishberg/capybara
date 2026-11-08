@@ -7,7 +7,7 @@ const chrome =
     : undefined);
 export default defineConfig({
   testDir: './tests/browser',
-  testIgnore: ['hand*.spec.ts', 'marks.spec.ts'],
+  testIgnore: ['hand*.spec.ts', 'marks.spec.ts', 'case.spec.ts'],
   timeout: 60000,
   workers: 1,
   use: {

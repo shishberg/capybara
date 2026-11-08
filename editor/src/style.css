@@ -235,3 +235,6 @@ aside th {
   color: #b7ccce;
   font-weight: 600;
 }
+body.lowpro-case .frame-only {
+  display: none;
+}

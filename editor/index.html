@@ -18,7 +18,9 @@
         <aside>
           <section>
             <h2>Key layout</h2>
-            <label><input id="edit" type="checkbox" checked /> Show handles</label>
+            <label class="frame-only"
+              ><input id="edit" type="checkbox" checked /> Show handles</label
+            >
             <div id="selection" aria-live="polite"></div>
             <button id="undo">Undo</button><button id="redo">Redo</button
             ><button id="reset">Reset model</button>
@@ -26,6 +28,9 @@
           <section>
             <h2>View</h2>
             <label
+              >Case
+              <select id="case"></select></label
+            ><label
               >Half
               <select id="half">
                 <option value="right">Right</option>
@@ -34,7 +39,8 @@
             ><label><input id="caps" type="checkbox" /> Keycaps</label
             ><label><input id="parts" type="checkbox" checked /> Tiles and components</label
             ><label><input id="wires" type="checkbox" checked /> Wiring and pads</label
-            ><label><input id="controller" type="checkbox" checked /> Controller, jack and plugs</label
+            ><label
+              ><input id="controller" type="checkbox" checked /> Controller, jack and plugs</label
             ><label><input id="base" type="checkbox" checked /> Bottom section</label
             ><label><input id="bounds" type="checkbox" /> Show bounding box</label
             ><label><input id="edges" type="checkbox" /> Show wireframe</label
@@ -49,7 +55,7 @@
                 value="1" /></label
             ><button id="rebuild">Rebuild & check</button>
           </section>
-          <section>
+          <section class="frame-only">
             <h2>Clearance checks</h2>
             <label
               >Keycap bottom at full press (mm above the switch plane)
@@ -62,7 +68,7 @@
             <ul id="fit-list"></ul>
             <button id="report" disabled>Save report</button>
           </section>
-          <section>
+          <section class="frame-only">
             <h2>Wiring</h2>
             <div id="wiring-summary"></div>
             <details>
@@ -80,10 +86,11 @@
             ><button id="import">Open project</button
             ><input id="file" type="file" accept=".json,application/json" hidden /><button
               id="stl"
+              class="frame-only"
               disabled
             >
               Export review STL</button
-            ><button id="stl-base" disabled>Export bottom section STL</button>
+            ><button id="stl-base" class="frame-only" disabled>Export bottom section STL</button>
             <div id="load-error"></div>
             <details>
               <summary>All configuration</summary>

@@ -19,6 +19,8 @@ import {
   resize,
   showHalf,
   model,
+  lowproGroup,
+  lowproPieces,
 } from './viewer';
 import { snapshot, historyButtons, refreshInputs, preview, edited } from './project-store';
 import { startWorker, requestBuild } from './build-client';
@@ -40,6 +42,16 @@ Object.assign(window, {
       if (!h) throw Error('No handle ' + id);
       return screen(h.at);
     },
+    getCase: () => ({
+      case: S.case,
+      modelVisible: model.visible,
+      lowproVisible: lowproGroup.visible,
+      pieces: lowproPieces().map((o) => ({
+        name: o.name,
+        kind: o.userData.kind,
+        visible: o.visible,
+      })),
+    }),
     getWiring: () => S.routed,
     getHardware: () =>
       parts.children.map((o) => ({

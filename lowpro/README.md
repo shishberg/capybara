@@ -45,8 +45,9 @@ It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 Build from the repository root. `make lowpro` runs the checks and writes the
 right and left bodies and plinths as STL and each half's assembly as 3MF into
 `output/lowpro/`. `make lowpro-check` runs only the checks. `make lowpro-render`
-writes PNGs of the right half into `output/lowpro/renders/`. One part at a time,
-or with a parameter changed:
+writes PNGs of the right half into `output/lowpro/renders/`. The
+[chassis editor](../editor/README.md) shows the assemblies (its **Case** picker).
+One part at a time, or with a parameter changed:
 
 ```sh
 .venv/bin/python -m lowpro.build --half left --part body

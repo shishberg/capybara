@@ -8,6 +8,7 @@ import type { Wiring } from './wiring';
 import { disposeChildren } from './three-util';
 import { prettyKey } from './report-lines';
 import { handles, clusters } from './handles';
+import { pieceVisibility } from './case-view';
 import { $, S } from './state';
 import {
   shell,
@@ -252,6 +253,7 @@ export function visibility() {
     setEdges();
   }
   handleGroup.visible = $('edit').matches(':checked') && !S.handLayout;
+  pieceVisibility();
   render();
 }
 export function setShell(r: BuildResult) {

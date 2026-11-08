@@ -4,6 +4,7 @@ import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Config, MeshData, V3 } from './geometry';
+import type { PieceKind } from './cases';
 import { placeCamera } from './three-util';
 import { $ } from './state';
 
@@ -62,9 +63,30 @@ model.add(basePlate);
 export const bounds = new T.Box3Helper(new T.Box3(), 0xffd36b);
 bounds.visible = false;
 scene.add(bounds);
+/**
+ * A low-profile case's pieces (case-view.ts), in the world's axes: the left
+ * half's 3MF is already mirrored, so unlike `model` this group never is.
+ */
+export const lowproGroup = new T.Group();
+lowproGroup.visible = false;
+scene.add(lowproGroup);
+export const lowproPieces = (kind?: PieceKind) => {
+  const found: T.Object3D[] = [];
+  lowproGroup.traverse(
+    (o) => o.userData.kind && (!kind || o.userData.kind === kind) && found.push(o),
+  );
+  return found;
+};
 export function measure() {
+  // What shows: the frame, or the low-profile pieces by their kind.
+  const low = lowproGroup.visible,
+    solid = low ? [...lowproPieces('body'), ...lowproPieces('base')] : [shell, basePlate],
+    keycaps = low
+      ? lowproPieces('keycaps')
+      : parts.children.filter((o) => o.userData.group === 'keycaps'),
+    body = low ? lowproPieces('body') : [shell];
   const box = bounds.box.makeEmpty();
-  for (const m of [shell, basePlate]) box.expandByObject(m);
+  for (const m of solid) box.expandByObject(m);
   const s = box.getSize(new T.Vector3());
   $('size').textContent = box.isEmpty()
     ? 'Size: no chassis'
@@ -73,12 +95,13 @@ export function measure() {
   const top = box.max.z;
   const caps = new T.Box3();
   // Precise: a tilted keycap's own box, turned, would stand higher than its corners.
-  for (const o of parts.children) if (o.userData.group === 'keycaps') caps.expandByObject(o, true);
+  for (const o of keycaps) caps.expandByObject(o, true);
   const high = Math.max(top, caps.isEmpty() ? top : caps.max.z);
-  const body = new T.Box3().expandByObject(shell);
+  const bodyBox = new T.Box3();
+  for (const o of body) bodyBox.expandByObject(o);
   $('height').textContent = box.isEmpty()
     ? ''
-    : `${(high - box.min.z).toFixed(1)} mm tall with keycaps, ${(high - body.min.z).toFixed(1)} without the bottom section`;
+    : `${(high - box.min.z).toFixed(1)} mm tall with keycaps, ${(high - bodyBox.min.z).toFixed(1)} without the bottom section`;
   bounds.visible = $('bounds').matches(':checked') && !box.isEmpty();
 }
 export const parts = new T.Group();

@@ -1,9 +1,11 @@
 // View persistence: camera, view toggles and opacity, kept in browser storage
 // apart from the project.
 import { placeCamera } from './three-util';
-import { $ } from './state';
+import { $, S } from './state';
 import { camera, controls, material, render } from './viewer';
 import { visibility } from './scene-parts';
+import { isAvailable, type CaseId } from './cases';
+import { pieceVisibility, showCase } from './case-view';
 
 const VIEW_STORAGE = 'rosebear-chassis-editor:view';
 const TOGGLES = ['edit', 'caps', 'parts', 'wires', 'controller', 'base', 'bounds', 'edges'];
@@ -12,11 +14,17 @@ for (const id of TOGGLES)
     visibility();
     saveView();
   };
+$('case').onchange = () => {
+  S.case = $<HTMLSelectElement>('case').value as CaseId;
+  showCase();
+  saveView();
+};
 $('opacity').oninput = () => {
   material.opacity = Number($<HTMLInputElement>('opacity').value);
   material.transparent = material.opacity < 1;
   material.depthWrite = !material.transparent;
   material.needsUpdate = true;
+  pieceVisibility();
   render();
   saveView();
 };
@@ -38,6 +46,7 @@ function saveView() {
         },
         toggles: Object.fromEntries(TOGGLES.map((id) => [id, $<HTMLInputElement>(id).checked])),
         opacity: Number($<HTMLInputElement>('opacity').value),
+        case: S.case,
       }),
     );
   } catch {}
@@ -71,6 +80,7 @@ export function restoreView() {
   if (v.toggles && typeof v.toggles === 'object')
     for (const id of TOGGLES)
       if (typeof v.toggles[id] === 'boolean') $<HTMLInputElement>(id).checked = v.toggles[id];
+  if (isAvailable(v.case)) S.case = v.case;
   visibility();
   const o = v.opacity;
   if (Number.isFinite(o) && o >= 0.1 && o <= 1) {

@@ -3,6 +3,7 @@
 import { defaults, clone, validateProject, componentFrames, type Project } from './geometry';
 import { $, S } from './state';
 import { render, parts, showHalf } from './viewer';
+import { showCase } from './case-view';
 import { updateHardware, updateHandles } from './scene-parts';
 import { setBadge, clearFailures } from './report-view';
 import { requestBuild } from './build-client';
@@ -99,6 +100,7 @@ export function preview() {
     S.handLayout?.();
     componentFrames(S.project.config);
     showHalf(S.project.config);
+    showCase();
     updateHardware();
     updateHandles();
     S.handUpdate?.();
@@ -118,8 +120,6 @@ export function edited() {
 }
 export function refreshInputs() {
   $<HTMLSelectElement>('half').value = S.project.config.half;
-  $('subtitle').textContent =
-    `${S.project.config.half === 'left' ? 'Left' : 'Right'} hand · Capybara chassis`;
   $<HTMLInputElement>('bottom-out').value = String(
     S.project.config.switch.keycap_bottom_above_plate_mm - S.project.config.switch.travel_mm,
   );

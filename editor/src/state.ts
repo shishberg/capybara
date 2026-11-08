@@ -1,6 +1,7 @@
 // Shared DOM lookup and the editor's mutable state, in one object so every
 // module reads and writes the same fields.
 import type * as T from 'three';
+import type { CaseId } from './cases';
 import { clone, defaults, type Project } from './geometry';
 import type { Report } from './solid';
 import type { Wiring } from './wiring';
@@ -22,6 +23,8 @@ export const S = {
   project: clone(defaults),
   undo: [] as Project[],
   redo: [] as Project[],
+  // The case on show: a view choice, kept with the view (view-store.ts), not in the project.
+  case: 'capybara' as CaseId,
   hasShell: false,
   selected: '',
   // PROTOTYPE ?hand (src/hand/): lays the keys out from its state

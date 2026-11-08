@@ -2,6 +2,7 @@
 // what a finished build feeds into the view.
 import type { BuildResult } from './solid';
 import type { Project } from './geometry';
+import { CASES } from './cases';
 import { $, S } from './state';
 import { shell } from './viewer';
 import { setShell, updateWiring, visibility } from './scene-parts';
@@ -38,8 +39,9 @@ export function startWorker() {
         $<HTMLButtonElement>('stl').disabled = false;
         $<HTMLButtonElement>('stl-base').disabled = false;
         $<HTMLButtonElement>('report').disabled = false;
-        $('view-state').textContent =
-          `Chassis rebuilt in ${(S.report.milliseconds / 1000).toFixed(2)} s`;
+        if (!CASES[S.case].lowpro)
+          $('view-state').textContent =
+            `Chassis rebuilt in ${(S.report.milliseconds / 1000).toFixed(2)} s`;
       }
     }
     if (pending) {
