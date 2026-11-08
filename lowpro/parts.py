@@ -141,12 +141,12 @@ def keycap_probe(r, u=1, pressed=0):
 
 def keycap_room(r, u=1):
     """The room the cap takes from whatever stands near it: its base's outline,
-    with the clearance caps keep, straight up from the bottom of its travel to
-    its top at rest."""
+    with the clearance caps keep, straight up from the bottom of its travel and
+    on out of the case, since the finger comes in from above."""
     g = P.cap_clearance_mm / 2
     base = (P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g)
     z0 = P.cap_bottom_above_plate_mm - P.cap_travel_mm - g
-    return frustum(base, base, z0, P.cap_travel_mm + P.cap_height_mm[r - 1] + 2 * g)
+    return frustum(base, base, z0, P.finger_room_mm - z0)
 
 
 # ---------------------------------------------------------------- hotswap socket

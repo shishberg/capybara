@@ -111,8 +111,8 @@ where they meet: look at `wiring-below.png` before trusting a route, and edit
 
 The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap its
-room (its base's outline straight up from the bottom of its travel to its top
-at rest), which notches that plate's edge.
+room (its base's outline straight up from the bottom of its travel and on out
+of the case, room for the finger too), which notches that plate's edge.
 
 ## The capybara design
 
