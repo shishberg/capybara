@@ -185,11 +185,11 @@ def lug_r():
 
 
 @cached
-def screw_spots():
+def screw_points():
     """Where the plinth screws into the body: the rule (params.py screw_boss_mm)
-    on the bare outline, each boss then pushed out through the wall until it's
-    clear of the tiles' ways in and the parts' rooms; a spot slides along the
-    outline when a slide needs less push."""
+    on the bare outline, each boss then pushed out through the wall, where
+    it's lugged, until it's clear of the tiles' ways in and the parts' rooms;
+    a spot slides along the outline when a slide needs less push."""
     q = bare_outline()[0]
     around = float(np.linalg.norm(np.diff(np.r_[q, q[:1]], axis=0), axis=1).sum())
 
@@ -227,10 +227,6 @@ def screw_spots():
         points.append(c)
         blocked = fused([blocked, disc.translate(tuple(c))])
     return points
-
-
-def screw_points():
-    return screw_spots()
 
 
 def screw_seat_z():
@@ -339,8 +335,9 @@ def cradles():
 @cached
 def plinth_shell():
     """The plinth before anything is cut from it: a flat plate on the desk up
-    to plate_gap_mm under the seam, with the screws' seats on it."""
-    return add(polygon(C.outline()).extrude(plinth_top()), seat_pads())
+    to plate_gap_mm under the seam, with the skirt bridging the outline's
+    concave stretches (chassis.plinth_shell), and the screws' seats on it."""
+    return add(C.plinth_shell(), seat_pads())
 
 
 @cached

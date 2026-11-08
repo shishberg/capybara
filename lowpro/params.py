@@ -401,6 +401,9 @@ PRESETS = {
         "switch_rim_mm": _switch["seat_outer_mm"][0],
         "switch_below_plate_mm": _switch["body_below_plate_mm"],
         "bottom_plate_mm": _capybara["chassis"]["skin_mm"],
+        # The skirt's flat and its cove add up to the plinth's top.
+        "skirt_h_mm": 1,
+        "skirt_cove_mm": 0.9,
         # The top falls 45 degrees off the far thumb key's low corner to the
         # next key: a 1.5 mm ball can't roll round the edge there.
         "top_round_mm": 1,
