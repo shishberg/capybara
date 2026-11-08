@@ -176,11 +176,11 @@
     }
   },
   "tile": {
-    "description": "The bought 1U RGB key tile (MX switch, Kailh MX hotswap socket underneath), measured to about 0.3 mm. Positions are in the key's frame: mm from the stem centre seen from the switch side, +x to the right, +y towards the socket edge (seen from the parts side, x is mirrored). A part's center_mm[2] is from the board's top, its switch side; the parts hang under the board. The RGB LED's box includes its leads. Each corner has a round notch: a circle of corner_notch_mm.radius_mm centred inset_mm in from both edges, with the corner outside it cut away (measured from a macro photo of all four corners, to about 0.1 mm; it just meets both edges).",
+    "description": "The bought 1U RGB key tile (MX switch, Kailh MX hotswap socket underneath), measured to about 0.3 mm. Positions are in the key's frame: mm from the stem centre seen from the switch side, +x to the right, +y towards the socket edge (seen from the parts side, x is mirrored). A part's center_mm[2] is from the board's top, its switch side; the parts hang under the board. The RGB LED's box includes its leads. Each corner has a round notch: a circle of corner_notch_mm.radius_mm centred inset_mm in from both edges, so it opens through both and takes the corner (circles drawn on a macro photo of all four corners, to about 0.1 mm).",
     "size_mm": [17, 17, 1.6],
     "corner_notch_mm": {
-      "radius_mm": 0.8,
-      "inset_mm": 0.8
+      "radius_mm": 1.1,
+      "inset_mm": 0.55
     },
     "plate_top_to_pcb_top_mm": 5,
     "clearance_mm": 0.35,

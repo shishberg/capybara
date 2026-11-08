@@ -137,9 +137,9 @@ editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
 board's underside and no further, so the wires that leave under the board's
 edges pass beneath the rim; neighbouring pockets share a wall. A round peg stands
-from the sleeve into each of the tile's corner notches, 0.65 mm in radius (the
-notch's 0.8 less the solder jig's 0.15 fit) at the notch's centre, webbed out
-to the pocket's corner, which the tile's cut-away corner leaves free. There
+from the sleeve into each of the tile's corner notches, 0.95 mm in radius (the
+notch's 1.1 less the solder jig's 0.15 fit) at the notch's centre, webbed out
+to the pocket's corner, which the notch leaves free. There
 are no channels, sockets or diodes: the inside is open, and the wiring lies
 loose on the plinth, which is a flat plate on the desk as thick as the editor's
 2 mm base plate, with lowpro's skirt bridging the notches round the thumb
