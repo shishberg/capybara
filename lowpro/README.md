@@ -31,11 +31,13 @@ and the way it moves. What changes:
 | `build.py` | The command: builds the parts to STL and the assembly to 3MF; see its header. |
 | `render.py` | PNGs of the right half for a person to look over; see its header. |
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
-| `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions. |
-| `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes. |
+| `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions; and the Capybara's own key frames for the capybara design. |
+| `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes; and the Capybara's key tile, Pro Micro, TRRS jack and reset switch. |
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
+| `shell.py` | The capybara design's body and plinth, and its checks (below). |
 | `lib.py` | Frames as 4 × 4 matrices. |
 | `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
+| `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
 
 It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
@@ -110,6 +112,54 @@ where they meet: look at `wiring-below.png` before trusting a route, and edit
 The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap's
 sweep its room, which notches that plate's edge.
+
+## The capybara design
+
+`--preset capybara` builds the same kind of case round the Capybara's own
+electronics instead: the [Capybara's](../docs/editor-chassis.md) hand-wired
+RGB key tiles, matrix and pins, and its [Pro Micro, TRRS jack and reset
+switch](../docs/pro-micro.md), so a harness wired for the Capybara drops in.
+`params.py design` picks it, and the sizes it shares with the editor are read
+from `editor/src/default-config.json`, so each lives in one place. The files go
+to `output/lowpro/capybara/`.
+
+```sh
+.venv/bin/python -m lowpro.build --preset capybara
+.venv/bin/python -m lowpro.render --preset capybara
+```
+
+The keys are the editor's Swung in layout at its 15° tent, each frame equal
+to the editor's to 1e-6 on both halves (`test_swung_in.py` runs the editor's
+own placement, `editor/tests/key-frames.ts`, to compare), with the editor's
+base plate top as the seam. The body is this design's shell, hollowed to its
+walls and a 3 mm skin: each switch sits in a plate in the skin, with the
+editor's sleeve under it, and its tile hangs from the switch in a pocket under
+the plate, as in the Capybara frame. There are no channels, sockets or diodes:
+the inside is open, and the wiring lies loose on the plinth, which is a flat
+2.4 mm plate on the desk. The Pro Micro, the jack and the reset switch stand
+where the editor puts them, slid out along their ports' axes until each mouth
+meets the wall (2.2, 1.4 and 0.1 mm); the USB-C and TRRS openings are
+chamfered through the wall, the reset switch sits behind a 0.5 mm skin of the
+wall with a stop behind it, and each part has a cradle on the plinth. There is
+room over the Pro Micro's pins for Dupont housings and their wires. The ten
+screws go where the Capybara's rule puts them, each boss pushed out through
+the wall into a lug where a tile's way in or a part is in its way.
+
+The harness goes in from the underside with the plinth off: the body upside
+down, each tile up into its pocket, then the switches in from the top through
+the plates into the tiles' sockets, then the plinth and its screws. The build
+checks that way is clear for every tile, that the switches, tiles, caps at full
+travel, Pro Micro with its housings, jack and reset switch clear the case, that
+the plugs go in through the walls, and the shared checks on the screws, the
+top's skin and the body against the plinth.
+
+The highest cap corner is 63.1 mm over the desk, against the Capybara's 62.6:
+the keys are the Capybara's, so the height is too, plus the 0.5 mm the plinth
+is thicker than the editor's skin. The plan is 113 × 148 mm per half. The
+lowest tile, the far thumb's, has 1.7 mm between it and the plinth. The top
+steps between columns, since Swung in's columns sit at different heights and
+the pinky top key is tilted 46°; the top's round is 1 mm here, since 1.5 won't
+roll round the edge at the far thumb key.
 
 ## Checks and what they don't cover
 
