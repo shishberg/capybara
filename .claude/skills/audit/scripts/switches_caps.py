@@ -78,7 +78,7 @@ def caps_report(body):
             g = 0.0 if v > 1e-6 else c.solid.min_gap(body, 2.0)
             gaps.append((g, name, v))
         gaps.sort()
-        print(f"== caps {label}: least gap to the body (mm; the rooms give 0.15 all round)")
+        print(f"== caps {label}: least gap to the body (mm; the rooms give {A.P.cap_room_clearance_mm} all round)")
         for g, name, v in gaps[:6]:
             print(f"  {g:.3f}  {name}" + (f"  MEETS the body {v:.2f} mm^3" if v else ""))
 

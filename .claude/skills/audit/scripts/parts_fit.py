@@ -94,7 +94,7 @@ for dx in (1.0, 1.6, 2.0, 3.0):
 jc = R.union(S.place(f, R.jack_cradle())) ^ S.inside_prism(C.put_back_mm)
 hits(sweep(jc, (0, 0, -20)), [(C.placed(f, jk), "the jack")], "the jack's cradle rising 20 mm into place")
 b = jc.bounding_box()
-print(f"  jack cradle bounds x {b[0]:.1f}..{b[3]:.1f} y {b[1]:.1f}..{b[4]:.1f} z {b[2]:.2f}..{b[5]:.2f}; walls {R.mcu()['cradle']['jack_walls']} mm, jack clearance {j['clearance_mm']}")
+print(f"  jack cradle bounds x {b[0]:.1f}..{b[3]:.1f} y {b[1]:.1f}..{b[4]:.1f} z {b[2]:.2f}..{b[5]:.2f}; walls {R.mcu()['cradle']['wall_mm']} mm thick and {R.mcu()['cradle']['jack_walls']} of the jack's height, jack clearance {j['clearance_mm']}")
 
 # ---------------------------------------------------------------- reset
 f = S.part_frame("reset")
@@ -108,4 +108,4 @@ for dz in (0.2, 0.4, 0.6):
 hits(sweep(R.union(S.place(f, R.reset_stop())), (0, 0, -20)), [(C.placed(f, rs), "the switch")], "the stop rising 20 mm into place")
 st = R.union(S.place(f, R.reset_stop())).bounding_box()
 print(f"  stop bounds x {st[0]:.1f}..{st[3]:.1f} y {st[1]:.1f}..{st[4]:.1f} z {st[2]:.2f}..{st[5]:.2f}; switch body top z {xform(f, (r['body_mm'][0] / 2, 0, 0))[2]:.2f}, bottom {xform(f, (-r['body_mm'][0] / 2, 0, 0))[2]:.2f}")
-print(f"  the slot's closed end is {r['body_mm'][0] / 2 + r['clearance_mm']:.2f} above the plunger's centre: the switch upside down rests on it with {r['clearance_mm']} mm play; between the skin and the stop it has {r['clearance_mm']} mm")
+print(f"  the slot's closed end is {r['body_mm'][0] / 2 + r['clearance_mm']:.2f} above the plunger's centre: the switch upside down rests on it with {r['clearance_mm']} mm play; between the skin and the stop it has {A.P.reset_stop_gap_mm} mm")

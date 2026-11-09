@@ -21,15 +21,15 @@ The repo is read-only for the whole audit: change nothing tracked, and leave `ou
 
 ### 1. Baseline
 
-Note `git status` and HEAD. Run `.venv/bin/python -m lowpro.build --preset <p>` (with `--check` if you only need the checks) and `make lowpro-test`, and record what passes. Read `lowpro/README.md` and the checks in `lowpro/build.py` so you know what is already covered, and `git log` since the last audit for what changed. Every feature added since then needs a probe of its own.
+Note `git status` and HEAD. Run `.venv/bin/python -m lowpro.build --preset <p> --out <scratch>/build/<p>` (without `--out` it writes `output/`) and `make lowpro-test`, and record what passes. Read `lowpro/README.md` and the checks in `lowpro/build.py` so you know what is already covered, and `git log` since the last audit for what changed. Every feature added since then needs a probe of its own.
 
 Done when you can list what the build's checks cover and what they don't.
 
 ### 2. Set up
 
-Make a scratch dir (the job's tmp dir if there is one, else `mktemp -d`) and copy `scripts/` into it. Results go there, never in the repo. Install the probes' dependencies into the repo's venv with `uv pip install --python .venv/bin/python -r .claude/skills/audit/scripts/requirements.txt`.
+Make a scratch dir (the job's tmp dir if there is one, else `mktemp -d`) and copy `scripts/` into it. Builds, probe output and new probes all live there, never in the repo. If `.venv/bin/python -c "import trimesh, embreex"` fails, install the probes' dependencies with `uv pip install --python .venv/bin/python -r .claude/skills/audit/scripts/requirements.txt`.
 
-Set `AUDIT_REPO` (the checkout under audit) and `AUDIT_PRESET` for every probe; `run_bounded.sh <half> <probe>` sets `AUDIT_HALF`. The first probe builds the preset fresh into `build/<preset>/` in the scratch dir, because `output/` can be stale. Run `namecheck.py` first: it lists every lowpro name a probe uses that no longer exists.
+Run probes from the checkout: `AUDIT_REPO=$PWD AUDIT_PRESET=<p> <scratch>/run_bounded.sh <half> <probe> [args]`. It finds the probe beside itself, sets `AUDIT_HALF`, and writes `<scratch>/out/<preset>/`. Probes read meshes from `<scratch>/build/<preset>/`, building them there on first use if step 1's build isn't there; `output/` can be stale. `<scratch>/run_all.sh <p>` runs the whole table on the right half, `namecheck.py` first: it lists every lowpro name a probe uses that no longer exists.
 
 Ray casting has to use embree. Without it trimesh falls back to a pure-Python caster that took 20 GB of RAM, so `common.cast` refuses to run without it. Run every heavy probe (thickness, overhang, ways in) through `run_bounded.sh`, which kills it past 2 GB.
 
@@ -39,9 +39,11 @@ Run every probe in the table below on both halves (left is a mirror, so `mirror.
 
 - each feature new since the last audit;
 - each special requirement;
-- anything a probe turned up that needs a closer look (`whatis.py` names what makes a spot thin; `under_map.py` maps what is under a tile).
+- anything a probe turned up that needs a closer look (`whatis.py` names what makes a spot thin; `under_map.py` maps what is under a tile; `part_gap.py` locates a gap `room_gaps.py` only sizes).
 
-Done when every row of the table has a result for each preset, and every new feature and special requirement has a probe that answered it.
+Every number under a threshold gets a location and a cause: where it is and which features make it. A probe prints its design values from `P`, never as literals, so its labels don't go stale when a parameter changes.
+
+Done when every row of the table has a result for each preset, every under-threshold number is located, and every new feature and special requirement has a probe that answered it.
 
 ### 4. Verify
 
@@ -72,21 +74,28 @@ All take `AUDIT_PRESET`, `AUDIT_HALF` and `AUDIT_REPO` from the environment; arg
 
 | Probe | Measures |
 |---|---|
-| `mesh_validity.py` | Watertight, winding, volume, bodies, degenerate faces; Manifold's status |
+| `mesh_validity.py` | The STLs as a slicer reads them: watertight, winding, degenerate faces; Manifold's status |
+| `voids.py` | Shells, sealed voids and islands on Manifold's own mesh (the STL's body split is misleading) |
 | `mirror.py` | Left against right mirrored: what differs besides the handed holes |
 | `thickness.py` | Wall and skin thickness, by ray cast and by eroded plan slices |
 | `overhang.py` | Overhang area, support volume, bridges, in the print orientation |
+| `print3mf.py` | The print 3MF as the slicer reads it: settings, placement, what the support volumes mark and miss |
 | `plinth.py` | Plinth flatness, contact, skirt, thin features, how the body lands on it |
 | `way_free.py` | How far each tile can back out of its pocket before it hits the body |
 | `ways_in.py` | Each tile's way into its pocket from the seam side, and what blocks it |
+| `tile_path_gap.py` | Least gap from each tile to the body along its way off its pegs, and where |
 | `under_map.py` | Map of the body under one key's tile |
 | `pockets.py` | Seated tile gaps, pegs, pocket ceiling and ledges, walls between rooms |
 | `room_gaps.py` | Least gap between each tile room and every other cut |
+| `part_gap.py` | Where each tile room comes near a part's room |
 | `switches_caps.py` | Switch hole, clip land, rim room; cap to cap and cap to body, at rest and pressed |
 | `capgap.py` | Where each cap comes near the body, written out for marking |
 | `screws.py` | Screw holes, inserts, bosses, counterbores, engagement |
 | `ports.py` | USB-C, TRRS and reset openings, sliced square to each part |
 | `parts_fit.py` | Whether the controller, jack and reset switch go in, and the plinth comes up under them |
+| `wells.py` | Wells only: each well's rim height round the cap, what lowers it, wall-top width, overhang |
+| `well_holes.py` | Wells only: openings from a well into the case |
 | `whatis.py` | What makes the body thin at given points |
 | `namecheck.py` | Lowpro names the probes use that no longer exist |
 | `run_bounded.sh` | Runs a probe with its memory capped at 2 GB, output to `out/<preset>/` |
+| `run_all.sh` | Every probe above that runs without arguments, on one preset's right half |

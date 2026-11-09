@@ -100,7 +100,7 @@ def ceiling_report(k, body_k):
     probe = Manifold.cube((SIDE, SIDE, 6)).translate((-SIDE / 2, -SIDE / 2, TOP)) - Manifold.cube((14.6, 14.6, 6)).translate((-7.3, -7.3, TOP))
     for sx in (-1, 1):
         for sy in (-1, 1):
-            probe -= Manifold.cube((2.6, 2.6, 6)).translate((sx * SIDE / 2 - 1.3, sy * SIDE / 2 - 1.3, TOP))
+            probe -= Manifold.cube((4.0, 4.0, 6)).translate((sx * SIDE / 2 - 2.0, sy * SIDE / 2 - 2.0, TOP))   # the pegs reach 1.5 mm in from the corner, past 2.6
     over = (body_k ^ probe).bounding_box()
     return widths, over[2] - TOP
 

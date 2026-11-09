@@ -1,11 +1,13 @@
 #!/bin/zsh
 # Runs one probe with its memory watched, killing it past 2 GB.
 # usage: AUDIT_REPO=... AUDIT_PRESET=... run_bounded.sh <half> <probe.py> [args]
-#   -> out/<preset>/<probe>-<half>[-<first arg>].txt, and the peak RSS on stdout
+#   -> out/<preset>/<probe>-<half>[-<first arg>].txt beside this script, and the peak RSS on stdout.
+# Works from any working directory: the probe and out/ are found beside this script.
+here=${0:A:h}
 half=$1; probe=$2; shift 2
-dir=out/$AUDIT_PRESET; mkdir -p $dir
+dir=$here/out/$AUDIT_PRESET; mkdir -p $dir
 out="$dir/${probe%.py}-$half${1:+-$1}.txt"
-AUDIT_HALF=$half $AUDIT_REPO/.venv/bin/python $probe "$@" > $out.raw 2>&1 &
+AUDIT_HALF=$half $AUDIT_REPO/.venv/bin/python $here/$probe "$@" > $out.raw 2>&1 &
 pid=$!
 peak=0
 while kill -0 $pid 2>/dev/null; do

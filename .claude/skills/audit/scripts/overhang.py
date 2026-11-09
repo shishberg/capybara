@@ -65,8 +65,11 @@ for name in names:
         r = poly.exterior.distance(centre) if not poly.interiors else min([poly.exterior.distance(centre)] + [h.distance(centre) for h in poly.interiors])
         z = np.average(c[f, 2], weights=a[f])
         # what's under the patch's middle
-        o = np.array([[centre.x, centre.y, z - 1e-3]])
-        t = A.cast(m, o, [[0, 0, -1.0]], far=z - bed + 1)[0]
+        # from the patch's own face at its middle (the patch's mean z can sit above
+        # its face there, and a ray from there hits the patch itself, 0.0 mm below)
+        top = A.cast(m, [[centre.x, centre.y, z + 0.5]], [[0, 0, -1.0]], far=2.0)[0]
+        o = np.array([[centre.x, centre.y, z + 0.5 - (top if np.isfinite(top) else 0.5) - 1e-3]])
+        t = A.cast(m, o, [[0, 0, -1.0]], far=o[0, 2] - bed + 1)[0]
         under = f"the part {t:.1f} mm below" if np.isfinite(t) else f"the bed {z - bed:.1f} mm below"
         rows.append((r, area, z, centre.x, centre.y, under))
     rows.sort(reverse=True)

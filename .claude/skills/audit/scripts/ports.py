@@ -78,19 +78,21 @@ print(f"  barrel {j['barrel_mm']} (long, dia); body front at x {-j['body_mm'][0]
       f"the body's front is {S.face_x('trrs') + P.wall_mm + j['body_mm'][0] / 2:.2f} mm from the inner face (+ is inside)")
 print(f"  plug opening dia {j['plug_mm'][0] + 2 * j['clearance_mm']:.2f}")
 
-# the reset: frame x up, y along the wall, z into the case; plunger face at the origin
+# the reset: frame x up, y along the wall, z into the case; the origin is the switch body's front face
+# (shell.reset_frame puts it reset_skin_mm behind the wall's face), and the plunger stands out of it along -z
 r = R.reset()
 f = frame("reset")
 o = origin(f)[:3]
 out = -xdir(f, (0, 0, 1))[:3]
-print(f"\n== reset: plunger face at {np.round(o, 2)}, {o[2]:.2f} over the desk, plunger {r['plunger_mm']} (dia, proud), body {r['body_mm']}, skin {P.reset_skin_mm}")
+print(f"\n== reset: the switch body's face at {np.round(o, 2)}, {o[2]:.2f} over the desk, plunger {r['plunger_mm']} (dia, proud of the body), body {r['body_mm']}, skin {P.reset_skin_mm}: "
+      f"the plunger's tip stands {r['plunger_mm'][1] - P.reset_skin_mm:+.2f} mm out of the wall's face with the body against the skin")
 # along the plunger axis from inside the case out
 for off, what in ((0, "on the axis (through the plunger hole)"), (2.5, "2.5 mm up the axis (the skin beside the hole)"), (-2.5, "2.5 mm down"), (4.0, "4 mm up (over the body)"), (-4.0, "4 mm down (below the body, toward the seam)")):
     oo = o + off * xdir(f, (1, 0, 0))[:3] + 5 * -out
     locs, _, _ = body.ray.intersects_location([oo], [out], multiple_hits=True)
     t = (np.sort(((locs - oo) @ out)) - 5) if len(locs) else np.array([])
-    print(f"  {what}: body from inside out, crossings at distance past the plunger face {np.round(t, 2)} (0 = plunger face plane, + = outside)")
-sec = body.section(plane_origin=o - 0.25 * out, plane_normal=out)
+    print(f"  {what}: body from inside out, crossings at distance past the body's face {np.round(t, 2)} (0 = the switch body's face plane, + = outside)")
+sec = body.section(plane_origin=o + P.reset_skin_mm / 2 * out, plane_normal=out)   # mid-skin
 pl, T = sec.to_2D()
 for poly in pl.polygons_full:
     for ring in poly.interiors:
@@ -117,3 +119,6 @@ print(f"  the plinth along the same line at x 0 (body middle): crossings z {np.r
 stop = A.mesh_of(R.union(S.place(S.part_frame('reset'), R.reset_stop())))
 print(f"  stop bounds (world) {np.round(stop.bounds, 2).tolist()}, {P.reset_stop_mm} wide/deep; switch body top at frame x {r['body_mm'][0] / 2:.2f} = world z {xform(S.part_frame('reset'), (r['body_mm'][0] / 2, 0, 0))[2]:.2f}; "
       f"legs span {r['leg_span_mm']} along the wall, slot {r['leg_span_mm'] + 2 * r['clearance_mm']:.2f}")
+sz = trimesh.transform_points(stop.vertices, np.linalg.inv(f))[:, 2]
+print(f"  the stop's face is {sz.min() - r['body_mm'][2]:.2f} mm behind the switch body's back (frame z {sz.min():.2f}, back at {r['body_mm'][2]}): "
+      f"a press moves the switch that far before the stop takes it, leaving the tip {r['plunger_mm'][1] - P.reset_skin_mm - (sz.min() - r['body_mm'][2]):+.2f} mm out of the face")
