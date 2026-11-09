@@ -131,10 +131,10 @@ def keycap_probe(r, u=1, pressed=0):
 
 def keycap_room(r, u=1):
     """The room the cap takes from whatever stands near it: its base's outline,
-    with the clearance caps keep, straight up from the plate (which takes in the
-    switch's rim, and a tilted key's rim leaning out past the plate's land) and
-    on out of the case, since the finger comes in from above."""
-    g = P.cap_clearance_mm / 2
+    cap_room_clearance_mm more each side, straight up from the plate (which takes
+    in the switch's rim, and a tilted key's rim leaning out past the plate's land)
+    and on out of the case, since the finger comes in from above."""
+    g = P.cap_room_clearance_mm
     base = (P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g)
     return frustum(base, base, 0, P.finger_room_mm)
 

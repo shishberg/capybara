@@ -127,6 +127,7 @@ cap_row_thumb = 3
 cap_bottom_above_plate_mm = 6
 cap_travel_mm = 4
 cap_clearance_mm = 0.5                 # caps must stay this far apart
+cap_room_clearance_mm = 0.45           # a cap's room round its base, each side: room for the print's tolerance
 finger_room_mm = 100                   # a cap's room runs this far up over its plate, out past any case
 cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - base)
 
