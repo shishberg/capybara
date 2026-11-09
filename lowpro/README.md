@@ -15,8 +15,7 @@ and the way it moves. What changes:
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
 | Height to the highest cap | 63 mm | about 38 mm (26 mm at the pinky) |
-| Plan per half | | 132 × 131 mm, 12,060 mm² |
-| Caps | Tall tapered caps (18.5 × 18.5 × 11) | Cherry profile |
+| Caps | Tall tapered caps | Cherry profile |
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | Tenstar red ProMicro NRF52840 per hand, BLE, USB-C for charging only |
 | Power | USB | A small LiPo per hand and a slide switch |
@@ -132,53 +131,48 @@ to `output/lowpro/capybara/`, and a `<half>-print.3mf` for each half as well (Pr
 .venv/bin/python -m lowpro.render --preset capybara
 ```
 
-The keys are the editor's Swung in layout at its 15° tent, each frame equal
+The keys are the editor's Swung in layout at its tent, each frame equal
 to the editor's to 1e-6 on both halves (`test_swung_in.py` runs the editor's
 own placement, `editor/tests/key-frames.ts`, to compare), with the editor's
 base plate top as the seam. The outline is two convex hulls, the finger
 block's (its keys' plates and pockets, and the Pro Micro's and the jack's
 rooms, so both stand wholly inside the walls) and the
 thumb cluster's, walled and rounded, so it runs straight past the steps between
-keys and turns in only where the thumb cluster meets the finger block. The body
-is this design's shell, hollowed to its walls and a 3 mm skin, with a 1.2 mm
-wall round each cap's room where the room cuts down through the top (a lower
-key's room rises beside its higher neighbour's pocket, where a full skin would
-stand in that tile's way out, and the wall gives way to that tile's way down
-off its pegs): each
-switch sits in a plate in the skin, with the
-editor's sleeve under it, and its tile hangs in a pocket under the plate:
-1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
-board's underside and no further, so the wires that leave under the board's
-edges pass beneath the rim; neighbouring pockets share a wall. A round peg stands
-from the sleeve into each of the tile's corner notches, 0.95 mm in radius (the
-notch's 1.1 less the solder jig's 0.15 fit) at the notch's centre, webbed out
-to the pocket's corner, which the notch leaves free. There
+keys and turns in only where the thumb cluster meets the finger block. The top
+steps between columns too, since Swung in's columns sit at different heights.
+
+The body is this design's shell, hollowed to its walls and skin, with a wall
+round each cap's room where the room cuts down through the top. A lower key's
+room rises beside its higher neighbour's pocket, where a full skin would stand
+in that tile's way out, so the wall gives way to that tile's way down off its
+pegs. Each switch sits in a plate in the skin, with the editor's sleeve under
+it, and its tile hangs in a pocket under the plate, walled from the plate down
+to the board's underside and no further, so the wires that leave under the
+board's edges pass beneath the rim; neighbouring pockets share a wall. A round
+peg stands from the sleeve into each of the tile's corner notches, the notch
+less the solder jig's fit, webbed out to the pocket's corner, which the notch
+leaves free. Where the plates and pockets seal a scrap of the hollow off from
+the plinth, it is left solid, since it would be a void in the print. There
 are no channels, sockets or diodes: the inside is open, and the wiring lies
 loose on the plinth, which is a flat plate on the desk as thick as the editor's
-2 mm base plate, with lowpro's skirt bridging the notches round the thumb
-cluster (1 mm flat, 0.9 mm cove). The Pro Micro, the jack and the reset switch
-stand where the editor puts them. The USB-C and TRRS mouths sit 2.2 and
-1.4 mm in from the wall's outer face, behind plug openings chamfered at that
-face; the reset switch is turned (8.3°) square to the wall its plunger points
-at, behind an even 0.8 mm skin with a stop 0.1 mm behind it; and each part has a
-cradle on the plinth. There is
-room over the Pro Micro's pins for Dupont housings and their wires.
+base plate, with lowpro's skirt bridging the notches round the thumb cluster.
+The Pro Micro, the jack and the reset switch stand where the editor puts them,
+the plugs' openings chamfered at the wall's outer face, the reset switch turned
+square to the wall its plunger points at, behind an even skin with a stop
+behind it, and each part has a cradle on the plinth. There is room over the
+Pro Micro's pins for Dupont housings and their wires.
 
-Five M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
-for each of the outline's corners that turns 60° or more (bends less than a
-boss apart count as one corner), the nearest spot where the boss, up to its
-top, clears the tiles, their way down off their pegs, the caps' rooms, the
-parts and their cradles, unless a screw already stands within 40 mm. They stand in the back
-corner by the Pro Micro, between the USB-C and TRRS walls, at the pinky's back
-corner, near its front corner, in front of the inner column and at the thumb
-cluster's bottom corner, each boss a 6 mm
-post from its seat to 1 mm over its insert, standing in the wall, so it stays
-out of the tiles' and the wires' way. The body stands on the plinth, so its
-weight holds the plinth's edges to the wall; the screws hold the two together
-when it's lifted. The plinth is too thin for a screw's head and its 1.2 mm
-grip, so each screw has a seat: a 6.2 mm pad on the plinth up to 2.4 mm, into
-a recess 0.3 mm wider all round in the body's underside, room for the
-elephant's foot, kept 1 mm inside the outline.
+M2 screws into heat-set inserts hold the plinth, all inside the outline: for
+each of the outline's corners that turns 60° or more (bends less than a boss
+apart count as one corner), the nearest spot where the boss, up to its top,
+clears the tiles, their way down off their pegs, the caps' rooms, the parts
+and their cradles, unless a screw already stands within 40 mm. Each boss is a
+post from its seat to `min_wall_mm` over its insert, standing in the wall, so
+it stays out of the tiles' and the wires' way. The body stands on the plinth,
+so its weight holds the plinth's edges to the wall; the screws hold the two
+together when it's lifted. The plinth is too thin for a screw's head and its
+grip, so each screw has a seat: a pad on the plinth, into a recess in the
+body's underside wide enough for the elephant's foot.
 
 The harness goes in from the underside with the plinth off: the body upside
 down, each tile up into its pocket, then the switches in from the top through
@@ -189,40 +183,29 @@ pegs, out past its pocket's rim, without meeting the body, since below that
 the underside is open to turn it out; that the switches, notched tiles, caps at full travel, Pro
 Micro with its housings, jack and reset switch clear the case, that the plugs
 go in through the walls, and the shared checks on the screws, the top's skin
-and the body against the plinth.
-
-The highest cap corner is 62.61 mm over the desk, the Capybara's: the keys and
-the plinth are the Capybara's, so the height is too. The plan is 114 × 146 mm
-per half. The lowest tile, the far thumb's, has 1.7 mm between it and the
-plinth. The top
-steps between columns, since Swung in's columns sit at different heights and
-the pinky top key is tilted 46°; the top's round is 1 mm here, since 1.5 won't
-roll round the edge at the far thumb key.
+and the body against the plinth. The build's report gives the heights, the
+plan, the plugs' mouths and the screws.
 
 ### Wells
 
 `--preset capybara_wells` is the same case with each switch in a well. The top
-over each key is its plate's plane raised `well_depth_mm` (6 mm, the cap's
-skirt over the plate at rest) along the key's normal, and the cap's room cuts
-the well, so it is square to the key and 1 mm clear of the cap all round,
-and its floor is the plate. A cap's room is its base grown by the clearance,
-so its corners are rounded 1 mm and a cap's corner has the same 1 mm as its
-sides. The floor meets the walls in a 1 mm cove, as large as the corners let
-it be, which the cap clears: at full travel its skirt is still 2.5 mm over the floor. The
-caps are opaque, so the tiles' light shows only round their skirts. The
-well's walls and its cove may throw some of it back up past the cap, which a
-print would have to show. The outline walls round each key's well as well as
-its pocket, so every key on the edge has a wall. That makes the half
-115.0 × 150.4 mm, 12,109 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
-it in the thumb cluster.
+over each key is its plate's plane raised `well_depth_mm` (the cap's skirt over
+the plate at rest) along the key's normal, and the cap's room cuts the well, so
+it is square to the key and its floor is the plate. A cap's room is its base
+grown by `cap_room_clearance_mm`, corners included, so a cap's corner is as
+clear as its sides. The floor meets the walls in a cove (`well_cove_mm`),
+which the cap clears at full travel. The caps are opaque, so the tiles' light
+shows only round their skirts. The well's walls and its cove may throw some of
+it back up past the cap, which a print would have to show. The outline walls
+round each key's well as well as its pocket, so every key on the edge has a
+wall, which grows the half, nearly all of it in the thumb cluster.
 
 Between keys a wall stands only where there's room for one. Keys in a column
 lean together, so their wells meet above the top and leave a web between them
 whose top is a knife edge. That web is cut down to where it's `min_wall_mm`
-thick (the chassis, above), and so is the web between the inner and index
-columns, which is only 0.5 mm wide all the way down. The files go to
-`output/lowpro/capybara_wells/`, and the editor's Case picker shows it as
-**Low-profile shell with wells**.
+thick (the chassis, above), and so is the thin web between the inner and index
+columns. The files go to `output/lowpro/capybara_wells/`, and the editor's Case
+picker shows it as **Low-profile shell with wells**.
 
 ### Printing
 
