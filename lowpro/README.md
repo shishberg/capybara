@@ -191,7 +191,9 @@ plan, the plugs' mouths and the screws.
 `--preset capybara_wells` is the same case with each switch in a well. The top
 over each key is its plate's plane raised `well_depth_mm` (the cap's skirt over
 the plate at rest) along the key's normal, and the cap's room cuts the well, so
-it is square to the key and its floor is the plate. A cap's room is its base
+it is square to the key and its floor is the plate. The top stays at that
+plane over the well's wall too, falling away at 45° past it, so a steeply
+tilted key's well has its wall all round. A cap's room is its base
 grown by `cap_room_clearance_mm`, corners included, so a cap's corner is as
 clear as its sides. The floor meets the walls in a cove (`well_cove_mm`),
 which the cap clears at full travel. The caps are opaque, so the tiles' light

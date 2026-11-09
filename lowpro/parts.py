@@ -129,6 +129,12 @@ def keycap_probe(r, u=1, pressed=0):
     return keycap(r, u, pressed, P.cap_clearance_mm / 2)
 
 
+def keycap_room_half(u=1):
+    """Half a cap's room's width and depth: its base's, cap_room_clearance_mm more each side."""
+    g = P.cap_room_clearance_mm
+    return (P.cap_base_mm + (u - 1) * P.cap_unit_mm) / 2 + g, P.cap_base_mm / 2 + g
+
+
 def keycap_room(r, u=1):
     """The room the cap takes from whatever stands near it: its base's outline
     grown cap_room_clearance_mm, so its upright corners are rounded that much
@@ -141,7 +147,7 @@ def keycap_room(r, u=1):
     R, c, h = P.cap_room_clearance_mm, P.well_cove_mm, P.finger_room_mm
     if c > R:
         raise ValueError(f"well_cove_mm {c} is larger than cap_room_clearance_mm {R}: the cove can't turn the corner")
-    w, d = P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * R, P.cap_base_mm + 2 * R
+    hw, hd = keycap_room_half(u)
     foot = [(R - c + c * math.sin(t), c - c * math.cos(t)) for t in np.linspace(0, math.pi / 2, segments(c) // 4 + 1)]
     profile = foot + [(R, h)]
     pts = []
@@ -150,7 +156,7 @@ def keycap_room(r, u=1):
             # Each corner's quarter, facing out of the room.
             for a in np.linspace(0, math.pi / 2, segments(R) // 4 + 1):
                 ux, uy = sx * math.cos(a), sy * math.sin(a)
-                pts += [(sx * (w / 2 - R) + r * ux, sy * (d / 2 - R) + r * uy, z) for r, z in profile]
+                pts += [(sx * (hw - R) + r * ux, sy * (hd - R) + r * uy, z) for r, z in profile]
     return Manifold.hull_points(pts)
 
 

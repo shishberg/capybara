@@ -60,7 +60,9 @@ def add(solid, tools):
 # the plate's, or well_depth_mm over it, so the switch sits in a well that its
 # cap's room cuts); outside every cell, the nearby cells' planes blended by
 # distance (inverse cube), each
-# taken at its cell's nearest point, so no plane is extrapolated. The blend
+# taken at its cell's nearest point, so no plane is extrapolated; and nowhere
+# lower than what covers each key's pocket and, with a well, its well's wall
+# (pocket_cover, well_cover), which reach past the cell. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
 # heights abut it ramps between them over twice that rather than stepping. The
 # top surface is a quadratic spline through this field sampled every
@@ -68,7 +70,8 @@ def add(solid, tools):
 # creases the field along the lines that carry the cells' edges out, and the
 # spline smooths those over a step. Each key's land is then laid into it
 # (top_height): the top plane for switch_land_mm round the switch's hole,
-# tapering over switch_taper_mm to the spline.
+# tapering over switch_taper_mm to the spline; with wells there are none
+# (land_keys).
 def top_frame(k):
     """Key k's frame raised well_depth_mm along its normal: its top plane's."""
     return k.frame @ trans((0, 0, P.well_depth_mm))
@@ -100,11 +103,26 @@ def field(x, y):
         Z.append(m[2, 0] * cx + m[2, 1] * cy + m[2, 3])
         if k.pocket:
             covers.append(pocket_cover(k, pz, lx, ly))
+        if P.well_depth_mm:
+            covers.append(well_cover(k, x, y, lx, ly))
     D, Z = np.array(D), np.array(Z)
     w = 1 / np.maximum(D, 1e-6) ** 3
     core = D <= 0
     z = np.where(core.any(0), np.where(core, Z, -1e9).max(0), (w * Z).sum(0) / w.sum(0))
     return np.maximum(z, np.array(covers).max(0)) if covers else z
+
+
+def well_cover(k, x, y, lx, ly):
+    """The least height of the top over the plan points (x, y), whose frame x
+    and y on key k's top plane are lx and ly, to stand its well's wall full
+    height: the top plane over the cap's room and cap_wall_mm round it (the
+    wall the hollow leaves), falling away at 45 degrees past that, from the
+    nearest point of it, so the spline follows it down."""
+    hx, hy = (h + P.cap_wall_mm for h in R.keycap_room_half(k.units))
+    cx, cy = np.clip(lx, -hx, hx), np.clip(ly, -hy, hy)
+    m = top_frame(k)
+    wx, wy, wz = (m[i, 0] * cx + m[i, 1] * cy + m[i, 3] for i in range(3))
+    return wz - np.hypot(x - wx, y - wy)
 
 
 def pocket_cover(k, pz, lx, ly):
@@ -505,6 +523,13 @@ def plan():
     return plan_mesh(outline())
 
 
+def land_keys():
+    """The keys whose lands are laid into the top: every key's, unless the
+    switches sit in wells, where each switch's lip sits on its plate at the
+    well's floor and the top over the key is its well's (well_cover)."""
+    return [] if P.well_depth_mm else keys()
+
+
 def land_half():
     """Half the side of a key's flat land, in the key's frame."""
     return P.switch_cutout_mm / 2 + P.switch_land_mm
@@ -522,10 +547,10 @@ def land_loop(k, half):
 
 def top_height(xy):
     """The finished top's height over the plan points xy (N x 2): the top surface,
-    with each key's land laid into it."""
+    with each key's land laid into it (land_keys)."""
     z = top_surface(xy)
     x, y = xy[:, 0], xy[:, 1]
-    for k in keys():
+    for k in land_keys():
         plate, lx, ly = top_plane_at(k, x, y)
         t = (np.maximum(np.abs(lx), np.abs(ly)) - land_half()) / P.switch_taper_mm
         z = np.where(t < 1, plate + (z - plate) * np.clip(t, 0, 1), z)
@@ -539,7 +564,7 @@ def body_shell():
     the outline, level with the ball's centre: the wall's top), then the top's
     inside the round, with edges round each land's taper and across it."""
     t = time.time()
-    rings = [(land_loop(k, land_half()), land_loop(k, land_half() + P.switch_taper_mm)) for k in keys()]
+    rings = [(land_loop(k, land_half()), land_loop(k, land_half() + P.switch_taper_mm)) for k in land_keys()]
     reach = fused([polygon(outer) for _, outer in rings]) - top_contact_2d()
     if reach.area() > 1e-6:
         x0, y0, _, _ = reach.bounds()
