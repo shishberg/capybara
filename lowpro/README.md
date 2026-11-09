@@ -189,8 +189,9 @@ plan, the plugs' mouths and the screws.
 ### Wells
 
 `--preset capybara_wells` is the same case with each switch in a well. The top
-over each key is its plate's plane raised `well_depth_mm` (the cap's skirt over
-the plate at rest) along the key's normal, and the cap's room cuts the well, so
+over each key is its plate's plane raised `well_depth_mm` along the key's
+normal, the clearance under the cap's skirt at rest, so the skirt stands as
+clear of the rim as of the walls; the cap's room cuts the well, so
 it is square to the key and its floor is the plate. The top stays at that
 plane over the well's wall too, falling away at 45° past it, so a steeply
 tilted key's well has its wall all round. A cap's room is its base

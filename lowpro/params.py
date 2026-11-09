@@ -426,11 +426,12 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
-# The capybara design with each switch in a well as deep as its cap's skirt is
-# over the plate, so the cap stands on the top at rest, 1 mm clear of the cap
-# all round, corners included, and its floor coved.
+# The capybara design with each switch in a well, 1 mm clear of the cap all
+# round, corners included, its rim as far under the cap's skirt at rest, so
+# light gets out round the skirt, and its floor coved.
+_well_clearance_mm = 1
 PRESETS["capybara_wells"] = PRESETS["capybara"] | {
-    "cap_room_clearance_mm": 1,
-    "well_depth_mm": _switch["keycap_bottom_above_plate_mm"],
+    "cap_room_clearance_mm": _well_clearance_mm,
+    "well_depth_mm": _switch["keycap_bottom_above_plate_mm"] - _well_clearance_mm,
     "well_cove_mm": 1,
 }
