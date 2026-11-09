@@ -1,0 +1,6 @@
+trimesh
+embreex
+rtree
+shapely
+networkx
+scikit-learn

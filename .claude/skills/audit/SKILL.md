@@ -29,7 +29,7 @@ Done when you can list what the build's checks cover and what they don't.
 
 Make a scratch dir (the job's tmp dir if there is one, else `mktemp -d`) and copy `scripts/` into it. Results go there, never in the repo. Install the probes' dependencies into the repo's venv with `uv pip install --python .venv/bin/python -r .claude/skills/audit/scripts/requirements.txt`.
 
-Set `AUDIT_PRESET`, `AUDIT_HALF` (`right` or `left`) and `AUDIT_REPO` (the checkout under audit) for every probe. `common.py` builds into the scratch dir if the preset's meshes aren't in `output/`.
+Set `AUDIT_REPO` (the checkout under audit) and `AUDIT_PRESET` for every probe; `run_bounded.sh <half> <probe>` sets `AUDIT_HALF`. The first probe builds the preset fresh into `build/<preset>/` in the scratch dir, because `output/` can be stale. Run `namecheck.py` first: it lists every lowpro name a probe uses that no longer exists.
 
 Ray casting has to use embree. Without it trimesh falls back to a pure-Python caster that took 20 GB of RAM, so `common.cast` refuses to run without it. Run every heavy probe (thickness, overhang, ways in) through `run_bounded.sh`, which kills it past 2 GB.
 
@@ -88,4 +88,5 @@ All take `AUDIT_PRESET`, `AUDIT_HALF` and `AUDIT_REPO` from the environment; arg
 | `ports.py` | USB-C, TRRS and reset openings, sliced square to each part |
 | `parts_fit.py` | Whether the controller, jack and reset switch go in, and the plinth comes up under them |
 | `whatis.py` | What makes the body thin at given points |
-| `run_bounded.sh` | Runs a probe with its memory capped at 2 GB |
+| `namecheck.py` | Lowpro names the probes use that no longer exist |
+| `run_bounded.sh` | Runs a probe with its memory capped at 2 GB, output to `out/<preset>/` |
