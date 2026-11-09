@@ -63,8 +63,9 @@ def add(solid, tools):
 # taken at its cell's nearest point, so no plane is extrapolated; and nowhere
 # lower than what covers each key's pocket (pocket_cover), which reaches past
 # the cell. With wells it is instead the skin (skin_fit), the smoothest
-# surface through each key's top plane over its well and its wall, with the
-# wells cut from it, and over the pockets' covers. The blend
+# surface through each key's top plane over its well and its wall and through
+# the outline at the blend's height, with the wells cut from it, and over the
+# pockets' covers. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
 # heights abut it ramps between them over twice that rather than stepping. The
 # top surface is a quadratic spline through this field sampled every
@@ -94,9 +95,14 @@ def field(x, y):
     """The key field's height over the world points (x, y) (arrays): the skin
     with wells, else the cells' blend, and over every pocket's cover."""
     x, y = np.asarray(x, float), np.asarray(y, float)
-    z = skin_fit()(np.c_[x, y]) if P.well_depth_mm else blend(x, y)
+    return np.maximum(skin_fit()(np.c_[x, y]) if P.well_depth_mm else blend(x, y), pockets_cover(x, y))
+
+
+def pockets_cover(x, y):
+    """The highest of the pockets' covers over the world points (x, y); -inf
+    where none reaches."""
     covers = [pocket_cover(k, *top_plane_at(k, x, y)) for k in keys() if k.pocket]
-    return np.maximum(z, np.array(covers).max(0)) if covers else z
+    return np.array(covers).max(0) if covers else np.full(np.shape(x), -np.inf)
 
 
 def blend(x, y):
@@ -123,40 +129,56 @@ def well_half(k):
     return tuple(h + P.cap_wall_mm for h in R.keycap_room_half(k.units))
 
 
+def within(k, x, y, half):
+    """Whether the plan points (x, y) lie within `half` (frame x, y) of key k's
+    centre on its top plane."""
+    _, lx, ly = top_plane_at(k, x, y)
+    return (np.abs(lx) < half[0]) & (np.abs(ly) < half[1])
+
+
+def well_cover(k, x, y):
+    """Key k's well's wall over the plan points (x, y): its top plane over the
+    well and its wall (well_half), falling away at 45 degrees past that from
+    the nearest point of it."""
+    _, lx, ly = top_plane_at(k, x, y)
+    hx, hy = well_half(k)
+    cx, cy = np.clip(lx, -hx, hx), np.clip(ly, -hy, hy)
+    m = top_frame(k)
+    wx, wy, wz = (m[i, 0] * cx + m[i, 1] * cy + m[i, 3] for i in range(3))
+    return wz - np.hypot(x - wx, y - wy)
+
+
 @cached
 def skin_fit():
-    """With wells, the top before the pockets' covers: a thin-plate spline (the
-    least bent surface) through each key's top plane over its well and wall,
-    sampled every surface_step_mm, so the walls stand full height and the skin
-    between and round them is as smooth as they let it be. A key's samples
-    in another's room are cut by it, and those that would rise to another's
-    higher wall more steeply than 45 degrees give way to it, so the skin can
-    fall from that wall."""
+    """With wells, the top before the pockets' covers: a thin-plate spline
+    (the least bent surface) through each key's top plane over its well and
+    wall, and through the outline at the height the top would have there
+    without the skin (the cells' blend, over each wall's fall at 45 degrees
+    past it and the pockets' covers), each sampled every surface_step_mm. So
+    the walls stand full height, the edge sits where the blend puts it rather
+    than where the walls' slopes would carry it, and the skin between them is
+    as smooth as they let it be. A key's samples in another's room are cut by
+    it, and those that would rise to another's higher wall more steeply than
+    45 degrees give way to it, so the skin can fall from that wall; the
+    outline's samples on a wall are the wall's."""
     st = P.surface_step_mm
-    squares = []
+    pts = []
     for k in keys():
         hx, hy = well_half(k)
         gx, gy = np.meshgrid(np.linspace(-hx, hx, math.ceil(2 * hx / st) + 1),
                              np.linspace(-hy, hy, math.ceil(2 * hy / st) + 1))
-        m = top_frame(k)
-        squares.append(np.c_[gx.ravel(), gy.ravel(), np.zeros(gx.size), np.ones(gx.size)] @ m.T)
-    pts = []
-    for i, k in enumerate(keys()):
-        p = squares[i]
+        p = (np.c_[gx.ravel(), gy.ravel(), np.zeros(gx.size), np.ones(gx.size)] @ top_frame(k).T)[:, :3]
         keep = np.ones(len(p), bool)
         for j in keys():
-            if j is k:
-                continue
-            _, lx, ly = top_plane_at(j, p[:, 0], p[:, 1])
-            (hx, hy), (rx, ry) = well_half(j), R.keycap_room_half(j.units)
-            room = (np.abs(lx) < rx) & (np.abs(ly) < ry)
-            m = top_frame(j)
-            cx, cy = np.clip(lx, -hx, hx), np.clip(ly, -hy, hy)
-            wx, wy, wz = (m[i, 0] * cx + m[i, 1] * cy + m[i, 3] for i in range(3))
-            under = p[:, 2] < wz - np.hypot(p[:, 0] - wx, p[:, 1] - wy)
-            keep &= ~(room | under)
-        pts.append(p[keep, :3])
-    pts = np.concatenate(pts)
+            if j is not k:
+                keep &= ~within(j, p[:, 0], p[:, 1], R.keycap_room_half(j.units))
+                keep &= p[:, 2] >= well_cover(j, p[:, 0], p[:, 1])
+        pts.append(p[keep])
+    c = outline_curve()
+    x, y = c(np.linspace(0, c.x[-1], math.ceil(c.x[-1] / st), endpoint=False)).T
+    z = np.max([blend(x, y), pockets_cover(x, y)] + [well_cover(k, x, y) for k in keys()], axis=0)
+    off = ~np.any([within(k, x, y, well_half(k)) for k in keys()], axis=0)
+    pts = np.concatenate(pts + [np.c_[x, y, z][off]])
     return RBFInterpolator(pts[:, :2], pts[:, 2], kernel="thin_plate_spline")
 
 
