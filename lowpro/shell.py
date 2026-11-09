@@ -293,11 +293,17 @@ def interior():
     cap_wall_mm clear of every cap's room, so where a room cuts down through
     the top a wall follows it (the rooms are convex, so the sum is exact). A
     lower key's room rises beside its higher neighbour's pocket, and the wall
-    round it gives way to that tile's way down off its pegs (tile_way)."""
+    round it gives way to that tile's way down off its pegs (tile_way). The
+    plates and the screws' bosses stand in it, and it is only what they leave
+    open to the plinth: a pocket they seal off holds nothing and would be a
+    void in the print."""
     ball = Manifold.sphere(P.cap_wall_mm, 16)
     hollow = subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
                       [s.minkowski_sum(ball) for s in C.cap_rooms()])
-    return add(hollow, [union([placed(k.frame, tile_way()) for k in keys()]) ^ inside_prism()])
+    hollow = add(hollow, [union([placed(k.frame, tile_way()) for k in keys()]) ^ inside_prism()])
+    hollow = subtract(hollow, [plates()] + [boss(p) for p in screw_points()])
+    floor = hollow.bounding_box()[2]
+    return union([p for p in hollow.decompose() if p.bounding_box()[2] <= floor])
 
 
 def pocket_span():
@@ -336,8 +342,7 @@ def body_cutters():
 @cached
 def body():
     t = time.time()
-    shell = add(subtract(C.body_shell(), [interior()]), [plates(), union([boss(p) for p in screw_points()]) ^ C.body_shell()])
-    body = subtract(shell, body_cutters() + insert_holes() + recesses())
+    body = subtract(C.body_shell(), [interior()] + body_cutters() + insert_holes() + recesses())
     body.num_tri()
     stage("body cuts", t)
     return body
