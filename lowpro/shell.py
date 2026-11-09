@@ -293,15 +293,19 @@ def interior():
     cap_wall_mm clear of every cap's room, so where a room cuts down through
     the top a wall follows it (the rooms are convex, so the sum is exact). A
     lower key's room rises beside its higher neighbour's pocket, and the wall
-    round it gives way to that tile's way down off its pegs (tile_way). The
-    plates and the screws' bosses stand in it, and it is only what they leave
-    open to the plinth: a pocket they seal off holds nothing and would be a
-    void in the print."""
+    round it is cut through where too little of it would be left beside that
+    tile's way down off its pegs (way_webs): the opening is down in the well,
+    under the cap. The plates and the screws' bosses stand in it, and it is only
+    what they leave open to the plinth: a pocket they seal off holds nothing
+    and would be a void in the print. Each tile's way (tile_way) is cut from all
+    of it, walls and plates too, so a tile keeps its clearance all the way out;
+    the bosses keep clear of the ways (blocked_plan)."""
     ball = Manifold.sphere(P.cap_wall_mm, 16)
     hollow = subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
                       [s.minkowski_sum(ball) for s in C.cap_rooms()])
-    hollow = add(hollow, [union([placed(k.frame, tile_way()) for k in keys()]) ^ inside_prism()])
-    hollow = subtract(hollow, [plates()] + [boss(p) for p in screw_points()])
+    ways = [placed(k.frame, tile_way()) for k in keys()]
+    hollow = add(hollow, [union(way_webs(ways)) ^ inside_prism()])
+    hollow = add(subtract(hollow, [plates()] + [boss(p) for p in screw_points()]), ways)
     floor = hollow.bounding_box()[2]
     return union([p for p in hollow.decompose() if p.bounding_box()[2] <= floor])
 
@@ -444,29 +448,37 @@ def headers_in_tiles():
     return [(p.label, v) for p in tiles() + C.switches() for v in [(p.solid ^ housings).volume()] if v > 1e-3]
 
 
-def tile_drop(d):
-    """The tile run straight down its key's axis by d, in the key frame: each of
-    its boxes reaching d further down, the board less its notches, which ride
-    down the pegs."""
-    (bs, bc), *rest = R.tile_boxes()
-    n = P.capybara["tile"]["corner_notch_mm"]
-    longer = lambda s, c: R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))
-    notches = R.notch_cuts(n["radius_mm"], n["inset_mm"], bc[2] - bs[2] / 2 - d - 1, bs[2] + d + 2)
-    return [longer(bs, bc) - union(notches)] + [longer(s, c) for s, c in rest]
-
-
 def tile_way():
     """A tile's way straight down off its pegs, out past its pocket's rim (the
-    board's thickness and its clearance), in the key frame: below that the
-    underside is open to turn it out."""
+    board's thickness and its clearance), in the key frame: its room, clearance
+    and all, run down its key's axis that far, the notches riding the pegs, so
+    it keeps its clearance all the way out. Below that the underside is open to
+    turn it out."""
     t = P.capybara["tile"]
-    return union(tile_drop(t["size_mm"][2] + t["clearance_mm"]))
+    d = t["size_mm"][2] + t["clearance_mm"]
+    (bs, bc), *rest = R.tile_boxes(True)
+    longer = lambda s, c: R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))
+    return union([longer(bs, bc) - R.posts(d)] + [longer(s, c) for s, c in rest])
 
 
-def stuck_tiles():
-    """The tiles that meet the body coming straight down off their pegs (tile_way), as (key, mm^3)."""
-    b = body()
-    return [(k.name, v) for k in keys() for v in [(placed(k.frame, tile_way()) ^ b).volume()] if v > 1e-4]
+def way_webs(ways):
+    """The wall between a tile's way and a cap's room wherever it's thinner than
+    min_wall_mm, which won't print: a lower key's room rises beside its higher
+    neighbour's pocket. Cut, like the webs between two rooms (cap_cuts), as the
+    hull of the parts of each that near the other."""
+    ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
+    webs = []
+    for w in ways:
+        for r in C.cap_rooms():
+            if C.gap(w, r) >= P.min_wall_mm:
+                continue
+            a = w ^ r.minkowski_sum(ball)
+            if a.volume() <= 1e-6:
+                continue
+            b = r ^ Manifold.batch_hull([a]).minkowski_sum(ball)
+            if b.volume() > 1e-6:
+                webs.append(Manifold.batch_hull([a, b]))
+    return webs
 
 
 def thin_tops():
@@ -511,12 +523,6 @@ def checks():
         ok = False
     else:
         print("every pocket and room stays under the top")
-    stuck = stuck_tiles()
-    if stuck:
-        print("tiles meet the body coming off their pegs: " + ", ".join(f"{k} ({v:.2f} mm^3)" for k, v in stuck))
-        ok = False
-    else:
-        print("every tile comes straight down off its pegs")
     v = (body() ^ bottom_plate()).volume()
     if v > 1e-6:
         print(f"body and plinth overlap ({v:.3f} mm^3)")

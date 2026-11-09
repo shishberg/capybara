@@ -178,9 +178,9 @@ The harness goes in from the underside with the plinth off: the body upside
 down, each tile up into its pocket, then the switches in from the top through
 the plates into the tiles' sockets, then the plinth and its screws. With the
 plinth off, the opening is far bigger than a tile, so the build doesn't model
-the tiles' whole ways in. It checks that each tile comes straight down off its
-pegs, out past its pocket's rim, without meeting the body, since below that
-the underside is open to turn it out; that the switches, notched tiles, caps at full travel, Pro
+the tiles' whole ways in, only each tile's way straight down off its pegs,
+out past its pocket's rim, since below that the underside is open to turn it
+out. It checks that the switches, notched tiles, caps at full travel, Pro
 Micro with its housings, jack and reset switch clear the case, that the plugs
 go in through the walls, and the shared checks on the screws, the top's skin
 and the body against the plinth. The build's report gives the heights, the

@@ -1,9 +1,10 @@
 """How close each tile passes the body on its straight way down off its pegs:
-the tile run down its key's axis (shell.tile_drop, the notches riding the
-pegs) by the pegs' length plus the board and its clearance (the build's
+the bare tile run down its key's axis (tile_drop below, the notches riding
+the pegs) by the pegs' length plus the board and its clearance (the build's
 tile_way) and by 4 mm, and the least gap from that swept tile to the body.
-The build's check passes at any gap over 0; under a print's tolerance
-(about 0.2 mm) the tile may rub or stick on the way. The pegs, which the
+The build cuts the tile's room, clearance and all, along that way, so every
+gap should be the tile's clearance; under a print's tolerance (about 0.2 mm)
+the tile may rub or stick on the way. The pegs, which the
 notches ride at 0.149 mm by design, are left out: a 4 mm square at each of the
 tile's corners is taken from the body before measuring. Where the gap is
 under 0.3 mm, says where: the swept tile grown by 0.3 mm against the body.
@@ -18,6 +19,19 @@ from lowpro.chassis import placed, union
 
 S, P = A.S, A.P
 t = P.capybara["tile"]
+
+
+def tile_drop(d):
+    """The bare tile run straight down its key's axis by d, in the key frame:
+    each of its boxes reaching d further down, the board less its notches,
+    which ride down the pegs."""
+    (bs, bc), *rest = A.R.tile_boxes()
+    n = t["corner_notch_mm"]
+    longer = lambda s, c: A.R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))
+    notches = A.R.notch_cuts(n["radius_mm"], n["inset_mm"], bc[2] - bs[2] / 2 - d - 1, bs[2] + d + 2)
+    return [longer(bs, bc) - union(notches)] + [longer(s, c) for s, c in rest]
+
+
 body = S.body()
 way = t["size_mm"][2] + t["clearance_mm"]
 print(f"== {A.HALF}: least gap from the tile, run straight down its axis, to the body (mm; 'touch' = overlap)")
@@ -28,12 +42,12 @@ for k in A.L.keys():
     b = body - placed(k.frame, corners)
     out, where = [], ""
     for d in (way, 4.0):
-        swept = placed(k.frame, union(S.tile_drop(d)))
+        swept = placed(k.frame, union(tile_drop(d)))
         v = (swept ^ b).volume()
         g = -v if v > 1e-6 else b.min_gap(swept, 2.0)
         out.append(g)
         if d == way and g < 0.3:
-            near = (A.C.placed(k.frame, union([s.minkowski_sum(Manifold.sphere(0.3, 8)) for s in S.tile_drop(d)])) ^ b)
+            near = (A.C.placed(k.frame, union([s.minkowski_sum(Manifold.sphere(0.3, 8)) for s in tile_drop(d)])) ^ b)
             bb = near.bounding_box()
             if near.volume() > 0:
                 c = np.array([(bb[0] + bb[3]) / 2, (bb[1] + bb[4]) / 2, (bb[2] + bb[5]) / 2])
