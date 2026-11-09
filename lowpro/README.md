@@ -207,11 +207,11 @@ from the pockets holds nothing:
 - A blocker filling each tile's room, so the room's ceiling bridges and no
   support is left behind the pegs.
 
-Sliced with tree support at 15° and 0.08 mm layers, a half takes about 112 cm³
-of support, against 88 without the volumes. The extra support is under the
-pockets' rims, which are at least 95% supported against a median of 55%
-without it. About 3 cm³ ends inside the pockets, at their rims, which clears
-from the open underside.
+Sliced with tree support at 15° and 0.08 mm layers, a half takes about 25 cm³
+of support and interface, against 14 without the volumes. The extra support
+is under the pockets' rims, which are at least 95% supported against a median
+of 55% without it. About 0.2 cm³ ends inside the pockets, at their rims, which
+clears from the open underside.
 
 ## Checks and what they don't cover
 
