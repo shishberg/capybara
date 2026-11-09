@@ -128,6 +128,12 @@ cap_bottom_above_plate_mm = 6
 cap_travel_mm = 4
 cap_clearance_mm = 0.5                 # caps must stay this far apart
 cap_room_clearance_mm = 0.45           # a cap's room round its base, each side: room for the print's tolerance
+# The top's plane over each key: this far over the plate along the key's normal,
+# so the switch sits in a well that the cap's room cuts, its walls the room's
+# (0: the top is the plate, round each switch's land). The well's floor meets
+# its walls in a cove this radius.
+well_depth_mm = 0
+well_cove_mm = 0
 finger_room_mm = 100                   # a cap's room runs this far up over its plate, out past any case
 cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - base)
 
@@ -418,4 +424,10 @@ PRESETS = {
         # next key: a 1.5 mm ball can't roll round the edge there.
         "top_round_mm": 1,
     },
+}
+# The capybara design with each switch in a well as deep as its cap's skirt is
+# over the plate, so the cap stands on the top at rest, its floor coved.
+PRESETS["capybara_wells"] = PRESETS["capybara"] | {
+    "well_depth_mm": _switch["keycap_bottom_above_plate_mm"],
+    "well_cove_mm": 1.5,
 }

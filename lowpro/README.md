@@ -114,6 +114,8 @@ The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap its
 room (its base's outline straight up from the plate and on out
 of the case, room for the finger too), which notches that plate's edge.
+Where two caps' rooms come within `min_wall_mm` of each other, the web between
+them goes too, down to where it's that thick, since a thinner one won't print.
 
 ## The capybara design
 
@@ -164,8 +166,8 @@ room over the Pro Micro's pins for Dupont housings and their wires.
 Five M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
 for each of the outline's corners that turns 60° or more (bends less than a
 boss apart count as one corner), the nearest spot where the boss, up to its
-top, clears the tiles, their way down off their pegs, the parts and their
-cradles, unless a screw already stands within 40 mm. They stand in the back
+top, clears the tiles, their way down off their pegs, the caps' rooms, the
+parts and their cradles, unless a screw already stands within 40 mm. They stand in the back
 corner by the Pro Micro, between the USB-C and TRRS walls, at the pinky's back
 corner, near its front corner, in front of the inner column and at the thumb
 cluster's bottom corner, each boss a 6 mm
@@ -195,6 +197,29 @@ plinth. The top
 steps between columns, since Swung in's columns sit at different heights and
 the pinky top key is tilted 46°; the top's round is 1 mm here, since 1.5 won't
 roll round the edge at the far thumb key.
+
+### Wells
+
+`--preset capybara_wells` is the same case with each switch in a well. The top
+over each key is its plate's plane raised `well_depth_mm` (6 mm, the cap's
+skirt over the plate at rest) along the key's normal, and the cap's room cuts
+the well, so it is square to the key and 0.45 mm clear of the cap all round,
+and its floor is the plate. The floor meets the walls in a 1.5 mm cove, which
+the cap clears: at full travel its skirt is still 2.5 mm over the floor. The
+caps are opaque, so the tiles' light shows only round their skirts. The
+well's walls and its cove may throw some of it back up past the cap, which a
+print would have to show. The outline walls round each key's well as well as
+its pocket, so every key on the edge has a wall. That makes the half
+114.5 × 150.1 mm, 12,018 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
+it in the thumb cluster.
+
+Between keys a wall stands only where there's room for one. Keys in a column
+lean together, so their wells meet above the top and leave a web between them
+whose top is a knife edge. That web is cut down to where it's `min_wall_mm`
+thick (the chassis, above), and so is the web between the inner and index
+columns, which is only 0.5 mm wide all the way down. The files go to
+`output/lowpro/capybara_wells/`, and the editor's Case picker shows it as
+**Low-profile shell with wells**.
 
 ### Printing
 

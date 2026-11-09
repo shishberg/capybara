@@ -133,10 +133,26 @@ def keycap_room(r, u=1):
     """The room the cap takes from whatever stands near it: its base's outline,
     cap_room_clearance_mm more each side, straight up from the plate (which takes
     in the switch's rim, and a tilted key's rim leaning out past the plate's land)
-    and on out of the case, since the finger comes in from above."""
-    g = P.cap_room_clearance_mm
-    base = (P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g)
-    return frustum(base, base, 0, P.finger_room_mm)
+    and on out of the case, since the finger comes in from above. Its bottom
+    edges are rounded well_cove_mm, a cove where a well's floor meets its walls.
+    It's two prisms, one each way, each its profile across the cap with the
+    bottom corners rounded."""
+    g, c, h = P.cap_room_clearance_mm, P.well_cove_mm, P.finger_room_mm
+    w, d = P.cap_base_mm + (u - 1) * P.cap_unit_mm + 2 * g, P.cap_base_mm + 2 * g
+    turn = np.linspace(0, math.pi / 2, segments(c) // 4 + 1)
+
+    def prism(across, run):
+        profile = [(sx * (across / 2 - c + c * math.sin(t)), c - c * math.cos(t)) for sx in (-1, 1) for t in turn]
+        profile += [(sx * across / 2, h) for sx in (-1, 1)]
+        return Manifold.hull_points([(x, sy * run / 2, z) for x, z in profile for sy in (-1, 1)])
+
+    return prism(w, d) ^ prism(d, w).rotate((0, 0, 90))
+
+
+def keycap_well(r, u=1):
+    """The cap's room up to the top plane, well_depth_mm over the plate: the
+    well the switch sits in, which the case's outline walls round."""
+    return keycap_room(r, u) ^ box((100, 100, P.well_depth_mm), (0, 0, P.well_depth_mm / 2))
 
 
 # ---------------------------------------------------------------- hotswap socket

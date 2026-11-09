@@ -85,7 +85,7 @@ function marks(): Plugin {
 
 // The low-profile cases (lowpro/README.md): one half's assembly as 3MF, built
 // by the Makefile when its inputs changed. Dev server only.
-//   GET /__lowpro/<capybara|lowpro>/<right|left>.3mf
+//   GET /__lowpro/<capybara|capybara_wells|lowpro>/<right|left>.3mf
 // Two requests for one file share one make.
 function lowproCases(): Plugin {
   const run = promisify(execFile);
@@ -96,14 +96,14 @@ function lowproCases(): Plugin {
     config: () => ({ server: { watch: { ignored: [repo + 'output/**'] } } }),
     configureServer(server) {
       server.middlewares.use('/__lowpro', async (req, res) => {
-        const m = /^\/(capybara|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
+        const m = /^\/(capybara|capybara_wells|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
         res.setHeader('Content-Type', 'text/plain');
         if (!m) {
           res.statusCode = 400;
           return res.end('bad case');
         }
-        // The capybara design's files sit in a folder of their own (Makefile).
-        const target = `output/lowpro/${m[1] === 'capybara' ? 'capybara/' : ''}${m[2]}-assembly.3mf`;
+        // A preset's files sit in a folder of their own (Makefile).
+        const target = `output/lowpro/${m[1] === 'lowpro' ? '' : m[1] + '/'}${m[2]}-assembly.3mf`;
         let build = making.get(target);
         if (!build) {
           build = run('make', [target], { cwd: repo, maxBuffer: 1 << 26 }).finally(() =>

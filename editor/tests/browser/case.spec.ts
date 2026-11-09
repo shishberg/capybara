@@ -7,6 +7,7 @@ const shown = (page: Page) => page.evaluate(() => (window as any).rosebearEditor
 
 for (const [id, label] of [
   ['shell', 'Low-profile shell on Swung in'],
+  ['wells', 'Low-profile shell with wells'],
   ['lowpro', 'Low-profile'],
 ] as const)
   test(`the ${label} case shows for both halves, and the frame comes back`, async ({ page }) => {

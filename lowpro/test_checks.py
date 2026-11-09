@@ -183,7 +183,7 @@ class Lands(unittest.TestCase):
         for k in C.keys():
             flat, past = C.land_half(), C.land_half() + P.switch_taper_mm
             on = C.land_loop(k, flat)
-            self.assertLess(np.abs(C.top_height(on) - C.plate_at(k, *on.T)[0]).max(), 1e-9)
+            self.assertLess(np.abs(C.top_height(on) - C.top_plane_at(k, *on.T)[0]).max(), 1e-9)
             beyond = C.land_loop(k, past + 0.01)
             self.assertLess(np.abs(C.top_height(beyond) - C.top_surface(beyond)).max(), 1e-9)
 

@@ -50,12 +50,12 @@ def plinth_top():
 # ---------------------------------------------------------------- the outline
 def base_faces():
     """What the outline closes round: the finger block (its keys' plates and
-    pockets, which hold the tiles, and the Pro Micro's and the jack's rooms)
-    and the thumb cluster, each as its convex hull, so the wall runs straight
-    past the keys' jogs. The plans are grown by the outline's chord tolerance,
-    so the wall can't touch them."""
+    pockets, which hold the tiles, their wells, and the Pro Micro's and the
+    jack's rooms) and the thumb cluster, each as its convex hull, so the wall
+    runs straight past the keys' jogs. The plans are grown by the outline's
+    chord tolerance, so the wall can't touch them."""
     rooms = [s for name, room in ROOMS.items() for s in place(part_frame(name), room())]
-    plan = lambda k: placed(k.frame, R.plate_block() + pocket_block())
+    plan = lambda k: placed(k.frame, R.plate_block() + pocket_block() + R.keycap_well(k.cap_row, k.units))
     finger = union([plan(k) for k in keys() if k.group == "finger"] + rooms)
     thumb = union([plan(k) for k in keys() if k.group != "finger"])
     return fused([s.project().hull().offset(2 * P.mesh_tol_mm, JoinType.Miter) for s in (finger, thumb)])
@@ -172,14 +172,15 @@ def corners():
 
 def blocked_plan():
     """What a screw's boss must keep clear of, in plan: the tiles' rooms and
-    their way down off their pegs (stuck_tiles), the parts' rooms and the
-    cradles on the plinth, where they come down within screw_clearance_mm of the
-    boss's top. A boss can join a plate or a pocket's wall: they're the body."""
+    their way down off their pegs (stuck_tiles), the caps' rooms, the parts'
+    rooms and the cradles on the plinth, where they come down within
+    screw_clearance_mm of the boss's top. A boss can join a plate or a pocket's
+    wall: they're the body."""
     t = P.capybara["tile"]
     drop = tile_drop(t["size_mm"][2] + t["clearance_mm"])
     lo, hi = plinth_top(), boss((0, 0)).bounding_box()[5] + P.screw_clearance_mm
     band = R.box((1e4, 1e4, hi - lo), (0, 0, (lo + hi) / 2))
-    rooms = [placed(k.frame, union(R.tile_room() + drop)) for k in keys()] + part_rooms() + cradles()
+    rooms = [placed(k.frame, union(R.tile_room() + drop)) for k in keys()] + C.cap_cuts() + part_rooms() + cradles()
     return (union(rooms) ^ band).project()
 
 
@@ -324,7 +325,7 @@ def body_cuts():
     ks = keys()
     return [("a switch's room", [s for k in ks for s in place(k.frame, R.mx_switch_room())]),
             ("a tile's pocket", [s for k in ks for s in place(k.frame, R.tile_room())]),
-            ("a cap's room", C.cap_rooms()), ("a part's room", part_rooms())]
+            ("a cap's room", C.cap_cuts()), ("a part's room", part_rooms())]
 
 
 def body_cutters():

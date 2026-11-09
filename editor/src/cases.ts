@@ -1,13 +1,15 @@
 // The cases the editor can show, and which View toggle governs each piece of a
 // low-profile assembly (lowpro/README.md).
 
-export type CaseId = 'capybara' | 'shell' | 'lowpro';
-export type LowproDesign = 'capybara' | 'lowpro';
+export type CaseId = 'capybara' | 'shell' | 'wells' | 'lowpro';
+export type LowproBuild = 'capybara' | 'capybara_wells' | 'lowpro';
 
-/** `lowpro` is the design `python -m lowpro.build` builds for the case, where it has one. */
-export const CASES: Record<CaseId, { label: string; lowpro?: LowproDesign }> = {
+/** `lowpro` is what `python -m lowpro.build` builds for the case, where it has
+ * one: its preset (lowpro/params.py PRESETS), or `lowpro` for none. */
+export const CASES: Record<CaseId, { label: string; lowpro?: LowproBuild }> = {
   capybara: { label: 'Capybara frame' },
   shell: { label: 'Low-profile shell on Swung in', lowpro: 'capybara' },
+  wells: { label: 'Low-profile shell with wells', lowpro: 'capybara_wells' },
   lowpro: { label: 'Low-profile', lowpro: 'lowpro' },
 };
 

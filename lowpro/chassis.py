@@ -56,8 +56,10 @@ def add(solid, tools):
 
 
 # ---------------------------------------------------------------- the top surface
-# A height field over the plan: inside a key's cell, its plate's plane; outside
-# every cell, the nearby cells' planes blended by distance (inverse cube), each
+# A height field over the plan: inside a key's cell, its top plane (top_frame:
+# the plate's, or well_depth_mm over it, so the switch sits in a well that its
+# cap's room cuts); outside every cell, the nearby cells' planes blended by
+# distance (inverse cube), each
 # taken at its cell's nearest point, so no plane is extrapolated. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
 # heights abut it ramps between them over twice that rather than stepping. The
@@ -65,13 +67,19 @@ def add(solid, tools):
 # surface_step_mm (top_fit): taking each plane at its cell's nearest point
 # creases the field along the lines that carry the cells' edges out, and the
 # spline smooths those over a step. Each key's land is then laid into it
-# (top_height): the plate's plane for switch_land_mm round the switch's hole,
+# (top_height): the top plane for switch_land_mm round the switch's hole,
 # tapering over switch_taper_mm to the spline.
-def plate_at(k, x, y):
-    """Key k's plate plane over the world points (x, y): its height there, and
-    the points' x and y in the key's frame."""
-    inv = rinv(k.frame)
-    o, n = origin(k.frame), k.frame[:3, 2]
+def top_frame(k):
+    """Key k's frame raised well_depth_mm along its normal: its top plane's."""
+    return k.frame @ trans((0, 0, P.well_depth_mm))
+
+
+def top_plane_at(k, x, y):
+    """Key k's top plane over the world points (x, y): its height there, and
+    the points' x and y in its frame."""
+    m = top_frame(k)
+    inv = rinv(m)
+    o, n = origin(m), m[:3, 2]
     pz = o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2]
     return (pz, inv[0, 0] * x + inv[0, 1] * y + inv[0, 2] * pz + inv[0, 3],
             inv[1, 0] * x + inv[1, 1] * y + inv[1, 2] * pz + inv[1, 3])
@@ -82,13 +90,14 @@ def field(x, y):
     x, y = np.asarray(x, float), np.asarray(y, float)
     D, Z, covers = [], [], []
     for k in keys():
-        pz, lx, ly = plate_at(k, x, y)
+        pz, lx, ly = top_plane_at(k, x, y)
         sx, sy = k.cell[0] / 2, k.cell[1] / 2
         cx, cy = np.clip(lx, -sx, sx), np.clip(ly, -sy, sy)
         b = P.surface_blend_mm
         inside = np.maximum(np.abs(lx) - sx, np.abs(ly) - sy)   # negative inside, by how much
         D.append(np.where(inside <= -b, 0, np.hypot(lx - cx, ly - cy) + np.minimum(inside + b, b)))
-        Z.append(k.frame[2, 0] * cx + k.frame[2, 1] * cy + k.frame[2, 3])
+        m = top_frame(k)
+        Z.append(m[2, 0] * cx + m[2, 1] * cy + m[2, 3])
         if k.pocket:
             covers.append(pocket_cover(k, pz, lx, ly))
     D, Z = np.array(D), np.array(Z)
@@ -99,7 +108,7 @@ def field(x, y):
 
 
 def pocket_cover(k, pz, lx, ly):
-    """The least height of the top over the plan points under key k's plate
+    """The least height of the top over the plan points under key k's top
     plane at pz, whose frame x and y there are lx and ly, to keep its skin over
     its pocket slab (Key.pocket) wherever the slab leans out past the cell:
     the top of the slab wrapped in the skin, the wrap rounded to the skin over
@@ -109,6 +118,7 @@ def pocket_cover(k, pz, lx, ly):
     point: max over q of h(q) + wrap(|p - q|), which is concave in q, so a
     nested ternary search finds it. -inf where the key is too far to matter."""
     half, top, bottom, skin = k.pocket
+    top, bottom = top + P.well_depth_mm, bottom + P.well_depth_mm     # under the top plane, not the plate
     m = k.frame
     lean = m[2, :2] / m[2, 2]               # frame x, y per mm of frame depth, along a vertical line
     plan = m[:2, :2]                        # frame x, y to world x, y, on the plane
@@ -501,12 +511,13 @@ def land_half():
 
 
 def land_loop(k, half):
-    """The square `half` from key k's centre on its plate, in plan, counterclockwise,
+    """The square `half` from key k's centre on its top plane, in plan, counterclockwise,
     as many points whatever its size, about mesh_mm apart on the taper's outer edge."""
     s = np.linspace(-half, half, math.ceil(2 * (land_half() + P.switch_taper_mm) / P.mesh_mm), endpoint=False)
     h = np.full_like(s, half)
     sq = np.r_[np.c_[s, -h], np.c_[h, s], np.c_[-s, h], np.c_[-h, -s]]
-    return sq @ k.frame[:2, :2].T + k.frame[:2, 3]
+    m = top_frame(k)
+    return sq @ m[:2, :2].T + m[:2, 3]
 
 
 def top_height(xy):
@@ -515,7 +526,7 @@ def top_height(xy):
     z = top_surface(xy)
     x, y = xy[:, 0], xy[:, 1]
     for k in keys():
-        plate, lx, ly = plate_at(k, x, y)
+        plate, lx, ly = top_plane_at(k, x, y)
         t = (np.maximum(np.abs(lx), np.abs(ly)) - land_half()) / P.switch_taper_mm
         z = np.where(t < 1, plate + (z - plate) * np.clip(t, 0, 1), z)
     return z
@@ -1128,10 +1139,29 @@ def cap_rooms():
 
 
 @cached
+def cap_cuts():
+    """What the caps take from the body: each one's room, and the web between
+    two rooms wherever it's thinner than min_wall_mm, which won't print. Two
+    wells leaning together meet above the top and leave such a web between
+    them, its top a knife edge. The web's cut is the hull of the parts of each
+    room that near the other, so what's left of it is min_wall_mm thick where
+    it's cut."""
+    rooms = cap_rooms()
+    ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
+    grown = [s.minkowski_sum(ball) for s in rooms]
+    webs = []
+    for i, j in near_pairs():
+        a, b = rooms[i] ^ grown[j], rooms[j] ^ grown[i]
+        if a.volume() > 1e-6 and b.volume() > 1e-6:
+            webs.append(Manifold.batch_hull([a, b]))
+    return rooms + webs
+
+
+@cached
 def body():
     shell = body_shell()
     t = time.time()
-    body = add(subtract(shell, body_cutters() + cap_rooms() + insert_holes()), [press_strip()])
+    body = add(subtract(shell, body_cutters() + cap_cuts() + insert_holes()), [press_strip()])
     body.num_tri()   # Manifold evaluates lazily: make the cut happen here
     stage("body cuts", t)
     return body
