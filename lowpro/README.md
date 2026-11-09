@@ -193,10 +193,10 @@ over each key is its plate's plane raised `well_depth_mm` along the key's
 normal, the clearance under the cap's skirt at rest, so the skirt stands as
 clear of the rim as of the walls; the cap's room cuts the well, so
 it is square to the key and its floor is the plate. The top is one skin, the
-smoothest surface through each key's top plane over its well and its wall and
-through the outline where the cells' blend would put the edge, so every well
-has its wall all round, the wells are cut from the skin rather than raised
-from it, and the edge doesn't rise with the walls' slopes; where a neighbour's wall stands much higher, the skin
+smoothest surface through each key's top plane over its well and its wall,
+held no higher on the outline than the cells' blend would put the edge, so
+every well has its wall all round, the wells are cut from the skin rather than
+raised from it, and the edge doesn't rise with the walls' slopes; where a neighbour's wall stands much higher, the skin
 falls from it no steeper than 45°. A cap's room is its base
 grown by `cap_room_clearance_mm`, corners included, so a cap's corner is as
 clear as its sides. The floor meets the walls in a cove (`well_cove_mm`),

@@ -63,9 +63,9 @@ def add(solid, tools):
 # taken at its cell's nearest point, so no plane is extrapolated; and nowhere
 # lower than what covers each key's pocket (pocket_cover), which reaches past
 # the cell. With wells it is instead the skin (skin_fit), the smoothest
-# surface through each key's top plane over its well and its wall and through
-# the outline at the blend's height, with the wells cut from it, and over the
-# pockets' covers. The blend
+# surface through each key's top plane over its well and its wall, no higher on
+# the outline than the blend, with the wells cut from it, and over the pockets'
+# covers. The blend
 # starts surface_blend_mm inside each cell, so where two cells of different
 # heights abut it ramps between them over twice that rather than stepping. The
 # top surface is a quadratic spline through this field sampled every
@@ -152,15 +152,16 @@ def well_cover(k, x, y):
 def skin_fit():
     """With wells, the top before the pockets' covers: a thin-plate spline
     (the least bent surface) through each key's top plane over its well and
-    wall, and through the outline at the height the top would have there
-    without the skin (the cells' blend, over each wall's fall at 45 degrees
-    past it and the pockets' covers), each sampled every surface_step_mm. So
-    the walls stand full height, the edge sits where the blend puts it rather
-    than where the walls' slopes would carry it, and the skin between them is
-    as smooth as they let it be. A key's samples in another's room are cut by
-    it, and those that would rise to another's higher wall more steeply than
-    45 degrees give way to it, so the skin can fall from that wall; the
-    outline's samples on a wall are the wall's."""
+    wall, sampled every surface_step_mm, and no higher on the outline than the
+    top would be there without the skin (the cells' blend, over each wall's
+    fall at 45 degrees past it and the pockets' covers): where it would rise
+    above that, it is held to it there and fitted again, until it doesn't. So
+    the walls stand full height, the edge doesn't climb with the walls' slopes
+    past where the blend had it, nor is it pulled up to it into a lip, and the
+    skin between them is as smooth as they let it be. A key's samples in
+    another's room are cut by it, and those that would rise to another's
+    higher wall more steeply than 45 degrees give way to it, so the skin can
+    fall from that wall; the outline on a wall is the wall's."""
     st = P.surface_step_mm
     pts = []
     for k in keys():
@@ -178,8 +179,15 @@ def skin_fit():
     x, y = c(np.linspace(0, c.x[-1], math.ceil(c.x[-1] / st), endpoint=False)).T
     z = np.max([blend(x, y), pockets_cover(x, y)] + [well_cover(k, x, y) for k in keys()], axis=0)
     off = ~np.any([within(k, x, y, well_half(k)) for k in keys()], axis=0)
-    pts = np.concatenate(pts + [np.c_[x, y, z][off]])
-    return RBFInterpolator(pts[:, :2], pts[:, 2], kernel="thin_plate_spline")
+    wells, edge = np.concatenate(pts), np.c_[x, y, z][off]
+    held = np.zeros(len(edge), bool)
+    while True:
+        pts = np.r_[wells, edge[held]]
+        fit = RBFInterpolator(pts[:, :2], pts[:, 2], kernel="thin_plate_spline")
+        over = ~held & (fit(edge[:, :2]) > edge[:, 2])
+        if not over.any():
+            return fit
+        held |= over
 
 
 def pocket_cover(k, pz, lx, ly):
