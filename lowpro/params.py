@@ -345,8 +345,9 @@ cap_wall_mm = 1.2
 # (shell.py screw_seat_z, seat_pads). For the outline's corners that turn
 # screw_corner_deg or more, sharpest first, none within screw_apart_mm of
 # another along the outline, with the runs between split so none is over
-# screw_gap_mm, a screw stands at the nearest spot inside the outline that's
-# screw_clearance_mm clear of every tile's and part's room and cradle, with min_wall_mm
+# screw_gap_mm, a screw stands at the nearest spot inside the outline where its
+# boss, up to its top, is screw_clearance_mm clear of every tile's room and its
+# way down off its pegs, and every part's room and cradle, with min_wall_mm
 # of wall outside its recess, unless one already stands within
 # screw_apart_mm (shell.py screw_points). The body stands on the plinth, so
 # its weight holds the plinth's edges to the wall; the screws hold the two

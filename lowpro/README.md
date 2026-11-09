@@ -161,11 +161,14 @@ at, behind an even 0.8 mm skin with a stop 0.1 mm behind it; and each part has a
 cradle on the plinth. There is
 room over the Pro Micro's pins for Dupont housings and their wires.
 
-Four M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
-for each of the outline's corners that turns 60° or more, the nearest spot
-clear of the tiles, the parts and their cradles, unless a screw already stands
-within 40 mm. They stand behind the middle column, in front of the inner
-column, at the far thumb key and at the pinky's front corner, each boss a 6 mm
+Five M2 x 6 screws into 5 mm inserts hold the plinth, all inside the outline:
+for each of the outline's corners that turns 60° or more (bends less than a
+boss apart count as one corner), the nearest spot where the boss, up to its
+top, clears the tiles, their way down off their pegs, the parts and their
+cradles, unless a screw already stands within 40 mm. They stand in the back
+corner by the Pro Micro, between the USB-C and TRRS walls, at the pinky's back
+corner, near its front corner, in front of the inner column and at the thumb
+cluster's bottom corner, each boss a 6 mm
 post from its seat to 1 mm over its insert, standing in the wall, so it stays
 out of the tiles' and the wires' way. The body stands on the plinth, so its
 weight holds the plinth's edges to the wall; the screws hold the two together

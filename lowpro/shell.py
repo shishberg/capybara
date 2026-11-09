@@ -143,8 +143,10 @@ def outline_spot(s):
 
 def corners():
     """The bare outline's convex corners as (turn in degrees, s along the
-    outline at the corner's middle): each run of stations bending tighter than
-    outline_round_mm + 1 mm turning the same way, counted up."""
+    outline at the corner's middle): the stations turning in, counted up, the
+    round's partial turns at its ends with it, and turns less than
+    screw_boss_mm apart one corner, since one screw holds them both (the hulls
+    can leave two vertices a short facet apart)."""
     q = outline_stations()[0]
     n = len(q)
     e = np.roll(q, -1, axis=0) - q
@@ -152,29 +154,33 @@ def corners():
     heading = np.arctan2(e[:, 1], e[:, 0])
     turn = np.angle(np.exp(1j * (heading - np.roll(heading, 1))))    # at each station, in
     along = np.r_[0, np.cumsum(length)]
-    bend = turn / ((np.roll(length, 1) + length) / 2)
-    tight = bend > 1 / (P.outline_round_mm + 1)
-    if tight.all() or not tight.any():
+    bending = np.flatnonzero(turn > 1e-6)
+    if len(bending) in (0, n):
         return []
-    start = int(np.argmin(tight))     # a station that isn't in a corner
-    out, run = [], []
-    for k in range(start, start + n + 1):
-        i = k % n
-        if tight[i] and k < start + n:
-            run.append(i)
-        elif run:
-            total = math.degrees(sum(turn[i] for i in run))
-            out.append((total, (along[run[0]] + along[run[-1]]) / 2))
+    at = lambda k: along[k % n] + k // n * along[-1]     # s at the k'th station, counted on past the end
+    gaps = (along[np.roll(bending, -1)] - along[bending]) % along[-1]
+    first = (int(np.argmax(gaps)) + 1) % len(bending)    # the bend after the longest stretch without one
+    ks = [k + n if k < bending[first] else k for k in np.r_[bending[first:], bending[:first]]]
+    out, run = [], [ks[0]]
+    for k in ks[1:] + [None]:
+        if k is None or at(k) - at(run[-1]) >= P.screw_boss_mm:
+            out.append((math.degrees(sum(turn[j % n] for j in run)), (at(run[0]) + at(run[-1])) / 2 % along[-1]))
             run = []
+        run.append(k)
     return out
 
 
 def blocked_plan():
-    """What a screw's boss must keep clear of, in plan: the tiles' rooms, the
-    parts' rooms and the cradles on the plinth. A boss can join a plate or a
-    pocket's wall: they're the body."""
-    return fused([union(place(k.frame, R.tile_room())).project() for k in keys()]
-                 + [union(part_rooms()).project(), union(cradles()).project()])
+    """What a screw's boss must keep clear of, in plan: the tiles' rooms and
+    their way down off their pegs (stuck_tiles), the parts' rooms and the
+    cradles on the plinth, where they come down within screw_clearance_mm of the
+    boss's top. A boss can join a plate or a pocket's wall: they're the body."""
+    t = P.capybara["tile"]
+    drop = tile_drop(t["size_mm"][2] + t["clearance_mm"])
+    lo, hi = plinth_top(), boss((0, 0)).bounding_box()[5] + P.screw_clearance_mm
+    band = R.box((1e4, 1e4, hi - lo), (0, 0, (lo + hi) / 2))
+    rooms = [placed(k.frame, union(R.tile_room() + drop)) for k in keys()] + part_rooms() + cradles()
+    return (union(rooms) ^ band).project()
 
 
 def pad_r():
