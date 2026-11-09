@@ -25,6 +25,8 @@ type Mark = {
 };
 
 const r1 = (v: number) => Math.round(v * 100) / 100;
+/** Whether o is drawn: it and every group it is in are visible. */
+const shows = (o: T.Object3D | null): boolean => !o || (o.visible && shows(o.parent));
 // Saved marks' strokes, and the picked one's: neither the handles' colours nor
 // the red of unsaved strokes.
 const SAVED = 0xffd21a,
@@ -40,7 +42,8 @@ export function setupMarks(o: {
   camera: T.PerspectiveCamera | T.OrthographicCamera;
   controls: OrbitControls;
   renderer: T.WebGLRenderer;
-  // The model's meshes, and what each is (shell, keycaps…).
+  // The meshes strokes can land on, and what each is (shell, keycaps…): those
+  // that show are hit.
   targets: () => [T.Object3D, string][];
   // Draws the scene again, where it isn't drawn every frame.
   render?: () => void;
@@ -237,7 +240,7 @@ export function setupMarks(o: {
       u = (e.clientX - r.left) / r.width,
       v = (e.clientY - r.top) / r.height;
     ray.setFromCamera(clientToNdc(canvas, e.clientX, e.clientY), camera);
-    const targets = o.targets().filter(([obj]) => obj.visible),
+    const targets = o.targets().filter(([obj]) => shows(obj)),
       hit = ray.intersectObjects(
         targets.map(([obj]) => obj),
         false,

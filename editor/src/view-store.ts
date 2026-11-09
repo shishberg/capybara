@@ -2,7 +2,7 @@
 // apart from the project.
 import { placeCamera } from './three-util';
 import { $, S } from './state';
-import { camera, controls, material, render } from './viewer';
+import { camera, controls, material, render, seeThrough } from './viewer';
 import { visibility } from './scene-parts';
 import { isAvailable, type CaseId } from './cases';
 import { pieceVisibility, showCase } from './case-view';
@@ -20,10 +20,7 @@ $('case').onchange = () => {
   saveView();
 };
 $('opacity').oninput = () => {
-  material.opacity = Number($<HTMLInputElement>('opacity').value);
-  material.transparent = material.opacity < 1;
-  material.depthWrite = !material.transparent;
-  material.needsUpdate = true;
+  seeThrough(material, Number($<HTMLInputElement>('opacity').value));
   pieceVisibility();
   render();
   saveView();

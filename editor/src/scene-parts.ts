@@ -262,6 +262,6 @@ export function setShell(r: BuildResult) {
   setMesh(basePlate, r.base);
   setEdges();
   measure();
-  captureFaceOrder();
+  captureFaceOrder(shell);
   render();
 }

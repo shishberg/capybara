@@ -19,6 +19,7 @@ import {
   resize,
   showHalf,
   model,
+  frame,
   lowproGroup,
   lowproPieces,
 } from './viewer';
@@ -44,7 +45,7 @@ Object.assign(window, {
     },
     getCase: () => ({
       case: S.case,
-      modelVisible: model.visible,
+      frameVisible: frame.visible,
       lowproVisible: lowproGroup.visible,
       pieces: lowproPieces().map((o) => ({
         name: o.name,
@@ -87,6 +88,7 @@ const marks = !import.meta.env.DEV
         [shell, 'shell'],
         [basePlate, 'bottom section'],
         ...parts.children.map((o): [T.Object3D, string] => [o, o.userData.group ?? 'other']),
+        ...lowproPieces().map((o): [T.Object3D, string] => [o, `${S.case} ${o.name}`]),
         ...handTargets(),
       ],
       render,

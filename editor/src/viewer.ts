@@ -27,25 +27,29 @@ const light = new T.DirectionalLight(0xffffff, 2.5);
 light.position.set(-60, -100, 180);
 scene.add(light);
 /**
- * Everything built from the project, in the right half's coordinates, where
- * every half is built: the left half shows mirrored in x (see isLeft).
+ * The right half's coordinates, where every half is built: the left half shows
+ * mirrored in x (see showHalf). The frame, the review marks and the ?hand
+ * prototype are drawn in it.
  */
 export const model = new T.Group();
 scene.add(model);
+/** The Capybara frame and everything built with it: hidden while a low-profile case shows. */
+export const frame = new T.Group();
+model.add(frame);
 export const material = new T.MeshStandardMaterial({
   color: 0xb1cfca,
   roughness: 0.8,
   side: T.FrontSide,
 });
 export const shell = new T.Mesh(new T.BufferGeometry(), material);
-model.add(shell);
+frame.add(shell);
 // The case's edges: wherever its faces meet at more than a degree.
 export const edges = new T.LineSegments(
   new T.BufferGeometry(),
   new T.LineBasicMaterial({ color: 0x24343a }),
 );
 edges.visible = false;
-model.add(edges);
+frame.add(edges);
 export function setEdges() {
   edges.geometry.dispose();
   // Until the first chassis arrives the case has no geometry to draw edges of.
@@ -58,7 +62,7 @@ export const basePlate = new T.Mesh(
   new T.BufferGeometry(),
   new T.MeshStandardMaterial({ color: 0x7f9a96, roughness: 0.8 }),
 );
-model.add(basePlate);
+frame.add(basePlate);
 // The box the size readout measures: frame and bottom section.
 export const bounds = new T.Box3Helper(new T.Box3(), 0xffd36b);
 bounds.visible = false;
@@ -105,13 +109,13 @@ export function measure() {
   bounds.visible = $('bounds').matches(':checked') && !box.isEmpty();
 }
 export const parts = new T.Group();
-model.add(parts);
+frame.add(parts);
 export const wires = new T.Group();
-model.add(wires);
+frame.add(wires);
 export const failures = new T.Group();
-model.add(failures);
+frame.add(failures);
 export const handleGroup = new T.Group();
-model.add(handleGroup);
+frame.add(handleGroup);
 /** -1 while the left half shows: world x is this times the model's. */
 export const side = () => model.scale.x;
 /**
@@ -134,12 +138,40 @@ export function showHalf(cfg: Config) {
   render();
 }
 const mirrorX = (v: T.Vector3) => [-v.x, v.y, v.z];
-let originalIndices = new Uint32Array(),
-  scheduled = false;
-/** Keeps the case's triangle order, which transparency re-sorts by depth. */
-export const captureFaceOrder = () => {
-  originalIndices = (shell.geometry.getIndex()!.array as Uint32Array).slice();
+/** Each case body's triangle order as built, which render re-sorts by depth while it is see-through. */
+const faceOrder = new WeakMap<T.BufferGeometry, Uint32Array>();
+export const captureFaceOrder = (body: T.Mesh) => {
+  faceOrder.set(body.geometry, (body.geometry.getIndex()!.array as Uint32Array).slice());
 };
+/**
+ * Chassis opacity on a case body's material. Below 1 the body is drawn
+ * see-through, without writing depth, its faces sorted back to front (render).
+ * three.js builds an opaque material's shader to drop alpha, so it is rebuilt.
+ */
+export function seeThrough(mat: T.Material, opacity: number) {
+  mat.opacity = opacity;
+  mat.transparent = opacity < 1;
+  mat.depthWrite = !mat.transparent;
+  mat.needsUpdate = true;
+}
+/** Sorts the body's triangles back to front from the camera, from their order as built. */
+function sortFaces(body: T.Mesh, built: Uint32Array) {
+  camera.updateMatrixWorld();
+  const pos = body.geometry.getAttribute('position'),
+    m = camera.matrixWorldInverse.clone().multiply(body.matrixWorld).elements,
+    depth = new Float64Array(built.length / 3);
+  for (let i = 0; i < depth.length; i++)
+    for (let j = 0; j < 3; j++) {
+      const v = built[i * 3 + j];
+      depth[i] += m[2] * pos.getX(v) + m[6] * pos.getY(v) + m[10] * pos.getZ(v);
+    }
+  const order = Array.from(depth.keys()).sort((a, b) => depth[a] - depth[b]),
+    index = body.geometry.getIndex()!,
+    indices = index.array as Uint32Array;
+  order.forEach((f, i) => indices.set(built.subarray(f * 3, f * 3 + 3), i * 3));
+  index.needsUpdate = true;
+}
+let scheduled = false;
 export const geometry = (data: MeshData, sharp: boolean) => {
   const g = new T.BufferGeometry();
   g.setAttribute('position', new T.BufferAttribute(data.positions, 3));
@@ -168,23 +200,11 @@ export function render() {
   scheduled = true;
   requestAnimationFrame(() => {
     scheduled = false;
-    if (material.opacity < 1 && originalIndices.length) {
-      camera.updateMatrixWorld();
-      const pos = shell.geometry.getAttribute('position'),
-        m = camera.matrixWorldInverse.clone().multiply(shell.matrixWorld).elements,
-        depth = new Float64Array(originalIndices.length / 3);
-      for (let i = 0; i < depth.length; i++)
-        for (let j = 0; j < 3; j++) {
-          const v = originalIndices[i * 3 + j];
-          depth[i] += m[2] * pos.getX(v) + m[6] * pos.getY(v) + m[10] * pos.getZ(v);
-        }
-      const order = Array.from(depth.keys()).sort((a, b) => depth[a] - depth[b]),
-        indices = new Uint32Array(originalIndices.length);
-      order.forEach((f, i) => indices.set(originalIndices.subarray(f * 3, f * 3 + 3), i * 3));
-      const index = shell.geometry.getIndex()!;
-      (index.array as Uint32Array).set(indices);
-      index.needsUpdate = true;
-    }
+    // The body on show: none while a low-profile case loads, and no faces
+    // before the first chassis arrives.
+    const body = (lowproGroup.visible ? lowproPieces('body')[0] : shell) as T.Mesh | undefined,
+      built = body && faceOrder.get(body.geometry);
+    if (built && (body.material as T.Material).transparent) sortFaces(body, built);
     renderer.render(scene, camera);
   });
 }

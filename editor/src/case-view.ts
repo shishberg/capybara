@@ -1,11 +1,20 @@
 // Which case shows. The Capybara frame is the editor's own model; a
 // low-profile case is a 3MF assembly the dev server makes (vite.config.ts),
-// loaded into lowproGroup while `model` is hidden.
+// loaded into lowproGroup while the frame is hidden.
 import * as T from 'three';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { AVAILABLE, CASES, pieceKind } from './cases';
 import { $, S } from './state';
-import { lowproGroup, lowproPieces, material, measure, model, render } from './viewer';
+import {
+  captureFaceOrder,
+  frame,
+  lowproGroup,
+  lowproPieces,
+  material,
+  measure,
+  render,
+  seeThrough,
+} from './viewer';
 
 const select = $<HTMLSelectElement>('case');
 select.replaceChildren(...AVAILABLE.map((id) => new Option(CASES[id].label, id)));
@@ -25,7 +34,7 @@ let request = 0;
 
 export function showCase() {
   const design = CASES[S.case].lowpro;
-  model.visible = !design;
+  frame.visible = !design;
   lowproGroup.visible = !!design;
   document.body.classList.toggle('lowpro-case', !!design);
   syncCase();
@@ -55,6 +64,17 @@ async function load(design: string, half: string, label: string) {
     bodyEdges = undefined;
     for (const o of meshes(loaded)) o.userData.kind = pieceKind(o.name);
     lowproGroup.add(loaded);
+    // The loader's meshes are unindexed: the body gets an index, which render
+    // re-sorts by depth while it is see-through.
+    const body = lowproPieces('body')[0] as T.Mesh,
+      corners = body.geometry.getAttribute('position').count;
+    body.geometry.setIndex(
+      new T.BufferAttribute(
+        Uint32Array.from({ length: corners }, (_, i) => i),
+        1,
+      ),
+    );
+    captureFaceOrder(body);
     pieceVisibility();
     measure();
     render();
@@ -97,10 +117,7 @@ export function pieceVisibility() {
   for (const o of lowproPieces()) o.visible = on[o.userData.kind as keyof typeof on];
   const body = lowproPieces('body')[0] as T.Mesh | undefined;
   if (!body) return;
-  const mat = body.material as T.Material;
-  mat.opacity = material.opacity;
-  mat.transparent = material.transparent;
-  mat.depthWrite = material.depthWrite;
+  seeThrough(body.material as T.Material, material.opacity);
   if (!bodyEdges?.parent && checked('edges'))
     body.add(
       (bodyEdges = new T.LineSegments(
