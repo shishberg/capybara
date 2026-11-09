@@ -205,14 +205,15 @@ roll round the edge at the far thumb key.
 over each key is its plate's plane raised `well_depth_mm` (6 mm, the cap's
 skirt over the plate at rest) along the key's normal, and the cap's room cuts
 the well, so it is square to the key and 1 mm clear of the cap all round,
-and its floor is the plate. Its corners are rounded 2 mm, which leaves 0.59 mm
-to a square cap's corner, and the floor meets the walls in a 1.5 mm cove, which
-the cap clears: at full travel its skirt is still 2.5 mm over the floor. The
+and its floor is the plate. A cap's room is its base grown by the clearance,
+so its corners are rounded 1 mm and a cap's corner has the same 1 mm as its
+sides. The floor meets the walls in a 1 mm cove, as large as the corners let
+it be, which the cap clears: at full travel its skirt is still 2.5 mm over the floor. The
 caps are opaque, so the tiles' light shows only round their skirts. The
 well's walls and its cove may throw some of it back up past the cap, which a
 print would have to show. The outline walls round each key's well as well as
 its pocket, so every key on the edge has a wall. That makes the half
-114.8 × 150.1 mm, 12,088 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
+115.0 × 150.4 mm, 12,109 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
 it in the thumb cluster.
 
 Between keys a wall stands only where there's room for one. Keys in a column
