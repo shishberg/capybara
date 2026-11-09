@@ -172,15 +172,13 @@ def corners():
 
 def blocked_plan():
     """What a screw's boss must keep clear of, in plan: the tiles' rooms and
-    their way down off their pegs (stuck_tiles), the caps' rooms, the parts'
+    their way down off their pegs (tile_way), the caps' rooms, the parts'
     rooms and the cradles on the plinth, where they come down within
     screw_clearance_mm of the boss's top. A boss can join a plate or a pocket's
     wall: they're the body."""
-    t = P.capybara["tile"]
-    drop = tile_drop(t["size_mm"][2] + t["clearance_mm"])
     lo, hi = plinth_top(), boss((0, 0)).bounding_box()[5] + P.screw_clearance_mm
     band = R.box((1e4, 1e4, hi - lo), (0, 0, (lo + hi) / 2))
-    rooms = [placed(k.frame, union(R.tile_room() + drop)) for k in keys()] + C.cap_cuts() + part_rooms() + cradles()
+    rooms = [placed(k.frame, union(R.tile_room()) + tile_way()) for k in keys()] + C.cap_cuts() + part_rooms() + cradles()
     return (union(rooms) ^ band).project()
 
 
@@ -293,10 +291,13 @@ def seat_pads():
 def interior():
     """The hollow: inside the walls, up to top_skin_mm under the top and
     cap_wall_mm clear of every cap's room, so where a room cuts down through
-    the top a wall follows it (the rooms are convex, so the sum is exact)."""
+    the top a wall follows it (the rooms are convex, so the sum is exact). A
+    lower key's room rises beside its higher neighbour's pocket, and the wall
+    round it gives way to that tile's way down off its pegs (tile_way)."""
     ball = Manifold.sphere(P.cap_wall_mm, 16)
-    return subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
-                    [s.minkowski_sum(ball) for s in C.cap_rooms()])
+    hollow = subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
+                      [s.minkowski_sum(ball) for s in C.cap_rooms()])
+    return add(hollow, [union([placed(k.frame, tile_way()) for k in keys()]) ^ inside_prism()])
 
 
 def pocket_span():
@@ -449,13 +450,18 @@ def tile_drop(d):
     return [longer(bs, bc) - union(notches)] + [longer(s, c) for s, c in rest]
 
 
-def stuck_tiles():
-    """The tiles that meet the body coming straight down off their pegs, out
-    past their pocket's rim (the board's thickness and its clearance), as
-    (key, mm^3): below that the underside is open to turn them out."""
+def tile_way():
+    """A tile's way straight down off its pegs, out past its pocket's rim (the
+    board's thickness and its clearance), in the key frame: below that the
+    underside is open to turn it out."""
     t = P.capybara["tile"]
-    b, drop = body(), union(tile_drop(t["size_mm"][2] + t["clearance_mm"]))
-    return [(k.name, v) for k in keys() for v in [(placed(k.frame, drop) ^ b).volume()] if v > 1e-4]
+    return union(tile_drop(t["size_mm"][2] + t["clearance_mm"]))
+
+
+def stuck_tiles():
+    """The tiles that meet the body coming straight down off their pegs (tile_way), as (key, mm^3)."""
+    b = body()
+    return [(k.name, v) for k in keys() for v in [(placed(k.frame, tile_way()) ^ b).volume()] if v > 1e-4]
 
 
 def thin_tops():

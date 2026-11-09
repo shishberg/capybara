@@ -143,7 +143,8 @@ keys and turns in only where the thumb cluster meets the finger block. The body
 is this design's shell, hollowed to its walls and a 3 mm skin, with a 1.2 mm
 wall round each cap's room where the room cuts down through the top (a lower
 key's room rises beside its higher neighbour's pocket, where a full skin would
-stand in that tile's way out): each
+stand in that tile's way out, and the wall gives way to that tile's way down
+off its pegs): each
 switch sits in a plate in the skin, with the
 editor's sleeve under it, and its tile hangs in a pocket under the plate:
 1.2 mm walls round the tile's 0.35 mm clearance, from the plate down to the
@@ -203,14 +204,15 @@ roll round the edge at the far thumb key.
 `--preset capybara_wells` is the same case with each switch in a well. The top
 over each key is its plate's plane raised `well_depth_mm` (6 mm, the cap's
 skirt over the plate at rest) along the key's normal, and the cap's room cuts
-the well, so it is square to the key and 0.45 mm clear of the cap all round,
-and its floor is the plate. The floor meets the walls in a 1.5 mm cove, which
+the well, so it is square to the key and 1 mm clear of the cap all round,
+and its floor is the plate. Its corners are rounded 2 mm, which leaves 0.59 mm
+to a square cap's corner, and the floor meets the walls in a 1.5 mm cove, which
 the cap clears: at full travel its skirt is still 2.5 mm over the floor. The
 caps are opaque, so the tiles' light shows only round their skirts. The
 well's walls and its cove may throw some of it back up past the cap, which a
 print would have to show. The outline walls round each key's well as well as
 its pocket, so every key on the edge has a wall. That makes the half
-114.5 × 150.1 mm, 12,018 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
+114.8 × 150.1 mm, 12,088 mm² (from 113.8 × 145.7 mm, 11,415 mm²), nearly all of
 it in the thumb cluster.
 
 Between keys a wall stands only where there's room for one. Keys in a column
