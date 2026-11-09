@@ -291,15 +291,11 @@ def seat_pads():
 def interior():
     """The hollow: inside the walls, up to top_skin_mm under the top and
     cap_wall_mm clear of every cap's room, so where a room cuts down through
-    the top a wall follows it (the rooms are convex, so the sum is exact). A
-    lower key's room rises beside its higher neighbour's pocket, and the wall
-    round it is cut through where too little of it would be left beside that
-    tile's way down off its pegs (way_webs): the opening is down in the well,
-    under the cap. The plates and the screws' bosses stand in it, and it is only
-    what they leave open to the plinth: a pocket they seal off holds nothing
-    and would be a void in the print. Each tile's way (tile_way) is cut from all
-    of it, walls and plates too, so a tile keeps its clearance all the way out;
-    the bosses keep clear of the ways (blocked_plan)."""
+    the top a wall follows it (the rooms are convex, so the sum is exact),
+    except where it's too thin beside a tile's way (way_webs). The plates and
+    the screws' bosses stand in it, and it is only what they leave open to the
+    plinth: a pocket they seal off holds nothing and would be a void in the
+    print. Each tile's way (tile_way) is cut through all of it, plates too."""
     ball = Manifold.sphere(P.cap_wall_mm, 16)
     hollow = subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
                       [s.minkowski_sum(ball) for s in C.cap_rooms()])
@@ -449,11 +445,8 @@ def headers_in_tiles():
 
 
 def tile_way():
-    """A tile's way straight down off its pegs, out past its pocket's rim (the
-    board's thickness and its clearance), in the key frame: its room, clearance
-    and all, run down its key's axis that far, the notches riding the pegs, so
-    it keeps its clearance all the way out. Below that the underside is open to
-    turn it out."""
+    """A tile's room run straight down its key's axis off its pegs, out past its
+    pocket's rim (the board's thickness and its clearance), in the key frame."""
     t = P.capybara["tile"]
     d = t["size_mm"][2] + t["clearance_mm"]
     (bs, bc), *rest = R.tile_boxes(True)
@@ -462,10 +455,8 @@ def tile_way():
 
 
 def way_webs(ways):
-    """The wall between a tile's way and a cap's room wherever it's thinner than
-    min_wall_mm, which won't print: a lower key's room rises beside its higher
-    neighbour's pocket. Cut, like the webs between two rooms (cap_cuts), as the
-    hull of the parts of each that near the other."""
+    """The cuts through the wall between a tile's way and a cap's room wherever
+    it's thinner than min_wall_mm."""
     ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
     webs = []
     for w in ways:

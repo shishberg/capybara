@@ -1,12 +1,10 @@
 """How close each tile passes the body on its straight way down off its pegs:
-the bare tile run down its key's axis (tile_drop below, the notches riding
-the pegs) by the pegs' length plus the board and its clearance (the build's
-tile_way) and by 4 mm, and the least gap from that swept tile to the body.
-The build cuts the tile's room, clearance and all, along that way, so every
-gap should be the tile's clearance; under a print's tolerance (about 0.2 mm)
-the tile may rub or stick on the way. The pegs, which the
-notches ride at 0.149 mm by design, are left out: a 4 mm square at each of the
-tile's corners is taken from the body before measuring. Where the gap is
+the bare tile run down its key's axis (tile_drop) by the board's thickness
+and its clearance (the depth of the build's tile_way) and by 4 mm, and the
+least gap from that swept tile to the body. Under a print's tolerance (about
+0.2 mm) the tile may rub or stick on the way. The pegs, which the notches
+ride at 0.149 mm by design, are left out: a 4 mm square at each of the tile's
+corners is taken from the body before measuring. Where the gap is
 under 0.3 mm, says where: the swept tile grown by 0.3 mm against the body.
 
     python tile_path_gap.py
@@ -22,9 +20,7 @@ t = P.capybara["tile"]
 
 
 def tile_drop(d):
-    """The bare tile run straight down its key's axis by d, in the key frame:
-    each of its boxes reaching d further down, the board less its notches,
-    which ride down the pegs."""
+    """The bare tile run straight down its key's axis by d, in the key frame."""
     (bs, bc), *rest = A.R.tile_boxes()
     n = t["corner_notch_mm"]
     longer = lambda s, c: A.R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))

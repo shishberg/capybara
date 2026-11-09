@@ -439,10 +439,9 @@ def tile():
 
 def posts(down=0):
     """The pegs in the tile's corner notches, in the key frame: round, the
-    notch less peg_fit_mm, from the board's underside (or `down` under it: what
-    the notches ride on the tile's way off them) up into the sleeve, each
-    webbed out to the pocket's corner (the tile's corner outside the notch is
-    cut away too)."""
+    notch less peg_fit_mm, from the board's underside (or `down` under it) up
+    into the sleeve, each webbed out to the pocket's corner (the tile's corner
+    outside the notch is cut away too)."""
     t = P.capybara["tile"]
     under = tile_top_z() - t["size_mm"][2] - down
     out = t["corner_notch_mm"]["inset_mm"] + t["clearance_mm"] + 0.1
