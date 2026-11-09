@@ -448,10 +448,12 @@ def posts(down=0):
     return union(notch_cuts(t["corner_notch_mm"]["radius_mm"] - P.peg_fit_mm, out, under, sleeve_bottom_z() + 0.1 - under))
 
 
-def tile_room():
-    """The tile and its parts with their clearances, less the pegs: its pocket."""
+def tile_room(down=0):
+    """The tile and its parts with their clearances, less the pegs: its pocket,
+    reaching `down` further down its key's axis."""
     (bs, bc), *parts = tile_boxes(True)
-    return [box(bs, bc) - posts()] + [box(s, c) for s, c in parts]
+    longer = lambda s, c: box((s[0], s[1], s[2] + down), (c[0], c[1], c[2] - down / 2))
+    return [longer(bs, bc) - posts(down)] + [longer(s, c) for s, c in parts]
 
 
 def tile_bottom_z():

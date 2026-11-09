@@ -178,7 +178,7 @@ def blocked_plan():
     wall: they're the body."""
     lo, hi = plinth_top(), boss((0, 0)).bounding_box()[5] + P.screw_clearance_mm
     band = R.box((1e4, 1e4, hi - lo), (0, 0, (lo + hi) / 2))
-    rooms = [placed(k.frame, union(R.tile_room()) + tile_way()) for k in keys()] + C.cap_cuts() + part_rooms() + cradles()
+    rooms = [placed(k.frame, tile_way()) for k in keys()] + C.cap_cuts() + part_rooms() + cradles()
     return (union(rooms) ^ band).project()
 
 
@@ -448,28 +448,14 @@ def tile_way():
     """A tile's room run straight down its key's axis off its pegs, out past its
     pocket's rim (the board's thickness and its clearance), in the key frame."""
     t = P.capybara["tile"]
-    d = t["size_mm"][2] + t["clearance_mm"]
-    (bs, bc), *rest = R.tile_boxes(True)
-    longer = lambda s, c: R.box((s[0], s[1], s[2] + d), (c[0], c[1], c[2] - d / 2))
-    return union([longer(bs, bc) - R.posts(d)] + [longer(s, c) for s, c in rest])
+    return union(R.tile_room(t["size_mm"][2] + t["clearance_mm"]))
 
 
 def way_webs(ways):
     """The cuts through the wall between a tile's way and a cap's room wherever
     it's thinner than min_wall_mm."""
-    ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
-    webs = []
-    for w in ways:
-        for r in C.cap_rooms():
-            if C.gap(w, r) >= P.min_wall_mm:
-                continue
-            a = w ^ r.minkowski_sum(ball)
-            if a.volume() <= 1e-6:
-                continue
-            b = r ^ Manifold.batch_hull([a]).minkowski_sum(ball)
-            if b.volume() > 1e-6:
-                webs.append(Manifold.batch_hull([a, b]))
-    return webs
+    return [web for w in ways for r in C.cap_rooms() if C.gap(w, r) < P.min_wall_mm
+            for web in [C.web_cut(w, r)] if web]
 
 
 def thin_tops():

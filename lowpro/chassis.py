@@ -1233,18 +1233,19 @@ def cap_cuts():
     """What the caps take from the body: each one's room, and the web between
     two rooms wherever it's thinner than min_wall_mm, which won't print. Two
     wells leaning together meet above the top and leave such a web between
-    them, its top a knife edge. The web's cut is the hull of the parts of each
-    room that near the other, so what's left of it is min_wall_mm thick where
-    it's cut."""
+    them, its top a knife edge."""
     rooms = cap_rooms()
+    return rooms + [web for i, j in near_pairs() for web in [web_cut(rooms[i], rooms[j])] if web]
+
+
+def web_cut(a, b):
+    """The cut through the web between two rooms wherever it's thinner than
+    min_wall_mm, or None: the hull of the parts of each that near the other,
+    so what's left of the web is min_wall_mm thick where it's cut."""
     ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
-    grown = [s.minkowski_sum(ball) for s in rooms]
-    webs = []
-    for i, j in near_pairs():
-        a, b = rooms[i] ^ grown[j], rooms[j] ^ grown[i]
-        if a.volume() > 1e-6 and b.volume() > 1e-6:
-            webs.append(Manifold.batch_hull([a, b]))
-    return rooms + webs
+    near_a, near_b = a ^ b.minkowski_sum(ball), b ^ a.minkowski_sum(ball)
+    if near_a.volume() > 1e-6 and near_b.volume() > 1e-6:
+        return Manifold.batch_hull([near_a, near_b])
 
 
 @cached
