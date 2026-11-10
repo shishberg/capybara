@@ -9,7 +9,7 @@ level, and in practice several mm to be offered up.
 import numpy as np
 
 import common as A
-from lowpro.lib import trans
+from case.lib import trans
 
 import ways_in as W
 

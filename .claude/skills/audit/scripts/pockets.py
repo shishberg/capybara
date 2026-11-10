@@ -10,7 +10,7 @@ import numpy as np
 from manifold3d import CrossSection, Manifold
 
 import common as A
-from lowpro.lib import rinv, trans, xform
+from case.lib import rinv, trans, xform
 
 T = A.P.capybara["tile"]
 SIDE = T["size_mm"][0]

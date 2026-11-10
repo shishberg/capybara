@@ -1,18 +1,18 @@
-"""The matrix wires of the lowpro design (in its channels) and the frame design
+"""The matrix wires of the slim design (in its channels) and the ribs design
 (loose under its ribs): where each wire of wire_d_mm runs, from terminal to
 terminal and on to the controller's pad.
 
-The matrix is lowpro/BUILD.md's: a row's wire joins its keys' row terminals, a
+The matrix is case/BUILD.md's: a row's wire joins its keys' row terminals, a
 column's its keys' diodes' band legs, and the controller's pad for it
 (params.py mcu_pins), as the tree that takes the least wire (nets).
 
 A wire needs no clearance, but it can't pass into the case, a part or another
 wire. The space a wire's centre may lie in is sampled every wire_grid_mm. In
-the frame design it is inside the outline, under the ribs' undersides, and a
+the ribs design it is inside the outline, under the ribs' undersides, and a
 wire's radius from the frame, the plinth, the bay's deck's top and every part,
 and half a grid cell's diagonal more (slack), which makes up for the sampling
-(frame_shut). In the lowpro design it is what is cut from the body and the
-plinth, past the parts, shrunk by a wire's radius (chassis_shut). Each wire is the cheapest way through that space clear of the wires
+(ribs_shut). In the slim design it is what is cut from the body and the
+plinth, past the parts, shrunk by a wire's radius (slim_shut). Each wire is the cheapest way through that space clear of the wires
 laid before it (the columns' first, then the rows'), pulled straight wherever
 a straight run is clear and no dearer. A way costs its length, and up to
 wire_tuck times more the further it hangs under what is over it, as far as
@@ -28,7 +28,7 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import breadth_first_order, dijkstra, minimum_spanning_tree
 
 from . import chassis as C
-from . import frame as F
+from . import ribs
 from . import layout as L
 from . import params as P
 from . import parts as R
@@ -58,7 +58,7 @@ def joints(k):
     """Where key k's row wire and column wire end, in world. In the frame
     design: against its row terminal's tip, and against its block's side at its
     diode's band leg."""
-    if P.design != "frame":
+    if P.design != "slim_ribs":
         return C.key_wire_ends(k)
     r = P.wire_d_mm / 2
     tip = R.socket_tab_tip(wire_side(k))
@@ -137,11 +137,11 @@ def roof(x, y):
 
 def solids():
     """Everything a wire can't pass into: the body, the plinth, the parts, and
-    in the frame design whatever is over the bay's deck."""
+    in the ribs design whatever is over the bay's deck."""
     D = L.design()
     out = [D.body(), D.bottom_plate()] + [p.solid for p in C.switches() + C.sockets() + C.diodes() + C.electronics()]
-    if D is F:
-        (x0, y0), (x1, y1) = F.bay_wall_rect()
+    if D is ribs:
+        (x0, y0), (x1, y1) = ribs.bay_wall_rect()
         out.append(Manifold.cube((x1 - x0, y1 - y0, 100)).translate((x0, y0, C.deck_z()[1])))
     return union(out)
 
@@ -159,16 +159,16 @@ def samples(solid, x, y, z):
     return np.stack([filled(solid.slice(float(h)), x, y) for h in z], axis=-1)
 
 
-def frame_shut(x, y, z):
-    """The frame design's samples where a wire's centre can't lie."""
+def ribs_shut(x, y, z):
+    """The ribs design's samples where a wire's centre can't lie."""
     g, r = P.wire_grid_mm, P.wire_d_mm / 2
     near = ndimage.distance_transform_edt(~samples(solids(), x, y, z), sampling=g) < r + slack()
-    outside = ~filled(F.inside().offset(-r), x, y)
+    outside = ~filled(ribs.inside().offset(-r), x, y)
     return near | outside[..., None] | (z > roof(x, y)[..., None])
 
 
-def chassis_shut(x, y, z):
-    """The lowpro design's samples where a wire's centre can't lie: all but
+def slim_shut(x, y, z):
+    """The slim design's samples where a wire's centre can't lie: all but
     those in what is cut from the body and the plinth, past the parts, shrunk
     by a wire's radius."""
     return ~samples(C.wire_centres(C.subtract(C.wire_space(), [solids()])), x, y, z)
@@ -181,7 +181,7 @@ def space():
     box = np.array(union([D.body(), D.bottom_plate()]).bounding_box())
     low = box[:3] - g
     x, y, z = (low[a] + g * np.arange(int((box[3 + a] - low[a]) / g) + 2) for a in range(3))
-    shut = (frame_shut if D is F else chassis_shut)(x, y, z)
+    shut = (ribs_shut if D is ribs else slim_shut)(x, y, z)
     return Space(low, g, shut, (1 + P.wire_tuck * np.minimum(hang(shut) * g / P.wire_tuck_mm, 1)).astype(np.float32))
 
 

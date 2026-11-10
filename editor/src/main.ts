@@ -20,8 +20,8 @@ import {
   showHalf,
   model,
   frame,
-  lowproGroup,
-  lowproPieces,
+  builtGroup,
+  builtPieces,
 } from './viewer';
 import { snapshot, historyButtons, refreshInputs, preview, edited } from './project-store';
 import { startWorker, requestBuild } from './build-client';
@@ -46,8 +46,8 @@ Object.assign(window, {
     getCase: () => ({
       case: S.case,
       frameVisible: frame.visible,
-      lowproVisible: lowproGroup.visible,
-      pieces: lowproPieces().map((o) => ({
+      builtVisible: builtGroup.visible,
+      pieces: builtPieces().map((o) => ({
         name: o.name,
         kind: o.userData.kind,
         visible: o.visible,
@@ -88,7 +88,7 @@ const marks = !import.meta.env.DEV
         [shell, 'shell'],
         [basePlate, 'bottom section'],
         ...parts.children.map((o): [T.Object3D, string] => [o, o.userData.group ?? 'other']),
-        ...lowproPieces().map((o): [T.Object3D, string] => [o, `${S.case} ${o.name}`]),
+        ...builtPieces().map((o): [T.Object3D, string] => [o, `${S.case} ${o.name}`]),
         ...handTargets(),
       ],
       render,

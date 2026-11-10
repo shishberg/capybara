@@ -1,19 +1,19 @@
 ---
 name: audit
-description: Pre-print audit of a lowpro build. Measures every fit, assembly and print defect on the real meshes, ranks them, and leaves rerunnable probes.
+description: Pre-print audit of a case build. Measures every fit, assembly and print defect on the real meshes, ranks them, and leaves rerunnable probes.
 disable-model-invocation: true
 argument-hint: "[preset ...] [special requirements]"
 ---
 
-# Audit a lowpro build before printing
+# Audit a case build before printing
 
-Go over a built lowpro case with a fine-toothed comb: anything that won't fit where it's meant to, won't go together, or will print badly. The build's own checks already pass or fail on their own; the audit is the **gaps** they leave. Every finding is a number taken from the real meshes by a probe someone can rerun.
+Go over a built case with a fine-toothed comb: anything that won't fit where it's meant to, won't go together, or will print badly. The build's own checks already pass or fail on their own; the audit is the **gaps** they leave. Every finding is a number taken from the real meshes by a probe someone can rerun.
 
 The repo is read-only for the whole audit: change nothing tracked, and leave `output/` to the build. Fixes are the user's call after the report.
 
 ## Inputs
 
-- **Presets**: those named in the arguments. With none named, audit the preset the recent commits and conversation are working on; say which you picked and why. Presets live in `lowpro/params.py`.
+- **Presets**: those named in the arguments. With none named, audit the preset the recent commits and conversation are working on; say which you picked and why. Presets live in `case/params.py`.
 - **Special requirements**: anything in the arguments or the conversation that this build has to meet beyond printing and fitting, such as moving an already-wired harness of tiles from an older chassis into this body. Each gets its own probes, written for it in the scratch dir, and its own section of the report.
 - **The last audit**: if the conversation or the user points at an earlier report, re-measure each of its findings and say which are fixed, still open, or changed.
 
@@ -21,7 +21,7 @@ The repo is read-only for the whole audit: change nothing tracked, and leave `ou
 
 ### 1. Baseline
 
-Note `git status` and HEAD. Run `.venv/bin/python -m lowpro.build --preset <p> --out <scratch>/build/<p>` (without `--out` it writes `output/`) and `make lowpro-test`, and record what passes. Read `lowpro/README.md` and the checks in `lowpro/build.py` so you know what is already covered, and `git log` since the last audit for what changed. Every feature added since then needs a probe of its own.
+Note `git status` and HEAD. Run `.venv/bin/python -m case.build --preset <p> --out <scratch>/build/<p>` (without `--out` it writes `output/`) and `make case-test`, and record what passes. Read `case/README.md` and the checks in `case/build.py` so you know what is already covered, and `git log` since the last audit for what changed. Every feature added since then needs a probe of its own.
 
 Done when you can list what the build's checks cover and what they don't.
 
@@ -29,7 +29,7 @@ Done when you can list what the build's checks cover and what they don't.
 
 Make a scratch dir (the job's tmp dir if there is one, else `mktemp -d`) and copy `scripts/` into it. Builds, probe output and new probes all live there, never in the repo. If `.venv/bin/python -c "import trimesh, embreex"` fails, install the probes' dependencies with `uv pip install --python .venv/bin/python -r .claude/skills/audit/scripts/requirements.txt`.
 
-Run probes from the checkout: `AUDIT_REPO=$PWD AUDIT_PRESET=<p> <scratch>/run_bounded.sh <half> <probe> [args]`. It finds the probe beside itself, sets `AUDIT_HALF`, and writes `<scratch>/out/<preset>/`. Probes read meshes from `<scratch>/build/<preset>/`, building them there on first use if step 1's build isn't there; `output/` can be stale. `<scratch>/run_all.sh <p>` runs the whole table on the right half, `namecheck.py` first: it lists every lowpro name a probe uses that no longer exists.
+Run probes from the checkout: `AUDIT_REPO=$PWD AUDIT_PRESET=<p> <scratch>/run_bounded.sh <half> <probe> [args]`. It finds the probe beside itself, sets `AUDIT_HALF`, and writes `<scratch>/out/<preset>/`. Probes read meshes from `<scratch>/build/<preset>/`, building them there on first use if step 1's build isn't there; `output/` can be stale. `<scratch>/run_all.sh <p>` runs the whole table on the right half, `namecheck.py` first: it lists every case name a probe uses that no longer exists.
 
 Ray casting has to use embree. Without it trimesh falls back to a pure-Python caster that took 20 GB of RAM, so `common.cast` refuses to run without it. Run every heavy probe (thickness, overhang, ways in) through `run_bounded.sh`, which kills it past 2 GB.
 
@@ -64,9 +64,9 @@ In this order:
 
 ## Keeping the probes current
 
-`scripts/` is this skill's own code. When a probe breaks because lowpro renamed or moved something, fix the probe in `scripts/` and commit it. When you write a probe that would apply to any lowpro build, give it a docstring saying what it measures and how to run it, add it to `scripts/` and to the table, and commit it. Probes for a special requirement stay in the scratch dir.
+`scripts/` is this skill's own code. When a probe breaks because case renamed or moved something, fix the probe in `scripts/` and commit it. When you write a probe that would apply to any case build, give it a docstring saying what it measures and how to run it, add it to `scripts/` and to the table, and commit it. Probes for a special requirement stay in the scratch dir.
 
-When a finding is something the build should always catch, say so in the report: it belongs in `lowpro/build.py`'s checks, not here.
+When a finding is something the build should always catch, say so in the report: it belongs in `case/build.py`'s checks, not here.
 
 ## Probes
 
@@ -96,6 +96,6 @@ All take `AUDIT_PRESET`, `AUDIT_HALF` and `AUDIT_REPO` from the environment; arg
 | `wells.py` | Wells only: each well's rim height round the cap, what lowers it, wall-top width, overhang |
 | `well_holes.py` | Wells only: openings from a well into the case |
 | `whatis.py` | What makes the body thin at given points |
-| `namecheck.py` | Lowpro names the probes use that no longer exist |
+| `namecheck.py` | Case names the probes use that no longer exist |
 | `run_bounded.sh` | Runs a probe with its memory capped at 2 GB, output to `out/<preset>/` |
 | `run_all.sh` | Every probe above that runs without arguments, on one preset's right half |

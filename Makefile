@@ -36,48 +36,42 @@ firmware:
 
 .PHONY: firmware
 
-# Low-profile Capybara proposal (meshes cut with Manifold); see lowpro/README.md.
-# Its targets set up .venv from lowpro/requirements.txt when that's needed.
-LOWPRO_PY = .venv/bin/python
-LOWPRO_ENV = .venv/.lowpro
+# The Capybara cases (meshes cut with Manifold); see case/README.md. Their
+# targets set up .venv from case/requirements.txt when that's needed.
+CASE_PY = .venv/bin/python
+CASE_ENV = .venv/.case
 
-$(LOWPRO_ENV): lowpro/requirements.txt
+$(CASE_ENV): case/requirements.txt
 	uv venv --allow-existing --python 3.12 .venv
-	uv pip install --python $(LOWPRO_PY) -r lowpro/requirements.txt
+	uv pip install --python $(CASE_PY) -r case/requirements.txt
 	touch $@
 
-lowpro: $(LOWPRO_ENV)
-	$(LOWPRO_PY) -m lowpro.build
+case: $(CASE_ENV)
+	$(CASE_PY) -m case.build
 
 # Only the checks; fails when one does.
-lowpro-check: $(LOWPRO_ENV)
-	$(LOWPRO_PY) -m lowpro.build --check
+case-check: $(CASE_ENV)
+	$(CASE_PY) -m case.build --check
 
 # PNGs of the right half for a person to look over.
-lowpro-render: $(LOWPRO_ENV)
-	$(LOWPRO_PY) -m lowpro.render
+case-render: $(CASE_ENV)
+	$(CASE_PY) -m case.render
 
-lowpro-test: $(LOWPRO_ENV)
-	$(LOWPRO_PY) -m unittest lowpro.test_checks lowpro.test_swung_in lowpro.test_frame
+case-test: $(CASE_ENV)
+	$(CASE_PY) -m unittest case.test_checks case.test_swung_in case.test_ribs
 
-# One half's assembly for the editor's Case picker (editor/README.md). The
-# presets' rules come first: make takes the first pattern rule that matches.
-LOWPRO_SRC = $(LOWPRO_ENV) $(wildcard lowpro/*.py) hand/left-hand.json editor/src/default-config.json
+# One half's assembly for the editor's Case picker (editor/README.md), by
+# preset: slim, capybara or slim_ribs.
+CASE_SRC = $(CASE_ENV) $(wildcard case/*.py) hand/left-hand.json editor/src/default-config.json
 SWUNG_IN_SRC = $(wildcard editor/src/*.ts) editor/tests/key-frames.ts
 
-output/lowpro/capybara/%-assembly.3mf: $(LOWPRO_SRC) $(SWUNG_IN_SRC)
-	$(LOWPRO_PY) -m lowpro.build --preset capybara --half $* --part assembly --no-check
+output/case/capybara/%-assembly.3mf: $(CASE_SRC) $(SWUNG_IN_SRC)
+	$(CASE_PY) -m case.build --preset capybara --half $* --part assembly --no-check
 
-output/lowpro/capybara_wells/%-assembly.3mf: $(LOWPRO_SRC) $(SWUNG_IN_SRC)
-	$(LOWPRO_PY) -m lowpro.build --preset capybara_wells --half $* --part assembly --no-check
+output/case/slim/%-assembly.3mf: $(CASE_SRC)
+	$(CASE_PY) -m case.build --preset slim --half $* --part assembly --no-check
 
-output/lowpro/wells/%-assembly.3mf: $(LOWPRO_SRC)
-	$(LOWPRO_PY) -m lowpro.build --preset wells --half $* --part assembly --no-check
+output/case/slim_ribs/%-assembly.3mf: $(CASE_SRC)
+	$(CASE_PY) -m case.build --preset slim_ribs --half $* --part assembly --no-check
 
-output/lowpro/frame/%-assembly.3mf: $(LOWPRO_SRC)
-	$(LOWPRO_PY) -m lowpro.build --preset frame --half $* --part assembly --no-check
-
-output/lowpro/%-assembly.3mf: $(LOWPRO_SRC)
-	$(LOWPRO_PY) -m lowpro.build --half $* --part assembly --no-check
-
-.PHONY: lowpro lowpro-check lowpro-render lowpro-test
+.PHONY: case case-check case-render case-test

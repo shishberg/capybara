@@ -16,7 +16,7 @@ import numpy as np
 import trimesh
 
 import common as A
-from lowpro.lib import rinv, xform
+from case.lib import rinv, xform
 
 path = os.path.join(A.OUT, f"{A.HALF}-print.3mf")
 z = zipfile.ZipFile(path)

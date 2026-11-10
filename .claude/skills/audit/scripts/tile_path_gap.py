@@ -13,7 +13,7 @@ import common as A
 import numpy as np
 from manifold3d import Manifold
 
-from lowpro.chassis import placed, union
+from case.chassis import placed, union
 
 S, P = A.S, A.P
 t = P.capybara["tile"]

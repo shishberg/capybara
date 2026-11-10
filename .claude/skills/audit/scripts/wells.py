@@ -23,7 +23,7 @@ key's frame (z up the key's axis from the plate's top):
 import numpy as np
 
 import common as A
-from lowpro.lib import xform
+from case.lib import xform
 
 P, R = A.P, A.R
 assert P.well_depth_mm > 0, "no wells in this preset"

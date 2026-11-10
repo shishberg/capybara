@@ -1,5 +1,5 @@
 """The key layout: every key's frame, and the world frame (the tent and the
-lift that stands the body on the bottom plate). The lowpro design lays the
+lift that stands the body on the bottom plate). The slim design lays the
 keys out from the measured hand; the capybara design takes them from the
 Capybara's editor (swung_in), with the Pro Micro, jack and reset switch.
 
@@ -283,8 +283,8 @@ def swung_in_keys():
 
 def design():
     """The module that builds this design's body and plinth."""
-    from . import chassis, frame, shell
-    return {"lowpro": chassis, "capybara": shell, "frame": frame}[P.design]
+    from . import chassis, ribs, shell
+    return {"slim": chassis, "capybara": shell, "slim_ribs": ribs}[P.design]
 
 
 # ---------------------------------------------------------------- all keys, world

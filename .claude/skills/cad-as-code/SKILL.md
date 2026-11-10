@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Set up a build where the design is plain Python numbers and every output is generated: one command builds the parts, runs the checks, and exits non-zero when anything is wrong. The agent's eyes are the **checks**, not the renders: renders are for the human, and in practice they miss breaks the checks catch.
 
-The worked example is `lowpro/` in github.com/shishberg/capybara (`lowpro/build.py`, `lowpro/chassis.py`, `lowpro/README.md`). Read it before step 3 and reuse what fits.
+The worked example is `case/` in github.com/shishberg/capybara (`case/build.py`, `case/chassis.py`, `case/README.md`). Read it before step 3 and reuse what fits.
 
 ## Steps
 

@@ -12,7 +12,7 @@ All 40 keys use bought 1U RGB key tiles, hand-wired per half to a [Pro Micro](do
 
 The keyboard's key layout is **Swung in**, the layout the printed frame uses and the editor's default. It is the only layout kept: the earlier ones were removed on 19 Oct 2026 and stay in git history (509dbd1 is the last commit with them).
 
-Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capybara frame for either hand from the key layout, with the tiles hanging from their switches under the key plates and the Pro Micro, its TRRS jack and its reset switch on the bottom section. The [editor guide](editor/README.md) covers the layout parameters and handles, autosave, project files and the clearance checks, and [editor chassis and wiring](docs/editor-chassis.md) how the case is built and wired. The Pro Micro's, the jack's and the switch's sizes are provisional until measured (see [Pro Micro](docs/pro-micro.md)).
+Run `make editor` and open **http://127.0.0.1:5177**. The editor builds Capybara ribs for either hand from the key layout, with the tiles hanging from their switches under the key plates and the Pro Micro, its TRRS jack and its reset switch on the bottom section. The [editor guide](editor/README.md) covers the layout parameters and handles, autosave, project files and the clearance checks, and [editor chassis and wiring](docs/editor-chassis.md) how the case is built and wired. The Pro Micro's, the jack's and the switch's sizes are provisional until measured (see [Pro Micro](docs/pro-micro.md)).
 
 ## Hand model
 
@@ -22,9 +22,9 @@ Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capy
 
 [`firmware/`](firmware/README.md) is RMK firmware for the [Pro Micro](docs/pro-micro.md): one RP2040 board per hand, the hands joined by a TRRS serial link that also powers the right hand. `make firmware` builds the two UF2s into `output/firmware/`.
 
-## Proposed: a low-profile Capybara
+## Capybara cases and the slim proposal
 
-[`lowpro/`](lowpro/README.md) is a parametric Python (Manifold) study of a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. `make lowpro` builds it to STL (and a 3MF assembly) in `output/lowpro/`. Its [frame design](lowpro/README.md#the-frame-design) is a prototype of the same keys and parts on the Capybara's ribs, rail and bridges, without the rail across the floor.
+[`case/`](case/README.md) is parametric Python (Manifold) for enclosed Capybara cases, in three variants. **Capybara** is the Capybara's own keys, tiles and Pro Micro in an enclosed body with each switch in a well. **Slim Capybara** is a proposal for a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. **Slim Capybara ribs** puts its keys and parts on the Capybara's ribs, rail and bridges, without the rail across the floor. `make case` builds slim to STL (and a 3MF assembly) in `output/case/slim/`.
 
 ## Paused: the pod
 

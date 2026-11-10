@@ -1,7 +1,7 @@
 """The capybara design's keys and parts have to be exactly where the Capybara's
 editor puts them, or the wired harness won't drop in. From the repository root:
 
-    .venv/bin/python -m unittest lowpro.test_swung_in
+    .venv/bin/python -m unittest case.test_swung_in
 """
 import json
 import subprocess

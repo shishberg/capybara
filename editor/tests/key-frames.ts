@@ -1,5 +1,5 @@
-// Prints the default project's (Swung in's) placement as JSON for lowpro
-// (lowpro/layout.py, key_layout "swung_in"): every key, the Pro Micro, the
+// Prints the default project's (Swung in's) placement as JSON for the case
+// (case/layout.py, key_layout "swung_in"): every key, the Pro Micro, the
 // TRRS jack and the reset switch as the editor places them in world axes,
 // tent and lift included, with z = 0 the desk and the base plate's top
 // skin_mm over it.

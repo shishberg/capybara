@@ -1,7 +1,7 @@
 """FDM overhangs and bridges on the built capybara body and plinth, printed as
 they stand in the STL: the body on its seam plane (z = 2, flat) top up, the
 plinth on its base (z = 0). No doc states the capybara body's orientation;
-BUILD.md's lowpro rule (flat on its underside, top up) is assumed.
+BUILD.md's case rule (flat on its underside, top up) is assumed.
 Run: AUDIT_HALF=right|left python overhang.py [body|plate]
 """
 import sys
@@ -80,8 +80,8 @@ for name in names:
     print(f"  ceiling area in those patches {tot:.0f} mm^2")
     if name == "body":
         # the footprint on the bed versus the wall ring
-        import lowpro.chassis as C
-        from lowpro.chassis import polygon
+        import case.chassis as C
+        from case.chassis import polygon
         q = C.outline()
         ring = polygon(q).area() - polygon(q).offset(-A.P.wall_mm, 2, 2.0, 8).area()
         print(f"  the outline's 3 mm wall ring is {ring:.1f} mm^2 in plan; first layer measured above")
@@ -93,6 +93,6 @@ for name in names:
         hs.sort()
         print("  pocket bottoms over the bed: " + ", ".join(f"{n} {h:.1f}" for h, n in hs))
     else:
-        from lowpro.chassis import polygon
-        import lowpro.chassis as C
+        from case.chassis import polygon
+        import case.chassis as C
         print(f"  plinth outline area {polygon(C.outline()).area():.0f} mm^2 (the skirt adds to the footprint)")

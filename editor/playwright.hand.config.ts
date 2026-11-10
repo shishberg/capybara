@@ -1,4 +1,4 @@
-// PROTOTYPE ?hand, the marks tool and the low-profile cases are in dev builds
+// PROTOTYPE ?hand, the marks tool and the built cases are in dev builds
 // only, so their browser tests run against Vite's dev server.
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';

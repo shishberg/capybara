@@ -1,4 +1,4 @@
-"""The frame design's body and plinth: lowpro's keys, parts and height (the
+"""The ribs design's body and plinth: slim's keys, parts and height (the
 layout, the seam and the plinth are chassis.py's) on the Capybara's open frame
 (docs/editor-chassis.md): a rib along each finger column and the thumb row, a
 rail round the outline on the plinth, and bridges between the ribs.

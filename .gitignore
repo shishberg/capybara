@@ -22,5 +22,5 @@ editor/playwright-report/
 # Firmware build
 firmware/target/
 
-# Python environment for lowpro, made by the Makefile
+# Python environment for the case, made by the Makefile
 .venv

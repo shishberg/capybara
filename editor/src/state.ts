@@ -24,7 +24,7 @@ export const S = {
   undo: [] as Project[],
   redo: [] as Project[],
   // The case on show: a view choice, kept with the view (view-store.ts), not in the project.
-  case: 'capybara' as CaseId,
+  case: 'ribs' as CaseId,
   hasShell: false,
   selected: '',
   // PROTOTYPE ?hand (src/hand/): lays the keys out from its state

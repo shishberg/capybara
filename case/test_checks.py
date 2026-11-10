@@ -1,7 +1,7 @@
 """The wiring checks have to fail when a channel is blocked: a check that can't
 fail looks the same as a clear board. From the repository root:
 
-    .venv/bin/python -m unittest lowpro.test_checks
+    .venv/bin/python -m unittest case.test_checks
 """
 import unittest
 from unittest import mock
@@ -13,7 +13,7 @@ from . import layout as L
 from . import params as P
 from . import parts as R
 from . import wires as W
-from .build import mesh_of, set_params
+from .build import mesh_of
 from .lib import origin, xform
 
 
@@ -75,9 +75,6 @@ class Wires(unittest.TestCase):
 class Wells(unittest.TestCase):
     def setUp(self):
         self.addCleanup(L.reset)
-        for name in P.PRESETS["wells"]:
-            self.addCleanup(setattr, P, name, getattr(P, name))
-        set_params([], "wells")
         L.reset()
 
     def test_a_key_on_the_edge_has_its_wells_wall_outside_it(self):
@@ -88,10 +85,18 @@ class Wells(unittest.TestCase):
             k = L.key_named(name)
             hx, hy = R.keycap_room_half(k.units)
             p = xform(C.top_frame(k), [sx * (hx + P.cap_wall_mm / 2), sy * (hy + P.cap_wall_mm / 2), 0])
-            self.assertGreater(float(C.top_height(p[None, :2])[0]), p[2] - 0.2, msg=name)
+            self.assertGreater(float(C.top_surface(p[None, :2])[0]), p[2] - 0.2, msg=name)
 
     def test_no_room_comes_through_the_top(self):
         self.assertEqual(C.thin_tops(), [])
+
+    def test_a_room_reaching_the_top_outside_the_wells_is_caught(self):
+        k = L.key_named("pinky_0")
+        p = xform(C.top_frame(k), [R.keycap_room_half(k.units)[0] + P.cap_wall_mm / 2, 0, 0])
+        z = float(C.top_surface(p[None, :2])[0])
+        room = R.box((0.4, 0.4, 2), (p[0], p[1], z - 1))
+        with mock.patch.object(C, "body_cuts", lambda: [("a plug", [room])]):
+            self.assertEqual([w for w, _ in C.thin_tops()], ["a plug"])
 
     def test_nothing_stands_between_the_keys_of_one_well(self):
         """Midway between two neighbours, from half a millimetre over the
@@ -220,29 +225,6 @@ class Bay(unittest.TestCase):
         b, d = P.battery_mm, P.bay_pocket_mm
         self.assertEqual(self.plinth_in(C.battery_frame(), (b[0], b[1], d), (0, 0, d / 2)), 0)
         self.assertAlmostEqual(self.plinth_in(C.battery_frame(), (b[0], b[1], 1), (0, 0, -0.5)), b[0] * b[1], places=6)
-
-
-class Lands(unittest.TestCase):
-    def setUp(self):
-        self.addCleanup(L.reset)
-        L.reset()
-
-    def test_each_land_is_flat_on_its_plate_and_meets_the_top_past_its_taper(self):
-        for k in C.keys():
-            flat, past = C.land_half(), C.land_half() + P.switch_taper_mm
-            on = C.land_loop(k, flat)
-            self.assertLess(np.abs(C.top_height(on) - C.top_plane_at(k, *on.T)[0]).max(), 1e-9)
-            beyond = C.land_loop(k, past + 0.01)
-            self.assertLess(np.abs(C.top_height(beyond) - C.top_surface(beyond)).max(), 1e-9)
-
-    def test_a_room_reaching_the_top_past_a_land_is_caught(self):
-        self.assertEqual(C.thin_tops(), [])
-        k = C.keys()[0]
-        p = C.land_loop(k, C.land_half() + 0.8)[0]
-        z = float(C.top_height(p[None])[0])
-        room = R.box((0.4, 0.4, 2), (p[0], p[1], z - 1))
-        with mock.patch.object(C, "body_cuts", lambda: [("a plug", [room])]):
-            self.assertEqual([w for w, _ in C.thin_tops()], ["a plug"])
 
 
 class Seam(unittest.TestCase):

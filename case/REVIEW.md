@@ -1,6 +1,6 @@
-# Lowpro build review, 6 November 2026
+# Slim build review, 6 November 2026
 
-The question was whether a person could build lowpro from [BUILD.md](BUILD.md) and the generated parts, and whether it would then work. An independent reviewer answered it from only the STLs, the assemblies, the renders and the guide. It saw none of the code. Each finding was then re-measured on the meshes before anything changed.
+The question was whether a person could build slim from [BUILD.md](BUILD.md) and the generated parts, and whether it would then work. An independent reviewer answered it from only the STLs, the assemblies, the renders and the guide. It saw none of the code. Each finding was then re-measured on the meshes before anything changed.
 
 **Result:** nothing stops the build or the keyboard working. The reviewer traced every net on both halves through the real channels to the well, and every part drops in along the guide's path with no intersection. The matrix, diode direction, pin table, route table and firmware section all agree. One thin wall was a real defect and is fixed. Your decisions on the open items are listed first.
 

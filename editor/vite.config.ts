@@ -83,27 +83,27 @@ function marks(): Plugin {
   };
 }
 
-// The low-profile cases (lowpro/README.md): one half's assembly as 3MF, built
-// by the Makefile when its inputs changed. Dev server only.
-//   GET /__lowpro/<capybara|capybara_wells|wells|frame|lowpro>/<right|left>.3mf
+// The built cases (case/README.md): one half's assembly as 3MF, built by the
+// Makefile when its inputs changed. Dev server only.
+//   GET /__case/<capybara|slim|slim_ribs>/<right|left>.3mf
 // Two requests for one file share one make.
-function lowproCases(): Plugin {
+function builtCases(): Plugin {
   const run = promisify(execFile);
   const making = new Map<string, Promise<unknown>>();
   return {
-    name: 'lowpro-cases',
+    name: 'built-cases',
     apply: 'serve',
     config: () => ({ server: { watch: { ignored: [repo + 'output/**'] } } }),
     configureServer(server) {
-      server.middlewares.use('/__lowpro', async (req, res) => {
-        const m = /^\/(capybara|capybara_wells|wells|frame|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
+      server.middlewares.use('/__case', async (req, res) => {
+        const m = /^\/(capybara|slim|slim_ribs)\/(right|left)\.3mf$/.exec(req.url ?? '');
         res.setHeader('Content-Type', 'text/plain');
         if (!m) {
           res.statusCode = 400;
           return res.end('bad case');
         }
         // A preset's files sit in a folder of their own (Makefile).
-        const target = `output/lowpro/${m[1] === 'lowpro' ? '' : m[1] + '/'}${m[2]}-assembly.3mf`;
+        const target = `output/case/${m[1]}/${m[2]}-assembly.3mf`;
         let build = making.get(target);
         if (!build) {
           build = run('make', [target], { cwd: repo, maxBuffer: 1 << 26 }).finally(() =>
@@ -126,4 +126,4 @@ function lowproCases(): Plugin {
 }
 
 // Workers as modules: the build worker starts the wiring worker.
-export default defineConfig({ plugins: [marks(), lowproCases()], worker: { format: 'es' } });
+export default defineConfig({ plugins: [marks(), builtCases()], worker: { format: 'es' } });

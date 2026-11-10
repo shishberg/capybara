@@ -1,20 +1,20 @@
-"""Build the low-profile Capybara's parts to STL and 3MF. From the repository root:
+"""Build the Capybara cases' parts to STL and 3MF. From the repository root:
 
-    .venv/bin/python -m lowpro.build                      # both halves' bodies, plinths and assemblies, the check
-    .venv/bin/python -m lowpro.build --half left --part body
-    .venv/bin/python -m lowpro.build --check              # only the checks (exit 1 when one fails)
-    .venv/bin/python -m lowpro.build --set tent_deg=4 --set outline_close_mm=12
-    .venv/bin/python -m lowpro.build --preset capybara    # the capybara design (params.py design)
+    .venv/bin/python -m case.build                      # slim: both halves' bodies, plinths and assemblies, the check
+    .venv/bin/python -m case.build --half left --part body
+    .venv/bin/python -m case.build --check              # only the checks (exit 1 when one fails)
+    .venv/bin/python -m case.build --set tent_deg=4 --set outline_close_mm=12
+    .venv/bin/python -m case.build --preset capybara    # the capybara design (params.py design)
 
 Any parameter in params.py can be overridden with --set, after a --preset's
-(params.py PRESETS). Files go to output/lowpro/ (output/lowpro/<preset>/ with a
-preset; --out): <half>-body.stl, <half>-plate.stl and <half>-assembly.3mf
+(params.py PRESETS: slim, capybara, slim_ribs). Files go to output/case/<preset>/
+(--out): <half>-body.stl, <half>-plate.stl and <half>-assembly.3mf
 (body, plinth, switches, caps and the design's other parts, each piece a
 named, coloured mesh), and for the capybara design <half>-print.3mf (the body
 as it prints, with its support enforcers and blockers, for Anycubic Slicer
 Next or Bambu Studio). The left half is the right mirrored, but for the
 switches and sockets, which are the same parts in both, so each half is its
-own build. The design's module (chassis.py or shell.py) builds the parts,
+own build. The design's module (chassis.py, shell.py or ribs.py) builds the parts,
 reports its heights and runs its checks.
 """
 import argparse
@@ -38,11 +38,11 @@ COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "
            "steelblue": "4682B4", "black": "000000", "red": "FF0000", "dodgerblue": "4AA3FF", "limegreen": "5EE08A"}
 
 
-def set_params(assignments, preset=None):
+def set_params(assignments, preset="slim"):
     """A preset's overrides (params.PRESETS), then each NAME=VALUE."""
     from . import params as P
 
-    for name, value in (P.PRESETS[preset] if preset else {}).items():
+    for name, value in P.PRESETS[preset].items():
         setattr(P, name, value)
     for assignment in assignments:
         name, _, value = assignment.partition("=")
@@ -90,7 +90,7 @@ def write_stl(solid, path):
     facets = np.zeros(len(t), dtype=[("normal", "<f4", 3), ("corners", "<f4", (3, 3)), ("attr", "<u2")])
     facets["normal"], facets["corners"] = n, corners
     with open(path, "wb") as f:
-        f.write(b"lowpro".ljust(80, b" "))
+        f.write(b"case".ljust(80, b" "))
         f.write(np.uint32(len(t)).tobytes())
         f.write(facets.tobytes())
     print(f"wrote {path} ({len(t)} triangles)", flush=True)
@@ -153,7 +153,7 @@ def write_print_3mf(name, volumes, settings, path):
     ns = (f'xmlns="{CORE}" xmlns:BambuStudio="http://schemas.bambulab.com/package/2021" '
           'xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06" requiredextensions="p"')
     head = f'<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" {ns}>\n'
-    uid = lambda s: str(uuid.uuid5(uuid.NAMESPACE_URL, f"lowpro/{path.name}/{s}"))
+    uid = lambda s: str(uuid.uuid5(uuid.NAMESPACE_URL, f"case/{path.name}/{s}"))
     meshes = "".join(f'<object id="{i}" p:UUID="{uid(n)}" type="model">{mesh_xml(s)}</object>\n'
                      for i, (n, _, s) in enumerate(volumes, start=1))
     whole = len(volumes) + 1
@@ -188,15 +188,15 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--half", choices=("right", "left", "both"), default="both")
     ap.add_argument("--part", action="append", choices=PARTS, help="which parts (default: all)")
-    ap.add_argument("--out", help="where to write (default output/lowpro/, or output/lowpro/<preset>/)")
-    ap.add_argument("--preset", choices=sorted(PRESETS), help="a named set of overrides (params.py PRESETS)")
+    ap.add_argument("--out", help="where to write (default output/case/<preset>/)")
+    ap.add_argument("--preset", choices=sorted(PRESETS), default="slim", help="a named set of overrides (params.py PRESETS)")
     ap.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="override a parameter")
     ap.add_argument("--check", action="store_true", help="only run the checks")
     ap.add_argument("--no-check", action="store_true", help="skip the checks")
     ap.add_argument("--verbose", action="store_true", help="print how long each stage takes")
     args = ap.parse_args(argv)
     halves = ("right", "left") if args.half == "both" else (args.half,)
-    out = Path(args.out or ROOT / "output" / "lowpro" / (args.preset or ""))
+    out = Path(args.out or ROOT / "output" / "case" / args.preset)
     out.mkdir(parents=True, exist_ok=True)
     t = time.time()
 

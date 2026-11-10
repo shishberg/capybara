@@ -9,7 +9,7 @@ import numpy as np
 from manifold3d import CrossSection, Manifold
 
 import common as A
-from lowpro.lib import rinv
+from case.lib import rinv
 
 
 def width(cs, axis, at, lo, hi):

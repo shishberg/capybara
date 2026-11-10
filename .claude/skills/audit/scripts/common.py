@@ -1,12 +1,12 @@
-"""Shared setup for the audit probes: imports lowpro from the checkout under
+"""Shared setup for the audit probes: imports case from the checkout under
 audit with the preset and half the environment names, and loads the meshes
 built for them into this directory.
 
     AUDIT_REPO    the checkout under audit (required)
-    AUDIT_PRESET  the lowpro preset (required)
+    AUDIT_PRESET  the case preset (required)
     AUDIT_HALF    right (default) or left
 
-Meshes come from a fresh `lowpro.build --out build/<preset>` beside this file,
+Meshes come from a fresh `case.build --out build/<preset>` beside this file,
 made on first use, never from the repo's output/, which can be stale.
 """
 import os
@@ -21,13 +21,13 @@ HALF = os.environ.get("AUDIT_HALF", "right")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build", PRESET)
 sys.path.insert(0, REPO)
 
-from lowpro import build as B          # noqa: E402
-from lowpro import chassis as C        # noqa: E402
-from lowpro import layout as L         # noqa: E402
-from lowpro import params as P         # noqa: E402
-from lowpro import parts as R          # noqa: E402
-from lowpro import shell as S          # noqa: E402
-from lowpro.lib import origin, xform, xdir  # noqa: E402
+from case import build as B          # noqa: E402
+from case import chassis as C        # noqa: E402
+from case import layout as L         # noqa: E402
+from case import params as P         # noqa: E402
+from case import parts as R          # noqa: E402
+from case import shell as S          # noqa: E402
+from case.lib import origin, xform, xdir  # noqa: E402
 
 B.set_params([], PRESET)
 P.half = HALF
@@ -43,7 +43,7 @@ def mesh_of(solid):
 def built():
     """Builds the preset's meshes into OUT unless they are there."""
     if not all(os.path.exists(f"{OUT}/{h}-{p}.stl") for h in ("right", "left") for p in ("body", "plate")):
-        subprocess.run([sys.executable, "-m", "lowpro.build", "--preset", PRESET, "--out", OUT],
+        subprocess.run([sys.executable, "-m", "case.build", "--preset", PRESET, "--out", OUT],
                        cwd=REPO, check=True, stdout=subprocess.DEVNULL)
 
 

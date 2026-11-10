@@ -1,4 +1,4 @@
-# Building the low-profile Capybara
+# Building the Slim Capybara
 
 How to build a pair of halves, and what they should do once built. Nothing here
 has been printed or wired yet, so treat the sizes in [Measure first](#measure-first)
@@ -27,8 +27,8 @@ The thumb has five: `thumb_near`, `thumb_home` and `thumb_far` in a row, `near`
 closest to the index column, and `thumb_x1` and `thumb_x2` in a fourth row under the
 middle and ring columns.
 
-`make lowpro` writes the parts to `output/lowpro/`, and `make lowpro-render`
-writes the pictures this guide refers to into `output/lowpro/renders/`:
+`make case` writes the parts to `output/case/slim/`, and `make case-render`
+writes the pictures this guide refers to into `output/case/slim/renders/`:
 `wiring-top.png` and `wiring-below.png` show every channel, trunk and part through
 a see-through body.
 
@@ -59,7 +59,7 @@ tweezers, a multimeter and a driver for the screws: the deepest is 4 mm up its h
 ## Measure first
 
 These come from listings or memory. Measure the real part and change the
-parameter in `lowpro/params.py` before printing:
+parameter in `case/params.py` before printing:
 
 | Part | What to measure | Parameter |
 |---|---|---|

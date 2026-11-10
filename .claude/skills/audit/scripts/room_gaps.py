@@ -9,8 +9,8 @@ import numpy as np
 from manifold3d import Manifold
 
 import common as A
-from lowpro.chassis import place, placed, polygon, union
-import lowpro.chassis as C
+from case.chassis import place, placed, polygon, union
+import case.chassis as C
 
 P, R, S, L = A.P, A.R, A.S, A.L
 ks = L.keys()

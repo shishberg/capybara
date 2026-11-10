@@ -1,4 +1,4 @@
-// Chassis: the open Capybara frame (capybara.ts) on a flat base plate,
+// Chassis: Capybara ribs, the open frame (capybara.ts), on a flat base plate,
 // built from the key poses. Under each plate a sleeve fills down round the
 // switch body to just over the tile (seats.ts seatSwitches); the tile hangs
 // from its switch, the hotswap socket's grip on the pins holding it up to the

@@ -15,7 +15,7 @@ import numpy as np
 from manifold3d import Manifold
 
 import common as A
-from lowpro.lib import rot_x, rot_y, trans
+from case.lib import rot_x, rot_y, trans
 
 STEP = 0.5
 FAR = 25.0

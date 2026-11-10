@@ -56,25 +56,19 @@ def add(solid, tools):
 
 
 # ---------------------------------------------------------------- the top surface
-# A height field over the plan: inside a key's cell, its top plane (top_frame:
-# the plate's, or well_depth_mm over it, so the switch sits in a well that its
-# cap's room cuts); outside every cell, the nearby cells' planes blended by
-# distance (inverse cube), each
-# taken at its cell's nearest point, so no plane is extrapolated; and nowhere
-# lower than what covers each key's pocket (pocket_cover), which reaches past
-# the cell. With wells it is instead the skin (skin_fit), the smoothest
-# surface through each key's top plane over its well and its wall, no higher on
-# the outline than the blend, with the wells cut from it, and over the pockets'
-# covers. The blend
-# starts surface_blend_mm inside each cell, so where two cells of different
-# heights abut it ramps between them over twice that rather than stepping. The
-# top surface is a quadratic spline through this field sampled every
-# surface_step_mm (top_fit): taking each plane at its cell's nearest point
-# creases the field along the lines that carry the cells' edges out, and the
-# spline smooths those over a step. Each key's land is then laid into it
-# (top_height): the top plane for switch_land_mm round the switch's hole,
-# tapering over switch_taper_mm to the spline; with wells there are none
-# (land_keys).
+# A height field over the plan: the skin (skin_fit), the smoothest surface
+# through each key's top plane (top_frame: well_depth_mm over its plate, so the
+# switch sits in a well that its cap's room cuts) over its well and its wall,
+# no higher on the outline than the blend, with the wells cut from it, and over
+# the pockets' covers (pocket_cover), which reach past the cell. The blend is,
+# outside every cell, the nearby cells' planes blended by distance (inverse
+# cube), each taken at its cell's nearest point, so no plane is extrapolated;
+# inside one, its own plane. It starts surface_blend_mm inside each cell, so
+# where two cells of different heights abut it ramps between them over twice
+# that rather than stepping. The top surface is a quadratic spline through this
+# field sampled every surface_step_mm (top_fit): taking each plane at its
+# cell's nearest point creases the field along the lines that carry the cells'
+# edges out, and the spline smooths those over a step.
 def top_frame(k):
     """Key k's frame raised well_depth_mm along its normal: its top plane's."""
     return k.frame @ trans((0, 0, P.well_depth_mm))
@@ -92,10 +86,10 @@ def top_plane_at(k, x, y):
 
 
 def field(x, y):
-    """The key field's height over the world points (x, y) (arrays): the skin
-    with wells, else the cells' blend, and over every pocket's cover."""
+    """The key field's height over the world points (x, y) (arrays): the skin,
+    and over every pocket's cover."""
     x, y = np.asarray(x, float), np.asarray(y, float)
-    return np.maximum(skin_fit()(np.c_[x, y]) if P.well_depth_mm else blend(x, y), pockets_cover(x, y))
+    return np.maximum(skin_fit()(np.c_[x, y]), pockets_cover(x, y))
 
 
 def pockets_cover(x, y):
@@ -150,7 +144,7 @@ def well_cover(k, x, y):
 
 @cached
 def skin_fit():
-    """With wells, the top before the pockets' covers: a thin-plate spline
+    """The top before the pockets' covers: a thin-plate spline
     (the least bent surface) through each key's top plane over its well and
     wall, sampled every surface_step_mm, and no higher on the outline than the
     top would be there without the skin (the cells' blend, over each wall's
@@ -536,22 +530,14 @@ def round_sections(stations):
 
 
 # ---------------------------------------------------------------- the blanks
-def plan_mesh(boundary, fill=True, rings=()):
+def plan_mesh(boundary, fill=True):
     """A triangulation of a counterclockwise plan polygon (N x 2) whose sides it
-    keeps whole, with points inside about mesh_mm apart (fill) or none. Each of
-    `rings` inside it, a pair of closed loops of as many points, has edges along
-    both and from each point of one to the same point of the other. Returns the
+    keeps whole, with points inside about mesh_mm apart (fill) or none. Returns the
     vertices, the polygon's first, and the triangles, counterclockwise."""
     n = len(boundary)
-    around = lambda i: np.c_[i, np.roll(i, -1)]
-    sides, start = [around(np.arange(n))], n
-    for inner, outer in rings:
-        i = start + np.arange(len(inner))
-        o = i + len(inner)
-        sides += [around(i), around(o), np.c_[i, o]]
-        start = o[-1] + 1
+    sides = np.c_[np.arange(n), np.roll(np.arange(n), -1)]
     opts = "pYQ" + (f"q25a{0.5 * P.mesh_mm ** 2:.6f}" if fill else "")
-    out = triangle.triangulate({"vertices": np.vstack((boundary, *(c for r in rings for c in r))), "segments": np.vstack(sides)}, opts)
+    out = triangle.triangulate({"vertices": boundary, "segments": sides}, opts)
     v, t = out["vertices"], out["triangles"]
     if len(v) < n or not np.array_equal(v[:n], boundary):
         raise RuntimeError("the plan's triangulation lost the outline's points")
@@ -581,63 +567,23 @@ def solid_from(vertices, triangles, what):
 # opening, the power switch's knob): one vertical quad per outline segment, its
 # corners on the stations, so it is exactly vertical. Its underside is one
 # triangulation of the outline, on the seam.
-def land_keys():
-    """The keys whose lands are laid into the top: every key's, unless the
-    switches sit in wells, where each switch's lip sits on its plate at the
-    well's floor and the top over the key is the skin's (skin_fit)."""
-    return [] if P.well_depth_mm else keys()
-
-
-def land_half():
-    """Half the side of a key's flat land, in the key's frame."""
-    return P.switch_cutout_mm / 2 + P.switch_land_mm
-
-
-def land_loop(k, half):
-    """The square `half` from key k's centre on its top plane, in plan, counterclockwise,
-    as many points whatever its size, about mesh_mm apart on the taper's outer edge."""
-    s = np.linspace(-half, half, math.ceil(2 * (land_half() + P.switch_taper_mm) / P.mesh_mm), endpoint=False)
-    h = np.full_like(s, half)
-    sq = np.r_[np.c_[s, -h], np.c_[h, s], np.c_[-s, h], np.c_[-h, -s]]
-    m = top_frame(k)
-    return sq @ m[:2, :2].T + m[:2, 3]
-
-
-def top_height(xy):
-    """The finished top's height over the plan points xy (N x 2): the top surface,
-    with each key's land laid into it (land_keys)."""
-    z = top_surface(xy)
-    x, y = xy[:, 0], xy[:, 1]
-    for k in land_keys():
-        plate, lx, ly = top_plane_at(k, x, y)
-        t = (np.maximum(np.abs(lx), np.abs(ly)) - land_half()) / P.switch_taper_mm
-        z = np.where(t < 1, plate + (z - plate) * np.clip(t, 0, 1), z)
-    return z
-
-
 def shell_under_top(stations):
     """The solid under the keys' top surface inside an outline, given by its
     stations: its vertices the underside's, on the seam (the stations first),
     the round's sections (the first of each on the outline, level with the
-    ball's centre: the wall's top), then the top's inside the round, with edges
-    round each land's taper and across it."""
+    ball's centre: the wall's top), then the top's inside the round."""
     q = stations[0]
     n = len(q)
     rows = round_sections(stations)
     m = rows.shape[1]
-    rings = [(land_loop(k, land_half()), land_loop(k, land_half() + P.switch_taper_mm)) for k in land_keys()]
-    reach = fused([polygon(outer) for _, outer in rings]) - polygon(rows[:, -1, :2])
-    if reach.area() > 1e-6:
-        x0, y0, _, _ = reach.bounds()
-        raise ValueError(f"a key's land reaches the top edge's round near ({x0:.1f}, {y0:.1f})")
     vu, tu = plan_mesh(q)
     u = len(vu)
-    vi, ti = plan_mesh(rows[:, -1, :2], rings=rings)
+    vi, ti = plan_mesh(rows[:, -1, :2])
     station = np.arange(n)
     ring = [u + station * m + j for j in range(m)]
     top = np.where(ti < n, u + ti * m + m - 1, u + n * m + ti - n)
     vertices = np.r_[np.c_[vu, seam_z(vu[:, 0], vu[:, 1])], rows.reshape(-1, 3),
-                     np.c_[vi[n:], top_height(vi[n:])]]
+                     np.c_[vi[n:], top_surface(vi[n:])]]
     triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
     return solid_from(vertices, np.concatenate(triangles), "body's shell")
 
@@ -1647,18 +1593,16 @@ def thin_walls():
         along = [a + (b - a) * t for t in np.linspace(0, 1, 2 + int(np.linalg.norm((b - a)[:2])))]
         name = f"the channel ({a[0]:.1f}, {a[1]:.1f}) to ({b[0]:.1f}, {b[1]:.1f})"
         side = min(outline_distance(p) for p in along) - w / 2
-        roof = min(float(top_height(np.array(circle_points(p, w / 2))).min()) - p[2] for p in along)
+        roof = min(float(top_surface(np.array(circle_points(p, w / 2))).min()) - p[2] for p in along)
         out += [(name, wall, d) for wall, d in (("the outside", side), ("the top", roof)) if d < P.min_wall_mm - 1e-6]
     return out
 
 
 def thin_tops():
     """What is cut from the body to within min_wall_mm of the top outside the keys'
-    lands, as (what, volume mm^3): the lands stand on their plates, but past them
-    the top falls away from what's under it."""
+    wells, as (what, volume mm^3): the top falls away from what's under it."""
     shell = body_shell()
-    lands = union([polygon(land_loop(k, land_half())).extrude(200) for k in keys()])
-    skin = shell - shell.translate((0, 0, -P.min_wall_mm)) - lands
+    skin = shell - shell.translate((0, 0, -P.min_wall_mm)) - union(cap_rooms())
     return [(what, v) for what, group in body_cuts() for v in [sum((skin ^ s).volume() for s in group)] if v > 1e-6]
 
 

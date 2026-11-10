@@ -8,7 +8,7 @@ export AUDIT_PRESET=$1
 probes=(namecheck.py mesh_validity.py voids.py mirror.py plinth.py screws.py ports.py parts_fit.py
         pockets.py room_gaps.py part_gap.py switches_caps.py capgap.py way_free.py ways_in.py
         tile_path_gap.py overhang.py print3mf.py "thickness.py body" "thickness.py plate")
-wells=$(cd $AUDIT_REPO && .venv/bin/python -c "from lowpro import build as B, params as P; B.set_params([], '$1'); print(P.well_depth_mm > 0)")
+wells=$(cd $AUDIT_REPO && .venv/bin/python -c "from case import build as B, params as P; B.set_params([], '$1'); print(P.well_depth_mm > 0)")
 [ "$wells" = True ] && probes+=(wells.py well_holes.py)
 for p in $probes; do
   $here/run_bounded.sh right ${=p}

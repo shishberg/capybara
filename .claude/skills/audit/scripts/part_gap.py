@@ -5,7 +5,7 @@ import numpy as np
 from manifold3d import Manifold, OpType
 
 import common as A
-from lowpro.chassis import place, union
+from case.chassis import place, union
 
 for k in A.L.keys():
     t = union(place(k.frame, A.R.tile_room()))

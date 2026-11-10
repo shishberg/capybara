@@ -1,6 +1,6 @@
-// Which case shows. The Capybara frame is the editor's own model; a
-// low-profile case is a 3MF assembly the dev server makes (vite.config.ts),
-// loaded into lowproGroup while the frame is hidden.
+// Which case shows. Capybara ribs is the editor's own model; a
+// built case is a 3MF assembly the dev server makes (vite.config.ts),
+// loaded into builtGroup while the frame is hidden.
 import * as T from 'three';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import { AVAILABLE, CASES, pieceKind } from './cases';
@@ -8,8 +8,8 @@ import { $, S } from './state';
 import {
   captureFaceOrder,
   frame,
-  lowproGroup,
-  lowproPieces,
+  builtGroup,
+  builtPieces,
   material,
   measure,
   render,
@@ -27,19 +27,19 @@ export function syncCase() {
     `${S.project.config.half === 'left' ? 'Left' : 'Right'} hand · ${CASES[S.case].label}`;
 }
 
-// The half and design the group holds or is being sent for, and which request
+// The half and case the group holds or is being sent for, and which request
 // is the latest, so a slow response for an earlier choice is dropped.
 let wanted = '';
 let request = 0;
 
 export function showCase() {
-  const design = CASES[S.case].lowpro;
-  frame.visible = !design;
-  lowproGroup.visible = !!design;
-  document.body.classList.toggle('lowpro-case', !!design);
+  const built = CASES[S.case].built;
+  frame.visible = !built;
+  builtGroup.visible = !!built;
+  document.body.classList.toggle('built-case', !!built);
   document.body.classList.toggle('unwired-case', !CASES[S.case].wired);
   syncCase();
-  if (!design) {
+  if (!built) {
     request++;
     wanted = '';
     measure();
@@ -47,27 +47,27 @@ export function showCase() {
     return;
   }
   const half = S.project.config.half,
-    key = `${design}/${half}`;
+    key = `${S.case}/${half}`;
   if (key === wanted) return;
   wanted = key;
-  void load(design, half, CASES[S.case].label);
+  void load(S.case, half, CASES[S.case].label);
 }
 
-async function load(design: string, half: string, label: string) {
+async function load(id: string, half: string, label: string) {
   const mine = ++request;
   $('view-state').textContent = `Building the ${label[0].toLowerCase() + label.slice(1)}…`;
   try {
-    const res = await fetch(`/__lowpro/${design}/${half}.3mf`);
+    const res = await fetch(`/__case/${id}/${half}.3mf`);
     if (!res.ok) throw Error(await res.text());
     const loaded = new ThreeMFLoader().parse(await res.arrayBuffer());
     if (mine !== request) return disposeAll(loaded);
-    disposeAll(lowproGroup);
+    disposeAll(builtGroup);
     bodyEdges = undefined;
     for (const o of meshes(loaded)) o.userData.kind = pieceKind(o.name);
-    lowproGroup.add(loaded);
+    builtGroup.add(loaded);
     // The loader's meshes are unindexed: the body gets an index, which render
     // re-sorts by depth while it is see-through.
-    const body = lowproPieces('body')[0] as T.Mesh,
+    const body = builtPieces('body')[0] as T.Mesh,
       corners = body.geometry.getAttribute('position').count;
     body.geometry.setIndex(
       new T.BufferAttribute(
@@ -116,8 +116,8 @@ export function pieceVisibility() {
     wires: checked('wires'),
     parts: checked('parts'),
   };
-  for (const o of lowproPieces()) o.visible = on[o.userData.kind as keyof typeof on];
-  const body = lowproPieces('body')[0] as T.Mesh | undefined;
+  for (const o of builtPieces()) o.visible = on[o.userData.kind as keyof typeof on];
+  const body = builtPieces('body')[0] as T.Mesh | undefined;
   if (!body) return;
   seeThrough(body.material as T.Material, material.opacity);
   if (!bodyEdges?.parent && checked('edges'))

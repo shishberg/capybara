@@ -1,4 +1,4 @@
-"""Every parameter of the low-profile Capybara, in millimetres and degrees.
+"""Every parameter of the built Capybara cases, in millimetres and degrees.
 
 The layout (layout.py) reads the hand from hand/left-hand.json; everything else
 is here. Sizes marked PROVISIONAL are from datasheets or memory, not measured
@@ -13,17 +13,17 @@ from pathlib import Path
 _capybara = json.loads((Path(__file__).resolve().parent.parent / "editor" / "src" / "default-config.json").read_text())
 
 # ---------------------------------------------------------------- the design
-# "lowpro": the keys laid out here from the measured hand (the key field and the
+# "slim": the keys laid out here from the measured hand (the key field and the
 # thumb below), hotswap sockets in pockets in a solid body with wire channels,
 # and the nRF52840 board, battery and power switch in a well beside the keys
 # (chassis.py). "capybara": the Capybara's keys as its editor places them, its
 # RGB key tiles hanging from the switches in an open shell for loose hand
 # wiring, and its Pro Micro, TRRS jack and reset switch where the editor puts
-# them (layout.py swung_in, shell.py). "frame": lowpro's keys, parts and height
-# on the Capybara's open frame of ribs, a rail and bridges (frame.py). The
-# parameters below hold for all three, except those the editor's project fixes
-# for the capybara design (the tent, the lift, the parts).
-design = "lowpro"
+# them (layout.py swung_in, shell.py). "slim_ribs": slim's keys, parts and
+# height on the Capybara's open frame of ribs, a rail and bridges (ribs.py).
+# The parameters below hold for all three, except those the editor's project
+# fixes for the capybara design (the tent, the lift, the parts).
+design = "slim"
 
 # Which half is being built. The left half is the right's mirror image, but a
 # switch and its socket are the same parts in both, and they can't be mirrored:
@@ -95,8 +95,6 @@ thumb_extra_tilt_deg = 10
 # the housing below the plate.
 switch_cutout_mm = 14
 switch_cutout_clearance_mm = 0.15
-switch_land_mm = 1                # the plate's flat past the cutout, for the switch's 0.8 mm lip to sit on
-switch_taper_mm = 1               # past that, the taper to the top surface
 plate_mm = 1.5
 switch_rim_mm = 15.6              # the housing flange over the plate, square
 switch_below_plate_mm = 5         # lower housing, from the plate top to its bottom
@@ -126,19 +124,18 @@ cap_row_thumb = 3
 cap_bottom_above_plate_mm = 6
 cap_travel_mm = 4
 cap_clearance_mm = 0.5                 # caps must stay this far apart
-cap_room_clearance_mm = 0.45           # a cap's room round its base, each side: room for the print's tolerance
+cap_room_clearance_mm = 1              # a cap's room round its base, each side, corners included: its rim is as far under the cap's skirt at rest, so light gets out round the skirt
 # The top's plane over each key: this far over the plate along the key's normal,
-# so the switch sits in a well that the cap's room cuts, its walls the room's
-# (0: the top is the plate, round each switch's land). The well's floor meets
-# its walls in a cove this radius, no larger than cap_room_clearance_mm (the
-# room's upright corners).
-well_depth_mm = 0
-well_cove_mm = 0
+# so the switch sits in a well that the cap's room cuts, its walls the room's.
+# The well's floor meets its walls in a cove this radius, no larger than
+# cap_room_clearance_mm (the room's upright corners).
+well_depth_mm = cap_bottom_above_plate_mm - cap_room_clearance_mm
+well_cove_mm = 1
 # shared_wells: the keys of a group (the fingers', the thumb row, the extra
 # pair) share one well, with no wall and no cove between them: two of a group's
 # rooms are joined wherever they are within well_join_mm of each other, and a
 # room has no cove beside another key's room that near.
-shared_wells = False
+shared_wells = True
 well_join_mm = 2
 finger_room_mm = 100                   # a cap's room runs this far up over its plate, out past any case
 cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - base)
@@ -391,7 +388,7 @@ plug_way_mm = 40
 reset_skin_mm = 0.8
 reset_stop_gap_mm = 0.1
 
-# ---------------------------------------------------------------- the rib frame (design "frame")
+# ---------------------------------------------------------------- the rib frame (design "slim_ribs")
 # A rib is a band rib_w_mm wide and rib_mm thick along a column or the thumb
 # row, its plates square, with a block under each plate down to the socket's
 # underside. The block's foot is shorter along the rib than the plate, by
@@ -430,7 +427,7 @@ frame_screw_least_mm = 25
 # The matrix wires (wires.py). The controller's holes are in two rows this far
 # apart, at this pitch, the first this far from the board's port end
 # (PROVISIONAL). mcu_pins is each half's net's hole as (row, hole): row 0 the
-# keys' side, 1 the far side, the hole counted from the port end; lowpro/BUILD.md
+# keys' side, 1 the far side, the hole counted from the port end; case/BUILD.md
 # has their names on the board. The left half is drawn as the right, so its
 # holes are the board's other row's.
 mcu_pin_rows_mm = 15.24
@@ -482,7 +479,7 @@ print_bed_mm = 260
 _switch = _capybara["switch"]
 PRESETS = {
     # The capybara design with the Capybara's keycaps (one profile, every row)
-    # and its switches' sizes. The plinth is a flat plate on the desk, as thick
+    # and its switches' sizes, each switch in a well of its own. The plinth is a flat plate on the desk, as thick
     # as the editor's base plate; a screw's head and screw_grip_mm don't fit in
     # it, so each screw has a seat on it (screw_boss_mm). The bosses take 5 mm
     # inserts and M2 x 6 screws.
@@ -494,6 +491,8 @@ PRESETS = {
         "cap_bottom_above_plate_mm": _switch["keycap_bottom_above_plate_mm"],
         "cap_travel_mm": _switch["travel_mm"],
         "cap_clearance_mm": _switch["keycap_clearance_mm"],
+        "well_depth_mm": _switch["keycap_bottom_above_plate_mm"] - cap_room_clearance_mm,
+        "shared_wells": False,
         "switch_cutout_clearance_mm": _switch["cutout_clearance_mm"] / 2,   # the editor's is the whole hole's
         "switch_rim_mm": _switch["seat_outer_mm"][0],
         "switch_below_plate_mm": _switch["body_below_plate_mm"],
@@ -509,23 +508,8 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
-# lowpro's keys, parts and height on an open rib frame (frame.py). Its wires
+# The slim design is the parameters above.
+PRESETS["slim"] = {}
+# Slim's keys, parts and height on an open rib frame (ribs.py). Its wires
 # come into the bay beside their pads, so one wire deep over the board.
-PRESETS["frame"] = {"design": "frame", "bay_gap_mm": 2, "deck_wire_mm": 2.5}
-# The capybara design with each switch in a well, 1 mm clear of the cap all
-# round, corners included, its rim as far under the cap's skirt at rest, so
-# light gets out round the skirt, and its floor coved.
-_well_clearance_mm = 1
-PRESETS["capybara_wells"] = PRESETS["capybara"] | {
-    "cap_room_clearance_mm": _well_clearance_mm,
-    "well_depth_mm": _switch["keycap_bottom_above_plate_mm"] - _well_clearance_mm,
-    "well_cove_mm": 1,
-}
-# The lowpro design with its keys in wells as deep and as clear of the caps as
-# capybara_wells has them, one well to a group of keys.
-PRESETS["wells"] = {
-    "cap_room_clearance_mm": _well_clearance_mm,
-    "well_depth_mm": cap_bottom_above_plate_mm - _well_clearance_mm,
-    "well_cove_mm": 1,
-    "shared_wells": True,
-}
+PRESETS["slim_ribs"] = {"design": "slim_ribs", "bay_gap_mm": 2, "deck_wire_mm": 2.5}

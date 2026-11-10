@@ -1,16 +1,24 @@
-# Low-profile Capybara
+# Capybara cases
 
-A proposal for a lower, more compact Capybara: still MX switches, still a split
-hand-wired board on a printed chassis, but much flatter than the
-[Capybara frame](../docs/editor-chassis.md), wireless, and modelled as one
-parametric design in Python (triangle meshes cut with
-[Manifold](https://github.com/elalish/manifold)) instead of the editor's
-pipeline. It is a layout study: nothing here has been printed.
+Parametric Python (triangle meshes cut with
+[Manifold](https://github.com/elalish/manifold)) cases for the Capybara, in
+three variants, each a preset (`params.py PRESETS`) and a design:
 
-What carries over from the current design is the [measured hand](../hand/README.md)
-and the way it moves. What changes:
+| Variant | Preset | What it is |
+|---|---|---|
+| Capybara | `capybara` | The Capybara's own keys, tiles and Pro Micro in an enclosed body, each switch in a well of its own. |
+| Slim Capybara | `slim` | A lower, wireless layout study: the keys placed here from the measured hand, in an enclosed body, each group of keys in one well. A proposal; nothing here has been printed. |
+| Slim Capybara ribs | `slim_ribs` | Slim's keys, parts and height on an open frame of ribs. PROTOTYPE. |
 
-| | Capybara | Low-profile |
+The editor's own model is Capybara ribs ([the open frame](../docs/editor-chassis.md)),
+which the editor builds itself; its **Case** picker shows all four.
+
+Slim is much flatter than Capybara ribs, wireless, and still MX switches in a
+split hand-wired board on a printed chassis. What carries over from the
+Capybara is the [measured hand](../hand/README.md) and the way it moves. What
+changes:
+
+| | Capybara ribs | Slim Capybara |
 |---|---|---|
 | Tent | 15°, pitch 5° | 6°, no pitch (`tent_deg`, `pitch_deg`) |
 | Key placement | Hand model with the wrist held 56 mm up | The fingertips' resting prints on flat paper, each column curved round the finger's reach |
@@ -19,7 +27,7 @@ and the way it moves. What changes:
 | Keys | Bought RGB key tiles, hand-wired | Hotswap sockets in pockets, hand-wired, no tiles, no LEDs |
 | Controller | RP2040 Pro Micro per hand, TRRS between hands | Tenstar red ProMicro NRF52840 per hand, BLE, USB-C for charging only |
 | Power | USB | A small LiPo per hand and a slide switch |
-| Chassis | Open rib frame, bottom section | An enclosed shell of one thickness, screwed onto a plinth that carries the tent |
+| Chassis | Open rib frame, bottom section | An enclosed body with the keys in wells, screwed onto a plinth that carries the tent |
 
 ## Files
 
@@ -32,33 +40,35 @@ and the way it moves. What changes:
 | `params.py` | Every parameter, commented. Sizes marked PROVISIONAL are not from measured parts. |
 | `layout.py` | The measured hand (read from `hand/left-hand.json`), the key frames from it, the tent and lift, the bay for the controller and battery, the screw positions; and the Capybara's own key frames for the capybara design. |
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes; and the Capybara's key tile, Pro Micro, TRRS jack and reset switch. |
-| `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
+| `chassis.py` | The slim design's body, its pockets and channels, the plinth with its well and bosses, and the checks; and the top surface, wells and outline the other designs share. |
 | `shell.py` | The capybara design's body and plinth, its support volumes for printing, and its checks (below). |
-| `frame.py` | The frame design's body and plinth, and its checks (below). PROTOTYPE. |
-| `wires.py` | Where the matrix wires run, in this design's channels or under the frame design's ribs; see its header. PROTOTYPE. |
+| `ribs.py` | The slim_ribs design's body and plinth, and its checks (below). PROTOTYPE. |
+| `wires.py` | Where the matrix wires run, in the slim design's channels or under the slim_ribs design's ribs; see its header. PROTOTYPE. |
 | `lib.py` | Frames as 4 × 4 matrices. |
-| `test_checks.py` | Proves the wiring checks fail on a blocked channel, and that every matrix wire has a way clear of the case and the parts; `make lowpro-test` runs it. |
-| `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
-| `test_frame.py` | Proves the frame design's columns are parallel and evenly spaced with the extra thumb keys in line, that it is one solid with a way for every wire, and that its open-from-below check fails on a rail across the floor; `make lowpro-test` runs it. |
+| `test_checks.py` | Proves the wiring checks fail on a blocked channel, and that every matrix wire has a way clear of the case and the parts; `make case-test` runs it. |
+| `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make case-test` runs it. |
+| `test_ribs.py` | Proves the slim_ribs design's columns are parallel and evenly spaced with the extra thumb keys in line, that it is one solid with a way for every wire, and that its open-from-below check fails on a rail across the floor; `make case-test` runs it. |
 
 It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
 
-Build from the repository root. `make lowpro` runs the checks and writes the
+Build from the repository root. `make case` runs the checks and writes the
 right and left bodies and plinths as STL and each half's assembly as 3MF into
-`output/lowpro/`. `make lowpro-check` runs only the checks. `make lowpro-render`
-writes PNGs of the right half into `output/lowpro/renders/`. The
+`output/case/slim/`. `make case-check` runs only the checks. `make case-render`
+writes PNGs of the right half into `output/case/slim/renders/`. Each takes a
+preset (`--preset capybara`, `--preset slim_ribs`; the default is `slim`) and
+writes into `output/case/<preset>/`. The
 [chassis editor](../editor/README.md) shows the assemblies (its **Case** picker).
 One part at a time, or with a parameter changed:
 
 ```sh
-.venv/bin/python -m lowpro.build --half left --part body
-.venv/bin/python -m lowpro.build --set tent_deg=4 --set outline_style='"hulls"'
+.venv/bin/python -m case.build --half left --part body
+.venv/bin/python -m case.build --set tent_deg=4 --set outline_style='"hulls"'
 ```
 
 ## The layout
 
-Everything is laid out for the right half in the hand's axes, then tented and
+The slim design's keys. Everything is laid out for the right half in the hand's axes, then tented and
 lifted. The left half is the mirror image of it, except that its switches and
 sockets are the same parts, which can't be mirrored: each key's pin holes, socket
 pocket, terminals' wells and boss are drawn true, and only the rest is mirrored.
@@ -91,7 +101,7 @@ column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
 nRF52840 build, with its own pins. [Building it](BUILD.md) has the pins, the
 wiring and how it should behave when running.
 
-## The chassis
+## The slim chassis
 
 The chassis is two printed parts: the body, which holds the keys, and the plinth
 under it, flat on the desk. The seam between them is one plane under every socket
@@ -99,9 +109,8 @@ and diode, so the body prints flat on it with its top surface up, and the plinth
 up the height to the desk. `seam_tent_deg` sets its tilt: 1.6° gives the lowest case,
 with the pinky-home socket and thumb-far diode holding the seam down and the screws at
 the pinky end holding it up. A flatter seam gives a thicker body, deeper shafts and a
-longer print. The top is one smooth surface, with a flat land round
-each switch's hole for its lip to sit on, `switch_land_mm` wide, tapering over
-`switch_taper_mm` into the surface. Each socket goes up a shaft from below, and a boss on the
+longer print. The top is one smooth surface with each key in a well
+([Wells](#wells), below). Each socket goes up a shaft from below, and a boss on the
 plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
 button and power switch lie in a well beside the inner column. The well's walls and
@@ -128,19 +137,17 @@ shortest way, not the route [Building it](BUILD.md) gives it: a column's wire
 may reach the well along a row's channel. It doesn't place the battery's, the
 power switch's or the reset button's wires, or the diodes' legs.
 
-`--preset wells` builds this design with its keys in wells as the
-[capybara design's wells](#wells) are, with the same clearance round and under the
-cap and the same skin, but one well to a group of keys (`shared_wells`): the
-fingers', the thumb row's and the extra pair's. The web between two rooms of a
+The keys are in wells as the [capybara design's wells](#wells) are, with the
+same clearance round and under the cap and the same skin, but one well to a
+group of keys (`shared_wells`): the fingers', the thumb row's and the extra
+pair's. The web between two rooms of a
 group is cut away wherever it's thinner than `well_join_mm`, so nothing stands
 between a group's keys and the floor steps from one plate to the next, and a
 room's floor has its cove only where no other key's room is beside it, along
 the well's wall. A wall stands between two groups where there's room for one:
 the extra pair has one to its north, and none on the side where the next
 column's keys are 0.13 mm off. The outline stays where it is, since `wall_mm`
-past each cell already walls the wells on the edge. The files go to
-`output/lowpro/wells/`, and the editor's Case picker shows it as
-**Low-profile with wells**.
+past each cell already walls the wells on the edge.
 
 The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap its
@@ -149,19 +156,20 @@ of the case, room for the finger too), which notches that plate's edge.
 Where two caps' rooms come within `min_wall_mm` of each other, the web between
 them goes too, down to where it's that thick, since a thinner one won't print.
 
-## The capybara design
+## Capybara
 
 `--preset capybara` builds the same kind of case round the Capybara's own
-electronics instead: the [Capybara's](../docs/editor-chassis.md) hand-wired
+electronics instead, each switch in a well of its own: the [Capybara's](../docs/editor-chassis.md) hand-wired
 RGB key tiles, matrix and pins, and its [Pro Micro, TRRS jack and reset
 switch](../docs/pro-micro.md), so a harness wired for the Capybara drops in.
 `params.py design` picks it, and the sizes it shares with the editor are read
 from `editor/src/default-config.json`, so each lives in one place. The files go
-to `output/lowpro/capybara/`, and a `<half>-print.3mf` for each half as well (Printing, below).
+to `output/case/capybara/`, and a `<half>-print.3mf` for each half as well (Printing, below).
+The editor's Case picker shows it as **Capybara**.
 
 ```sh
-.venv/bin/python -m lowpro.build --preset capybara
-.venv/bin/python -m lowpro.render --preset capybara
+.venv/bin/python -m case.build --preset capybara
+.venv/bin/python -m case.render --preset capybara
 ```
 
 The keys are the editor's Swung in layout at its tent, each frame equal
@@ -188,7 +196,7 @@ leaves free. Where the plates and pockets seal a scrap of the hollow off from
 the plinth, it is left solid, since it would be a void in the print. There
 are no channels, sockets or diodes: the inside is open, and the wiring lies
 loose on the plinth, which is a flat plate on the desk as thick as the editor's
-base plate, with lowpro's skirt bridging the notches round the thumb cluster.
+base plate, with the slim design's skirt bridging the notches round the thumb cluster.
 The Pro Micro, the jack and the reset switch stand where the editor puts them,
 the plugs' openings chamfered at the wall's outer face, the reset switch turned
 square to the wall its plunger points at, behind an even skin with a stop
@@ -221,8 +229,7 @@ plan, the plugs' mouths and the screws.
 
 ### Wells
 
-`--preset capybara_wells` is the same case with each switch in a well. The top
-over each key is its plate's plane raised `well_depth_mm` along the key's
+Each switch sits in a well. The top over each key is its plate's plane raised `well_depth_mm` along the key's
 normal, the clearance under the cap's skirt at rest, so the skirt stands as
 clear of the rim as of the walls; the cap's room cuts the well, so
 it is square to the key and its floor is the plate. The top is one skin, the
@@ -243,8 +250,7 @@ Between keys a wall stands only where there's room for one. Keys in a column
 lean together, so their wells meet above the top and leave a web between them
 whose top is a knife edge. That web is cut down to where it's `min_wall_mm`
 thick (the chassis, above), and so is the thin web between the inner and index
-columns. The files go to `output/lowpro/capybara_wells/`, and the editor's Case
-picker shows it as **Low-profile shell with wells**.
+columns.
 
 ### Printing
 
@@ -266,17 +272,18 @@ is under the pockets' rims, which are at least 95% supported against a median
 of 55% without it. About 0.2 cm³ ends inside the pockets, at their rims, which
 clears from the open underside.
 
-## The frame design
+## Slim ribs
 
-PROTOTYPE. `--preset frame` builds this design's keys, parts, tent and height
-on the [Capybara's](../docs/editor-chassis.md) open frame instead of a closed
-body: ribs, a rail and bridges, with no rail across the floor. `params.py
-design` picks it. The seam and the plinth's shell are the same as above. The
-files go to `output/lowpro/frame/`.
+PROTOTYPE. `--preset slim_ribs` builds the slim design's keys, parts, tent and
+height on the [Capybara's](../docs/editor-chassis.md) open frame of ribs instead
+of a closed body: ribs, a rail and bridges, with no rail across the floor.
+`params.py design` picks it. The seam and the plinth's shell are the slim
+design's. The files go to `output/case/slim_ribs/`, and the editor's Case
+picker shows it as **Slim Capybara ribs**.
 
 ```sh
-.venv/bin/python -m lowpro.build --preset frame
-.venv/bin/python -m lowpro.render --preset frame
+.venv/bin/python -m case.build --preset slim_ribs
+.venv/bin/python -m case.render --preset slim_ribs
 ```
 
 - **Layout.** The keys are where this design has them. The bay stands
@@ -317,7 +324,7 @@ it prints (there are no support volumes for it).
 ## Checks and what they don't cover
 
 Only writing a part checks that it is one closed solid spanning the outline:
-`make lowpro-check` skips that. A failed check doesn't stop the build: it still
+`make case-check` skips that. A failed check doesn't stop the build: it still
 writes the files, then exits 1.
 
 The wiring has three checks. One finds a way for a wire from every end to the

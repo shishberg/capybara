@@ -33,7 +33,7 @@ scene.add(light);
  */
 export const model = new T.Group();
 scene.add(model);
-/** The Capybara frame and everything built with it: hidden while a low-profile case shows. */
+/** Capybara ribs and everything built with it: hidden while a built case shows. */
 export const frame = new T.Group();
 model.add(frame);
 export const material = new T.MeshStandardMaterial({
@@ -68,27 +68,27 @@ export const bounds = new T.Box3Helper(new T.Box3(), 0xffd36b);
 bounds.visible = false;
 scene.add(bounds);
 /**
- * A low-profile case's pieces (case-view.ts), in the world's axes: the left
+ * A built case's pieces (case-view.ts), in the world's axes: the left
  * half's 3MF is already mirrored, so unlike `model` this group never is.
  */
-export const lowproGroup = new T.Group();
-lowproGroup.visible = false;
-scene.add(lowproGroup);
-export const lowproPieces = (kind?: PieceKind) => {
+export const builtGroup = new T.Group();
+builtGroup.visible = false;
+scene.add(builtGroup);
+export const builtPieces = (kind?: PieceKind) => {
   const found: T.Object3D[] = [];
-  lowproGroup.traverse(
+  builtGroup.traverse(
     (o) => o.userData.kind && (!kind || o.userData.kind === kind) && found.push(o),
   );
   return found;
 };
 export function measure() {
-  // What shows: the frame, or the low-profile pieces by their kind.
-  const low = lowproGroup.visible,
-    solid = low ? [...lowproPieces('body'), ...lowproPieces('base')] : [shell, basePlate],
-    keycaps = low
-      ? lowproPieces('keycaps')
+  // What shows: the ribs, or the built case's pieces by their kind.
+  const built = builtGroup.visible,
+    solid = built ? [...builtPieces('body'), ...builtPieces('base')] : [shell, basePlate],
+    keycaps = built
+      ? builtPieces('keycaps')
       : parts.children.filter((o) => o.userData.group === 'keycaps'),
-    body = low ? lowproPieces('body') : [shell];
+    body = built ? builtPieces('body') : [shell];
   const box = bounds.box.makeEmpty();
   for (const m of solid) box.expandByObject(m);
   const s = box.getSize(new T.Vector3());
@@ -200,9 +200,9 @@ export function render() {
   scheduled = true;
   requestAnimationFrame(() => {
     scheduled = false;
-    // The body on show: none while a low-profile case loads, and no faces
+    // The body on show: none while a built case loads, and no faces
     // before the first chassis arrives.
-    const body = (lowproGroup.visible ? lowproPieces('body')[0] : shell) as T.Mesh | undefined,
+    const body = (builtGroup.visible ? builtPieces('body')[0] : shell) as T.Mesh | undefined,
       built = body && faceOrder.get(body.geometry);
     if (built && (body.material as T.Material).transparent) sortFaces(body, built);
     renderer.render(scene, camera);

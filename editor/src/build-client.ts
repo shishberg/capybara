@@ -39,7 +39,7 @@ export function startWorker() {
         $<HTMLButtonElement>('stl').disabled = false;
         $<HTMLButtonElement>('stl-base').disabled = false;
         $<HTMLButtonElement>('report').disabled = false;
-        if (!CASES[S.case].lowpro)
+        if (!CASES[S.case].built)
           $('view-state').textContent =
             `Chassis rebuilt in ${(S.report.milliseconds / 1000).toFixed(2)} s`;
       }

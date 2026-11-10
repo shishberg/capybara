@@ -4,7 +4,7 @@ import numpy as np
 import trimesh
 
 import common as A
-from lowpro.lib import origin, xdir, xform
+from case.lib import origin, xdir, xform
 
 P, S, R = A.P, A.S, A.R
 body, plate = A.stl("body"), A.stl("plate")

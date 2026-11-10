@@ -7,7 +7,7 @@ the tile's footprint (plus 2 mm round it), how far below the board's underside
 import sys
 import numpy as np
 import common as A
-from lowpro.lib import rinv
+from case.lib import rinv
 from manifold3d import Manifold
 
 UNDER = A.R.tile_top_z() - A.P.capybara["tile"]["size_mm"][2]

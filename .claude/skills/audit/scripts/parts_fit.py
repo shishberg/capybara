@@ -5,7 +5,7 @@ import numpy as np
 from manifold3d import Manifold
 
 import common as A
-from lowpro.lib import origin, xdir, xform
+from case.lib import origin, xdir, xform
 
 P, S, R, C = A.P, A.S, A.R, A.C
 body, plate = S.body(), S.bottom_plate()
