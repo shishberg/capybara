@@ -10,7 +10,8 @@ files) and writes: the assembly and the body with plinth from above, the
 body's underside, the plinth's top, a close-up of the middle finger's home key
 from below, sections across and along that key, and a section through the
 round at the outline's front; for lowpro the wiring (channels, sockets, diodes
-and the bay's parts through a see-through body, from above and from below);
+and the bay's parts through a see-through body, from above and from below)
+and the matrix wires laid in them (wires-top, wires-below);
 for capybara the harness seen from below with the plinth off (tiles, switches
 and the parts up in the body), the ports from outside, and a section along the
 USB plug's way; for frame what is open from below with the plinth off (the
@@ -160,6 +161,10 @@ def main(argv=None):
         wired, labels = wiring(C, body)
         shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
         shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
+        from . import wires as W
+        laid = [(body, BODY, 0.2)] + [(p.solid, p.colour) for p in C.sockets() + C.diodes() + C.electronics() + W.pieces()]
+        shot(out, "wires-top", laid, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2)
+        shot(out, "wires-below", laid, away((0.3, -0.6, -1)), c, up=(0, 1, 0))
     elif D is F:
         below = shell[:1] + [(p.solid, p.colour) for p in C.sockets() + C.diodes() + C.electronics()]
         shot(out, "open-below", below, away((0.3, -0.6, -1)), c, up=(0, 1, 0))

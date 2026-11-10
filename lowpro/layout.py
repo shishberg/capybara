@@ -33,7 +33,7 @@ import numpy as np
 
 from . import params as P
 from . import parts as R
-from .lib import (axis_x, axis_y, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
+from .lib import (axis_y, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -83,14 +83,12 @@ def hand():
     read as the right half: origin at the middle fingertip's resting print, +X
     toward the pinky, +Y away from you, +Z up from the flat surface.
       rest       where each fingertip rested on the flat paper
-      heading    the finger's direction in plan, degrees from +Y toward +X
       joints     resting joint centres [MCP, PIP, DIP] per finger, for the reach radius
       thumb_arc  (centre, radius) of the circle the thumb's pad prints 1 to 4 lie on"""
     h = json.loads((ROOT / "hand" / "left-hand.json").read_text())
     arc = h["thumb"]["arc_through_prints_1_to_4"]
     return {
         "rest": [np.array(h["measured"]["fingertip_rest"][f][:3], float) for f in FINGERS],
-        "heading": [float(h["fingers"][f]["rest"]["heading_deg"]) for f in FINGERS],
         "joints": [[np.array(h["fingers"][f]["rest"]["joints"][j][:3], float) for j in ("mcp", "pip", "dip")]
                    for f in FINGERS],
         "thumb_arc": (np.array(arc["centre"][:2], float), float(arc["radius_mm"])),
@@ -136,19 +134,18 @@ def column_pitch():
 
 
 def finger_home(i):
-    """Where finger i's home cap top sits: under its resting print, or with
-    even_columns at the even pitch in x from the middle finger's."""
+    """Where finger i's home cap top sits: its resting print's y and z, at the
+    even pitch in x from the middle finger's."""
     p = hand()["rest"][i].copy()
-    if P.even_columns:
-        p[0] = hand()["rest"][1][0] + (i - 1) * column_pitch()
+    p[0] = hand()["rest"][1][0] + (i - 1) * column_pitch()
     return p
 
 
 def finger_column_frames(i):
-    """Finger i's column: the home key's plate top under its home (facing
-    up), the other rows round the arc about a point that radius above it."""
-    h = hand()["heading"][i] * P.splay_scale
-    d = np.array([sind(h), cosd(h), 0.0])
+    """Finger i's column, heading straight back (+y): the home key's plate top
+    under its home (facing up), the other rows round the arc about a point that
+    radius above it."""
+    d = np.array([0.0, 1.0, 0.0])
     H = cap_top_height(row_cap_row(0))
     R = finger_plate_radius(i)
     o = finger_home(i) - np.array([0, 0, H + P.finger_sink_mm])
@@ -170,14 +167,9 @@ def finger_keys(i, col):
 
 
 def inner_keys():
-    """The inner column: the index column carried inner_gap_mm toward the thumb
-    (with even_columns, the columns' pitch), square to itself, and turned
-    inner_angle_deg about its home key."""
+    """The inner column: the index column carried the columns' pitch toward the thumb."""
     F = finger_column_frames(0)
-    home = F[P.rows_below]
-    side = -axis_x(home) * (column_pitch() if P.even_columns else P.inner_gap_mm)
-    pivot = origin(home) + side
-    T = trans(pivot) @ rot_z(P.inner_angle_deg) @ trans(-pivot) @ trans(side)
+    T = trans([-column_pitch(), 0, 0])
     return [Key(f"inner_{k - P.rows_below}", T @ F[k], "finger", 0, k - P.rows_below,
                 row_cap_row(k - P.rows_below), 1, (P.cell_mm, finger_plate_pitch(0)))
             for k in range(len(F))]
@@ -234,27 +226,19 @@ def thumb_keys():
 
 
 def extra_keys():
-    """The extra pair, a fourth row under the middle (x1) and ring (x2) columns,
-    each thumb_extra_gap_mm south of its column's bottom key's south edge and
-    thumb_extra_lower_mm lower. Flat and square to the layout, a cell apart, x1
-    thumb_extra_left_mm toward the thumb; or with thumb_extra_in_column each
-    under its own column and headed as it is, tilted thumb_extra_tilt_deg
-    about its x through its middle, facing the front."""
+    """The extra pair, a fourth key of the middle (x1) and ring (x2) columns:
+    under its column and headed as it is, thumb_extra_gap_mm south of the
+    bottom key's south edge and thumb_extra_lower_mm lower, tilted
+    thumb_extra_tilt_deg about its x through its middle, facing the front."""
     if not P.thumb_extra:
         return []
-    bottoms = [finger_keys(i, i + 1)[0] for i in (1, 2)]
-    edges = [xform(k.frame, [0, -k.cell[1] / 2, 0]) for k in bottoms]
-    if P.thumb_extra_in_column:
-        heads = [unit(axis_y(k.frame) * [1, 1, 0]) for k in bottoms]
-        tilt = rot_x(P.thumb_extra_tilt_deg)
-    else:
-        edges[0][0] -= P.thumb_extra_left_mm
-        edges[1][0] = edges[0][0] + P.cell_mm
-        heads = [[0, 1, 0]] * 2
-        tilt = np.eye(4)
-    place = trans([0, -P.cell_mm / 2 - P.thumb_extra_gap_mm, -P.thumb_extra_lower_mm]) @ tilt
-    return [Key(f"thumb_{name}", frame_at(e, [0, 0, 1], d) @ place, "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm))
-            for name, col, e, d in (("x1", 2, edges[0], heads[0]), ("x2", 0, edges[1], heads[1]))]
+    place = trans([0, -P.cell_mm / 2 - P.thumb_extra_gap_mm, -P.thumb_extra_lower_mm]) @ rot_x(P.thumb_extra_tilt_deg)
+    out = []
+    for name, col, i in (("x1", 2, 1), ("x2", 0, 2)):
+        k = finger_keys(i, i + 1)[0]
+        f = frame_at(xform(k.frame, [0, -k.cell[1] / 2, 0]), [0, 0, 1], unit(axis_y(k.frame) * [1, 1, 0]))
+        out.append(Key(f"thumb_{name}", f @ place, "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm)))
+    return out
 
 
 # ---------------------------------------------------------------- Swung in (design "capybara")
@@ -514,5 +498,5 @@ def screw_points():
 
     m = mcu_bay()
     strip = (m[0][0] + bay_rect()[0][0] - P.wall_mm) / 2, m[1][1] - 8
-    return [cell("ring_0", 4, -9.5), cell("middle_1", 8, -7.5),
-            cell("thumb_x2", 9, -8.5) if P.thumb_extra else cell("ring_-1", 4, -9.5), strip, cell("thumb_home", 10, -9.5), cell("thumb_far", -9, -9.5), cell("thumb_home", 3, 12.5)]
+    return [cell("ring_0", 4, -9.5), cell("middle_1", 4, -7.5),
+            cell("thumb_x2", -4, -8.5) if P.thumb_extra else cell("ring_-1", 4, -9.5), strip, cell("thumb_home", 10, -9.5), cell("thumb_far", -9, -9.5), cell("thumb_home", 3, 12.5)]

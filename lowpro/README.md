@@ -35,9 +35,9 @@ and the way it moves. What changes:
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `shell.py` | The capybara design's body and plinth, its support volumes for printing, and its checks (below). |
 | `frame.py` | The frame design's body and plinth, and its checks (below). PROTOTYPE. |
-| `wires.py` | Where the frame design's matrix wires run; see its header. PROTOTYPE. |
+| `wires.py` | Where the matrix wires run, in this design's channels or under the frame design's ribs; see its header. PROTOTYPE. |
 | `lib.py` | Frames as 4 × 4 matrices. |
-| `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
+| `test_checks.py` | Proves the wiring checks fail on a blocked channel, and that every matrix wire has a way clear of the case and the parts; `make lowpro-test` runs it. |
 | `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
 | `test_frame.py` | Proves the frame design's columns are parallel and evenly spaced with the extra thumb keys in line, that it is one solid with a way for every wire, and that its open-from-below check fails on a rail across the floor; `make lowpro-test` runs it. |
 
@@ -65,22 +65,25 @@ pocket, terminals' wells and boss are drawn true, and only the rest is mirrored.
 Its socket reaches 1.27 mm less far toward the column channel and that much further
 the other way, so each half is its own build.
 
-**Finger columns.** Each home key sits under where its fingertip rested on the
-paper, facing straight up, and its column runs along the finger's measured
-heading. The other rows lie on an arc about a point above the home key. That is
+**Finger columns.** The columns have no splay: every column heads straight
+back, and they are one pitch apart, the mean of the measured gaps between
+fingertips (`layout.py column_pitch`). Each home key sits at the height and
+the distance from you at which its fingertip rested on the paper, facing
+straight up. The other rows lie on an arc about a point above the home key. That is
 the movement kept from the hand model: the reach between rows is the finger
 curling and straightening about a point between the PIP joint and the knuckle,
 not sliding flat. At the default `reach_mix` the radii are 62 to 69 mm, 51 for
 the pinky, so the top and bottom keys tilt 14 to 19° toward the home key and
-rise 2 to 3 mm. The fifth, inner column is the index column carried toward the
-thumb.
+rise 2 to 3 mm. The fifth, inner column is the index column carried one pitch
+toward the thumb.
 
 **Thumb.** The near and far thumb keys start on the circle the thumb's pad swept in
 the photographs, either side of the resting print's angle, and the home key on the
 straight line between them at that angle. The row is then turned counterclockwise
 in plan about the near key and leaned about the near key's y, the far key going
 down, so home and far no longer sit on the prints. The extra pair x1
-and x2 is a flat fourth row under the middle and ring columns.
+and x2 is a fourth key of the middle and ring columns, tilted
+`thumb_extra_tilt_deg` to face the front.
 
 **Matrix.** The same 4 × 5 as the Capybara: each thumb key chains onto a finger
 column's wire (x2 C0, near C1, x1 C2, home C3, far C4), so the
@@ -111,6 +114,15 @@ side without adding height or footprint. Use insulated wire for the rows, which
 cross the column wires. The channels are a first cut, straight slots that merge
 where they meet: look at `wiring-below.png` before trusting a route, and edit
 `channels()` in `chassis.py` to change one.
+
+`wires.py` lays every matrix wire in them (`wire_d_mm` across, with no
+clearance), from terminal to terminal and to the controller's pad (`mcu_pins`,
+PROVISIONAL), each clear of the case, the parts and the other wires. The
+assembly carries each net's wires as a piece, the rows' blue and the columns'
+green, and `wires-top.png` and `wires-below.png` show them. A wire takes the
+shortest way, not the route [Building it](BUILD.md) gives it: a column's wire
+may reach the well along a row's channel. It doesn't place the battery's, the
+power switch's or the reset button's wires, or the diodes' legs.
 
 The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap its
@@ -249,13 +261,9 @@ files go to `output/lowpro/frame/`.
 .venv/bin/python -m lowpro.render --preset frame
 ```
 
-- **Layout.** The finger columns have no splay: every column heads straight
-  back, and the columns are one pitch apart, the mean of the measured gaps
-  between fingertips (`even_columns`, `layout.py column_pitch`). The two extra
-  thumb keys are a fourth key in the middle and ring columns, tilted
-  `thumb_extra_tilt_deg` to face the front (`thumb_extra_in_column`). The bay
-  stands `bay_gap_mm` off the inner column, which leaves room for that
-  column's wires.
+- **Layout.** The keys are where this design has them. The bay stands
+  `bay_gap_mm` off the inner column, which leaves room for that column's
+  wires.
 - **Ribs.** A band runs along each finger column and along the thumb row, with
   a block under each plate that holds the switch, the hotswap socket and the
   diode. The middle and ring columns run on through the two extra thumb keys.
@@ -273,12 +281,8 @@ files go to `output/lowpro/frame/`.
   the keys' side is open beside the board's wired holes.
 - **Wiring.** The wires hang loose under the ribs, not in channels. With the
   plinth off, every socket, terminal and diode is open from below, and so are
-  the controller and the battery. `wires.py` finds a way for each matrix wire
-  (`wire_d_mm` across, with no clearance) from terminal to terminal and to the
-  controller's pad (`mcu_pins`, PROVISIONAL), and the assembly carries each
-  net's wires as a piece, the rows' blue and the columns' green. It doesn't
-  place the battery's, the power switch's or the reset button's wires, or the
-  diodes' legs.
+  the controller and the battery. `wires.py` lays the matrix wires there as it
+  does in the channels above.
 - **Plinth.** The plinth has a boss up under each socket, which holds it in its
   block, and screws into bosses on the rail's inside. A screw stands only where
   the plinth is thick enough to sink its head, which leaves the pinky column's
@@ -298,16 +302,19 @@ Only writing a part checks that it is one closed solid spanning the outline:
 `make lowpro-check` skips that. A failed check doesn't stop the build: it still
 writes the files, then exits 1.
 
-The wiring has two checks. One finds a way for a wire from every end to the
-controller, by any path. The other holds each channel to its own route: a wire
+The wiring has three checks. One finds a way for a wire from every end to the
+controller, by any path. Another holds each channel to its own route: a wire
 has to lie along every straight run from end to end, clear of the seam, or it
-gets pinched there.
+gets pinched there. The third lays all the matrix wires at once (`wires.py`),
+each clear of the others, on a `wire_grid_mm` grid: a wire's place is good to
+about that.
 
 Not checked:
 
 - The hand's reach: the `?hand` prototype's checks don't run on this layout.
 - The walls between most channels and the keys' pockets, since channels join
   keys by design.
-- How many wires a channel holds at once: the wiring check tries one at a time.
+- That the battery's, the power switch's and the reset button's wires fit beside
+  the matrix wires.
 - Real part sizes: the Cherry cap, the socket's tabs, the controller, the battery
   and the power switch are nominal.

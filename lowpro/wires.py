@@ -1,16 +1,18 @@
-"""The frame design's matrix wires: where each wire of wire_d_mm runs, loose
-under the ribs, from terminal to terminal and on to the controller's pad.
+"""The matrix wires of the lowpro design (in its channels) and the frame design
+(loose under its ribs): where each wire of wire_d_mm runs, from terminal to
+terminal and on to the controller's pad.
 
 The matrix is lowpro/BUILD.md's: a row's wire joins its keys' row terminals, a
 column's its keys' diodes' band legs, and the controller's pad for it
 (params.py mcu_pins), as the tree that takes the least wire (nets).
 
-A wire needs no clearance, but it can't pass into the frame, the plinth, a
-part or another wire. The space a wire's centre may lie in is sampled every
-wire_grid_mm: inside the outline, under the ribs' undersides, and a wire's
-radius from the frame, the plinth, the bay's deck's top and every part
-(space), and half a grid cell's diagonal more (slack), which makes up for the
-sampling. Each wire is the cheapest way through that space clear of the wires
+A wire needs no clearance, but it can't pass into the case, a part or another
+wire. The space a wire's centre may lie in is sampled every wire_grid_mm. In
+the frame design it is inside the outline, under the ribs' undersides, and a
+wire's radius from the frame, the plinth, the bay's deck's top and every part,
+and half a grid cell's diagonal more (slack), which makes up for the sampling
+(frame_shut). In the lowpro design it is what is cut from the body and the
+plinth, past the parts, shrunk by a wire's radius (chassis_shut). Each wire is the cheapest way through that space clear of the wires
 laid before it (the columns' first, then the rows'), pulled straight wherever
 a straight run is clear and no dearer. A way costs its length, and up to
 wire_tuck times more the further it hangs under what is over it, as far as
@@ -53,8 +55,11 @@ def wire_side(k):
 
 
 def joints(k):
-    """Where key k's row wire and column wire end, in world: against its row
-    terminal's tip, and against its block's side at its diode's band leg."""
+    """Where key k's row wire and column wire end, in world. In the frame
+    design: against its row terminal's tip, and against its block's side at its
+    diode's band leg."""
+    if P.design != "frame":
+        return C.key_wire_ends(k)
     r = P.wire_d_mm / 2
     tip = R.socket_tab_tip(wire_side(k))
     s = 1 if tip[0] > 0 else -1
@@ -131,12 +136,14 @@ def roof(x, y):
 
 
 def solids():
-    """Everything a wire can't pass into: the frame, the plinth, the parts, and
-    whatever is over the bay's deck."""
-    (x0, y0), (x1, y1) = F.bay_wall_rect()
-    over_deck = Manifold.cube((x1 - x0, y1 - y0, 100)).translate((x0, y0, F.deck_z()[1]))
-    parts = C.switches() + C.sockets() + C.diodes() + C.electronics()
-    return union([F.body(), F.bottom_plate(), over_deck] + [p.solid for p in parts])
+    """Everything a wire can't pass into: the body, the plinth, the parts, and
+    in the frame design whatever is over the bay's deck."""
+    D = L.design()
+    out = [D.body(), D.bottom_plate()] + [p.solid for p in C.switches() + C.sockets() + C.diodes() + C.electronics()]
+    if D is F:
+        (x0, y0), (x1, y1) = F.bay_wall_rect()
+        out.append(Manifold.cube((x1 - x0, y1 - y0, 100)).translate((x0, y0, F.deck_z()[1])))
+    return union(out)
 
 
 def hang(shut):
@@ -147,17 +154,34 @@ def hang(shut):
     return out
 
 
+def samples(solid, x, y, z):
+    """Which of the samples (x by y by z) are inside a solid."""
+    return np.stack([filled(solid.slice(float(h)), x, y) for h in z], axis=-1)
+
+
+def frame_shut(x, y, z):
+    """The frame design's samples where a wire's centre can't lie."""
+    g, r = P.wire_grid_mm, P.wire_d_mm / 2
+    near = ndimage.distance_transform_edt(~samples(solids(), x, y, z), sampling=g) < r + slack()
+    outside = ~filled(F.inside().offset(-r), x, y)
+    return near | outside[..., None] | (z > roof(x, y)[..., None])
+
+
+def chassis_shut(x, y, z):
+    """The lowpro design's samples where a wire's centre can't lie: all but
+    those in what is cut from the body and the plinth, past the parts, shrunk
+    by a wire's radius."""
+    return ~samples(C.wire_centres(C.subtract(C.wire_space(), [solids()])), x, y, z)
+
+
 @cached
 def space():
-    g, r = P.wire_grid_mm, P.wire_d_mm / 2
-    solid = solids()
-    box = np.array(F.body().bounding_box())
+    g = P.wire_grid_mm
+    D = L.design()
+    box = np.array(union([D.body(), D.bottom_plate()]).bounding_box())
     low = box[:3] - g
     x, y, z = (low[a] + g * np.arange(int((box[3 + a] - low[a]) / g) + 2) for a in range(3))
-    full = np.stack([filled(solid.slice(float(h)), x, y) for h in z], axis=-1)
-    near = ndimage.distance_transform_edt(~full, sampling=g) < r + slack()
-    outside = ~filled(F.inside().offset(-r), x, y)
-    shut = near | outside[..., None] | (z > roof(x, y)[..., None])
+    shut = (frame_shut if D is F else chassis_shut)(x, y, z)
     return Space(low, g, shut, (1 + P.wire_tuck * np.minimum(hang(shut) * g / P.wire_tuck_mm, 1)).astype(np.float32))
 
 
@@ -270,11 +294,14 @@ class Wire:
         return float(np.linalg.norm(np.diff(self.points, axis=0), axis=1).sum())
 
 
-def route(sp, taken, p, q, margin):
-    """The wire's points from p to q clear of the cells `taken` (the other
-    wires and every end's room), but for its own ends' rooms, where it meets
-    the wires it is soldered beside. It is looked for within `margin` cells of
-    the box round its ends; None for the whole space."""
+def route(sp, rooms, laid, mates, worn, p, q, margin, through=False):
+    """The wire's points from p to q clear of every other end's room (`rooms`)
+    and of the cells beside the wires laid (`laid`, how many wires each cell is
+    beside); or with `through`, the way through the fewest such cells. A cell
+    costs `worn` more. Within wire_end_room_mm of its own ends it may lie
+    beside the wires soldered there with it (`mates`, as `laid`). It is looked
+    for within `margin` cells of the box round its ends; None for the whole
+    space."""
     g = sp.step
     a, b = np.array(sp.cell(p)), np.array(sp.cell(q))
     shape = np.array(sp.shut.shape)
@@ -282,17 +309,24 @@ def route(sp, taken, p, q, margin):
     hi = shape if margin is None else np.minimum(np.maximum(a, b) + margin + 1, shape)
     lo[2], hi[2] = 0, shape[2]
     window = tuple(slice(l, h) for l, h in zip(lo, hi))
-    busy = taken[window].copy()
-    stamp(busy, np.array([a - lo, b - lo]), ball(P.wire_end_room_mm / g), False)
+    own = np.zeros(tuple(hi - lo), bool)
+    stamp(own, np.array([a - lo, b - lo]), ball(P.wire_end_room_mm / g), True)
+    busy = rooms[window] & ~own
+    others = laid[window] - own * mates[window] > 0
+    cost = sp.cost[window] + worn[window]
+    if through:
+        cost = cost + P.wire_push * others
+    else:
+        busy |= others
     open_ = ~sp.shut[window] & ~busy
     reach = int(np.ceil(P.wire_end_room_mm / g))
     start, end = nearest_open(open_, a - lo, reach), nearest_open(open_, b - lo, reach)
     if start is None or end is None:
         return None
-    way = shortest(open_, sp.cost[window], start, end)
+    way = shortest(open_, cost, start, end)
     if way is None:
         return None
-    return np.vstack([p, sp.point(pulled(open_, sp.cost[window], *way) + lo), q])
+    return np.vstack([p, sp.point(pulled(open_, cost, *way) + lo), q])
 
 
 @cached
@@ -317,20 +351,22 @@ def nets():
 
 @cached
 def end_rooms():
-    """The cells within wire_end_room_mm of any wire's end: the room to solder
-    there, which only the wires that end there come into."""
+    """The cells less than a wire's width from any wire's end, which only the
+    wires that end there come into."""
     sp = space()
     rooms = np.zeros(sp.shut.shape, bool)
-    stamp(rooms, np.array([sp.cell(p) for es in ends().values() for _, p in es]), ball(P.wire_end_room_mm / sp.step), True)
+    stamp(rooms, np.array([sp.cell(p) for es in ends().values() for _, p in es]), ball(P.wire_d_mm / sp.step), True)
     return rooms
 
 
-def beside(sp, taken, points):
-    """Mark as taken every cell a wire's centre can't lie in beside the wire
-    through `points`: those less than a wire's width from it."""
+def beside(sp, laid, points, lay=1, worn=None):
+    """Count in (or with lay -1, out) every cell a wire's centre can't lie in
+    beside the wire through `points`: those less than a wire's width from it.
+    With `worn`, those of them that wires are laid beside cost wire_wear more
+    from now on."""
     d = P.wire_d_mm
     reach = int(np.ceil(d / sp.step))
-    shape = np.array(taken.shape)
+    shape = np.array(laid.shape)
     run = along(points, 4.0)
     for a, b in zip(run[:-1], run[1:]):
         lo = np.maximum(np.array(sp.cell(np.minimum(a, b))) - reach, 0)
@@ -338,23 +374,58 @@ def beside(sp, taken, points):
         c = sp.point(np.stack(np.meshgrid(*[np.arange(l, h) for l, h in zip(lo, hi)], indexing="ij"), axis=-1))
         ab = b - a
         t = np.clip(((c - a) @ ab) / max(ab @ ab, 1e-12), 0, 1)
-        taken[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]] |= np.linalg.norm(c - a - t[..., None] * ab, axis=-1) < d
+        box = (slice(lo[0], hi[0]), slice(lo[1], hi[1]), slice(lo[2], hi[2]))
+        near = np.linalg.norm(c - a - t[..., None] * ab, axis=-1) < d
+        if worn is not None:
+            worn[box] += P.wire_wear * (near & (laid[box] > 0))
+        laid[box] += (lay * near).astype(laid.dtype)
+
+
+def crossed(sp, points, wire, shared):
+    """Whether the way through `points` comes within a wire's width of a wire
+    laid, other than within wire_end_room_mm of the ends they share."""
+    p, q = along(points, 0.5), along(wire.points, 0.5)
+    for end in shared:
+        p = p[np.linalg.norm(p - end, axis=1) > P.wire_end_room_mm + sp.step]
+    return len(p) > 0 and float(((p[:, None] - q[None]) ** 2).sum(axis=-1).min()) < P.wire_d_mm ** 2
 
 
 @cached
 def wires():
-    """Every wire: the nets in turn, the columns first, each from its pad outwards."""
+    """Every wire: the nets in turn, the columns first, each from its pad
+    outwards. A wire with no way clear of those laid before it takes the way
+    through the fewest of them, and those it comes within a wire's width of
+    are taken up and laid again after it. The cells they were beside cost more
+    from then on, so of two wires after one way, the one with another way to
+    go takes it. After wire_pushes of that, a wire with no clear way is left out."""
     sp = space()
-    taken = end_rooms().copy()
-    out = []
-    for net, pairs in sorted(nets(), key=lambda n: n[0][0] != "C"):
-        for (a, p), (b, q) in pairs:
-            points = next((pts for margin in (int(P.wire_search_mm / sp.step), None)
-                           for pts in [route(sp, taken, p, q, margin)] if pts is not None), None)
+    rooms = end_rooms()
+    laid = np.zeros(sp.shut.shape, np.int8)
+    worn = np.zeros(sp.shut.shape, np.float32)
+    jobs = [(net, pair) for net, pairs in nets() for pair in pairs]
+    todo = sorted(range(len(jobs)), key=lambda i: jobs[i][0][0] != "C")
+    out, pushes = {}, 0
+    while todo:
+        i = todo.pop(0)
+        net, ((a, p), (b, q)) = jobs[i]
+        mates = np.zeros(sp.shut.shape, np.int8)
+        for j, w in out.items():
+            if w.points is not None and w.net == net and {a, b} & set(w.ends):
+                beside(sp, mates, w.points)
+        points = next((pts for margin in (int(P.wire_search_mm / sp.step), None)
+                       for pts in [route(sp, rooms, laid, mates, worn, p, q, margin)] if pts is not None), None)
+        if points is None and pushes < P.wire_pushes:
+            points = route(sp, rooms, laid, mates, worn, p, q, None, through=True)
+            pushes += 1
             if points is not None:
-                beside(sp, taken, points)
-            out.append(Wire(net, (a, b), points))
-    return out
+                beside(sp, laid, points, 0, worn)
+                for j in [j for j, w in out.items() if w.points is not None and crossed(sp, points, w, (p, q) if w.net == net else ())]:
+                    beside(sp, laid, out.pop(j).points, -1)
+                    todo.append(j)
+        if points is not None:
+            beside(sp, laid, points)
+        out[i] = Wire(net, (a, b), points)
+    return [out[i] for i in range(len(jobs))]
 
 
 def unrouted():

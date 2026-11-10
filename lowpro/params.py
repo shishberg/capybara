@@ -47,16 +47,9 @@ rows_below = 1
 # the measured joints; the home key always faces up, the others tilt to face
 # a point that far above it.
 reach_mix = 0.5
-# Scale of the measured finger splay (the columns' angles in plan). 0 makes them parallel.
-splay_scale = 1
-# The columns' homes evenly spaced in x, at the mean of the measured
-# fingertips' gaps, the inner column as far from the index; else each under its
-# measured fingertip and the inner column inner_gap_mm from the index.
-even_columns = False
-# Extra fifth column inside the index column (reached by the index finger), its
-# gap from the index column centre to centre and its angle to it.
-inner_gap_mm = 19.9
-inner_angle_deg = 0
+# The columns are parallel and evenly spaced in x, at the mean of the measured
+# fingertips' gaps, with a fifth column as far inside the index column (reached
+# by the index finger).
 # How far the columns' home row drops below the measured fingertip prints along
 # the key normal (0: the cap tops sit where the fingertips rested).
 finger_sink_mm = 0
@@ -88,17 +81,13 @@ thumb_turn_deg = 20
 thumb_lean_deg = 10
 # The home thumb key's cap, in key units (1 or 1.5; 1.5 lies along the row).
 thumb_home_u = 1
-# The extra pair (x1, x2): a fourth row under the middle and ring columns, flat
-# and a cell apart, past the south edge of the column's bottom key by the gap,
-# which keeps min_wall_mm from the front trunk to their sockets, x1 this far
-# toward the thumb, and this much lower.
+# The extra pair (x1, x2): a fourth key of the middle and ring columns, under
+# the column and headed as it is, past the south edge of its bottom key by the
+# gap, which keeps min_wall_mm from the column's channel and the front trunk to
+# their sockets, this much lower, and tilted this much to face the front.
 thumb_extra = True
-thumb_extra_gap_mm = 4.2
-thumb_extra_left_mm = 3
+thumb_extra_gap_mm = 5.1
 thumb_extra_lower_mm = 0
-# Or each a fourth key of its own column: under it and headed as it is, tilted
-# this much to face the front.
-thumb_extra_in_column = False
 thumb_extra_tilt_deg = 10
 
 # ---------------------------------------------------------------- the switch (MX)
@@ -450,7 +439,7 @@ mcu_pins = {
 # The wires' ways are looked for on a grid of this step. A wire's way starts
 # within wire_end_room_mm of its end, where it may cross the wires it is
 # soldered beside, and is looked for within wire_search_mm of the box round
-# its ends before the whole frame.
+# its ends before the whole case.
 wire_grid_mm = 0.3
 # A wire's way costs wire_tuck times more per millimetre where it hangs
 # wire_tuck_mm or more under what is over it, so the wires lie up under the frame.
@@ -458,6 +447,13 @@ wire_tuck = 1
 wire_tuck_mm = 4
 wire_end_room_mm = 2.5
 wire_search_mm = 12
+# A wire with no way clear of the wires laid takes the way through the fewest
+# of them, a millimetre beside one costing wire_push more, and they are laid
+# again, the cells beside them costing wire_wear more from then on; no more
+# than wire_pushes times in all.
+wire_push = 20
+wire_wear = 2
+wire_pushes = 150
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
@@ -507,11 +503,8 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
-# lowpro's parts and height on an open rib frame (frame.py), its finger columns
-# parallel and evenly spaced, the extra pair a fourth key of the middle and
-# ring columns.
-PRESETS["frame"] = {"design": "frame", "splay_scale": 0, "even_columns": True, "thumb_extra_in_column": True,
-                    "bay_gap_mm": 2}
+# lowpro's keys, parts and height on an open rib frame (frame.py).
+PRESETS["frame"] = {"design": "frame", "bay_gap_mm": 2}
 # The capybara design with each switch in a well, 1 mm clear of the cap all
 # round, corners included, its rim as far under the cap's skirt at rest, so
 # light gets out round the skirt, and its floor coved.

@@ -819,11 +819,8 @@ def col_x():
 
 
 def thumb_col_x():
-    """A thumb key's column wire's line, beside the +x tab's tip. The left half's
-    tip reaches further toward the next key, so there the channel stops as soon
-    as it holds the wire, for min_wall_mm to that key's solder well."""
-    return min(R.socket_tab_tip(1)[0] + P.wire_gap_mm + P.wire_d_mm / 2,
-               P.socket_tab_mm[0] - socket_end_x() + P.wire_gap_mm + P.wire_d_mm - P.channel_w_mm / 2)
+    """A thumb key's column wire's line, beside the +x tab's tip."""
+    return R.socket_tab_tip(1)[0] + P.wire_gap_mm + P.wire_d_mm / 2
 
 
 def row_x():
@@ -1155,8 +1152,7 @@ def swept(m, size, centre, depth=60):
 
 def normal_swept(m, size, centre, depth=60):
     """A box drawn in frame m carried down frame m's own z by `depth`."""
-    pts = [np.array(c, float) for c in box_corners(size, centre)]
-    return Manifold.hull_points([xform(m, c - (0, 0, z)) for c in pts for z in (0, depth)])
+    return placed(m, R.box((size[0], size[1], size[2] + depth), (centre[0], centre[1], centre[2] - depth / 2)))
 
 
 def socket_shaft(k, grow):
@@ -1330,9 +1326,10 @@ def electronics():
 
 # ---------------------------------------------------------------- checks
 def parts(body, plate):
-    """The built half's pieces for the assembly, drawn as the right (the left's handed parts pre-mirrored): body, plinth, switches, caps, sockets, diodes and electronics."""
+    """The built half's pieces for the assembly, drawn as the right (the left's handed parts pre-mirrored): body, plinth, switches, caps, sockets, diodes, electronics and the matrix wires."""
+    from . import wires
     return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
-            + switches() + keycaps() + sockets() + diodes() + electronics())
+            + switches() + keycaps() + sockets() + diodes() + electronics() + wires.pieces())
 
 
 def near_pairs():
@@ -1410,17 +1407,24 @@ def tab_off():
     return P.socket_tab_mm[1] / 2 + P.wire_d_mm
 
 
+def key_wire_ends(k):
+    """Where key k's row wire and column wire end, each a point just inside the
+    space cut for it (a wire's width in): a wire's width off its terminal's
+    north face in its channel, and its joint to the diode's leg."""
+    row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), R.diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
+    return at(k, row) - (0, 0, P.wire_d_mm), joint - (0, 0, P.wire_d_mm)
+
+
 def wire_ends():
-    """Where wires start, by name, each a point just inside the space cut for
-    it (a wire's width in): every key's row end (a wire's width off its terminal's
-    north face in its channel) and column end (its joint to the diode's leg), the
-    battery's leads (out of its back end),
-    the power switch's pins (in their notch), and the controller."""
+    """Where wires start, by name: every key's row end and column end
+    (key_wire_ends), the battery's leads (out of its back end), the power
+    switch's pins (in their notch), and the controller, each a wire's width
+    inside the space cut for it."""
     d = P.wire_d_mm
     ends = []
     for k in keys():
-        row, joint = ((col_x(), R.socket_tab_tip(-1)[1] + tab_off()), at(k, (col_x(), R.diode_y()))) if k.group == "finger" else ((row_x(), R.socket_tab_tip(1)[1] + tab_off()), thumb_joint(k))
-        ends += [(f"{k.name}'s row tab", at(k, row) - (0, 0, d)), (f"{k.name}'s diode joint", joint - (0, 0, d))]
+        row, joint = key_wire_ends(k)
+        ends += [(f"{k.name}'s row tab", row), (f"{k.name}'s diode joint", joint)]
     m, b = L.mcu_bay(), L.battery_bay()
     ends.append(("the battery's leads", xform(bay_frame(), [(b[0][0] + b[1][0]) / 2, b[1][1] - d, d])))
     if P.power_switch:
@@ -1716,6 +1720,13 @@ def checks():
         ok = False
     else:
         print("every column's wire runs straight beside its terminals")
+    from . import wires
+    stuck = wires.unrouted()
+    if stuck:
+        print(f"no way for a {P.wire_d_mm} mm wire: " + ", ".join(stuck))
+        ok = False
+    else:
+        print(f"every matrix wire has a way clear of the others: {wires.report()}")
     cramped = cramped_diodes()
     if cramped:
         print("no room for the diode and its legs at: " + ", ".join(cramped))

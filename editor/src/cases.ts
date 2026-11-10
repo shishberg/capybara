@@ -11,7 +11,7 @@ export const CASES: Record<CaseId, { label: string; lowpro?: LowproBuild; wired?
   capybara: { label: 'Capybara frame', wired: true },
   shell: { label: 'Low-profile shell on Swung in', lowpro: 'capybara' },
   wells: { label: 'Low-profile shell with wells', lowpro: 'capybara_wells' },
-  lowpro: { label: 'Low-profile', lowpro: 'lowpro' },
+  lowpro: { label: 'Low-profile', lowpro: 'lowpro', wired: true },
   frame: { label: 'Low-profile frame', lowpro: 'frame', wired: true },
 };
 
