@@ -128,9 +128,16 @@ shortest way, not the route [Building it](BUILD.md) gives it: a column's wire
 may reach the well along a row's channel. It doesn't place the battery's, the
 power switch's or the reset button's wires, or the diodes' legs.
 
-`--preset wells` builds this design with each switch in a well, as the
-[capybara design's wells](#wells) are: the same clearance round and under the
-cap, the same skin and cove. The outline stays where it is, since `wall_mm`
+`--preset wells` builds this design with its keys in wells as the
+[capybara design's wells](#wells) are, with the same clearance round and under the
+cap and the same skin, but one well to a group of keys (`shared_wells`): the
+fingers', the thumb row's and the extra pair's. The web between two rooms of a
+group is cut away wherever it's thinner than `well_join_mm`, so nothing stands
+between a group's keys and the floor steps from one plate to the next, and a
+room's floor has its cove only where no other key's room is beside it, along
+the well's wall. A wall stands between two groups where there's room for one:
+the extra pair has one to its north, and none on the side where the next
+column's keys are 0.13 mm off. The outline stays where it is, since `wall_mm`
 past each cell already walls the wells on the edge. The files go to
 `output/lowpro/wells/`, and the editor's Case picker shows it as
 **Low-profile with wells**.

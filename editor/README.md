@@ -71,7 +71,7 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
   Capybara's tiles and parts in lowpro's enclosed shell), the **Low-profile
   shell with wells** (the same, each switch in a well), **Low-profile**
   (lowpro's own design, with its wires), **Low-profile with wells** (the
-  same, each switch in a well) and **Low-profile frame** (lowpro's frame
+  same, each group of keys in one well) and **Low-profile frame** (lowpro's frame
   design, with its wires). The low-profile cases are on the dev server only: it
   runs `make` to build each half's assembly (the first time takes a few
   seconds) from the repository's default project, not from your edits. Keycaps,

@@ -135,16 +135,16 @@ def keycap_room_half(u=1):
     return (P.cap_base_mm + (u - 1) * P.cap_unit_mm) / 2 + g, P.cap_base_mm / 2 + g
 
 
-def keycap_room(r, u=1):
+def keycap_room(r, u=1, cove=None):
     """The room the cap takes from whatever stands near it: its base's outline
     grown cap_room_clearance_mm, so its upright corners are rounded that much
     and the clearance is the same all round (the cap's corners are square).
     It runs straight up from the plate (which takes in the switch's rim, and a
     tilted key's rim leaning out past the plate's land) and on out of the case,
     since the finger comes in from above. Its bottom edges are rounded
-    well_cove_mm, a cove where a well's floor meets its walls: the hull of a
-    column at each corner, its foot rounded well_cove_mm."""
-    R, c, h = P.cap_room_clearance_mm, P.well_cove_mm, P.finger_room_mm
+    `cove` (well_cove_mm unless given), a cove where a well's floor meets its
+    walls: the hull of a column at each corner, its foot rounded by it."""
+    R, c, h = P.cap_room_clearance_mm, P.well_cove_mm if cove is None else cove, P.finger_room_mm
     if c > R:
         raise ValueError(f"well_cove_mm {c} is larger than cap_room_clearance_mm {R}: the cove can't turn the corner")
     hw, hd = keycap_room_half(u)

@@ -134,6 +134,12 @@ cap_room_clearance_mm = 0.45           # a cap's room round its base, each side:
 # room's upright corners).
 well_depth_mm = 0
 well_cove_mm = 0
+# shared_wells: the keys of a group (the fingers', the thumb row, the extra
+# pair) share one well, with no wall and no cove between them: two of a group's
+# rooms are joined wherever they are within well_join_mm of each other, and a
+# room has no cove beside another key's room that near.
+shared_wells = False
+well_join_mm = 2
 finger_room_mm = 100                   # a cap's room runs this far up over its plate, out past any case
 cap_unit_mm = 19.05                    # a 1.5u cap is 1.5 units less (unit - base)
 
@@ -515,9 +521,11 @@ PRESETS["capybara_wells"] = PRESETS["capybara"] | {
     "well_depth_mm": _switch["keycap_bottom_above_plate_mm"] - _well_clearance_mm,
     "well_cove_mm": 1,
 }
-# The lowpro design with each switch in a well, as capybara_wells has them.
+# The lowpro design with its keys in wells as deep and as clear of the caps as
+# capybara_wells has them, one well to a group of keys.
 PRESETS["wells"] = {
     "cap_room_clearance_mm": _well_clearance_mm,
     "well_depth_mm": cap_bottom_above_plate_mm - _well_clearance_mm,
     "well_cove_mm": 1,
+    "shared_wells": True,
 }

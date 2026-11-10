@@ -1259,8 +1259,21 @@ def body_cutters():
 
 def cap_rooms():
     """Each cap's room. A key lower than its neighbour has its cap come down
-    past the neighbour's plate, so it takes a notch out of the plate's edge."""
-    return [placed(k.frame, R.keycap_room(k.cap_row, k.units)) for k in keys()]
+    past the neighbour's plate, so it takes a notch out of the plate's edge.
+    With shared wells a room's floor is square, not coved, wherever another
+    key's room stands within well_join_mm beside it (that room's plan, grown
+    that much and carried down), so the cove runs only along a well's wall."""
+    ks = keys()
+    rooms = [placed(k.frame, R.keycap_room(k.cap_row, k.units)) for k in ks]
+    if not (P.shared_wells and P.well_cove_mm):
+        return rooms
+    square = [placed(k.frame, R.keycap_room(k.cap_row, k.units, cove=0)) for k in ks]
+    beside = [placed(k.frame, R.box((*(2 * (h + P.well_join_mm) for h in R.keycap_room_half(k.units)), 200))) for k in ks]
+    near = [[] for _ in ks]
+    for i, j in near_pairs():
+        near[i].append(beside[j])
+        near[j].append(beside[i])
+    return [room + (sq ^ union(by)) if by else room for room, sq, by in zip(rooms, square, near)]
 
 
 @cached
@@ -1268,16 +1281,21 @@ def cap_cuts():
     """What the caps take from the body: each one's room, and the web between
     two rooms wherever it's thinner than min_wall_mm, which won't print. Two
     wells leaning together meet above the top and leave such a web between
-    them, its top a knife edge."""
-    rooms = cap_rooms()
-    return rooms + [web for i, j in near_pairs() for web in [web_cut(rooms[i], rooms[j])] if web]
+    them, its top a knife edge. With shared wells the web between two rooms of
+    one group goes wherever it's thinner than well_join_mm, so nothing stands
+    between a group's keys and the floor runs from one to the next."""
+    ks, rooms = keys(), cap_rooms()
+    shared = lambda i, j: P.shared_wells and ks[i].group == ks[j].group
+    return rooms + [web for i, j in near_pairs()
+                    for web in [web_cut(rooms[i], rooms[j], P.well_join_mm if shared(i, j) else P.min_wall_mm)] if web]
 
 
-def web_cut(a, b):
+def web_cut(a, b, wall=None):
     """The cut through the web between two rooms wherever it's thinner than
-    min_wall_mm, or None: the hull of the parts of each that near the other,
-    so what's left of the web is min_wall_mm thick where it's cut."""
-    ball = Manifold.sphere(P.min_wall_mm, segments(P.min_wall_mm))
+    `wall` (min_wall_mm unless given), or None: the hull of the parts of each
+    that near the other, so what's left of the web is that thick where it's cut."""
+    wall = P.min_wall_mm if wall is None else wall
+    ball = Manifold.sphere(wall, segments(wall))
     near_a, near_b = a ^ b.minkowski_sum(ball), b ^ a.minkowski_sum(ball)
     if near_a.volume() > 1e-6 and near_b.volume() > 1e-6:
         return Manifold.batch_hull([near_a, near_b])

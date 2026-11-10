@@ -14,7 +14,7 @@ from . import params as P
 from . import parts as R
 from . import wires as W
 from .build import mesh_of, set_params
-from .lib import xform
+from .lib import origin, xform
 
 
 def key_plane_meet(k, p, q):
@@ -92,6 +92,20 @@ class Wells(unittest.TestCase):
 
     def test_no_room_comes_through_the_top(self):
         self.assertEqual(C.thin_tops(), [])
+
+    def test_nothing_stands_between_the_keys_of_one_well(self):
+        """Midway between two neighbours, from half a millimetre over the
+        higher of their plates' planes there, is clear: in a column, across
+        two columns, along the thumb row and between the extra pair."""
+        def plate_z(k, x, y):
+            o, n = origin(k.frame), k.frame[:3, 2]
+            return o[2] - (n[0] * (x - o[0]) + n[1] * (y - o[1])) / n[2]
+
+        for a, b in (("inner_0", "inner_1"), ("inner_0", "index_0"), ("ring_0", "pinky_0"), ("thumb_near", "thumb_home"), ("thumb_x1", "thumb_x2")):
+            ka, kb = L.key_named(a), L.key_named(b)
+            x, y, _ = (origin(ka.frame) + origin(kb.frame)) / 2
+            z = max(plate_z(ka, x, y), plate_z(kb, x, y)) + 1
+            self.assertLess((C.body() ^ R.box((1, 1, 1), (x, y, z))).volume(), 1e-6, msg=f"{a} to {b}")
 
 
 class SocketWalls(unittest.TestCase):
