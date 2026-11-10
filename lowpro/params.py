@@ -19,8 +19,10 @@ _capybara = json.loads((Path(__file__).resolve().parent.parent / "editor" / "src
 # (chassis.py). "capybara": the Capybara's keys as its editor places them, its
 # RGB key tiles hanging from the switches in an open shell for loose hand
 # wiring, and its Pro Micro, TRRS jack and reset switch where the editor puts
-# them (layout.py swung_in, shell.py). The parameters below hold for both,
-# except those the editor's project fixes (the tent, the lift, the parts).
+# them (layout.py swung_in, shell.py). "frame": lowpro's keys, parts and height
+# on the Capybara's open frame of ribs, a rail and bridges (frame.py). The
+# parameters below hold for all three, except those the editor's project fixes
+# for the capybara design (the tent, the lift, the parts).
 design = "lowpro"
 
 # Which half is being built. The left half is the right's mirror image, but a
@@ -378,6 +380,50 @@ plug_way_mm = 40
 reset_skin_mm = 0.8
 reset_stop_gap_mm = 0.1
 
+# ---------------------------------------------------------------- the rib frame (design "frame")
+# A rib is a band rib_w_mm wide and rib_mm thick along a column or the thumb
+# row, its plates square, with a block under each plate down to the socket's
+# underside. The block's foot is shorter along the rib than the plate, by
+# min_wall_mm past the diode's pocket and past the socket, so a row's wire
+# crosses under the web between two keys.
+rib_w_mm = 17.6
+rib_mm = 3
+# An end that drops to the rail runs on rib_lip_mm past its plate, then turns
+# down in a round of this outer radius.
+rib_lip_mm = 1
+rib_round_mm = 5
+# An end joined to another rib's plate reaches this far into it.
+rib_join_into_mm = 0.5
+# The band's stations along a web or a round are no further apart than this.
+rib_step_mm = 0.75
+# The rail round the outline, wall_mm thick, stands this high over the seam:
+# the screws' bosses on its inside are as high, an insert's hole and
+# min_wall_mm over it.
+rail_h_mm = 4.5
+# A bridge ties two plates of different ribs whose edges face each other within
+# bridge_turn_deg and bridge_reach_mm, where they share at least its width and
+# bridge_inset_mm either side: wide along the edges, as thick as the band.
+bridge_w_mm = 4
+bridge_inset_mm = 1
+bridge_reach_mm = 6
+bridge_turn_deg = 35
+# A limb stands a web's edge on the rail, or on the bay's deck, where one is
+# within limb_reach_mm in plan: this wide along the rib, as thick as the band.
+limb_w_mm = 3.4
+limb_reach_mm = 7
+# The bay's deck over the controller and the battery: its thickness, the room
+# under it over the board for the wires soldered to the board's top, and the
+# openings through the bay's wall on the keys' side for those wires, each
+# (from, to) along the board from its port end.
+deck_mm = 2
+deck_wire_mm = 2.5
+bay_slots_mm = ((5, 13), (20, 28))
+# Screws stand on the rail's inside where their holes keep min_wall_mm from
+# every room: no further apart than the gap round the outline where there are
+# such spots, and no nearer than the least.
+frame_screw_gap_mm = 75
+frame_screw_least_mm = 25
+
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
 # at this step. Between cells the field blends the cells' planes, from this
@@ -426,6 +472,8 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
+# lowpro's keys, parts and height on an open rib frame (frame.py).
+PRESETS["frame"] = {"design": "frame"}
 # The capybara design with each switch in a well, 1 mm clear of the cap all
 # round, corners included, its rim as far under the cap's skirt at rest, so
 # light gets out round the skirt, and its floor coved.

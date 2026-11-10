@@ -34,9 +34,11 @@ and the way it moves. What changes:
 | `parts.py` | The switch, Cherry cap, hotswap socket, diode, controller, battery, power switch and reset button, and the room each takes; and the Capybara's key tile, Pro Micro, TRRS jack and reset switch. |
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `shell.py` | The capybara design's body and plinth, its support volumes for printing, and its checks (below). |
+| `frame.py` | The frame design's body and plinth, and its checks (below). PROTOTYPE. |
 | `lib.py` | Frames as 4 × 4 matrices. |
 | `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
 | `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
+| `test_frame.py` | Proves the frame design keeps this layout, is one solid, and that its open-from-below check fails on a rail across the floor; `make lowpro-test` runs it. |
 
 It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
@@ -232,6 +234,49 @@ of support and interface, against 14 without the volumes. The extra support
 is under the pockets' rims, which are at least 95% supported against a median
 of 55% without it. About 0.2 cm³ ends inside the pockets, at their rims, which
 clears from the open underside.
+
+## The frame design
+
+PROTOTYPE. `--preset frame` builds this design's keys, parts, tent and height
+on the [Capybara's](../docs/editor-chassis.md) open frame instead of a closed
+body: ribs, a rail and bridges, with no rail across the floor. `params.py
+design` picks it. The layout, the seam and the plinth's shell are the same as
+above, so the plate tops and cap tops are equal to this design's. The files go
+to `output/lowpro/frame/`.
+
+```sh
+.venv/bin/python -m lowpro.build --preset frame
+.venv/bin/python -m lowpro.render --preset frame
+```
+
+- **Ribs.** A band runs along each finger column and along the thumb row, with
+  a block under each plate that holds the switch, the hotswap socket and the
+  diode. The middle and ring columns run on through the two extra thumb keys.
+  A rib's end turns down onto the rail, except two: the inner column's front
+  sweeps into the side of the near thumb key's plate, and the index column's
+  front stops at its plate, held by its bridges.
+- **Rail.** A wall `rail_h_mm` high round the outline, on the plinth. Nothing
+  crosses the floor inside it. Limbs tie the webs between plates down to the
+  rail or to the bay's deck where one is within `limb_reach_mm`.
+- **Bridges.** One between every two plates of different ribs whose edges face
+  each other.
+- **Bay.** The controller, the battery, the power switch and the reset button
+  sit where the well puts them, under a deck walled by the rail. The wall on
+  the keys' side has slots (`bay_slots_mm`) for the wires.
+- **Wiring.** The wires hang loose under the ribs, not in channels. With the
+  plinth off, every socket, terminal and diode is open from below, and so are
+  the controller and the battery.
+- **Plinth.** The plinth has a boss up under each socket, which holds it in its
+  block, and screws into bosses on the rail's inside. A screw stands only where
+  the plinth is thick enough to sink its head, which leaves the pinky column's
+  side without one.
+
+Its checks: the frame is one solid, no part of it lies under a socket, a
+terminal or a diode, no bridge or limb is cut through, a wire fits beside every
+terminal, the screws and parts clear the case, and every part drops into the bay.
+
+Not checked: that the frame is stiff enough without the floor rail, that it
+prints (there are no support volumes for it), and where the wires run.
 
 ## Checks and what they don't cover
 

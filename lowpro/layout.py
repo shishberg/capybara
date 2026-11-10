@@ -272,8 +272,8 @@ def swung_in_keys():
 
 def design():
     """The module that builds this design's body and plinth."""
-    from . import chassis, shell
-    return shell if P.design == "capybara" else chassis
+    from . import chassis, frame, shell
+    return {"lowpro": chassis, "capybara": shell, "frame": frame}[P.design]
 
 
 # ---------------------------------------------------------------- all keys, world

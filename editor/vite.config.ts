@@ -85,7 +85,7 @@ function marks(): Plugin {
 
 // The low-profile cases (lowpro/README.md): one half's assembly as 3MF, built
 // by the Makefile when its inputs changed. Dev server only.
-//   GET /__lowpro/<capybara|capybara_wells|lowpro>/<right|left>.3mf
+//   GET /__lowpro/<capybara|capybara_wells|frame|lowpro>/<right|left>.3mf
 // Two requests for one file share one make.
 function lowproCases(): Plugin {
   const run = promisify(execFile);
@@ -96,7 +96,7 @@ function lowproCases(): Plugin {
     config: () => ({ server: { watch: { ignored: [repo + 'output/**'] } } }),
     configureServer(server) {
       server.middlewares.use('/__lowpro', async (req, res) => {
-        const m = /^\/(capybara|capybara_wells|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
+        const m = /^\/(capybara|capybara_wells|frame|lowpro)\/(right|left)\.3mf$/.exec(req.url ?? '');
         res.setHeader('Content-Type', 'text/plain');
         if (!m) {
           res.statusCode = 400;

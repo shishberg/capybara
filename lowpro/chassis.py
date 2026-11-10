@@ -1379,18 +1379,19 @@ def clashes_of(groups, cases):
     return out
 
 
-def blocked_parts():
-    """The electronics that can't go straight into the well with the body upside
-    down: what each meets of the body on its way past the seam, as (part, overlap
-    mm^3)."""
+def blocked_parts(case=None):
+    """The electronics that can't go straight into the well with the body (or
+    `case`) upside down: what each meets of it on its way past the seam, as
+    (part, overlap mm^3)."""
+    case = body() if case is None else case
     steps = np.arange(0, 12.25, 0.25)
     swept = [(p.label, Manifold.batch_boolean([p.solid.translate(tuple(-d * seam_up())) for d in steps], OpType.Add)) for p in electronics()]
-    return [(label, v) for label, s in swept for v in [(s ^ body()).volume()] if v > 1e-3]
+    return [(label, v) for label, s in swept for v in [(s ^ case).volume()] if v > 1e-3]
 
 
-def true_part_clashes():
+def true_part_clashes(case=None):
     """The keys of the left half where a real switch or socket, the same parts as
-    the right half's and not mirrored, meets the finished body as it's written:
+    the right half's and not mirrored, meets the finished body (or `case`) as it's written:
     part_clashes works before the mirror, with the parts drawn for it, so it
     can't see one drawn the wrong way round. As (key, overlap mm^3)."""
     if P.half != "left":
@@ -1399,7 +1400,7 @@ def true_part_clashes():
     real = [p.solid for p in R.mx_switch() + R.hotswap_socket()]
     P.half = "left"
     flip = np.diag([-1.0, 1, 1, 1])
-    written = body().mirror((1, 0, 0))
+    written = (body() if case is None else case).mirror((1, 0, 0))
     hits = [(k.name, sum((placed(flip @ k.frame @ flip, s) ^ written).volume() for s in real)) for k in keys()]
     return [(name, v) for name, v in hits if v > 1e-3]
 

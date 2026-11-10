@@ -3,6 +3,7 @@
     .venv/bin/python -m lowpro.render                     # into output/lowpro/renders/
     .venv/bin/python -m lowpro.render --set tent_deg=4
     .venv/bin/python -m lowpro.render --preset capybara   # into output/lowpro/capybara/renders/
+    .venv/bin/python -m lowpro.render --preset frame      # into output/lowpro/frame/renders/
 
 Builds the parts in-process (as lowpro.build does, without the checks or the
 files) and writes: the assembly and the body with plinth from above, the
@@ -12,7 +13,9 @@ round at the outline's front; for lowpro the wiring (channels, sockets, diodes
 and the bay's parts through a see-through body, from above and from below);
 for capybara the harness seen from below with the plinth off (tiles, switches
 and the parts up in the body), the ports from outside, and a section along the
-USB plug's way. Needs pyvista. The checks, not these, are what say the build
+USB plug's way; for frame what is open from below with the plinth off (the
+frame with its sockets, diodes and the bay's parts), and the frame from the
+inner side and the back. Needs pyvista. The checks, not these, are what say the build
 is right.
 """
 import argparse
@@ -128,6 +131,7 @@ def main(argv=None):
 
     from . import build as B
     from . import chassis as C
+    from . import frame as F
     from . import layout as L
     from .lib import origin
 
@@ -155,6 +159,12 @@ def main(argv=None):
         wired, labels = wiring(C, body)
         shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2, labels=labels)
         shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)
+    elif D is F:
+        below = shell[:1] + [(p.solid, p.colour) for p in C.sockets() + C.diodes() + C.electronics()]
+        shot(out, "open-below", below, away((0.3, -0.6, -1)), c, up=(0, 1, 0))
+        shot(out, "open-below-flat", below, c - (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2)
+        shot(out, "inner-side", shell, away((-1, -0.6, 0.5)), c)
+        shot(out, "back", shell, away((0.4, 1, 0.6)), c)
     else:
         inside, labels = harness(D, body)
         shot(out, "harness-below", inside, away((0.3, -0.6, -1)), c, up=(0, 1, 0), labels=labels)

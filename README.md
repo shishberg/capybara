@@ -24,7 +24,7 @@ Run `make editor` and open **http://127.0.0.1:5177**. The editor builds the Capy
 
 ## Proposed: a low-profile Capybara
 
-[`lowpro/`](lowpro/README.md) is a parametric Python (Manifold) study of a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. `make lowpro` builds it to STL (and a 3MF assembly) in `output/lowpro/`.
+[`lowpro/`](lowpro/README.md) is a parametric Python (Manifold) study of a lower, wireless Capybara: the same measured hand, a 6° tent, Cherry caps, hotswap sockets in pockets with the wires in channels under a screwed-on bottom plate, and an nRF52840 Pro Micro with a battery in each half. `make lowpro` builds it to STL (and a 3MF assembly) in `output/lowpro/`. Its [frame design](lowpro/README.md#the-frame-design) is a prototype of the same keys and parts on the Capybara's ribs, rail and bridges, without the rail across the floor.
 
 ## Paused: the pod
 
