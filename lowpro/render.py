@@ -14,8 +14,9 @@ and the bay's parts through a see-through body, from above and from below);
 for capybara the harness seen from below with the plinth off (tiles, switches
 and the parts up in the body), the ports from outside, and a section along the
 USB plug's way; for frame what is open from below with the plinth off (the
-frame with its sockets, diodes and the bay's parts), and the frame from the
-inner side and the back. Needs pyvista. The checks, not these, are what say the build
+frame with its sockets, diodes and the bay's parts), the wires through a
+see-through frame from below and from above, and the frame from the inner side
+and the back. Needs pyvista. The checks, not these, are what say the build
 is right.
 """
 import argparse
@@ -163,6 +164,11 @@ def main(argv=None):
         below = shell[:1] + [(p.solid, p.colour) for p in C.sockets() + C.diodes() + C.electronics()]
         shot(out, "open-below", below, away((0.3, -0.6, -1)), c, up=(0, 1, 0))
         shot(out, "open-below-flat", below, c - (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2)
+        from . import wires as W
+        wired = [(body, BODY, 0.25)] + below[1:] + [(p.solid, p.colour) for p in W.pieces()]
+        shot(out, "wiring-below", wired, away((0.3, -0.6, -1)), c, up=(0, 1, 0))
+        shot(out, "wiring-below-flat", wired, c - (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2)
+        shot(out, "wiring-top", wired, c + (0, 0, 300), c, up=(0, 1, 0), parallel=True, zoom=1.2)
         shot(out, "inner-side", shell, away((-1, -0.6, 0.5)), c)
         shot(out, "back", shell, away((0.4, 1, 0.6)), c)
     else:

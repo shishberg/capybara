@@ -35,10 +35,11 @@ and the way it moves. What changes:
 | `chassis.py` | The body, its pockets and channels, the plinth with its well and bosses, and the checks. |
 | `shell.py` | The capybara design's body and plinth, its support volumes for printing, and its checks (below). |
 | `frame.py` | The frame design's body and plinth, and its checks (below). PROTOTYPE. |
+| `wires.py` | Where the frame design's matrix wires run; see its header. PROTOTYPE. |
 | `lib.py` | Frames as 4 × 4 matrices. |
 | `test_checks.py` | Proves the wiring checks fail on a blocked channel; `make lowpro-test` runs it. |
 | `test_swung_in.py` | Proves the capybara design's keys and parts sit where the editor puts them; `make lowpro-test` runs it. |
-| `test_frame.py` | Proves the frame design keeps this layout, is one solid, and that its open-from-below check fails on a rail across the floor; `make lowpro-test` runs it. |
+| `test_frame.py` | Proves the frame design's columns are parallel and evenly spaced with the extra thumb keys in line, that it is one solid with a way for every wire, and that its open-from-below check fails on a rail across the floor; `make lowpro-test` runs it. |
 
 It needs [uv](https://docs.astral.sh/uv/). The `make` targets use it to set up
 `.venv` from `requirements.txt` the first time they run.
@@ -240,32 +241,44 @@ clears from the open underside.
 PROTOTYPE. `--preset frame` builds this design's keys, parts, tent and height
 on the [Capybara's](../docs/editor-chassis.md) open frame instead of a closed
 body: ribs, a rail and bridges, with no rail across the floor. `params.py
-design` picks it. The layout, the seam and the plinth's shell are the same as
-above, so the plate tops and cap tops are equal to this design's. The files go
-to `output/lowpro/frame/`.
+design` picks it. The seam and the plinth's shell are the same as above. The
+files go to `output/lowpro/frame/`.
 
 ```sh
 .venv/bin/python -m lowpro.build --preset frame
 .venv/bin/python -m lowpro.render --preset frame
 ```
 
+- **Layout.** The finger columns have no splay: every column heads straight
+  back, and the columns are one pitch apart, the mean of the measured gaps
+  between fingertips (`even_columns`, `layout.py column_pitch`). The two extra
+  thumb keys are a fourth key in the middle and ring columns, tilted
+  `thumb_extra_tilt_deg` to face the front (`thumb_extra_in_column`). The bay
+  stands `bay_gap_mm` off the inner column, which leaves room for that
+  column's wires.
 - **Ribs.** A band runs along each finger column and along the thumb row, with
   a block under each plate that holds the switch, the hotswap socket and the
   diode. The middle and ring columns run on through the two extra thumb keys.
-  A rib's end turns down onto the rail, except two: the inner column's front
-  sweeps into the side of the near thumb key's plate, and the index column's
-  front stops at its plate, held by its bridges.
+  A rib's end turns down onto the rail, except two: the inner and index
+  columns' fronts sweep into the near thumb key's plate, one into each of its
+  two upper edges.
 - **Rail.** A wall `rail_h_mm` high round the outline, on the plinth. Nothing
   crosses the floor inside it. Limbs tie the webs between plates down to the
   rail or to the bay's deck where one is within `limb_reach_mm`.
-- **Bridges.** One between every two plates of different ribs whose edges face
-  each other.
+- **Bridges.** Between plates of different ribs whose edges face each other,
+  one to a plate's edge: where an edge faces two plates, the bridge goes to the
+  one it shares more of its length with.
 - **Bay.** The controller, the battery, the power switch and the reset button
   sit where the well puts them, under a deck walled by the rail. The wall on
-  the keys' side has slots (`bay_slots_mm`) for the wires.
+  the keys' side is open beside the board's wired holes.
 - **Wiring.** The wires hang loose under the ribs, not in channels. With the
   plinth off, every socket, terminal and diode is open from below, and so are
-  the controller and the battery.
+  the controller and the battery. `wires.py` finds a way for each matrix wire
+  (`wire_d_mm` across, with no clearance) from terminal to terminal and to the
+  controller's pad (`mcu_pins`, PROVISIONAL), and the assembly carries each
+  net's wires as a piece, the rows' blue and the columns' green. It doesn't
+  place the battery's, the power switch's or the reset button's wires, or the
+  diodes' legs.
 - **Plinth.** The plinth has a boss up under each socket, which holds it in its
   block, and screws into bosses on the rail's inside. A screw stands only where
   the plinth is thick enough to sink its head, which leaves the pinky column's
@@ -273,10 +286,11 @@ to `output/lowpro/frame/`.
 
 Its checks: the frame is one solid, no part of it lies under a socket, a
 terminal or a diode, no bridge or limb is cut through, a wire fits beside every
-terminal, the screws and parts clear the case, and every part drops into the bay.
+terminal, every wire has a way, the screws and parts clear the case, and every
+part drops into the bay.
 
-Not checked: that the frame is stiff enough without the floor rail, that it
-prints (there are no support volumes for it), and where the wires run.
+Not checked: that the frame is stiff enough without the floor rail, and that
+it prints (there are no support volumes for it).
 
 ## Checks and what they don't cover
 

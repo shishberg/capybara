@@ -9,6 +9,7 @@ for (const [id, label] of [
   ['shell', 'Low-profile shell on Swung in'],
   ['wells', 'Low-profile shell with wells'],
   ['lowpro', 'Low-profile'],
+  ['frame', 'Low-profile frame'],
 ] as const)
   test(`the ${label} case shows for both halves, and the frame comes back`, async ({ page }) => {
     const errors: string[] = [];
@@ -46,6 +47,27 @@ for (const [id, label] of [
     await expect(page.locator('#stl')).toBeVisible();
     expect(errors).toEqual([]);
   });
+
+test("Wiring and pads shows and hides the low-profile frame's wires", async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await rebuilt(page);
+  const wires = async () => (await shown(page)).pieces.filter((p: any) => p.kind === 'wires');
+
+  await page.getByLabel('Case').selectOption('lowpro');
+  await expect(page.locator('#view-state')).toContainText('not your edits', { timeout: 60000 });
+  await expect(page.getByLabel('Wiring and pads')).toBeHidden();
+  expect(await wires()).toHaveLength(0);
+
+  await page.getByLabel('Case').selectOption('frame');
+  await expect(page.locator('#subtitle')).toContainText('Low-profile frame');
+  await expect(page.locator('#view-state')).toContainText('not your edits', { timeout: 60000 });
+  expect((await wires()).map((p: any) => p.name)).toContain('wire RX');
+  expect((await wires()).every((p: any) => p.visible)).toBe(true);
+  await page.getByLabel('Wiring and pads').uncheck();
+  expect((await wires()).some((p: any) => p.visible)).toBe(false);
+});
 
 test('a case survives a reload', async ({ page }) => {
   await page.goto('/');

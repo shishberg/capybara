@@ -49,6 +49,10 @@ rows_below = 1
 reach_mix = 0.5
 # Scale of the measured finger splay (the columns' angles in plan). 0 makes them parallel.
 splay_scale = 1
+# The columns' homes evenly spaced in x, at the mean of the measured
+# fingertips' gaps, the inner column as far from the index; else each under its
+# measured fingertip and the inner column inner_gap_mm from the index.
+even_columns = False
 # Extra fifth column inside the index column (reached by the index finger), its
 # gap from the index column centre to centre and its angle to it.
 inner_gap_mm = 19.9
@@ -92,6 +96,10 @@ thumb_extra = True
 thumb_extra_gap_mm = 4.2
 thumb_extra_left_mm = 3
 thumb_extra_lower_mm = 0
+# Or each a fourth key of its own column: under it and headed as it is, tilted
+# this much to face the front.
+thumb_extra_in_column = False
+thumb_extra_tilt_deg = 10
 
 # ---------------------------------------------------------------- the switch (MX)
 # The hole, with its print clearance, the 1.5 mm plate the clips land on and
@@ -207,6 +215,10 @@ wall_mm = 3                 # the body's wall past the key cells and the bays
 # through it. The well leans with the seam, so the wall thins as it climbs, and
 # this leaves min_wall_mm to the back trunk at the top.
 mcu_bay_wall_mm = 1.6
+# The well stands this far off the inner column's cells: 0, or in the frame
+# design the room between two columns' ribs, for the wires beside the inner
+# column's blocks.
+bay_gap_mm = 0
 # The outline: "hulls" joins a convex hull round the finger field and one
 # round the thumb cluster (straight sides); "closed" follows the cells.
 outline_style = "closed"
@@ -411,18 +423,41 @@ bridge_turn_deg = 35
 # within limb_reach_mm in plan: this wide along the rib, as thick as the band.
 limb_w_mm = 3.4
 limb_reach_mm = 7
-# The bay's deck over the controller and the battery: its thickness, the room
-# under it over the board for the wires soldered to the board's top, and the
-# openings through the bay's wall on the keys' side for those wires, each
-# (from, to) along the board from its port end.
+# The bay's deck over the controller and the battery: its thickness, and the
+# room under it over the board for the wires soldered to the board's top.
 deck_mm = 2
 deck_wire_mm = 2.5
-bay_slots_mm = ((5, 13), (20, 28))
 # Screws stand on the rail's inside where their holes keep min_wall_mm from
 # every room: no further apart than the gap round the outline where there are
 # such spots, and no nearer than the least.
 frame_screw_gap_mm = 75
 frame_screw_least_mm = 25
+# The matrix wires (wires.py). The controller's holes are in two rows this far
+# apart, at this pitch, the first this far from the board's port end
+# (PROVISIONAL). mcu_pins is each half's net's hole as (row, hole): row 0 the
+# keys' side, 1 the far side, the hole counted from the port end; lowpro/BUILD.md
+# has their names on the board. The left half is drawn as the right, so its
+# holes are the board's other row's.
+mcu_pin_rows_mm = 15.24
+mcu_pin_pitch_mm = 2.54
+mcu_first_pin_mm = 2.8
+mcu_pins = {
+    "right": {"RT": (0, 0), "C3": (0, 1), "C4": (0, 4), "C2": (0, 5), "C1": (0, 6), "C0": (0, 8),
+              "RH": (0, 9), "RB": (0, 10), "RX": (0, 11)},
+    "left": {"C4": (0, 4), "RT": (0, 5), "C3": (0, 6), "C2": (0, 7), "C1": (0, 8), "C0": (0, 9),
+             "RH": (1, 9), "RB": (1, 10), "RX": (1, 11)},
+}
+# The wires' ways are looked for on a grid of this step. A wire's way starts
+# within wire_end_room_mm of its end, where it may cross the wires it is
+# soldered beside, and is looked for within wire_search_mm of the box round
+# its ends before the whole frame.
+wire_grid_mm = 0.3
+# A wire's way costs wire_tuck times more per millimetre where it hangs
+# wire_tuck_mm or more under what is over it, so the wires lie up under the frame.
+wire_tuck = 1
+wire_tuck_mm = 4
+wire_end_room_mm = 2.5
+wire_search_mm = 12
 
 # ---------------------------------------------------------------- modelling
 # The top surface is a smooth (quadratic) spline through the key field sampled
@@ -472,8 +507,11 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
-# lowpro's keys, parts and height on an open rib frame (frame.py).
-PRESETS["frame"] = {"design": "frame"}
+# lowpro's parts and height on an open rib frame (frame.py), its finger columns
+# parallel and evenly spaced, the extra pair a fourth key of the middle and
+# ring columns.
+PRESETS["frame"] = {"design": "frame", "splay_scale": 0, "even_columns": True, "thumb_extra_in_column": True,
+                    "bay_gap_mm": 2}
 # The capybara design with each switch in a well, 1 mm clear of the cap all
 # round, corners included, its rim as far under the cap's skirt at rest, so
 # light gets out round the skirt, and its floor coved.

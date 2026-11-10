@@ -33,7 +33,7 @@ import numpy as np
 
 from . import params as P
 from . import parts as R
-from .lib import (axis_x, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
+from .lib import (axis_x, axis_y, axis_z, basis, clamp, cosd, frame_at, origin, rinv, rot_x, rot_y, rot_z,
                   sind, trans, unit, xform, xy)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -128,14 +128,30 @@ def finger_plate_pitch(i):
     return P.row_pitch_mm * R / (R - P.cap_bottom_above_plate_mm)
 
 
+def column_pitch():
+    """The even pitch between the columns in x: the mean of the measured
+    fingertips' gaps."""
+    x = [p[0] for p in hand()["rest"]]
+    return (x[-1] - x[0]) / (len(x) - 1)
+
+
+def finger_home(i):
+    """Where finger i's home cap top sits: under its resting print, or with
+    even_columns at the even pitch in x from the middle finger's."""
+    p = hand()["rest"][i].copy()
+    if P.even_columns:
+        p[0] = hand()["rest"][1][0] + (i - 1) * column_pitch()
+    return p
+
+
 def finger_column_frames(i):
-    """Finger i's column: the home key's plate top under the resting print (facing
+    """Finger i's column: the home key's plate top under its home (facing
     up), the other rows round the arc about a point that radius above it."""
     h = hand()["heading"][i] * P.splay_scale
     d = np.array([sind(h), cosd(h), 0.0])
     H = cap_top_height(row_cap_row(0))
     R = finger_plate_radius(i)
-    o = hand()["rest"][i] - np.array([0, 0, H + P.finger_sink_mm])
+    o = finger_home(i) - np.array([0, 0, H + P.finger_sink_mm])
     C = o + np.array([0, 0, R])
     frames = []
     for r in range(-P.rows_below, P.rows_above + 1):
@@ -154,11 +170,12 @@ def finger_keys(i, col):
 
 
 def inner_keys():
-    """The inner column: the index column carried inner_gap_mm toward the thumb,
-    square to itself, and turned inner_angle_deg about its home key."""
+    """The inner column: the index column carried inner_gap_mm toward the thumb
+    (with even_columns, the columns' pitch), square to itself, and turned
+    inner_angle_deg about its home key."""
     F = finger_column_frames(0)
     home = F[P.rows_below]
-    side = -axis_x(home) * P.inner_gap_mm
+    side = -axis_x(home) * (column_pitch() if P.even_columns else P.inner_gap_mm)
     pivot = origin(home) + side
     T = trans(pivot) @ rot_z(P.inner_angle_deg) @ trans(-pivot) @ trans(side)
     return [Key(f"inner_{k - P.rows_below}", T @ F[k], "finger", 0, k - P.rows_below,
@@ -217,17 +234,27 @@ def thumb_keys():
 
 
 def extra_keys():
-    """The extra pair, a fourth row under the middle (x1) and ring (x2) columns:
-    flat and square to the layout, a cell apart, each thumb_extra_gap_mm south of
-    its column's bottom key's south edge, x1 thumb_extra_left_mm toward the thumb."""
+    """The extra pair, a fourth row under the middle (x1) and ring (x2) columns,
+    each thumb_extra_gap_mm south of its column's bottom key's south edge and
+    thumb_extra_lower_mm lower. Flat and square to the layout, a cell apart, x1
+    thumb_extra_left_mm toward the thumb; or with thumb_extra_in_column each
+    under its own column and headed as it is, tilted thumb_extra_tilt_deg
+    about its x through its middle, facing the front."""
     if not P.thumb_extra:
         return []
-    edges = [xform(finger_keys(i, i + 1)[0].frame, [0, -finger_keys(i, i + 1)[0].cell[1] / 2, 0]) for i in (1, 2)]
-    edges[0][0] -= P.thumb_extra_left_mm
-    edges[1][0] = edges[0][0] + P.cell_mm
-    place = trans([0, -P.cell_mm / 2 - P.thumb_extra_gap_mm, -P.thumb_extra_lower_mm])
-    return [Key(f"thumb_{name}", frame_at(e, [0, 0, 1], [0, 1, 0]) @ place, "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm))
-            for name, col, e in (("x1", 2, edges[0]), ("x2", 0, edges[1]))]
+    bottoms = [finger_keys(i, i + 1)[0] for i in (1, 2)]
+    edges = [xform(k.frame, [0, -k.cell[1] / 2, 0]) for k in bottoms]
+    if P.thumb_extra_in_column:
+        heads = [unit(axis_y(k.frame) * [1, 1, 0]) for k in bottoms]
+        tilt = rot_x(P.thumb_extra_tilt_deg)
+    else:
+        edges[0][0] -= P.thumb_extra_left_mm
+        edges[1][0] = edges[0][0] + P.cell_mm
+        heads = [[0, 1, 0]] * 2
+        tilt = np.eye(4)
+    place = trans([0, -P.cell_mm / 2 - P.thumb_extra_gap_mm, -P.thumb_extra_lower_mm]) @ tilt
+    return [Key(f"thumb_{name}", frame_at(e, [0, 0, 1], d) @ place, "extra", col, -3, P.cap_row_thumb, 1, (P.cell_mm, P.cell_mm))
+            for name, col, e, d in (("x1", 2, edges[0], heads[0]), ("x2", 0, edges[1], heads[1]))]
 
 
 # ---------------------------------------------------------------- Swung in (design "capybara")
@@ -392,12 +419,12 @@ def column_key(col, row):
 
 @cached
 def mcu_bay():
-    """The controller's bay: beside the inner column's cells, its back at the
-    top cell's back, as wide as the board, and reaching as far
+    """The controller's bay: beside the inner column's cells, bay_gap_mm off
+    them, its back at the top cell's back, as wide as the board, and reaching as far
     forward as the board's room (the board sits mcu_usb_overhang_mm back past
     the bay's back, toward the port's opening: mcu_frame)."""
     c = P.mcu_clearance_mm
-    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.mcu_bay_wall_mm
+    x1 = min(cell_x0(column_key(0, r)) for r in range(-P.rows_below, P.rows_above + 1)) - P.mcu_bay_wall_mm - P.bay_gap_mm
     y1 = cell_back(column_key(0, P.rows_above))
     y0 = y1 + P.mcu_usb_overhang_mm - P.mcu_board_mm[1] - c
     return ((x1 - P.mcu_board_mm[0] - 2 * c, y0), (x1, y1))

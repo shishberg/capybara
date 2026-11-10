@@ -35,7 +35,7 @@ PARTS = ("body", "plate", "assembly", "print")
 
 COLOURS = {"burlywood": "DEB887", "peru": "CD853F", "ivory": "FFFFF0", "gray": "808080", "gold": "FFD700",
            "dimgray": "696969", "silver": "C0C0C0", "orange": "FFA500", "darkgreen": "006400", "white": "FFFFFF",
-           "steelblue": "4682B4", "black": "000000", "red": "FF0000"}
+           "steelblue": "4682B4", "black": "000000", "red": "FF0000", "dodgerblue": "4AA3FF", "limegreen": "5EE08A"}
 
 
 def set_params(assignments, preset=None):

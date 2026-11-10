@@ -37,6 +37,7 @@ export function showCase() {
   frame.visible = !design;
   lowproGroup.visible = !!design;
   document.body.classList.toggle('lowpro-case', !!design);
+  document.body.classList.toggle('unwired-case', !CASES[S.case].wired);
   syncCase();
   if (!design) {
     request++;
@@ -103,8 +104,8 @@ function disposeAll(root: T.Object3D) {
 
 let bodyEdges: T.LineSegments | undefined;
 /**
- * The View toggles on the pieces: Keycaps, Bottom section and Tiles and
- * components by kind, and Chassis opacity and Show wireframe on the body.
+ * The View toggles on the pieces: Keycaps, Bottom section, Wiring and pads and
+ * Tiles and components by kind, and Chassis opacity and Show wireframe on the body.
  */
 export function pieceVisibility() {
   const checked = (id: string) => $(id).matches(':checked');
@@ -112,6 +113,7 @@ export function pieceVisibility() {
     keycaps: checked('caps'),
     base: checked('base'),
     body: true,
+    wires: checked('wires'),
     parts: checked('parts'),
   };
   for (const o of lowproPieces()) o.visible = on[o.userData.kind as keyof typeof on];

@@ -11,8 +11,7 @@ open from below (covered() checks it).
 
 A rib is a band swept through its keys' plates, with a block under each plate
 that holds the switch, the socket and the diode. The wires hang loose under
-the bands: a column's beside its terminals, a row's across under the webs
-between keys. The controller, the battery, the power switch and the reset
+the bands (wires.py lays them). The controller, the battery, the power switch and the reset
 button sit under a deck beside the inner column, walled by the rail, where
 chassis.py's well puts them.
 
@@ -82,7 +81,7 @@ def ribs():
     their plates."""
     back_to_front = (0, -1, 0)
     return [Rib("inner", column("inner"), back_to_front, Drop(), Join("thumb_near", (0, 1, 0))),
-            Rib("index", column("index"), back_to_front, Drop(), Stop()),
+            Rib("index", column("index"), back_to_front, Drop(), Join("thumb_near", (1, 0, 0))),
             Rib("middle", column("middle", "thumb_x1"), back_to_front, Drop(), Drop()),
             Rib("ring", column("ring", "thumb_x2"), back_to_front, Drop(), Drop()),
             Rib("pinky", column("pinky"), back_to_front, Drop(), Drop()),
@@ -93,20 +92,30 @@ def ribs():
 @dataclass(frozen=True)
 class Station:
     """A band's section: the middle of its top face, its unit across and its
-    unit normal (out of the top), and its heading."""
+    unit normal (out of the top), its heading and its width. The across is
+    the normal crossed with the heading (station)."""
     p: np.ndarray
     across: np.ndarray
     normal: np.ndarray
     heading: np.ndarray
+    width: float
 
-    def quad(self, w, t):
+    def side(self, side):
+        """The top face's corner on `side` (-1 or 1) of across."""
+        return self.p + side * self.across * self.width / 2
+
+    def quad(self):
         """The section's corners: the top face's two, then the underside's."""
-        a, n = self.across * w / 2, self.normal * t
-        return np.array([self.p - a, self.p + a, self.p + a - n, self.p - a - n])
+        n = self.normal * P.rib_mm
+        return np.array([self.side(-1), self.side(1), self.side(1) - n, self.side(-1) - n])
 
     def edge(self, side):
         """The middle of the band's edge on `side` (-1 or 1) of across."""
-        return self.p + side * self.across * P.rib_w_mm / 2 - self.normal * P.rib_mm / 2
+        return self.side(side) - self.normal * P.rib_mm / 2
+
+
+def station(p, normal, heading, width):
+    return Station(p, np.cross(normal, heading), normal, heading, width)
 
 
 def sweep(quads):
@@ -137,29 +146,27 @@ def steps(length):
 
 
 def ribbon(a, b):
-    """The stations of a band from station a to station b: its middle a cubic
-    leaving along a's heading and arriving along b's, its across turning evenly
-    from a's to b's and held square to the cubic."""
-    d = np.linalg.norm(b.p - a.p)
-    c = [a.p, a.p + a.heading * d / 3, b.p - b.heading * d / 3, b.p]
+    """The stations of a band from station a to station b. Each side of its top
+    face is its own cubic, leaving along a's heading and arriving along b's, so
+    the side on the inside of a turn is the shorter and neither folds; each
+    section joins the two sides, square to their headings."""
+    sides = []
+    for side in (-1, 1):
+        p, q = a.side(side), b.side(side)
+        d = np.linalg.norm(q - p)
+        sides.append([p, p + a.heading * d / 3, q - b.heading * d / 3, q])
     out = []
-    for s in np.linspace(0, 1, steps(d) + 1):
-        p, t = bezier(c, s)
-        t = unit(t)
-        across = unit((1 - s) * a.across + s * b.across)
-        across = unit(across - (across @ t) * t)
-        normal = np.cross(across, t)
-        if normal @ ((1 - s) * a.normal + s * b.normal) < 0:
-            normal = -normal
-        out.append(Station(p, across, normal, t))
+    for s in np.linspace(0, 1, steps(max(np.linalg.norm(c[3] - c[0]) for c in sides)) + 1):
+        (p, dp), (q, dq) = bezier(sides[0], s), bezier(sides[1], s)
+        across, t = unit(q - p), unit(dp + dq)
+        t = unit(t - (t @ across) * across)
+        out.append(Station((p + q) / 2, across, np.cross(t, across), t, float(np.linalg.norm(q - p))))
     return out
 
 
 def plate_station(k, along, at):
     """Key k's plate's section `at` mm along the rib from its stem."""
-    t = xdir(k.frame, along)
-    n = axis_z(k.frame)
-    return Station(xform(k.frame, np.array(along, float) * at), np.cross(n, t), n, t)
+    return station(xform(k.frame, np.array(along, float) * at), axis_z(k.frame), xdir(k.frame, along), P.rib_w_mm)
 
 
 def round_down(s):
@@ -176,7 +183,7 @@ def round_down(s):
     for a in np.linspace(0, turn, steps(P.rib_round_mm * turn) + 1):
         radial = math.cos(a) * up + math.sin(a) * e
         normal = (s.normal @ up) * radial + (s.normal @ side) * side
-        out.append(Station(centre + P.rib_round_mm * radial, s.across, normal, math.cos(a) * e - math.sin(a) * up))
+        out.append(Station(centre + P.rib_round_mm * radial, s.across, normal, math.cos(a) * e - math.sin(a) * up, s.width))
     return out
 
 
@@ -184,12 +191,8 @@ def joined(s, join):
     """The stations of an end carried on from station s into a plate's edge."""
     k = key_named(join.key)
     out = np.array(join.edge, float)
-    heading = -xdir(k.frame, out)
-    along_edge = np.cross(axis_z(k.frame), heading)
-    if along_edge @ s.across < 0:
-        along_edge = -along_edge
     p = xform(k.frame, out * (P.rib_w_mm / 2 - P.rib_join_into_mm))
-    return ribbon(s, Station(p, along_edge, axis_z(k.frame), heading))
+    return ribbon(s, station(p, axis_z(k.frame), -xdir(k.frame, out), s.width))
 
 
 @dataclass(frozen=True)
@@ -205,11 +208,7 @@ class Band:
 
 def outward(s):
     """Station s facing the other way along its rib."""
-    return Station(s.p, -s.across, s.normal, -s.heading)
-
-
-def band_quad(s):
-    return s.quad(P.rib_w_mm, P.rib_mm)
+    return Station(s.p, -s.across, s.normal, -s.heading, s.width)
 
 
 def finish(end, s):
@@ -221,8 +220,8 @@ def finish(end, s):
         web = joined(s, end)
         return web[1:], [], [web[len(web) // 2]]
     turn = round_down(s)
-    last = band_quad(turn[-1])
-    return turn, [hull_of([band_quad(s)[0], band_quad(s)[1], last[2], last[3]])], []
+    last = turn[-1].quad()
+    return turn, [hull_of([s.quad()[0], s.quad()[1], last[2], last[3]])], []
 
 
 def grounded(end, quad):
@@ -246,9 +245,9 @@ def bands():
         before, plan0, webs0 = finish(rib.start, outward(stations[0]))
         after, plan1, webs1 = finish(rib.end, stations[-1])
         run = [outward(s) for s in before[::-1]] + stations + after
-        level = [band_quad(s) for s in run if abs(s.heading[2]) < 0.5]
+        level = [s.quad() for s in run if abs(s.heading[2]) < 0.5]
         plan = [hull_of(np.r_[a, b]) for a, b in zip(level[:-1], level[1:])] + plan0 + plan1
-        quads = [band_quad(s) for s in run]
+        quads = [s.quad() for s in run]
         quads = grounded(rib.start, quads[0]) + quads + grounded(rib.end, quads[-1])
         out.append(Band(rib, tuple(quads), tuple(plan), tuple(webs + webs0 + webs1)))
     return out
@@ -367,11 +366,23 @@ def bay_block():
     return (polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)]) ^ inside()).extrude(100).translate((0, 0, -20)) ^ above_seam() ^ level(-20, deck_z()[1])
 
 
+def bay_slot_spans():
+    """The openings for the wires through the bay's wall on the keys' side, as
+    (from, to) along the board from its port end: one beside each run of the
+    board's holes that either half wires (params.py mcu_pins), half a pitch
+    past the run's end holes. The wall stands between the runs."""
+    used = sorted({hole for pins in P.mcu_pins.values() for _, hole in pins.values()})
+    runs = [[used[0]]]
+    for hole in used[1:]:
+        runs = runs + [[hole]] if hole > runs[-1][-1] + 1 else runs[:-1] + [runs[-1] + [hole]]
+    at = lambda hole: P.mcu_first_pin_mm + hole * P.mcu_pin_pitch_mm
+    return [(at(run[0] - 0.5), at(run[-1] + 0.5)) for run in runs]
+
+
 def bay_slots():
-    """The openings for the wires through the bay's wall on the keys' side,
-    which is the board's -x in its own frame."""
+    """The openings as solids, through the wall at the board's -x in its own frame."""
     x = -(P.mcu_board_mm[0] / 2 + P.mcu_clearance_mm + P.mcu_bay_wall_mm / 2)
-    return [placed(C.mcu_frame(), R.box((P.mcu_bay_wall_mm + 2, t - f, 60), (x, (f + t) / 2, 0))) for f, t in P.bay_slots_mm]
+    return [placed(C.mcu_frame(), R.box((P.mcu_bay_wall_mm + 2, t - f, 60), (x, (f + t) / 2, 0))) for f, t in bay_slot_spans()]
 
 
 def bay_cavities():
@@ -464,8 +475,8 @@ def free_edges():
 
 
 def facing(a, b):
-    """Where a bridge leaves edge a for edge b, as (point on a, point on b), or
-    None: the middle of the stretch of a that b lies beside."""
+    """Where a bridge leaves edge a for edge b, as (point on a, point on b, the
+    length of a that b lies beside), or None: the middle of that stretch."""
     turn = math.cos(math.radians(P.bridge_turn_deg))
     flat = lambda v: unit(np.r_[v[:2], 0])
     if flat(a.out) @ flat(b.out) > -turn or a.normal @ b.normal < turn:
@@ -480,32 +491,30 @@ def facing(a, b):
     gap = (q - p) @ a.out
     if not 0 < gap < P.bridge_reach_mm or np.linalg.norm(q - p) > P.bridge_reach_mm:
         return None
-    return p, q
+    return p, q, hi - lo + 2 * need
 
 
 @cached
 def bridge_spans():
-    """Each bridge as (key, key, its stations): one for each pair of free
-    edges of different ribs that face each other."""
+    """Each bridge as (key, key, its stations). A free edge has one bridge at
+    most, to the edge of another rib that it faces and lies most beside."""
     edges = free_edges()
-    out = []
-    for i, a in enumerate(edges):
-        for b in edges[i + 1:]:
-            if a.rib == b.rib:
-                continue
-            span = facing(a, b)
-            if span is None:
-                continue
-            p, q = span
-            b_along = b.along if b.along @ a.along > 0 else -b.along
-            start = Station(p - a.out * P.rib_join_into_mm, a.along, a.normal, a.out)
-            end = Station(q + b.out * P.rib_join_into_mm, b_along, b.normal, -b.out)
-            out.append((a.key, b.key, ribbon(start, end)))
+    pairs = [(span, i, j) for i, a in enumerate(edges) for j, b in enumerate(edges[i + 1:], i + 1)
+             if a.rib != b.rib for span in [facing(a, b)] if span is not None]
+    taken, out = set(), []
+    for (p, q, _), i, j in sorted(pairs, key=lambda pair: -pair[0][2]):
+        if {i, j} & taken:
+            continue
+        taken |= {i, j}
+        a, b = edges[i], edges[j]
+        start = station(p - a.out * P.rib_join_into_mm, a.normal, a.out, P.bridge_w_mm)
+        end = station(q - b.out * P.rib_join_into_mm, b.normal, -b.out, P.bridge_w_mm)
+        out.append((a.key, b.key, ribbon(start, end)))
     return out
 
 
 def bridge_solid(stations):
-    return sweep([s.quad(P.bridge_w_mm, P.rib_mm) for s in stations])
+    return sweep([s.quad() for s in stations])
 
 
 # ---------------------------------------------------------------- screws
@@ -629,8 +638,9 @@ def bottom_plate():
 
 
 def parts(body, plate):
+    from . import wires
     return ([Piece("body", "burlywood", body), Piece("plinth", "peru", plate)]
-            + C.switches() + C.keycaps() + C.sockets() + C.diodes() + C.electronics())
+            + C.switches() + C.keycaps() + C.sockets() + C.diodes() + C.electronics() + wires.pieces())
 
 
 # ---------------------------------------------------------------- checks
@@ -685,6 +695,7 @@ def part_clashes():
 
 
 def checks():
+    from . import wires
     ok = True
 
     def check(faults, bad, good):
@@ -699,6 +710,7 @@ def checks():
           "every socket, terminal and diode is open from below")
     check([f"{w} ({100 * left:.0f}% left)" for w, left in severed()], "cut through", "every bridge and limb holds")
     check(crowded_terminals(), f"no {P.wire_d_mm} mm wire fits beside a terminal at", "a wire fits beside every terminal")
+    check(wires.unrouted(), f"no way for a {P.wire_d_mm} mm wire", f"every wire has a way: {wires.report()}")
     check([f"{s} into {w} ({v:.2f} mm^3)" for s, w, v in screw_walls()[1]], "screw holes break into", "screw holes clear")
     check(C.screw_length_faults(), f"M2 x {P.screw_len_mm} screws don't fit", f"M2 x {P.screw_len_mm} screws fit every insert")
     v = (body() ^ bottom_plate()).volume()

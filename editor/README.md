@@ -66,17 +66,19 @@ past its switch seat, or to the edge of the tile pocket if that is further) and 
 ## Use
 
 - **Case** (in View) picks what the viewer shows: the **Capybara frame**, this
-  editor's own model, or one of three low-profile cases from
+  editor's own model, or one of four low-profile cases from
   [lowpro](../lowpro/README.md): the **Low-profile shell on Swung in** (the
   Capybara's tiles and parts in lowpro's enclosed shell), the **Low-profile
-  shell with wells** (the same, each switch in a well) and **Low-profile**
-  (lowpro's own design). The low-profile cases are on the dev server only: it
+  shell with wells** (the same, each switch in a well), **Low-profile**
+  (lowpro's own design) and **Low-profile frame** (lowpro's frame design, with
+  its wires). The low-profile cases are on the dev server only: it
   runs `make` to build each half's assembly (the first time takes a few
   seconds) from the repository's default project, not from your edits. Keycaps,
   Bottom section, Tiles and components (the controller included), the bounding
-  box, the wireframe and the opacity still apply to their pieces. The handles,
-  wiring, controller toggle, Rebuild & check, clearance checks and STL export are
-  the frame's and hide, and the frame keeps building behind them.
+  box, the wireframe and the opacity still apply to their pieces, and Wiring
+  and pads to the low-profile frame's wires. The handles, controller toggle,
+  Rebuild & check, clearance checks and STL export are the Capybara frame's
+  and hide, and that frame keeps building behind them.
   The case is remembered with the view, not saved in the project.
 - **Half** (in View) picks the hand. Both halves share one key layout, set in
   the right half's axes (+X pinky), so a handle drag on the left half makes the
