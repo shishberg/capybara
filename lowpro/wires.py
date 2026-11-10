@@ -142,7 +142,7 @@ def solids():
     out = [D.body(), D.bottom_plate()] + [p.solid for p in C.switches() + C.sockets() + C.diodes() + C.electronics()]
     if D is F:
         (x0, y0), (x1, y1) = F.bay_wall_rect()
-        out.append(Manifold.cube((x1 - x0, y1 - y0, 100)).translate((x0, y0, F.deck_z()[1])))
+        out.append(Manifold.cube((x1 - x0, y1 - y0, 100)).translate((x0, y0, C.deck_z()[1])))
     return union(out)
 
 

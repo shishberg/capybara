@@ -203,8 +203,8 @@ through three slots in the wall on the keys' side.
   and the port stands on it, which sets the port's height in its hole. The pin rows'
   solder sits in the gutters either side of the rest. The battery's leads run north
   along a gutter to the board's north end. The ceiling
-  follows the top surface, at least 8 mm over the board's top, so the wires have room
-  round the board.
+  is a level deck 4 mm over the board's top, so the wires can cross over the board
+  two deep.
   A strip down the middle of it, padded with foam, holds the board against the rest.
   The wires clear the strip either side and past its south end.
 - **Power switch:** in its pocket in the strip on the board's inner side, on the
@@ -281,8 +281,7 @@ drops straight in. Try each one dry first.
    battery − to B−, and battery + to the slide switch's other wire, with the switch
    off, and insulate the joint. Stick the battery to the ceiling of its bay with foam
    tape, leads through the notch, so that it stays in the body when the plinth comes
-   off. The ceiling curves away toward the south and the keys, so put the tape on the
-   battery's north end, where the ceiling comes closest. The battery hangs well clear
+   off. The battery hangs clear
    of the plinth's pocket, so tape it firmly.
 5. Stick foam tape along the strip that stands down from the ceiling of the board's
    bay, and leave its liner on so that the board can move on it. The strip stands

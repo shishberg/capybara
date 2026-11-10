@@ -297,7 +297,7 @@ def interior():
     plinth: a pocket they seal off holds nothing and would be a void in the
     print. Each tile's way (tile_way) is cut through all of it, plates too."""
     ball = Manifold.sphere(P.cap_wall_mm, 16)
-    hollow = subtract(inside_prism() ^ C.body_shell().translate((0, 0, -P.top_skin_mm)),
+    hollow = subtract(inside_prism() ^ C.top_shell().translate((0, 0, -P.top_skin_mm)),
                       [s.minkowski_sum(ball) for s in C.cap_rooms()])
     ways = [placed(k.frame, tile_way()) for k in keys()]
     hollow = add(hollow, [union(way_webs(ways)) ^ inside_prism()])
@@ -323,7 +323,7 @@ def pocket_block():
 
 def plates():
     """Every key's plate and sleeve, and its pocket block, hanging from the top skin."""
-    return union([placed(k.frame, R.plate_block() + pocket_block()) for k in keys()]) ^ C.body_shell()
+    return union([placed(k.frame, R.plate_block() + pocket_block()) for k in keys()]) ^ C.top_shell()
 
 
 @cached
@@ -342,7 +342,7 @@ def body_cutters():
 @cached
 def body():
     t = time.time()
-    body = subtract(C.body_shell(), [interior()] + body_cutters() + insert_holes() + recesses())
+    body = subtract(C.top_shell(), [interior()] + body_cutters() + insert_holes() + recesses())
     body.num_tri()
     stage("body cuts", t)
     return body
@@ -463,7 +463,7 @@ def thin_tops():
     volume mm^3): the switches' rooms and the caps' rooms go out through the
     top, nothing else may come near it, the screws' insert holes included (the
     body is low over the thumb's outer corner)."""
-    shell = C.body_shell()
+    shell = C.top_shell()
     skin = shell - shell.translate((0, 0, -P.min_wall_mm))
     cuts = [(what, group) for what, group in body_cuts() if what not in ("a switch's room", "a cap's room")]
     return [(what, v) for what, group in cuts + [("a screw's insert hole", insert_holes())]

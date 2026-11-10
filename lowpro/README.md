@@ -106,7 +106,11 @@ plinth holds it against its pocket's ceiling when a switch is pushed in. Those
 open shafts mean nothing can sit under a key, so the controller, battery, reset
 button and power switch lie in a well beside the inner column. The well's walls and
 ceiling are the body's and its floor is the plinth's top, with a shallow pocket under the
-battery and the board, which lies level on a rest in it. All the electronics are then in the body with the keys, and no wire
+battery and the board, which lies level on a rest in it. Its roof is a deck level over
+the desk, `deck_wire_mm` over the board and `well_roof_mm` thick, well under the keys'
+top: the top is cut down to it on the bay's side of the well's wall by the keys, which
+stands on up to the keys' top, and south of the bay the cut rises at 45° until it
+leaves the top. All the electronics are then in the body with the keys, and no wire
 crosses the seam: the plinth is a lid that goes on last and comes off with everything
 still wired. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by
@@ -284,7 +288,7 @@ files go to `output/lowpro/frame/`.
   one to a plate's edge: where an edge faces two plates, the bridge goes to the
   one it shares more of its length with.
 - **Bay.** The controller, the battery, the power switch and the reset button
-  sit where the well puts them, under a deck walled by the rail. The wall on
+  sit where the well puts them, under its deck, walled by the rail. The wall on
   the keys' side is open beside the board's wired holes.
 - **Wiring.** The wires hang loose under the ribs, not in channels. With the
   plinth off, every socket, terminal and diode is open from below, and so are

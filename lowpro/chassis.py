@@ -263,10 +263,6 @@ def pocket_cover(k, pz, lx, ly):
     return cover
 
 
-def top_z(x, y):
-    return float(field([x], [y])[0])
-
-
 def seam_up():
     """The seam's normal, the way the shafts and channels run and the way the
     parts come together: the body prints on the seam, so this is its print's z."""
@@ -340,7 +336,7 @@ def channel_points():
     r = P.min_wall_mm + 2 * P.mesh_tol_mm
     around = lambda p, w: circle_points(p, (w / 2 + r) / np.cos(np.pi / n), n)
     return [around(a, w) + around(b, w)
-            for w, pts in channel_lines(well_plan) for a, b in zip(pts[:-1], pts[1:])]
+            for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
 
 
 def ring_corner():
@@ -623,8 +619,8 @@ def top_height(xy):
 
 
 @cached
-def body_shell():
-    """The body before anything is cut from it: its vertices the underside's, on the
+def top_shell():
+    """The body under the keys' top surface, before anything is cut from it: its vertices the underside's, on the
     seam (the outline's stations first), the round's sections (the first of each on
     the outline, level with the ball's centre: the wall's top), then the top's
     inside the round, with edges round each land's taper and across it."""
@@ -764,22 +760,58 @@ def floor_box(r, h):
     return placed(bay_frame(), Manifold.cube((r[1][0] - r[0][0], r[1][1] - r[0][1], h + put_back_mm)).translate((r[0][0], r[0][1], -put_back_mm)))
 
 
+def level(z0, z1, size=600):
+    """Everything between two heights over the desk."""
+    return Manifold.cube((size, size, z1 - z0)).translate((-size / 2, -size / 2, z0))
+
+
+def deck_z():
+    """The deck over the well, level over the desk: its underside, deck_wire_mm
+    over the board, and its top, well_roof_mm over that."""
+    under = float(origin(mcu_frame())[2]) + R.mcu_pcb_z() + P.mcu_board_mm[2] + P.deck_wire_mm
+    return under, under + P.well_roof_mm
+
+
+@cached
+def over_deck():
+    """What the deck takes off the body's top: everything over it on the bay's
+    side of the well's wall by the keys, which stands on as a wall up to the
+    keys' top. South of the bay's front wall the cut rises at 45 degrees until
+    it leaves the top, and the deck's edge on the outline is rounded like the
+    rest of the top's (top_round_mm): what stays is its plan and its profile
+    each drawn in by the round, then grown by a ball of it."""
+    (_, y0), (x1, _) = L.bay_outline_rect()
+    r, top, south, far = P.top_round_mm, deck_z()[1], y0 - P.wall_mm, 200
+    profile = polygon([(far, -far), (far, top), (south, top), (south - far, top + far), (south - far, -far)])
+    along_x = np.array([[0, 0, 1, -far], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], float)
+    zone = Manifold.cube((far, 2 * far, 2 * far)).translate((x1 - far, south - far, -far))
+    plan = polygon(outline()).offset(put_back_mm - r, JoinType.Round, 2.0, 16).extrude(2 * far).translate((0, 0, -far))
+    core = placed(along_x, profile.offset(-r, JoinType.Miter).extrude(far + x1 + 2 * r)) ^ plan ^ zone.translate((2 * r, 0, 0))
+    return zone - core.minkowski_sum(Manifold.sphere(r, segments(r)))
+
+
+@cached
+def body_shell():
+    """The body before its rooms are cut from it: under the keys' top surface,
+    and over the bay under the deck."""
+    return top_shell() - over_deck()
+
+
 def well():
     """The well: the board's room with the port end's slot in the back wall, the
-    battery's bay and its lead notch, each from the seam up to well_roof_mm under
-    the top."""
-    ceiling = body_shell().translate((0, 0, -P.well_roof_mm))
+    battery's bay and its lead notch, each from the seam up to the deck."""
+    under = level(-20, deck_z()[0])
     board = placed(mcu_frame(), R.mcu_pocket(100))
-    return [s ^ ceiling for s in (board, floor_box(L.battery_bay(), 100), floor_box(L.lead_notch(), 100))]
+    return [s ^ under for s in (board, floor_box(L.battery_bay(), 100), floor_box(L.lead_notch(), 100))]
 
 
 def press_strip():
-    """The strip down from the well's ceiling along the middle of the board, over
-    the board by mcu_press_gap_mm, which foam takes up. The wires reach the board
+    """The strip down from the deck along the middle of the board, over the
+    board by mcu_press_gap_mm, which foam takes up. The wires reach the board
     either side of it and past its south end."""
     (w, length), y0 = P.mcu_press_mm, P.mcu_press_start_mm
     z = R.mcu_pcb_z() + P.mcu_board_mm[2] + P.mcu_press_gap_mm
-    return placed(mcu_frame(), R.box((w, length, 30), (0, y0 + length / 2, z + 15))) ^ body_shell()
+    return placed(mcu_frame(), R.box((w, length, 30), (0, y0 + length / 2, z + 15))) ^ level(-20, deck_z()[1])
 
 
 # ---------------------------------------------------------------- wiring points
@@ -951,36 +983,38 @@ def front_trunk():
     return pts
 
 
-def well_plan(y, x=None):
-    """Where a channel comes into the well, in plan (its height left 0): by
-    the column's wall, level with y (or at x)."""
-    return np.array([L.mcu_bay()[1][0] - 3 if x is None else x, y, 0.0])
+def well_level(p):
+    """The plan point p at the height the channels come into the well: under the
+    deck, so a wire has all the room over the board to come in by."""
+    return np.array([p[0], p[1], deck_z()[0]])
 
 
-def well_point(y, x=None):
-    """well_plan's point just under the well's ceiling."""
-    p = well_plan(y, x)
-    return p + (0, 0, top_z(p[0], p[1]) - P.well_roof_mm - 1)
+def well_point(y):
+    """Where a channel comes into the well: by the column's wall, level with y, under the deck."""
+    return well_level((L.mcu_bay()[1][0] - 3, y))
 
 
-def bay_entry(point=well_point):
-    """Where the back trunk reaches the well: just inside its back corner by the column."""
-    return point(L.mcu_bay()[1][1] - 3)
+def bay_entry():
+    """Where the back trunk's wires reach the well: just inside its back corner by the column."""
+    return well_point(L.mcu_bay()[1][1] - 3)
 
 
-def well_exits(point=well_point):
-    """The inner column's ways straight through its wall into the well, as
-    channels: one from the home key's -x tab for the home, bottom and thumb
-    rows' wires, whose runs end there, and one from the top key's diode joint,
-    where the column's wire ends, for that wire alone."""
+def well_exits():
+    """The ways through the inner column's wall into the well, as channels
+    level under the deck, each from under where its wires' channel ends (the
+    channels are open down to the seam, so the wires drop to it there): one
+    from the back trunk's end, one from the home key's -x tab for the home,
+    bottom and thumb rows' wires, whose runs end there, and one from the top
+    key's diode joint, where the column's wire ends, for that wire alone."""
     tab = c_tab(finger_key(0, 0))
     joint = at(finger_key(0, P.rows_above), (col_x(), R.diode_y()))
-    return [(P.trunk_w_mm, [tab, point(tab[1])]), (P.channel_w_mm, [joint, point(joint[1])])]
+    return [(P.trunk_w_mm, [well_level(back_trunk()[-1]), bay_entry()]),
+            (P.trunk_w_mm, [well_level(tab), well_point(tab[1])]), (P.channel_w_mm, [well_level(joint), well_point(joint[1])])]
 
 
 def well_ends():
     """Where the channels end in the well."""
-    return [bay_entry()] + [pts[-1] for _, pts in well_exits()]
+    return [pts[-1] for _, pts in well_exits()]
 
 
 def well_ways():
@@ -1063,24 +1097,17 @@ def thumb_channels():
 def channels():
     """The channels as polylines (width, [points...]) in world: the five finger
     columns first."""
-    return channel_lines(well_point)
-
-
-def channel_lines(point):
-    """channels(), with `point` for where one comes into the well: well_point,
-    or well_plan for the outline, which the top's height is fitted to and which
-    wants the channels in plan alone."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     rows = range(-P.rows_below, P.rows_above + 1)
     out = [(column_w(), column_line(c)) for c in range(5)]
-    # The back trunk, pinky to inner column and into the bay, the front trunk, and
-    # the inner column's trunk from the thumbs' fork to the home key's tab, where
-    # the lower rows' wires leave it for the well.
-    out.append((t, back_trunk() + [bay_entry(point)]))
+    # The back trunk, pinky to inner column, the front trunk, and the inner
+    # column's trunk from the thumbs' fork to the home key's tab, where the
+    # lower rows' wires leave it for the well.
+    out.append((t, back_trunk()))
     out.append((t, front_trunk()))
     inner = [finger_key(0, r) for r in rows if r <= 0]
     out.append((t, [thumb_fork(), front_pt(inner[0])] + [c_tab(k) for k in inner]))
-    out += well_exits(point)
+    out += well_exits()
     # Each finger row but the top one, whose wire runs in the back trunk: straight
     # along each key's north edge and on into the next column, whose channel the
     # wire then shares to that key's -x tab.

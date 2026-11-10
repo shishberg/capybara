@@ -274,8 +274,12 @@ mcu_clearance_mm = 0.3
 # mcu_bay), along the column, its USB-C port out of the back wall. The well's
 # walls and ceiling are the body's and its floor is the plinth's top, on the
 # seam, so all the electronics are in the body and the plinth comes away free of
-# them. Its ceiling follows the top surface this far under it.
+# them. Its roof is a deck level over the desk, lower than the keys' top: its
+# thickness, and the room under it over the board for the wires soldered to the
+# board's top, which come in by three ways through the column's wall and cross
+# over the board, so two wires deep.
 well_roof_mm = 2
+deck_wire_mm = 4
 # The board and its port are level on the desk, the port's middle on the seam, so
 # the seam crosses the hole at seam_tent_deg. Under the board and the battery the
 # plinth has a pocket this far under the seam. The port stands on a rest as wide
@@ -412,10 +416,6 @@ bridge_turn_deg = 35
 # within limb_reach_mm in plan: this wide along the rib, as thick as the band.
 limb_w_mm = 3.4
 limb_reach_mm = 7
-# The bay's deck over the controller and the battery: its thickness, and the
-# room under it over the board for the wires soldered to the board's top.
-deck_mm = 2
-deck_wire_mm = 2.5
 # Screws stand on the rail's inside where their holes keep min_wall_mm from
 # every room: no further apart than the gap round the outline where there are
 # such spots, and no nearer than the least.
@@ -503,8 +503,9 @@ PRESETS = {
         "top_round_mm": 1,
     },
 }
-# lowpro's keys, parts and height on an open rib frame (frame.py).
-PRESETS["frame"] = {"design": "frame", "bay_gap_mm": 2}
+# lowpro's keys, parts and height on an open rib frame (frame.py). Its wires
+# come into the bay beside their pads, so one wire deep over the board.
+PRESETS["frame"] = {"design": "frame", "bay_gap_mm": 2, "deck_wire_mm": 2.5}
 # The capybara design with each switch in a well, 1 mm clear of the cap all
 # round, corners included, its rim as far under the cap's skirt at rest, so
 # light gets out round the skirt, and its floor coved.

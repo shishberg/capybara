@@ -350,20 +350,10 @@ def rail_point(p):
 
 
 # ---------------------------------------------------------------- the bay
-def deck_z():
-    """The deck's underside and top, level over the desk: deck_wire_mm over the board."""
-    under = float(origin(C.mcu_frame())[2]) + R.mcu_pcb_z() + P.mcu_board_mm[2] + P.deck_wire_mm
-    return under, under + P.deck_mm
-
-
-def level(z0, z1, size=600):
-    return Manifold.cube((size, size, z1 - z0)).translate((-size / 2, -size / 2, z0))
-
-
 def bay_block():
     """The bay before its rooms are cut: its walls and its deck, one block."""
     (x0, y0), (x1, y1) = bay_wall_rect()
-    return (polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)]) ^ inside()).extrude(100).translate((0, 0, -20)) ^ above_seam() ^ level(-20, deck_z()[1])
+    return (polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)]) ^ inside()).extrude(100).translate((0, 0, -20)) ^ above_seam() ^ C.level(-20, C.deck_z()[1])
 
 
 def bay_slot_spans():
@@ -386,18 +376,9 @@ def bay_slots():
 
 
 def bay_cavities():
-    """The board's room, the battery's and the lead notch between them, up to the deck."""
-    under = level(-20, deck_z()[0])
-    return [s ^ under for s in (placed(C.mcu_frame(), R.mcu_pocket(100)), C.floor_box(L.battery_bay(), 100),
-                                C.floor_box(L.lead_notch(), 100))] + [s ^ under for s in bay_slots()]
-
-
-def press_strip():
-    """The strip down from the deck along the middle of the board, over it by
-    mcu_press_gap_mm, which foam takes up."""
-    (w, length), y0 = P.mcu_press_mm, P.mcu_press_start_mm
-    z = R.mcu_pcb_z() + P.mcu_board_mm[2] + P.mcu_press_gap_mm
-    return placed(C.mcu_frame(), R.box((w, length, 30), (0, y0 + length / 2, z + 15))) ^ level(-20, deck_z()[1])
+    """The well (chassis.py) and the openings into it, up to the deck."""
+    under = C.level(-20, C.deck_z()[0])
+    return C.well() + [s ^ under for s in bay_slots()]
 
 
 def over_deck(p):
@@ -416,7 +397,7 @@ def limb_foot(s, side):
     for d in np.arange(0, P.limb_reach_mm, 0.5):
         q = p + out * d
         if over_deck(q - half) and over_deck(q + half):
-            return np.array([q[0], q[1], deck_z()[1]])
+            return np.array([q[0], q[1], C.deck_z()[1]])
     foot, d = rail_point(p)
     return foot if d < P.limb_reach_mm else None
 
@@ -596,7 +577,7 @@ def frame_parts():
     """The frame's solids before anything is cut from them, in named groups."""
     return [("a rib", [band_solid(b) for b in bands()]), ("a key's block", [block(k) for k in keys()]),
             ("a bridge", [bridge_solid(s) for _, _, s in bridge_spans()]), ("a limb", limbs()), ("the rail", [rail()]),
-            ("the bay", [bay_block(), press_strip()]), ("a screw's boss", [screw_boss_at(p) for p in screw_points()])]
+            ("the bay", [bay_block(), C.press_strip()]), ("a screw's boss", [screw_boss_at(p) for p in screw_points()])]
 
 
 def filled(solid):
