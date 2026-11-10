@@ -327,16 +327,18 @@ def circle_points(p, r, n=36):
     return [(p[0] + r * np.cos(a), p[1] + r * np.sin(a)) for a in np.linspace(0, 2 * np.pi, n, endpoint=False)]
 
 
-def channel_points():
+def channel_points(bay=True):
     """The channel paths in plan with min_wall_mm of wall round them, as the
     point sets of a stadium per segment: its polygon's sides, not its corners, at
     that wall, and mesh_tol_mm over it twice, for the outline's spline and then
-    its chords to cut across."""
+    its chords to cut across. Without the bay, the ways into the well are left out."""
     n = 36
     r = P.min_wall_mm + 2 * P.mesh_tol_mm
     around = lambda p, w: circle_points(p, (w / 2 + r) / np.cos(np.pi / n), n)
+    ends = [] if bay else well_ends()
     return [around(a, w) + around(b, w)
-            for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
+            for w, pts in channels() if not any(np.array_equal(pts[-1], e) for e in ends)
+            for a, b in zip(pts[:-1], pts[1:])]
 
 
 def ring_corner():
@@ -349,17 +351,17 @@ def ring_corner():
     return polygon(circle_points((c[0] - P.wall_mm + r, foot + r), r, 144))
 
 
-def cells_2d():
-    """The cells and the bays in plan, before the wall."""
-    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_outline_rect())])
+def cells_2d(bay):
+    """The cells, and the bays with them or not, in plan, before the wall."""
+    return fused([cell_face(k) for k in keys()] + [bay_face(L.bay_outline_rect())] * bay)
 
 
-def hulls_2d():
-    """The finger field (its cells and the bays) and the thumb cluster each as a
-    convex hull, and the bridge joining them: the thumb row, the two bottom keys
-    nearest it and the bays on the inner side, so the inner edge runs straight
-    from the bays to the thumb."""
-    bays = bay_points(L.bay_outline_rect())
+def hulls_2d(bay):
+    """The finger field (its cells, and the bays with them or not) and the thumb
+    cluster each as a convex hull, and the bridge joining them: the thumb row, the
+    two bottom keys nearest it and the bays on the inner side, so the inner edge
+    runs straight from the bays to the thumb."""
+    bays = bay_points(L.bay_outline_rect()) * bay
     finger = hull_of([c for k in keys() if k.group != "thumb" for c in cell_corners(k)] + bays)
     thumb = hull_of([c for k in keys() if k.group == "thumb" for c in cell_corners(k)])
     bridge = hull_of([c for k in keys() if k.group == "thumb" or (k.group == "finger" and k.col <= 1 and k.row == -P.rows_below)
@@ -372,13 +374,14 @@ def signed_area(pts):
     return 0.5 * float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
 
 
-def outline_faces():
+def outline_faces(bay=True):
     """What the outline closes round (outline_curve): outline_style "hulls" is
     the hulls joined, "closed" the cells and bays; then what hugs the wall once
     it's drawn (the ring corner and the channels' walls), and what hugs it
-    again after the rounding, so that can't cut into the channels' wall."""
-    s = hulls_2d() if P.outline_style == "hulls" else cells_2d()
-    channel_walls = [hull_of(pts) for pts in channel_points()]
+    again after the rounding, so that can't cut into the channels' wall. Without
+    the bay it is what the keys' own outline closes round (keys_stations)."""
+    s = hulls_2d(bay) if P.outline_style == "hulls" else cells_2d(bay)
+    channel_walls = [hull_of(pts) for pts in channel_points(bay)]
     return s, [ring_corner()] + channel_walls, channel_walls
 
 
@@ -442,6 +445,13 @@ def stations_of(curve):
     return curve(at), np.c_[-d[:, 1], d[:, 0]] / np.linalg.norm(d, axis=1)[:, None]
 
 
+@cached
+def keys_stations():
+    """The stations of the keys' own outline: the outline the body would have
+    with no bay beside the inner column, which the body follows over the deck."""
+    return stations_of(outline_curve_of(*outline_faces(bay=False)))
+
+
 def outline():
     """The outline as a counterclockwise polygon through its stations (N x 2)."""
     return outline_stations()[0]
@@ -467,12 +477,11 @@ def outline_distance(p):
 # contacts is the circular arc about the centre, sampled to mesh_tol_mm; the
 # arcs at neighbouring stations are joined by quads. The wall below the wall
 # contacts is one vertical quad per outline segment.
-@cached
-def round_sections():
-    """The rolling ball's section at each outline station, as (N, m, 3): m points
-    from the wall contact (on the outline, level with the ball's centre) along
-    the arc to the top contact (on the top surface)."""
-    (q, inward), r = outline_stations(), P.top_round_mm
+def round_sections(stations):
+    """The rolling ball's section at each of an outline's stations, as (N, m, 3):
+    m points from the wall contact (on the outline, level with the ball's centre)
+    along the arc to the top contact (on the top surface)."""
+    (q, inward), r = stations, P.top_round_mm
     if r <= 0:
         return np.c_[q, top_surface(q)][:, None, :]
     # The top contact under each ball centre a, found by fixed-point steps that
@@ -526,11 +535,6 @@ def round_sections():
     return rows
 
 
-def top_contact_2d():
-    """The plan inside the top edge's round, where the top surface is the top."""
-    return polygon(round_sections()[:, -1, :2])
-
-
 # ---------------------------------------------------------------- the blanks
 def plan_mesh(boundary, fill=True, rings=()):
     """A triangulation of a counterclockwise plan polygon (N x 2) whose sides it
@@ -576,14 +580,7 @@ def solid_from(vertices, triangles, what):
 # built here and nothing cuts it afterwards except what is meant to go through the wall (the USB
 # opening, the power switch's knob): one vertical quad per outline segment, its
 # corners on the stations, so it is exactly vertical. Its underside is one
-# triangulation of the outline (plan), on the seam.
-@cached
-def plan():
-    """The plan inside the outline, triangulated: its vertices (the outline's
-    stations first) and triangles."""
-    return plan_mesh(outline())
-
-
+# triangulation of the outline, on the seam.
 def land_keys():
     """The keys whose lands are laid into the top: every key's, unless the
     switches sit in wells, where each switch's lip sits on its plate at the
@@ -618,23 +615,22 @@ def top_height(xy):
     return z
 
 
-@cached
-def top_shell():
-    """The body under the keys' top surface, before anything is cut from it: its vertices the underside's, on the
-    seam (the outline's stations first), the round's sections (the first of each on
-    the outline, level with the ball's centre: the wall's top), then the top's
-    inside the round, with edges round each land's taper and across it."""
-    t = time.time()
+def shell_under_top(stations):
+    """The solid under the keys' top surface inside an outline, given by its
+    stations: its vertices the underside's, on the seam (the stations first),
+    the round's sections (the first of each on the outline, level with the
+    ball's centre: the wall's top), then the top's inside the round, with edges
+    round each land's taper and across it."""
+    q = stations[0]
+    n = len(q)
+    rows = round_sections(stations)
+    m = rows.shape[1]
     rings = [(land_loop(k, land_half()), land_loop(k, land_half() + P.switch_taper_mm)) for k in land_keys()]
-    reach = fused([polygon(outer) for _, outer in rings]) - top_contact_2d()
+    reach = fused([polygon(outer) for _, outer in rings]) - polygon(rows[:, -1, :2])
     if reach.area() > 1e-6:
         x0, y0, _, _ = reach.bounds()
         raise ValueError(f"a key's land reaches the top edge's round near ({x0:.1f}, {y0:.1f})")
-    q = outline()
-    n = len(q)
-    rows = round_sections()
-    m = rows.shape[1]
-    vu, tu = plan()
+    vu, tu = plan_mesh(q)
     u = len(vu)
     vi, ti = plan_mesh(rows[:, -1, :2], rings=rings)
     station = np.arange(n)
@@ -643,7 +639,14 @@ def top_shell():
     vertices = np.r_[np.c_[vu, seam_z(vu[:, 0], vu[:, 1])], rows.reshape(-1, 3),
                      np.c_[vi[n:], top_height(vi[n:])]]
     triangles = [tu[:, ::-1], walled(station, ring[0])] + [walled(ring[j], ring[j + 1]) for j in range(m - 1)] + [top]
-    shell = solid_from(vertices, np.concatenate(triangles), "body's shell")
+    return solid_from(vertices, np.concatenate(triangles), "body's shell")
+
+
+@cached
+def top_shell():
+    """Everything inside the outline under the keys' top surface."""
+    t = time.time()
+    shell = shell_under_top(outline_stations())
     stage("the body's shell", t)
     return shell
 
@@ -773,28 +776,25 @@ def deck_z():
 
 
 @cached
-def over_deck():
-    """What the deck takes off the body's top: everything over it on the bay's
-    side of the well's wall by the keys, which stands on as a wall up to the
-    keys' top. South of the bay's front wall the cut rises at 45 degrees until
-    it leaves the top, and the deck's edge on the outline is rounded like the
-    rest of the top's (top_round_mm): what stays is its plan and its profile
-    each drawn in by the round, then grown by a ball of it."""
-    (_, y0), (x1, _) = L.bay_outline_rect()
-    r, top, south, far = P.top_round_mm, deck_z()[1], y0 - P.wall_mm, 200
-    profile = polygon([(far, -far), (far, top), (south, top), (south - far, top + far), (south - far, -far)])
-    along_x = np.array([[0, 0, 1, -far], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]], float)
-    zone = Manifold.cube((far, 2 * far, 2 * far)).translate((x1 - far, south - far, -far))
-    plan = polygon(outline()).offset(put_back_mm - r, JoinType.Round, 2.0, 16).extrude(2 * far).translate((0, 0, -far))
-    core = placed(along_x, profile.offset(-r, JoinType.Miter).extrude(far + x1 + 2 * r)) ^ plan ^ zone.translate((2 * r, 0, 0))
-    return zone - core.minkowski_sum(Manifold.sphere(r, segments(r)))
+def deck():
+    """The deck: what the outline holds outside the keys' own outline, up to
+    the deck's top, lapped into the keys' part. Its edge on the outline is
+    rounded like the rest of the top's (top_round_mm): its plan drawn in by
+    the round and stopped that far under its top, then grown by a ball of it."""
+    r, lap, far = P.top_round_mm, 1, 100
+    full = polygon(outline())
+    zone = (full - polygon(keys_stations()[0])).offset(lap, JoinType.Round, 2.0, 16)
+    core = full.offset(put_back_mm - r, JoinType.Round, 2.0, 16) ^ zone.offset(2 * r, JoinType.Round, 2.0, 16)
+    rounded = (core.extrude(far) ^ level(-far, deck_z()[1] - r)).minkowski_sum(Manifold.sphere(r, segments(r)))
+    return top_shell() ^ rounded ^ zone.extrude(far)
 
 
 @cached
 def body_shell():
-    """The body before its rooms are cut from it: under the keys' top surface,
-    and over the bay under the deck."""
-    return top_shell() - over_deck()
+    """The body before its rooms are cut from it: under the keys' top surface
+    inside the keys' own outline, whose wall and rounded top edge stand over
+    the deck as they do round the rest of the keys, and the deck beside it."""
+    return shell_under_top(keys_stations()) + deck()
 
 
 def well():

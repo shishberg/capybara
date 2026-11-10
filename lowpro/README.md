@@ -108,9 +108,9 @@ button and power switch lie in a well beside the inner column. The well's walls 
 ceiling are the body's and its floor is the plinth's top, with a shallow pocket under the
 battery and the board, which lies level on a rest in it. Its roof is a deck level over
 the desk, `deck_wire_mm` over the board and `well_roof_mm` thick, well under the keys'
-top: the top is cut down to it on the bay's side of the well's wall by the keys, which
-stands on up to the keys' top, and south of the bay the cut rises at 45° until it
-leaves the top. All the electronics are then in the body with the keys, and no wire
+top. The keys have an outline of their own, drawn as the body's would be with no bay,
+and its wall and rounded top edge stand over the deck as they do round the rest of
+the keys; the deck is what the body's outline holds outside it. All the electronics are then in the body with the keys, and no wire
 crosses the seam: the plinth is a lid that goes on last and comes off with everything
 still wired. The wires run in channels in the
 body's underside, sunk into the plinth's top so they can cross and lie side by
