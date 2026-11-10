@@ -9,6 +9,7 @@ for (const [id, label] of [
   ['shell', 'Low-profile shell on Swung in'],
   ['wells', 'Low-profile shell with wells'],
   ['lowpro', 'Low-profile'],
+  ['lowpro_wells', 'Low-profile with wells'],
   ['frame', 'Low-profile frame'],
 ] as const)
   test(`the ${label} case shows for both halves, and the frame comes back`, async ({ page }) => {

@@ -124,6 +124,13 @@ shortest way, not the route [Building it](BUILD.md) gives it: a column's wire
 may reach the well along a row's channel. It doesn't place the battery's, the
 power switch's or the reset button's wires, or the diodes' legs.
 
+`--preset wells` builds this design with each switch in a well, as the
+[capybara design's wells](#wells) are: the same clearance round and under the
+cap, the same skin and cove. The outline stays where it is, since `wall_mm`
+past each cell already walls the wells on the edge. The files go to
+`output/lowpro/wells/`, and the editor's Case picker shows it as
+**Low-profile with wells**.
+
 The seven screws locate the plinth under the body. A pinky
 cap comes down past the ring key's plate beside it, so the body gives every cap its
 room (its base's outline straight up from the plate and on out

@@ -514,3 +514,9 @@ PRESETS["capybara_wells"] = PRESETS["capybara"] | {
     "well_depth_mm": _switch["keycap_bottom_above_plate_mm"] - _well_clearance_mm,
     "well_cove_mm": 1,
 }
+# The lowpro design with each switch in a well, as capybara_wells has them.
+PRESETS["wells"] = {
+    "cap_room_clearance_mm": _well_clearance_mm,
+    "well_depth_mm": cap_bottom_above_plate_mm - _well_clearance_mm,
+    "well_cove_mm": 1,
+}

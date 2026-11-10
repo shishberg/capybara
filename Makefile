@@ -71,6 +71,9 @@ output/lowpro/capybara/%-assembly.3mf: $(LOWPRO_SRC) $(SWUNG_IN_SRC)
 output/lowpro/capybara_wells/%-assembly.3mf: $(LOWPRO_SRC) $(SWUNG_IN_SRC)
 	$(LOWPRO_PY) -m lowpro.build --preset capybara_wells --half $* --part assembly --no-check
 
+output/lowpro/wells/%-assembly.3mf: $(LOWPRO_SRC)
+	$(LOWPRO_PY) -m lowpro.build --preset wells --half $* --part assembly --no-check
+
 output/lowpro/frame/%-assembly.3mf: $(LOWPRO_SRC)
 	$(LOWPRO_PY) -m lowpro.build --preset frame --half $* --part assembly --no-check
 

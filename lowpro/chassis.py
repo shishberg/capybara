@@ -340,7 +340,7 @@ def channel_points():
     r = P.min_wall_mm + 2 * P.mesh_tol_mm
     around = lambda p, w: circle_points(p, (w / 2 + r) / np.cos(np.pi / n), n)
     return [around(a, w) + around(b, w)
-            for w, pts in channels() for a, b in zip(pts[:-1], pts[1:])]
+            for w, pts in channel_lines(well_plan) for a, b in zip(pts[:-1], pts[1:])]
 
 
 def ring_corner():
@@ -951,26 +951,31 @@ def front_trunk():
     return pts
 
 
+def well_plan(y, x=None):
+    """Where a channel comes into the well, in plan (its height left 0): by
+    the column's wall, level with y (or at x)."""
+    return np.array([L.mcu_bay()[1][0] - 3 if x is None else x, y, 0.0])
+
+
 def well_point(y, x=None):
-    """A point just under the well's ceiling, by the column's wall, level with y
-    (or at x): where the channels come in."""
-    x = L.mcu_bay()[1][0] - 3 if x is None else x
-    return np.array([x, y, top_z(x, y) - P.well_roof_mm - 1])
+    """well_plan's point just under the well's ceiling."""
+    p = well_plan(y, x)
+    return p + (0, 0, top_z(p[0], p[1]) - P.well_roof_mm - 1)
 
 
-def bay_entry():
+def bay_entry(point=well_point):
     """Where the back trunk reaches the well: just inside its back corner by the column."""
-    return well_point(L.mcu_bay()[1][1] - 3)
+    return point(L.mcu_bay()[1][1] - 3)
 
 
-def well_exits():
+def well_exits(point=well_point):
     """The inner column's ways straight through its wall into the well, as
     channels: one from the home key's -x tab for the home, bottom and thumb
     rows' wires, whose runs end there, and one from the top key's diode joint,
     where the column's wire ends, for that wire alone."""
     tab = c_tab(finger_key(0, 0))
     joint = at(finger_key(0, P.rows_above), (col_x(), R.diode_y()))
-    return [(P.trunk_w_mm, [tab, well_point(tab[1])]), (P.channel_w_mm, [joint, well_point(joint[1])])]
+    return [(P.trunk_w_mm, [tab, point(tab[1])]), (P.channel_w_mm, [joint, point(joint[1])])]
 
 
 def well_ends():
@@ -1058,17 +1063,24 @@ def thumb_channels():
 def channels():
     """The channels as polylines (width, [points...]) in world: the five finger
     columns first."""
+    return channel_lines(well_point)
+
+
+def channel_lines(point):
+    """channels(), with `point` for where one comes into the well: well_point,
+    or well_plan for the outline, which the top's height is fitted to and which
+    wants the channels in plan alone."""
     w, t = P.channel_w_mm, P.trunk_w_mm
     rows = range(-P.rows_below, P.rows_above + 1)
     out = [(column_w(), column_line(c)) for c in range(5)]
     # The back trunk, pinky to inner column and into the bay, the front trunk, and
     # the inner column's trunk from the thumbs' fork to the home key's tab, where
     # the lower rows' wires leave it for the well.
-    out.append((t, back_trunk() + [bay_entry()]))
+    out.append((t, back_trunk() + [bay_entry(point)]))
     out.append((t, front_trunk()))
     inner = [finger_key(0, r) for r in rows if r <= 0]
     out.append((t, [thumb_fork(), front_pt(inner[0])] + [c_tab(k) for k in inner]))
-    out += well_exits()
+    out += well_exits(point)
     # Each finger row but the top one, whose wire runs in the back trunk: straight
     # along each key's north edge and on into the next column, whose channel the
     # wire then shares to that key's -x tab.

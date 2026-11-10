@@ -13,7 +13,8 @@ from . import layout as L
 from . import params as P
 from . import parts as R
 from . import wires as W
-from .build import mesh_of
+from .build import mesh_of, set_params
+from .lib import xform
 
 
 def key_plane_meet(k, p, q):
@@ -69,6 +70,28 @@ class Wires(unittest.TestCase):
                 solid = W.solids()
                 for w in W.wires():
                     self.assertLess((W.tube(w.points) ^ solid).volume(), 0.5, msg=f"{w.net} {w.ends}")
+
+
+class Wells(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(L.reset)
+        for name in P.PRESETS["wells"]:
+            self.addCleanup(setattr, P, name, getattr(P, name))
+        set_params([], "wells")
+        L.reset()
+
+    def test_a_key_on_the_edge_has_its_wells_wall_outside_it(self):
+        """The top stands at the key's top plane, well_depth_mm over its plate,
+        over the wall on the side that faces no other key."""
+        edge = [(f"pinky_{r}", (1, 0)) for r in (-1, 0, 1)] + [(f"{c}_1", (0, 1)) for c in ("inner", "index", "middle", "ring", "pinky")]
+        for name, (sx, sy) in edge:
+            k = L.key_named(name)
+            hx, hy = R.keycap_room_half(k.units)
+            p = xform(C.top_frame(k), [sx * (hx + P.cap_wall_mm / 2), sy * (hy + P.cap_wall_mm / 2), 0])
+            self.assertGreater(float(C.top_height(p[None, :2])[0]), p[2] - 0.2, msg=name)
+
+    def test_no_room_comes_through_the_top(self):
+        self.assertEqual(C.thin_tops(), [])
 
 
 class SocketWalls(unittest.TestCase):
